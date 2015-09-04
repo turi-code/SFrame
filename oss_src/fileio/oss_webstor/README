@@ -1,0 +1,334 @@
+  Copyright (c) 2011-2013, OblakSoft LLC.
+
+  ----------------------------
+  webstor library
+  ----------------------------
+
+  C++ library to access cloud storage.  Provides several rare features such as 
+  multi-part upload, async support, HTTP proxy, HTTP tracing.  Supports Amazon
+  S3, Google Cloud Storage and Eucalyptus Walrus.  It is tuned to utilize HTTP
+  stack efficiently, and offers robust error handling.  The library contains
+  built-in SSL CA certificates required to establish secure SSL connection
+  to Amazon S3 and Google Cloud Storage.
+
+  
+  Dependencies
+  -------------
+  The library was tested on Linux (2.6.27 and above) and Windows (Vista and
+  above) both x86, x64.  It has the following dependencies: 
+    
+    - curl (http://curl.haxx.se/)
+    - libxml2 (http://xmlsoft.org/)
+    - openssl (http://www.openssl.org/)
+
+  
+  Licensing
+  ---------
+
+  Please see the file named LICENSE.txt.
+
+
+  Build instructions (Linux)
+  --------------------------
+
+  1. Install dependencies. 
+  
+  For Red Hat distributions the dependent libraries can be installed using
+  the following command:
+        sudo yum install curl-devel openssl-devel libxml2-devel
+
+  Make sure that build tools are installed too, if not, type:
+        sudo yum install gcc-c++ make
+  
+  For Debian/Ubuntu distributions the dependent libraries can be installed
+  using the following command:
+      sudo apt-get install libcurl4-openssl-dev libxml2-dev 
+
+  and build tools:
+      sudo apt-get install g++ make
+
+  If your distribution doesn't use apt / yum, please refer to your
+  distribution's documentation.  Alternatively, you can download the
+  latest sources for the dependencies from the corresponding websites
+  (curl, xmlsoft and openssl) and compile them from source.
+  
+  2. Build webstor lib.
+ 
+  The 'make' command can be used to build webstor.  If the dependent
+  libraries are installed into non-standard locations, you may need to
+  tweak makefile (see makefile comments for more information). 
+
+  If build succeeds, in the build folder you will find wscmd executable.
+  wscmd provides a command line interface to webstor API.  wscmd command
+  line parameters are described below.
+
+
+  Package content
+  ---------------
+  webstor source files:
+  
+  wsconn.h        - public API (WsConnection and related classes). 
+  asyncurl.h      - public API for async requests (opaque AsyncMan class).
+  wsconn.cpp      - WsConnection implementation. 
+  asyncurl.cpp    - AsyncMan implementation.
+  sysutil.{h|cpp} - internal helper to abstract platform dependencies.
+  wsdbg.cpp       - self-contained unit test (compiled with -DDEBUG).
+  wsperf.cpp      - self-contained perf test (compiled with -DPERF).
+  wscmd.cpp       - command line interface to webstor API.
+  
+  
+  Documentation
+  -------------
+
+  webstor public API is instrumented with doxygen comments. 
+  To generate documentation, execute: 'doxygen config.doxygen'
+
+
+  webstor public API 
+  ------------------
+
+  The main class exposed by webstor lib is WsConnection. To instantiate it
+  set access keys in WsConfig struct and pass it to the WsConnection
+  constructor.  After that, call any of WsConnection's methods:
+  
+  - createBucket
+  - delBucket
+  - listAllBuckets
+  - put
+  - get
+  - listObjects [list with paging]
+  - listAllObjects
+  - del
+  - delAll
+  
+  A large data set can be uploaded through Amazon S3 multipart upload,
+  which is available through the following methods on WsConnection:
+  
+  - initiateMultipartUpload
+  - putPart
+  - completeMultipartUpload
+  - abortMultipartUpload
+  - abortAllMultipartUploads
+  - listMultipartUploads
+  - listAllMultipartUploads
+  
+  To use async operations, create an instance of AsyncMan class (effectively
+  a singleton) and use the following pairs of WsConnection methods:
+  
+  - pendPut( AsyncMan *asyncMan, .. ) / completePut( .. )
+  - pendGet( AsyncMan *asyncMan, .. ) / completeGet( .. )
+  - pendDel( AsyncMan *asyncMan, .. ) / completeDel( .. )  
+  
+  All pendXX(..) methods start an async operation and return immediately
+  without blocking.  To retrieve the result, call the corresponding 
+  completeXXX(..) which blocks and waits until the operation completes.
+  An application can check the status of an async operation and/or cancel it
+  using isAsyncCompleted(..) and cancelAsync(..) calls.
+
+  To start multiple async operations, an application can instantiate multiple
+  WsConnection instances and start one async operation on each WsConnection.
+  
+  AsyncMan instance passed to the pendXX(..) methods manages lifetime
+  of background thread(s).  Lifetime of AsyncMan instance must be greater
+  than any async operation started with that AsyncMan.
+  
+  Other async-related methods:
+  
+  - cancelAsync();
+  - isAsyncPending();
+  - isAsyncCompleted();
+  
+  Miscellaneous methods defined by WsConnection:
+  
+  - setTimeout
+  - setConnectTimeout
+  - enableTracing [provide callback to access HTTP headers and body]
+  
+  Structs and helper methods provided by webstor:
+  
+    struct WsConfig
+    {
+        const char *accKey;      // Cloud storage access key.
+        const char *secKey;      // Cloud storage secret key.
+        const char *host;        // Optional region-specific host endpoint.
+        const char *port;        // Optional port name.
+        bool        isHttps;     // Indicates if HTTPS should be used for all requests.
+        bool        isWalrus;    // Indicates if storage provider is Walrus.
+        const char *proxy;       // Optional proxy with port name: "proxy:port".
+        const char *sslCertFile; // Optional file name containing SSL CA certificates.
+    };
+  
+  - class WsBucket                          // a collection of WsBuckets is returned from listAllBuckets(..)
+  - class WsPutResponse                     // response from put(..) and completePut(..)
+  - class WsPutRequestUploader              // a callback to upload data for put(..) and putPart(..) requests.
+  - class WsGetResponse                     // a response from get(..) and completeGet(..)
+  - class WsGetResponseLoader               // a callback to download data from get(..) request.
+  - class WsDelResponse                     // a response from del(..)
+  - class WsObject                          // a collection of WsObjects is returned from listObjects(..)
+  - class WsObjectEnum                      // a callback to enumerate objects returned by listObjects(..)
+  - class WsListObjectsResponse             // a response from listObjects(..)
+  - class WsInitiateMultipartUploadResponse // a response from initiateMultipartUpload(..)
+  - class WsCompleteMultipartUploadResponse // a response from completeMultipartUpload(..)
+  - class WsMultipartUpload                 // a collection of WsMultipartUpload is returned from listMultipartUploads(..)
+  - class WsMultipartUploadEnum             // a callback to enumerate uploades returned by listMultipartUploads(..)
+  - class WsListMultipartUploadsResponse    // a response from listMultipartUploads(..)
+  - TraceInfo, TraceCallback                // enum and callback for HTTP tracing.
+  - setBackgroundErrHandler                 // sets a callback to log and handle exeptions raised on the background thread.
+  - dbgSetShowAssert                        // sets a callback to show assert dialog. DEBUG only.
+  
+  
+  Usage example
+  -------------
+  
+   #include "wsconn.h"
+
+   try
+   {
+       // Instantiate WsConnection.   
+
+       WsConfig config = {}; // initialize with 0s.
+       config.accKey = WS_ACCESS_KEY;
+       config.secKey = WS_SECRET_KEY;
+       config.isHttps = true;
+
+       WsConnection con(config);
+       
+       // Execute 'put' request.
+       
+       const unsigned char data[] = { 0, 1, 2, 3, 4, 5 };         
+       con.put(BUCKET_NAME, KEY, data, sizeof(data));
+       
+       // Execute 'get' request.
+       
+       unsigned char buf[16];
+       WsGetResponse response;
+       con.get(BUCKET_NAME, KEY, buf, sizeof(buf), &response /* out */);
+       
+       // Verify results.
+       
+       ASSERT(!response.isTruncated);
+       ASSERT(response.loadedContentLength == 6);
+  }
+  catch(const std::exception& e)
+  {
+       std::cout << "Exception: " << e.what();
+  }
+  
+  
+  wscmd
+  ------
+  
+  wscmd is a command line interface to webstor API.
+
+  It accepts the following parameters:
+  
+      -i mandatory cloud storage access key,                                               
+         (it can be specified via WS_ACCESS_KEY env. variable)                  
+      -s mandatory cloud storage secret key,                                               
+         (it can be specified via WS_SECRET_KEY env. variable)                  
+      -H optional region-specific endpoint or a mandatory Walrus host name,      
+         (it can be specified via WS_HOST env. variable)                        
+      -P optional port number,                                                   
+      -U (optional flag to use HTTP instead of HTTPS),                           
+      -G optional proxy with port number (proxy:port),                           
+         (it can be specified via WS_PROXY env. variable)                       
+      -a action, one of the following:                                           
+         createBucket                                                            
+         delBucket                                                               
+         listAllBuckets                                                          
+         put                                                                     
+         get                                                                     
+         del                                                                     
+         delAll (delete by prefix)                                               
+         listAllObjects                                                          
+         listAllMultipartUploads                                                 
+         abortAllMultipartUploads                                                
+                                                                                 
+      action-specific parameters, some of them mandatory depending on action:    
+                                                                                 
+      -f filename (for 'put' and 'get'),                                         
+      -n bucket name (all except for 'listAllBuckets'),                          
+         (it can be specified via WS_BUCKET_NAME env. variable)                 
+      -p key or key prefix (all except for bucket-related actions),              
+      -m marker for entries to list (for 'listAllObjects' and                    
+         'listAllMultipartUploads'),                                             
+      -x maximum number of entries to list (for 'listAllObjects' and             
+         'listAllMultipartUploads'),                                             
+      -d delimiter to list directories (for 'listAllObjects' and                 
+         'listAllMultipartUploads'),                                             
+      -z chunk size in MB (for 'put' to enable multipart upload,                 
+         size must be 5MB minimum, not supported by Walrus),                     
+      -b make public (for 'createBucket' and 'put'),                             
+      -v verbose mode.                                                           
+                                                                                 
+  Some of options can be specified through env. variables:                       
+      WS_ACCESS_KEY  - instead of option '-i',                                  
+      WS_SECRET_KEY  - instead of option '-s',                                  
+      WS_HOST        - instead of option '-H',                                  
+      WS_BUCKET_NAME - instead of option '-n',                                  
+      WS_PROXY       - instead of option '-G',                                  
+                                                                                 
+  Notes:                                                                         
+      If you specify '-z' flag and upload doesn't finish because of crash or     
+      connection issues, orphan chunks can be left in Amazon S3 storage.         
+      It's recommended to execute 'listAllMultipartUploads' and                  
+      'abortAllMultipartUploads' actions to purge them.                          
+                                                                                 
+  Examples:                                                                      
+                                                                                 
+   * create a new bucket:                                                        
+     wscmd -i WS_ACCESS_KEY -s WS_SECRET_KEY -a createBucket -n mybucket      
+                                                                                 
+   * delete a bucket:                                                            
+     wscmd -i WS_ACCESS_KEY -s WS_SECRET_KEY -a delBucket -n mybucket         
+                                                                                 
+   * list all buckets:                                                           
+     wscmd -i WS_ACCESS_KEY -s WS_SECRET_KEY -a listAllBuckets                
+                                                                                 
+   * upload a file:                                                              
+     wscmd -i WS_ACCESS_KEY -s WS_SECRET_KEY -a put -n mybucket               
+     -f image.jpg -p folder/image.jpg -v                                         
+                                                                                 
+   * upload a large file using multipart upload:                                 
+     wscmd -i WS_ACCESS_KEY -s WS_SECRET_KEY -a put -n mybucket               
+     -f image.jpg -p folder/image.jpg -z 5 -v                                    
+                                                                                 
+   * download a file:                                                            
+     wscmd -i WS_ACCESS_KEY -s WS_SECRET_KEY -a get -n mybucket               
+     -f image.jpg -p folder/image.jpg -v                                         
+                                                                                 
+   * delete an object:                                                           
+     wscmd -i WS_ACCESS_KEY -s WS_SECRET_KEY -a del -n mybucket               
+     -p folder/image.jpg                                                         
+                                                                                 
+   * delete all objects for a given prefix (e.g. from a directory):              
+     wscmd -i WS_ACCESS_KEY -s WS_SECRET_KEY -a delAll -n mybucket -p folder/ 
+                                                                                 
+   * list all objects:                                                           
+     wscmd -i WS_ACCESS_KEY -s WS_SECRET_KEY -a listAllObjects -n mybucket    
+                                                                                 
+   * list all objects with a given prefix (e.g. all objects in a directory):     
+     wscmd -i WS_ACCESS_KEY -s WS_SECRET_KEY -a listAllObjects -n mybucket    
+     -p folder/                                                                  
+                                                                                 
+   * list all top-level directories:                                             
+     wscmd -i WS_ACCESS_KEY -s WS_SECRET_KEY -a listAllObjects                
+     -n mybucket -d /                                                            
+                                                                                 
+   * list all sub directories:                                                   
+     wscmd -i WS_ACCESS_KEY -s WS_SECRET_KEY -a listAllObjects -n mybucket    
+     -p folder/ -d /                                                             
+  
+  
+  Bugs and errors
+  ---------------
+
+  Bug reports should be sent to bugs@oblaksoft.com
+
+
+  Contacts
+  --------
+
+  Please refer to www.oblaksoft.com website for webstor library updates
+  as well as other news about OblakSoft products and releases.
+

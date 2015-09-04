@@ -1,0 +1,17 @@
+{
+global: extern "C++" {
+                graphlab::*;
+                cppipc::*;
+                xgboost::*;
+                *global_logger*;
+                *__print_back_trace*;
+                *file_logger*;
+                vtable*graphlab::*;
+                vtable*cppipc::*;
+                vtable*xgboost::*;
+                typeinfo*;
+        };
+        _ZVT*;
+        _ZTS*;
+local: *;
+};

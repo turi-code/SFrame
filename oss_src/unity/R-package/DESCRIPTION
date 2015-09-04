@@ -1,0 +1,17 @@
+Package: sframe
+Type: Package
+Title: sframe: the open source piece of GraphLab Create
+Version: 0.0.3
+Date: 2015-08-13
+Author: Qiang Kou and the Dato Team
+Maintainer: Qiang Kou <qkou@dato.com>
+Description: sframe is the open source piece of GraphLab Create, 
+             a machine learning platform that enables data scientists and 
+             app developers to easily create intelligent apps at scale: 
+             from prototype to production.
+License: BSD + file LICENSE
+Depends: ggplot2
+Imports: methods, Rcpp (>= 0.11.6), lazyeval (>= 0.1.10), RApiSerialize
+Suggests: RUnit, knitr, magrittr
+VignetteBuilder: knitr
+LinkingTo: Rcpp, RApiSerialize

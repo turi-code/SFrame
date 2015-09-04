@@ -1,0 +1,29 @@
+/**
+ 
+\page FAQ FAQ
+
+##I am trying to run GraphLab distributed using files from HDFS as input. However, I am getting screens full of errors
+
+You may need to set the CLASSPATH environment variable.
+Instead of running:
+
+\verbatim
+mpiexec -n N ... graphlab_program ...
+\endverbatim
+
+Try running 
+
+\verbatim
+mpiexec -n N ... env CLASSPATH=`hadoop classpath` graphlab_program ...
+\endverbatim
+
+##I am trying to run GraphLab distributed, but it seems to be failing to find my graph input files. I am not using HDFS.
+
+You need to make sure that all machines have access to the graph files at exactly the same paths.
+i.e. Either you need to have an NFS file share, or a distributed file system, or you need to
+copy all graph files to all machines.
+
+
+
+
+ */

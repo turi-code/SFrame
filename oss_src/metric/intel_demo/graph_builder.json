@@ -1,0 +1,41 @@
+{ "phase_name" : "parsing",
+  "sys_metrics" : [
+  { 
+    "label": "cpu",
+    "units": "% Utilization",
+    "id": 1,
+    "values": [
+      ["time", "phase1", "phas2", "phase3"],
+      [0, 23.4, 0, 17],
+      [1, 2, 1, 9],
+      [2, 0, 18, {} ],
+      [3, 0, 2, {} ],
+      [4, 0, 0, {}]]
+  }, 
+  { 
+    "label": "Network",
+    "units": "MB / Second",
+    "id": 2,
+    "values": [
+      ["time", "cpu1", "cpu2", "cpu3"],
+      [0, 23.4, 25, 17],
+      [1, 24, 18, 9],
+      [2, 27, 3, 5],
+      [3, 40, 2, 8],
+      [4, 75, 12, 2]]
+  }, 
+  { 
+    "label": "Disk",
+    "units": "MB / Second",
+    "id": 3,
+    "values": [
+      ["time", "cpu1", "cpu2", "cpu3"],
+      [0, 23.4, 25, 17],
+      [1, 24, 18, 9],
+      [2, 27, 3, 5],
+      [3, 40, 2, 8],
+      [4, 75, 12, 2]]
+
+  }
+  ]
+ }

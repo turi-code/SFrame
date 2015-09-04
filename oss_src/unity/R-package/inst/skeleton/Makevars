@@ -1,0 +1,3 @@
+CXX_STD = CXX11
+
+PKG_LIBS= `$(R_HOME)/bin/Rscript -e "sframe:::LdFlags()"` $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)

@@ -1,0 +1,44 @@
+project(GraphLab)
+
+
+subdirs(
+  exceptions
+  util
+  crash_handler
+  logger
+  fileio
+  startup_teardown
+  serialization
+  zookeeper_util
+  flexible_type
+  globals
+  network
+  process
+  fault
+  random
+  timer
+  rpc
+  shmipc
+  cppipc
+  minipsutil
+  perf
+  metric
+  lz4
+  sketches
+  parallel
+  fiber
+  ini
+  dot_graph_printer
+  sframe
+  sgraph
+  luastate
+  lambda
+  graph
+  lazy_eval
+  graphlab
+  generics
+  sframe_query_engine
+  unity
+  image
+  table_printer
+  )

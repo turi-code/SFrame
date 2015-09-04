@@ -1,0 +1,14 @@
+awscli==1.7.27
+httpretty==0.8.8
+librato-metrics==0.8.2
+mixpanel==4.0.2
+moto==0.4.1
+prettytable==0.7.2
+wsgiref==0.1.2
+xmltodict==0.9.2
+argparse==1.2.1
+boto==2.33.0
+Flask-Cors==1.10.3
+Flask-RESTful==0.3.0
+multipledispatch>=0.4.7
+wheel==0.24.0

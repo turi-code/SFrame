@@ -1,0 +1,76 @@
+body {
+    text-align: center;
+}
+#instrument_panel {
+    text-align: center;
+}
+
+.metric_summary {
+    display: inline-block;
+    
+}
+
+.metric_summary .name {
+    display: none;
+    text-align: center;
+}
+
+.metric_summary .value {
+    display: none;
+    text-align: center;
+}
+
+
+.aggregate {
+    display: inline-block;
+}
+
+.aggregate .chart {
+   width: 400px;
+   height: 200px;
+}
+
+.aggregate .name {
+  display: none
+}
+
+
+.aggregate .chart {
+   width: 400px;
+   height: 200px;
+}
+
+.node {
+    display: inline-block;
+}
+
+
+.node .name {
+  display: none
+}
+
+
+.node .chart {
+   width: 400px;
+   height: 200px;
+}
+
+
+.graph_builder {
+    display: inline-block;
+}
+
+.graph_builder .chart {
+   width: 400px;
+   height: 200px;
+}
+
+.graph_builder .name {
+  display: none
+}
+
+
+.graph_builder .chart {
+   width: 400px;
+   height: 200px;
+}

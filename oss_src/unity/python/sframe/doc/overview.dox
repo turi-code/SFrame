@@ -1,0 +1,53 @@
+/**
+
+\mainpage
+
+  ---
+
+  GraphLab Create is in beta - this API reference is subject to change
+  =====================================================================
+
+  ---
+
+  GraphLab Create is a Python library for quickly building large-scale,
+  high-performance data products with state of the art machine learning tools.
+  GraphLab Create is based on the high-performance distributed machine learning
+  platform GraphLab v2.2, and provides easy interaction with the scalable
+  computation engine and rich toolkit functions.
+
+  Our current toolkit collection includes \ref graphlab.toolkits.graph_analytics
+  "Graph Analytics", \ref graphlab.toolkits.clustering "Clustering" and
+  \ref graphlab.toolkits.recommender "Recommender Systems".
+
+  Code example:
+  ------------
+    Here's an example of how to quickly prototype a collaborative filtering
+    recommender system:
+
+    \code
+    >>> import graphlab.toolkits.recommender as recommender
+
+    >>> m = recommender.ItemSimilarityModel()
+    >>> m.train(train_data, user='user_id', item='item_id')
+    >>> recs = m.recommend(train_data, k=20)
+    \endcode
+
+  System Requirements:
+  ------------------
+    - linux x86_32/64 or OSX >= 10.7
+    - python 2.7
+    - pip
+
+  Installation is easy:
+  ------------------
+    \code
+    $ pip install graphlab-create
+    \endcode
+
+    For cleaner installation, we highly recommend installation with virtualenv.
+    \code
+    $ virtualenv --system-site-packages graphlab
+    $ . graphlab/bin/activate
+    (graphlab)~$ pip install graphlab-create
+    \endcode
+*/

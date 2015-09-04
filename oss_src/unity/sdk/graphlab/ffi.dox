@@ -1,0 +1,892 @@
+namespace graphlab {
+/**
+
+\page page_graphlab_extension_interface GraphLab Create Extension Interface
+
+The GraphLab Create Extension Interface was initially developed as a way to
+increase productivity of internal toolkit development with the objective of 
+minimizing the friction required to expose functions and classes to Python,
+without requiring a ton of overhead.
+
+We will describe the GraphLab Create Extension Interface in two parts: for
+\ref sec_function_extension_interface "function extensions",
+and for \ref sec_class_extension_interface "class extensions".
+
+\section sec_function_extension_interface Function Extension Interface
+The function extension interface provides the ability to publish functions
+to Python. This is easiest explained by starting with an
+example (See the \ref mainpage_quickstart for the same example below, and for
+compilation instructions). We will break the example down and explain each
+section.
+
+<b>C++ Extension Function</b>
+\code{.cpp}
+#include <graphlab/sdk/toolkit_function_macros.hpp>
+using namespace graphlab;
+
+int add_integers(int a, int b) {
+  return a + b;
+}
+
+BEGIN_FUNCTION_REGISTRATION
+REGISTER_FUNCTION(add_integers, "a", "b"); // provide named parameters
+END_FUNCTION_REGISTRATION
+\endcode
+
+<b>Python Usage</b>
+\code{.py}
+import graphlab as gl
+import example
+print example.add_integers(5, 10)
+\endcode
+
+\subsection sec_function_graphlab_includes GraphLab Includes
+We begin with including \ref toolkit_function_macros.hpp
+This is the minimal include needed for implementing function extensions. All GraphLab Create objects
+and functions live in the <code>graphlab</code> namespace. We will use
+<code>using namespace graphlab;</code> here for convenience and succintness.
+
+\code
+#include <graphlab/sdk/toolkit_function_macros.hpp>
+using namespace graphlab;
+\endcode
+
+\subsection page_extension_interface_cpp_fn_impl Function Implementation
+
+\code
+int add_integers(int a, int b) {
+  return a + b;
+}
+\endcode
+
+The user defined function can be any function with any number of arguments. This
+simple example function takes two integers and returns one integer, but a
+large number of types are supported and are automatically translated between
+Python and C++. See \ref sec_supported_type_list for a complete list of all
+supported types.
+
+\subsubsection sec_function_exceptions Exceptions
+In the event of an error, raising a string or a const char* exception will
+propagate the exception back to Python as a ToolkitError. For instance:
+
+\code
+int divide_integers(int a, int b) {
+  if (b == 0) {
+    throw "Divide by zero Error";
+  }
+  return a / b;
+}
+\endcode
+
+\subsubsection sec_supported_type_list_examples Examples
+The flexibility in the supported types allow for interesting functions to be
+built and exposed to Python easily. For instance:
+
+\code{.cpp}
+// given a map of string keys to string values, and an list of keys
+// Returns a list of the matching values, and an empty string for missing keys.
+std::vector<std::string> get_values(
+    const std::map<std::string, std::string>& dict,
+    const std::vector<std::string>& keys) {
+  std::vector<std::string> values;
+  for (auto key: keys) {
+    auto iter = dict.find(key);
+    if (iter != dict.end()) values.push_back(iter->second);
+    else values.push_back(std::string());
+  }
+  return values;
+}
+\endcode
+
+Once published (see \ref sec_function_publishing), this can be called from Python with:
+\code{.py}
+values = example.get_values({'a':'b','c':'d'}, ['a', 'c', 'z'])
+print values # print ['b','d','']
+\endcode
+If you provide input that cannot be type converted correctly for instance::
+\code{.py}
+values = example.get_values({'a':'b','c':1}, ['a', 'c', 'z'])
+# raises ToolkitError: Expecting string. But we got a integer
+\endcode
+
+We can generalize this to support most Python built-in types by using
+the flexible_type instead:
+\code{.cpp}
+// given a map of keys to values, and an list of keys
+// Returns a list of the matching values, and None for missing keys.
+std::vector<flexible_type> get_values(
+    const std::map<flexible_type, flexible_type>& dict,
+    const std::vector<flexible_type>& keys) {
+  std::vector<flexible_type> values;
+  for (auto key: keys) {
+    auto iter = dict.find(key);
+    if (iter != dict.end()) values.push_back(iter->second);
+    else values.push_back(FLEX_UNDEFINED);
+  }
+  return values;
+}
+\endcode
+
+\code{.py}
+values = example.get_values({'a':'b','c':1}, ['a', 'c', 'z'])
+print values # prints ['b', 1, None]
+\endcode
+
+\subsection sec_function_publishing Publishing Functions
+To publish functions, simply add the \ref BEGIN_FUNCTION_REGISTRATION and
+\ref END_FUNCTION_REGISTRATION macro pair
+<i>outside of all namespace scopes</i>. This macro simply introduces a function
+called "get_toolkit_function_registration()" which GraphLab Create can call and
+query at runtime.
+\code{.cpp}
+BEGIN_FUNCTION_REGISTRATION
+REGISTER_FUNCTION(add, "a", "b"); // provide named parameters
+REGISTER_FUNCTION(get_values, "dictionary", "keys");
+END_FUNCTION_REGISTRATION
+\endcode
+
+\note You should only have one occurance of these macros in an entire library.
+i.e. if you compile an extension "example.so" out of 3 cpp files, a.cpp, b.cpp
+and c.cpp; even though you may have extension functions in all 3 cpp files,
+you must only perform registration for all extension functions in one of the
+cpp files.
+
+Between \ref BEGIN_FUNCTION_REGISTRATION and \ref END_FUNCTION_REGISTRATION
+macros, you can use the other function registration macros in \ref group_gl_ffi.
+For instance, \c "REGISTER_FUNCTION(add_integers, "a", "b")"
+will register the "add_integers" function with 2 arguments, naming the first
+argument "a" and the 2nd argument "b". This allows the function to be called from Python
+with
+
+\code{.py}
+example.add_integers(5,10)
+#or
+example.add_integers(a=5, b=10)
+\endcode
+
+\note Be careful not to use Python reserved names as named arguments. That will
+cause interesting issues.
+
+\ref REGISTER_NAMED_FUNCTION can also be used if the name of the C++ function
+should not be the same as the name of the Python function published.
+\ref REGISTER_DOCSTRING can be used to associate a docstring with the function.
+
+
+\subsection sec_function_compilation Compilation
+That's it! To compile see the \ref mainpage_quickstart for compilation
+instructions.
+
+\subsection sec_function_python_import Python Import
+There are two modes of importing a GraphLab Create extension from Python. The
+first is easier to use, while the second is easier to diagnose issues and is
+more powerful.
+
+\subsubsection sec_function_python_import_hook Import Hook
+The first method is based on
+<a href="http://legacy.python.org/dev/peps/pep-0302/">Python import hooks</a>.
+When GraphLab Create is imported, via:
+\code{.py}
+import graphlab
+\endcode
+GraphLab Create injects an import hook to capture all subsequent imports and
+automatically load what might be extensions.
+
+Therefore once GraphLab is imported, and a compiled extension (ex: example.so),
+is in the current working directory (Or in the PYTHONPATH), the following import
+will work:
+\code{.py}
+import example
+\endcode
+And your functions will be immediately accessible via example.[fn]
+
+Simultaneously, all loaded extensions can be accessed in the \c graphlab.extensions
+namespace. For instance: \c graphlab.extensions.example.[fn]
+
+\subsubsection sec_function_python_ext_import ext_import
+The second method is to use the ext_import function in gl.extensions.
+\code{.py}
+import graphlab
+graphlab.ext_import("filename.so")
+\endcode
+With this method of importing, the loaded extension is only accessible via
+\c graphlab.extensions.example.[fn]. However, the so-file is allowed to reside
+on any filesystem GraphLab Create can read natively: i.e. http, hdfs, etc.
+
+\code{.py}
+graphlab.ext_import("hdfs://somewhere/outthere/example1.so")
+graphlab.ext_import("http://somewhereelse/example2.so")
+\endcode
+
+\section sec_class_extension_interface Class Extension Interface
+The class extension provides the ability to publish c++ classes to Python.
+Once again, we begin with an example.
+
+This is a simple class which contains three settable string properties and has
+a function which returns the concatenation of all of them.
+\code
+#include <graphlab/sdk/toolkit_class_macros.hpp>
+using namespace graphlab;
+
+class demo_class: public toolkit_class_base {
+ std::string one;
+ std::string two;
+ std::string three;
+ public:
+  std::string concat() {
+    return one + two + three;
+  }
+  void set_one(const std::string& one_value) {
+    one = one_value;
+  }
+  std::string get_one() {
+    return one;
+  }
+
+  void set_two(const std::string& two_value) {
+    two = two_value;
+  }
+  std::string get_two() {
+    return two;
+  }
+ BEGIN_CLASS_MEMBER_REGISTRATION("demo_class")
+ REGISTER_CLASS_MEMBER_FUNCTION(demo_class::concat)
+ REGISTER_CLASS_MEMBER_FUNCTION(demo_class::set_one, "one_value")
+ REGISTER_CLASS_MEMBER_FUNCTION(demo_class::get_one)
+ REGISTER_GETTER("two", demo_class::get_two)
+ REGISTER_SETTER("two", demo_class::set_two)
+ REGISTER_PROPERTY(three)
+ END_CLASS_MEMBER_REGISTRATION
+};
+
+BEGIN_CLASS_REGISTRATION
+REGISTER_CLASS(demo_class)
+END_CLASS_REGISTRATION
+\endcode
+
+
+<b>Python Usage</b>
+\code{.py}
+import graphlab as gl
+import example
+g = example.demo_class()
+g.set_one("hello")
+g.two = " "
+g.three = "world!"
+print g.concat() # prints "hello world!"
+\endcode
+
+\subsection sec_class_graphlab_includes GraphLab Includes
+We begin with including graphlab/sdk/toolkit_class_macros.hpp. This is the
+minimal include needed for implementing class extensions. All GraphLab objects
+and functions live in the <code>graphlab</code> namespace. We will use
+<code>using namespace graphlab;</code> here for convenience and succintness.
+
+\code
+#include <graphlab/sdk/toolkit_class_macros.hpp>
+using namespace graphlab;
+\endcode
+
+\subsection page_extension_interface_cpp_class_impl Class Implementation
+The class \b must inherit from graphlab::toolkit_class_base which provides
+the support for the within-class function dispatch.
+
+The rest of the class is mostly implementation. In this case we implement
+getters and setters for the "one" and "two" private members, as well as the
+main concat() function.
+
+\code
+class demo_class: public toolkit_class_base {
+ std::string one;
+ std::string two;
+ std::string three;
+ public:
+  std::string concat() {
+    return one + two + three;
+  }
+  void set_one(const std::string& one_value) {
+    one = one_value;
+  }
+  std::string get_one() {
+    return one;
+  }
+
+  void set_two(const std::string& two_value) {
+    two = two_value;
+  }
+  std::string get_two() {
+    return two;
+  }
+\endcode
+
+The class \b must have a default constructor, copy constructor and assignment
+operator. In this case we are just using the default ones generated by C++.
+
+The functions can be any function with any number of arguments and a large
+number of types are supported and are automatically translated between Python
+and C++. See \ref sec_supported_type_list for a complete list of all supported
+types.
+
+Additionally, functions (all extension functions and published functions of
+extension classes) can take instances of demo_class. For instance, to publish
+a function:
+
+\code
+std::string run_concat(demo_class c) {
+  return c.concat();
+}
+BEGIN_FUNCTION_REGISTRATION
+REGISTER_FUNCTION(run_concat, "c");
+END_FUNCTION_REGISTRATION
+\endcode
+
+\code{.py}
+c = example.demo_class()
+c.set_one("hello")
+ret = example.run_concat(c)
+\endcode
+
+To take an instance of a class <i>by reference</i>, pass a shared_ptr to it.
+
+\code
+void set_one(std::shared_ptr<demo_class> c) {
+  c->set_one("one");
+}
+BEGIN_FUNCTION_REGISTRATION
+REGISTER_FUNCTION(set_one, "c");
+END_FUNCTION_REGISTRATION
+\endcode
+\code{.py}
+c = example.demo_class()
+example.set_one(c)
+one = c.get_one() # returns "one"
+\endcode
+
+\note To take an instance by reference, shared_ptr<...> is necessary.
+Simply passing by reference i.e. <code> demo_class\& </code> will not work.
+
+\note Functions can also return toolkit class instances. You can return
+either the toolkit class, or a shared_ptr<...> to the toolkit class. The latter
+is prefered.
+
+\subsubsection sec_class_exceptions Exceptions
+Just like with functions, in the event of an error, raising a string or a const
+char* exception will propagate the exception back to Python as a RuntimeError.
+
+\subsection sec_class_publishing Publishing Classes
+Classes require two registration operations. Once to register the class members
+within the class. And the second time to register the existance of the class itself.
+
+\subsubsection sec_class_member_publishing Class Member Registration
+Class member registration is done by placing the BEGIN_CLASS_MEMBER_REGISTRATION
+and END_CLASS_MEMBER_REGISTRATION pair inside the class definition.
+(If you have a header / cpp split. this must be done in the header inside the
+ class definition)
+
+\code{.cpp}
+ BEGIN_CLASS_MEMBER_REGISTRATION("demo_class")
+ REGISTER_CLASS_MEMBER_FUNCTION(demo_class::concat)
+ REGISTER_CLASS_MEMBER_FUNCTION(demo_class::set_one, "one_value")
+ REGISTER_CLASS_MEMBER_FUNCTION(demo_class::get_one)
+ REGISTER_GETTER("two", demo_class::get_two)
+ REGISTER_SETTER("two", demo_class::set_two)
+ REGISTER_PROPERTY(three)
+ END_CLASS_MEMBER_REGISTRATION
+\endcode
+
+\ref BEGIN_CLASS_MEMBER_REGISTRATION takes an argument which is the python facing
+name of the class. Between \ref BEGIN_CLASS_MEMBER_REGISTRATION and
+\ref END_CLASS_MEMBER_REGISTRATION you can use the other class member registration
+macros in \ref group_gl_ffi.
+\ref REGISTER_CLASS_MEMBER_FUNCTION behaves like \ref REGISTER_FUNCTION and
+\ref REGISTER_NAMED_CLASS_MEMBER_FUNCTION behaves like \ref REGISTER_NAMED_FUNCTION.
+In addition for classes there are three additional macros used to support properties.
+
+A "getter-setter" pair can be defined for a Python property (called "two")
+\code{.cpp}
+ REGISTER_GETTER("two", demo_class::get_two)
+ REGISTER_SETTER("two", demo_class::set_two)
+\endcode
+\code{.py}
+g = extensions.demo_class()
+g.two = "hello" # calls the setter for the property "two"
+t = g.two  # calls the getter for the property "two"
+\endcode
+
+Or, \ref REGISTER_PROPERTY can be used automatically generate a default
+getter/setter pair which just exposes a member variable as a public facing
+property.
+
+\subsubsection sec_class_publishing Class Registration
+Finally, the class itself must be registered.
+To publish class , simply add the \ref BEGIN_CLASS_REGISTRATION and
+\ref END_CLASS_REGISTRATION macro pair
+<i>outside of all namespace scopes</i>. This macro simply introduces a function
+called "get_toolkit_class_registration()" which GraphLab Create can call and
+query at runtime.
+\code{.cpp}
+BEGIN_CLASS_REGISTRATION
+REGISTER_CLASS(demo_class)
+END_CLASS_REGISTRATION
+\endcode
+
+\note You should only have one occurance of these macros in an entire library.
+i.e. if you compile an extension "example.so" out of 3 cpp files, a.cpp, b.cpp
+and c.cpp; even though you may have extension classes in all 3 cpp files,
+you must only perform registration for all extension classes in one of the
+cpp files. You can have both class registration AND function registration in the
+same so.
+
+\subsection sec_class_compilation Compilation And Python Import
+That's it! To compile see the \ref mainpage_quickstart for compilation
+instructions.
+Usage is same as functions in \ref sec_function_python_import.
+
+\subsection sec_class_other_notes Other Notes
+The Python publishing mechanism has due to Python's simple object model, has
+interesting capabilities. For instance, publishing a <code> std::string
+\__str__() </code> and an <code> std::string \__repr__() </code> function will
+allow for nice automatic printing when running Python interactively (for
+instance in a REPL environment like IPython).
+
+\section sec_logging Logging and Progress Printing
+
+You can use <code> logprogress_stream </code> for printing
+progress, or log message to the python client.
+
+For example:
+
+\code{.cpp}
+// \file example.cpp
+// Compiled as example.so
+#include <graphlab/sdk/toolkit_function_macros.hpp>
+using namespace graphlab;
+
+int add_integers(int a, int b) {
+  logprogress_stream  << "Debug: " << a << " + " << b << "=" << std::endl;
+  return a + b;
+}
+
+BEGIN_FUNCTION_REGISTRATION
+REGISTER_FUNCTION(add_integers, "a", "b"); // provide named parameters
+END_FUNCTION_REGISTRATION
+\endcode
+
+<b>In Python</b>
+\code{.py}
+>>> import graphlab as gl
+>>> import example
+>>> example.add_integers(5, 10)
+PROGRESS: Debug: 5 + 10 =
+15
+\endcode
+
+\note For simplicity, we use std::cout throughout the documentation to illustrate
+the output of code snippets. However, stdout or stderr are not displayed in python.
+
+\section sec_supported_type_list Supported Type List
+This is a list of the currently supported types which are automatically
+translated between Python and C++. There are a number of recursive cases
+(for instance lists of arbitrary values), in which case the types "S" and "T"
+will be used as placeholders.
+
+<b>Supported From \ref flexible_type</b>
+
+<table>
+<tr><td>
+  <b>C++ Type</b>
+  </td><td>
+  <b>Accepts Python Type</b>
+  </td><td>
+  <b>Returns Python Type</b>
+</td></tr>
+
+<tr><td>
+  Any integral value (int, long, size_t, \ref flex_int, etc)
+  </td><td>
+  Any numeric value
+  </td><td>
+  int
+</td></tr>
+
+<tr><td>
+  Any floating point value (float, double, \ref flex_float)
+  </td><td>
+  Any numeric value
+  </td><td>
+  float
+</td></tr>
+
+<tr><td>
+  std::string / \ref flex_string
+  </td><td>
+  string
+  </td><td>
+  string
+</td></tr>
+
+<tr><td>
+  flex_date_time
+  </td><td>
+  datetime.datetime
+  </td><td>
+  datetime.datetime
+</td></tr>
+
+<tr><td>
+  flex_image
+  </td><td>
+  graphlab.Image
+  </td><td>
+  graphlab.Image
+</td></tr>
+
+<tr><td>
+  std::vector<double> / \ref flex_vec
+  </td><td>
+  Any list, tuple, array of numeric values.
+  </td><td>
+  array.array
+</td></tr>
+
+<tr><td>
+  std::vector<flexible_type> / \ref flex_list
+  </td><td>
+  Any list, tuple, array of numeric values.
+  </td><td>
+  array.array
+</td></tr>
+
+<tr><td>
+  std::vector<std::pair<flexible_type, flexible_type> > / \ref flex_dict
+  </td><td>
+  dict
+  </td><td>
+  dict
+</td></tr>
+
+<tr><td>
+  \ref flexible_type
+  </td><td>
+  variable at runtime.
+  </td><td>
+  variable at runtime.
+</td></tr>
+</table>
+
+<b> GraphLab Create Datastructures </b>
+<table>
+<tr><td>
+  <b>C++ Type</b>
+  </td><td>
+  <b>Accepts Python Type</b>
+  </td><td>
+  <b>Returns Python Type</b>
+</td></tr>
+
+<tr><td>
+  \ref gl_sarray
+  </td><td>
+  SArray
+  </td><td>
+  SArray
+</td></tr>
+
+<tr><td>
+  \ref gl_sframe
+  </td><td>
+  SFrame
+  </td><td>
+  SFrame
+</td></tr>
+
+<tr><td>
+  \ref gl_sgraph
+  </td><td>
+  SGraph
+  </td><td>
+  SGraph
+</td></tr>
+</table>
+
+<b>Recursive Cases</b>
+<table>
+<tr><td>
+  <b>C++ Type</b>
+  </td><td>
+  <b>Accepts Python Type</b>
+  </td><td>
+  <b>Returns Python Type</b>
+</td></tr>
+
+<tr><td>
+  std::pair<S, T>
+  </td><td>
+  Any list, tuple, array of 2 elements where the
+  first is convertible to S and the 2nd is convertible to T.
+  </td><td>
+  list of 2 elements
+</td></tr>
+
+<tr><td>
+  std::tuple<T1, T2, ..., Tn>
+  </td><td>
+  Any list, tuple, array of n elements where the
+  first is convertible to T1 and the 2nd is convertible to T2 ... etc.
+  </td><td>
+  list of n elements
+</td></tr>
+
+
+<tr><td>
+  std::map<S, T>
+  </td><td>
+  Any dictionary where the keys are convertible to S,
+  and the values are convertible to T.
+  </td><td>
+  dict
+</td></tr>
+
+<tr><td>
+  std::unordered_map<S, T>
+  </td><td>
+  Any dictionary where the keys are convertible to S,
+  and the values are convertible to T.
+  </td><td>
+  dict
+</td></tr>
+</table>
+
+<b>Special Types</b>
+<table>
+<tr><td>
+  <b>C++ Type</b>
+  </td><td>
+  <b>Accepts Python Type</b>
+  </td><td>
+  <b>Returns Python Type</b>
+</td></tr>
+
+<tr><td>
+  Descendent of toolkit_class_base
+  </td><td>
+  Extension class instance
+  </td><td>
+  Extension class instance
+</td></tr>
+
+<tr><td>
+  std::shared_ptr<T> where T is a descendent of toolkit_class_base
+  </td><td>
+  Extension class instance
+  </td><td>
+  Extension class instance
+</td></tr>
+
+<tr><td>
+  std::function<S(T...)>
+  </td><td>
+  See \ref sec_functional_arguments
+  </td><td>
+  See \ref sec_functional_arguments
+</td></tr>
+
+<tr><td>
+  graphlab::variant
+  </td><td>
+  See \ref sec_variant_type
+  </td><td>
+  See \ref sec_variant_type
+</td></tr>
+</table>
+
+\section sec_advanced_topics Advanced Topics
+
+\subsection sec_functional_arguments Functional Arguments
+Something special that we support is the passing of functions.
+For instance, we can define an apply() function that takes a function as an
+input, and an argument, and applies the function to the argument returning the
+result.
+\code
+std::string demo_to_string(flexible_type param1) {
+  return std::string(param1);
+}
+std::string apply(std::function<std::string(double)> fn, double x) {
+  return fn(x);
+}
+BEGIN_FUNCTION_REGISTRATION
+REGISTER_FUNCTION(demo_to_string, "param1")
+REGISTER_FUNCTION(apply, "fn", "argument")
+END_FUNCTION_REGISTRATION
+\endcode
+
+We can use it this way:
+\code{.py}
+import graphlab as gl
+import example
+example.apply(example.demo_to_string, 5) # return "5"
+\endcode
+
+There are significant restrictions on the passing of functions. The function
+must be either:
+ - A native function.
+ - A simple lambda of a native function: i.e. the lambda must simply return a
+ single call to a native function, where each parameter of the native function
+ call is either be a lambda function argument, or an expression which can be
+ evaluated immediately within the scope.
+
+Lets detail the 2nd case with examples. Consider the following extension functions.
+\code
+double add(double param1, double param2) {
+  return param1 + param2;
+}
+double apply(std::function<double(double)> fn, double x) {
+  return fn(x);
+}
+BEGIN_FUNCTION_REGISTRATION
+REGISTER_FUNCTION(add, "param1", "param2")
+REGISTER_FUNCTION(apply, "fn", "argument")
+END_FUNCTION_REGISTRATION
+\endcode
+
+All the following are valid:
+\code{.py}
+example.apply(lambda x: example.add(x, 5), 10) # return 15
+t = 5
+y = 2
+example.apply(lambda x: example.add(x, t), 10) # return 15
+example.apply(lambda x: example.add(x, t+2*y), 10) # return 19
+example.apply(lambda x: example.add(t*t, t+2*y), 10) # return 34
+example.apply(lambda x: example.add(x, x), 10) # return 20
+
+def fn(x):
+  return example.add(x, t)
+example.apply(fn, 10) # return 15
+\endcode
+
+All the following are invalid:
+\code{.py}
+example.apply(lambda x: example.add(x+1, 5), 10) # FAIL: x+1 is an expression using lambda arguments
+t = 5
+example.apply(lambda x: example.add(x+t, t), 10) # FAIL: x+t is an expression using lambda arguments
+example.apply(lambda x: 1 + example.add(x, 5), 10) # FAIL: lambda does not comprise of a simple function call
+\endcode
+
+\subsubsection sec_functional_serialization Serializing a Function
+
+In some cases (for instance in a toolkit class), it might be desirable to
+actually "save" the function. (For instance a user defined distance function).
+The std::function, while convenient, makes saving impossible. To allow for the
+saving and loading of functions, we must go one level down, and instead capture
+a \ref function_closure_info object.
+
+For instance, repeating the above "apply" example:
+\code
+std::string apply_functional_form(std::function<std::string(double)> fn, double x) {
+  return fn(x);
+}
+std::string apply_closure_capture_form(function_closure_info fn, double x) {
+  // now, fn is serializable and can be saved / loaded.
+  // however, calling the function requires a little work.
+  auto actual_fn = variant_get_value< std::function<std::string(double)> >(fn);
+  actual_fn(x);
+}
+\endcode
+
+Now, there are certain limitations of the function_closure_info. It only saves
+a reference to the function, and not the function itself. i.e. If the user
+provides a function from an extension, then the extension must also be
+loaded for the function to be used. For instance:
+
+\code{.py}
+import graphlab as gl
+import my_extension
+# create a model using my_function in my_extension as the distance function
+model = gl.nearest_neighbor.create(... my_extension.my_function ...)
+model.save('test.model')
+\endcode
+
+Then this will fail.
+\code{.py}
+import graphlab as gl
+model = gl.load_model('test.model')
+model.predict(...) # because my_extension.my_function is not available.
+\endcode
+
+However this will succeed:
+\code{.py}
+import graphlab as gl
+model = gl.load_model('test.model')
+import my_extension
+model.predict(...)
+\endcode
+
+\subsection sec_variant_type Variant Type
+The \ref variant_type is the primary internal type used for communicating
+information to and from Python: whether it is an integer, a dictionary, or an
+SArray. Thus an extension function which accepts, or returns a variant_type is
+in a way the most general. The variant_type should not accessed directly, but
+can be converted to and from arbitrary types using the \ref to_variant and
+\ref variant_get_value functions.
+
+For instance, we can implement a function that when given a Python list,
+if the list is all numbers, returns the sum. And if the list is all strings,
+return the concatenation. We can implement the function as the following:
+\code
+variant_type add_list(const variant_type& v) {
+  std::vector<double> numeric_list;
+  std::vector<std::string> string_list;
+  try {
+    numeric_list = variant_get_value<std::vector<double> >(v);
+    double ret = 0;
+    for(const auto& i: numeric_list) ret += i;
+    return to_variant(ret);
+  } catch(...) {
+    // will throw a string exception on failure.
+  }
+
+  // try the string conversion
+  try {
+    string_list = variant_get_value<std::vector<std::string> >(v);
+    std::string ret;
+    for(const auto& i: string_list) ret += i;
+    return to_variant(ret);
+  } catch(...) {
+    // will throw a string exception on failure.
+  }
+  throw "Invalid list type.";
+}
+\endcode
+
+\subsection sec_performance_notes Performance Considerations
+
+<b> Call Throughput </b>
+
+Each toolkit function / class call does incur a decent amount of overhead
+(it requires serialization to C++, communicating it across an interprocess
+ boundary, writes to a log file, etc). The toolkit function /class interface
+is designed to provide relatively infrequent large calls and not very
+fine-grained calls. It should have a call throughput of a few thousand
+calls per second.
+
+<b> Functions which take extension classes as input arguments</b>
+
+Functions which take extension classes, for instance:
+\code
+std::string run_concat(const demo_class& c) {
+  return c.concat();
+}
+\endcode
+Even if it is passed by reference to the function, will incur the cost of a copy
+of the class instance. If the class is lightweight, this is not a problem. But
+using the shared_ptr is prefered since this avoids the copy
+\code
+std::string run_concat(std::shared_ptr<demo_class> c) {
+  return c.concat();
+}
+\endcode
+
+Similarly, for functions which return new classes, it is prefered that it returns
+a shared_ptr to the class rather than the class itself.
+
+*/
+}

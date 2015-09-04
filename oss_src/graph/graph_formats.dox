@@ -1,0 +1,164 @@
+/**
+
+\page graph_formats Graph File Formats
+
+We build in support for 3 common portable graph file formats (tsv, snap, adj),
+one GraphLab specific portable format (bintsv4) as well 2 GraphLab specific
+non-portable formats (graphjrl, bin).
+
+\section graph_portable_formats Portable Formats
+All portable graph file formats supported are unable to store graph data,
+but can only store graph structure. The formats currently with built-in support
+are "tsv", "snap", "adj" and "bintsv4", described below. Graphs of this format
+can be saved / loaded using graphlab::distributed_graph::save_format()
+and graphlab::distributed_graph::load_format() functions. 
+
+"tsv", "snap" and "adj" are text formats and are human readable.
+
+"bintsv4" is a binary format.
+
+
+\subsection graph_tsv_format tsv (edge list)
+The TSV format is a simple edge-list between vertices where each line in 
+the file is a [src ID] [target ID] pair separated by whitespace.
+
+For instance, the following graph:
+\image html graph_format_example.gif
+
+can be stored as:
+\verbatim
+1 2
+1 5
+7 5
+5 7
+7 1
+\endverbatim
+
+Note that vertex IDs do not need to be consecutive, and edges may appear
+in any arbitrary order. Furthermore, the graph specification requires that
+vertex IDs are 32-bit integers ranging from 0 to (2^32 - 2).  The ID (2^32 - 1)
+is reserved.
+
+Empty lines in the file are permissible, but no other symbols are permitted.
+
+Observe that the TSV format cannot store vertices with no edges.
+ 
+\subsection graph_snap_format snap (edge list)
+The SNAP file format is supported to simplify the use of datasets from 
+the <a href=http://snap.stanford.edu/data/>Stanford Large Network Dataset Collection</a>
+
+The format is identical to \ref TSV TSV with one minor difference: lines
+beginning with "#" are treated as comments and ignored.
+
+For instance, the following graph:
+\image html graph_format_example.gif
+
+can be stored as:
+\verbatim
+# example graph
+# vertices: 4 edges: 5
+1 2
+1 5
+7 5
+5 7
+7 1
+\endverbatim
+
+Note that while the file includes a vertex and an edge count in this example,
+they are treated as comments and ignored.
+
+Observe that the SNAP format cannot store vertices with no edges.
+
+\subsection graph_adj_format adj (adjacency list) 
+The Adjacency list file format stores on each line, a source vertex, followed
+by a list of all target vertices: each line has the following format:
+
+\verbatim
+[vertex ID]  [number of target vertices] [target ID 1] [target ID 2] [target ID 3] ...
+\endverbatim
+
+This format is more compact to store, and in practice will partition better
+in the distributed setting (since edges have a natural grouping).
+Furthermore, this format is capable of storing disconnected vertices.
+
+For instance, the following graph:
+\image html graph_format_example.gif
+
+can be stored as:
+\verbatim
+1 2 2 5
+7 2 7 1
+5 1 7
+\endverbatim
+
+We may include the line
+\verbatim
+2 0
+\endverbatim
+to identify that vertex 2 has no out-edges.
+However, this is optional since vertex 2 will be created when the edge
+<tt>1->2</tt> is created. such lines are only necessary for truly disconnected
+vertices.
+
+
+\subsection graph_bintsv4_format bintsv4 (binary edge list)
+The bintsv4 format is a binary storage format. The graph is represented
+as a sequence of 8 byte blocks: 
+
+\verbatim
+---------------------------------
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+---------------------------------
+|   src VID     |   dest VID    |
+---------------------------------
+\endverbatim
+
+Where each block stores a pair of 32 bit unsigned integer values in x86 
+little endian format. 
+Each block represents an edge src -> dest. Vertex IDs cannot take on the value
+2^32-1
+
+Disconnected vertices are stored as:
+
+\verbatim
+---------------------------------
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+---------------------------------
+|      VID      |   2^32 - 1    |
+---------------------------------
+\endverbatim
+
+
+
+\section graph_nonportable_formats Non-Portable Formats
+The non-portable formats store all information in the graph including the
+graph data. These formats are convenient and in the case of the "bin" format
+significantly faster to load. However, they are also brittle in that 
+changes to your vertex/edge data serialization will render any saved files
+unreadable. Also, we may make changes to the serialization binary format
+at any point. These formats should be treated as fast, temporary storage
+methods and must not be used for long-term archival. 
+
+\subsection graph_format_graphjrl graphjrl (Graph Journal) 
+
+The GraphJRL format serializes each vertex and edge onto a <tt>\n</tt> 
+terminated line, ensuring to escape any <tt>\n</tt> characters that occur
+within the serialized data.
+
+This format is not human readable and should be treated as temporary storage.
+Unlike the "bin" format below, graphs saved in this format do not require
+the same number of machines to load the graph. i.e. graphs saved using 8 
+machines can be loaded using any arbitrary number of machines.
+
+
+\subsection graph_format_bin bin (Distributed Graph Binary)
+This format is simply a direct serialization of all Distributed Graph
+datastructures. The graph is finalized before saving, and thus do not need
+to be finalized after loading. This is the most efficient storage
+of the distributed graph, requiring the least loading time.
+
+However, the disadvantage of the "bin" format is that it requires exactly the 
+same number of machines to load the graph as there was when saving the graph.
+In other words, if 8 machines were used to save the graph, it must be loaded
+using exactly 8 machines. 
+*/

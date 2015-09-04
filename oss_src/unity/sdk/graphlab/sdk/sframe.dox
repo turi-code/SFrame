@@ -1,0 +1,690 @@
+namespace graphlab {
+/**
+ \page page_userguide_sframe SFrame User Guide
+
+ \section sec_sarray_intro SArray
+
+ SArray (\ref gl_sarray) is an immutable,
+ homogeneously typed array object backed by persistent storage.
+ It is the building block of scalable data structures in <b>GraphLab Create</b>.
+
+ The \ref gl_sarray is a contiguous column of a single type with missing value
+ support, and works with disk to support the holding of data that is much
+ larger than the machine's main memory. Runtime typing of the gl_sarray is
+ managed through the \ref flexible_type, which is an efficient runtime typed
+ value. The types supported by the flexible_type are listed in \ref
+ flex_type_enum.
+
+ \note
+ The special type \ref
+ flex_type_enum::UNDEFINED (or the value \ref FLEX_UNDEFINED )
+ is used to denote a missing value (\b na in R or \b None in Python)
+ and can be used in combination with any types.
+
+ \subsection sec_sarray_construction Constructing SArray
+
+ SArray can be constructed from in memory std::vector<flexible_type>
+ or initializer list.
+
+ For instance:
+ \code
+ #include <graphlab/sdk/toolkit_function_macros.hpp>
+ #include <graphlab/sdk/gl_sarray.hpp>
+
+ // creates an array of 5 integers
+ gl_sarray g({1,2,3,4,5});
+
+ // creates an array of 5 doubles
+ gl_sarray g1({1.0,2.0,3.0,4.0,5.0});
+
+ // creates an array of 4 doubles with one missing value
+ gl_sarray g2({1.0,2.0,3.0,FLEX_UNDEFINED,5.0});
+ \endcode
+
+ SArray is homogeneously typed.
+ Although the following code will happily compile as an extension,
+ \code
+  // file test.cpp, compiled into test.so
+  #include <graphlab/sdk/gl_sarray.hpp>
+  #include <graphlab/sdk/toolkit_function_macros.hpp>
+  using namespace graphlab;
+
+  gl_sarray bad_sarray() {
+    return gl_sarray{1,2,3, "foo", "bar"};
+  }
+  BEGIN_FUNCTION_REGISTRATION
+  REGISTER_FUNCTION(bad_sarray)
+  END_FUNCTION_REGISTRATION
+  // end of test.cpp
+ \endcode
+
+ when used in python it will end up with runtime exception:
+ \code
+ >>> import graphlab as gl
+ >>> import test
+ >>> test.bad_sarray()
+ ToolkitError: Cannot infer Array type. Not all elements of array are the same type.
+ \endcode
+
+ We also provide functions to create simple SArrays.
+
+ For instance:
+ \code
+ // creates an array of 10 string values equal to "foo".
+ gl_sarray g = gl_sarray::from_const( "foo", 10 );
+
+ // creates an array of 0 to 999.
+ gl_sarray g1 = gl_sarray::from_sequence( 0, 1000 );
+ \endcode
+
+ \subsection sec_sarray_writer SArray Writer Interface
+
+ The \ref gl_sarray_writer provides the ability to write an \ref gl_sarray,
+ which is internally cut into a collection of segments.
+ Each segment can be written to independently,
+ and the resultant SArray is the effective concatenation of all the segments.
+
+ \code
+ // Writes an integer SArray of 4 segments.
+ gl_sarray_writer writer(flex_type_enum:INTEGER, 4);
+
+ // for each segment, write a bunch of 10 values.
+ // segment 0 has 10 0's,
+ // segment 1 has 10 1's,
+ // etc
+ for (size_t seg = 0;seg < 4; ++seg) {
+   for (size_t i = 0;i < 10; ++i) {
+     writer.write(i, seg);
+   }
+ }
+
+ gl_sarray sa = writer.close();
+ // sa is now an SArray of 40 elements comprising of
+ // the sequence 10 0's, 10 1's, 10 2's, 10 3's
+ \endcode
+
+ \note Different segments can be written safely in parallel.
+ \note It is not safe to write to the same segment simultanously.
+
+ \subsection sec_sarray_operation Operators
+
+ SArray supports <b>numerical operators</b>, <b>comparison operators</b>,
+ and <b>logical operators</b> with "python-like" syntax.
+
+ For instance:
+ \code
+ gl_sarray a{1,2,3,4,5};
+ // an array of 5 exclamation marks
+ gl_sarray b = gl_sarray::from_const("!", 5);
+
+ auto ret = (2 * sa - 1).astype(flex_type_enum::STRING) + b;
+ // results in ret being the array ["1!", "3!", "5!", "7!", "9!"];
+ \endcode
+
+ <b>Comparison operators</b> will return a gl_sarray of binary integers.
+ \code
+ gl_sarray a{1,2,3,4,5};
+ auto ret = a > 3;
+ // ret will be an integer array containing [0,0,0,1,1]
+ \endcode
+
+ Logical and bitwise operators are equivalent: & and && mean the same thing
+ and | and || and provide logical element-wise "and" and "or"s.
+
+ \code
+ gl_sarray a{1,2,3,4,5};
+ auto ret = a > 1 && a <= 4;
+ // ret will be an integer array containing [0,1,1,1,0]
+ \endcode
+
+ These are useful for the <b>logical filter</b> operation:
+ \code
+ gl_sarray a{1,2,3,4,5};
+ gl_sarray b = a.astype(flex_type_enum::STRING);
+ auto ret = b[a > 1 && a <= 4];
+ // ret will be an string array containing ["2","3","4"]
+ \endcode
+
+ The logical and bitwise operators can be used with non-integral arrays
+ in which case all empty values evaluate to False. i.e. for string,
+ list, and dictionary SArrays, empty values are interpreted as false.
+
+ For instance:
+ \code
+ gl_sarray a{"1","","2"}; // sarray of strings
+ gl_sarray b{1,1,0}; // sarray of integers
+ auto ret = a && b; // ret is now {1, 0, 0}
+ \endcode
+
+ \subsection sec_sarray_iterator SArray Iterator
+
+ SArray supports range slicing:
+ \code
+ gl_sarray s{1,2,3,4,5};
+ gl_sarray t = s[{0,3}];
+ gl_sarray u = s[{-3,-1}];
+
+ // t is [1,2]
+ // u is [3,4]
+ \endcode
+
+ It can be read \b inefficiently using gl_sarray::operator[]
+ \code
+ gl_sarray s{1,2,3,4,5};
+ int val = s[2];
+ // val == 3
+ \endcode
+
+ Or iterated \b efficiently using the \ref gl_sarray::range_iterator
+ \code
+ for (const auto& i: sa.range_iterator()) {
+   ...
+ }
+ \endcode
+
+ \subsection sec_sarray_apply Apply User Defined Function
+
+ You can use \ref gl_sarray::apply
+ to perform a "map" operation which takes each element of the gl_sarray
+ and returns a value of \ref flexible_type. The return object
+ is a \ref gl_sarray with the same size as the input gl_sarray.
+
+ For example, we can implement log transformation as follows:
+ \code
+  // file logx.cpp
+  #include <graphlab/sdk/gl_sarray.hpp>
+  #include <graphlab/sdk/toolkit_function_macros.hpp>
+  #include <cmath>
+
+  using namespace graphlab;
+
+  gl_sarray logx(const gl_sarray& sa, double log_base) {
+    const double base = log(log_base);
+    return sa.apply([base](const flexible_type& element)->flexible_type {
+      return log((double)element) / base;
+    }, flex_type_enum::FLOAT);
+  }
+
+  BEGIN_FUNCTION_REGISTRATION
+  REGISTER_FUNCTION(logx, "data", "base")
+  END_FUNCTION_REGISTRATION
+ \endcode
+
+ \section sec_sframe_intro SFrame
+
+ SFrame (\ref gl_sframe) is a tabular,
+ column-mutable dataframe object that can scale to big data.
+
+ The data in \ref gl_sframe is stored column-wise and each column is a
+ \ref gl_sarray, which is immutable. Although each column is immutable, the \ref
+ gl_sframe objects are mutable in that columns can be added and removed with
+ ease.
+
+ A \ref gl_sframe essentially acts as an ordered dictionary of \ref
+ gl_sarray objects.
+
+ \subsection sec_sframe_usage Using SFrame
+
+ The gl_sframe API is designed to very closely mimic the Python SFrame API
+ and supports much of the Python-like capabilities, but in C++.
+
+ <b>Column Creation And Referencing</b>
+ \code
+ gl_sframe sf;
+ sf["a"] = {1,2,3,4,5}
+ sf["b"] = a_5_element_sarray;
+ sf["c"] = sf["a"] / sf["b"] + some_other_sarray;
+ \endcode
+
+ <b>Multi-Column Indexing</b>
+ \code
+ gl_sframe sf{ {"a", {1,2,3,4,5} },
+               {"b", {"1","2","3","4","5"} },
+               {"c", {1.0,2.0,3.0,4.0,5.0}} };
+ gl_sframe ret = sf[{"a", "b"}]
+ // ret has 2 columns "a" and "b"
+ \endcode
+
+ <b>Logical Filter</b>
+ \code
+ gl_sframe sf{{"a", {1,2,3,4,5}},
+              {"b", {"1","2","3","4","5"}}};
+ gl_sframe t = sf[sf["a"] < 3]
+ // t now has 2 columns. a: [1,2] b:["1","2"]
+ \endcode
+
+ <b>Python Range Slicing</b>
+ \code
+ gl_sframe sf{{"a", {1,2,3,4,5}},
+              {"b", {"1","2","3","4","5"}}};
+ t = sf[{0,3}];
+ // t is the first 3 rows of sf
+ \endcode
+
+ <b>Join</b>
+ \code
+ auto animals = gl_sframe({{"id", {1, 2, 3, 4}},
+                           {"name", {"dog", "cat", "sheep", "cow"}}});
+ auto sounds = gl_sframe({{"id", {1, 3, 4, 5}},
+                          {"sound", {"woof", "baa", "moo", "oink"}}});
+ std::cout <<  animals.join(sounds, {"id"}) << std::endl;
+ std::cout <<  animals.join(sounds, {"id"}, "left") << std::endl;
+ std::cout <<  animals.join(sounds, {"id"}, "right") << std::endl;
+ std::cout <<  animals.join(sounds, {"id"}, "outer") << std::endl;
+ \endcode
+ Produces output:
+ \code{.txt}
+ +----+-------+-------+
+ | id |  name | sound |
+ +----+-------+-------+
+ | 1  |  dog  |  woof |
+ | 3  | sheep |  baa  |
+ | 4  |  cow  |  moo  |
+ +----+-------+-------+
+ [3 rows x 3 columns]
+
+ +----+-------+-------+
+ | id |  name | sound |
+ +----+-------+-------+
+ | 1  |  dog  |  woof |
+ | 3  | sheep |  baa  |
+ | 4  |  cow  |  moo  |
+ | 2  |  cat  |  None |
+ +----+-------+-------+
+ [4 rows x 3 columns]
+
+ +----+-------+-------+
+ | id |  name | sound |
+ +----+-------+-------+
+ | 1  |  dog  |  woof |
+ | 3  | sheep |  baa  |
+ | 4  |  cow  |  moo  |
+ | 5  |  None |  oink |
+ +----+-------+-------+
+ [4 rows x 3 columns]
+
+ +----+-------+-------+
+ | id |  name | sound |
+ +----+-------+-------+
+ | 1  |  dog  |  woof |
+ | 3  | sheep |  baa  |
+ | 4  |  cow  |  moo  |
+ | 5  |  None |  oink |
+ | 2  |  cat  |  None |
+ +----+-------+-------+
+ [5 rows x 3 columns]
+ \endcode
+
+ <b>Sort</b>
+ \code
+ gl_sframe sf{ {"a", {1,3,2,1}},
+               {"b", {"a","c","b","b"}},
+               {"c", {"x","y","z","y"}} };
+ gl_sframe sorted_by_a = sf.sort("a");
+
+ // rows in sorted_by_a are sorted by values of column "a".
+ \endcode
+
+ You can go to the \ref gl_sframe API doc page for a full list of
+ functions.
+
+ <b>Iterators</b>
+
+ The \ref gl_sframe can be read \b inefficiently using gl_sframe::operator[]
+ \code
+ gl_sframe sf{{"a", {1,2,3,4,5}},
+              {"b", {"1","2","3","4","5"}}};
+ std::vector<flexible_type> val = sf[2];
+ // val[0] == 3, val[1] == "3"
+ \endcode
+
+ Or iterated \b efficiently using the \ref gl_sframe::range_iterator
+ \code
+ for (const std::vector<flexible_type>& row: sa.range_iterator()) {
+   ...
+ }
+ \endcode
+
+ \subsection sec_sframe_construction Constructing SFrame
+
+ The gl_sframe can constructed in a variety of ways:
+   - If the data to be written is already in memory, it can be created
+     using the
+     \ref gl_sframe::gl_sframe(const std::map<std::string, std::vector<flexible_type> >& data)
+     "gl_sframe constructor"
+   - If the columns are already in \ref gl_sarray,
+     it can be created using the other
+     \ref gl_sframe::gl_sframe(std::initializer_list<std::pair<std::string, gl_sarray>>  data)
+     "gl_sframe constructor"
+   - Otherwise, the \ref gl_sframe_writer can be used which provides a simple
+     write interface.
+
+  \subsection sec_sframe_writer  SFrame Writer Interface
+
+  \ref gl_sframe_writer Provides the ability to write \ref gl_sframe.
+  The gl_sframe is internally cut into a collection of segments. Each segment
+  can be written to independently, and the resultant SFrame is the effective
+  concatenation of all the segments.
+
+  \code
+  // Writes an SFrame of 4 segments, and 2 columns "a" and "b", both of which
+  // are integers.
+  gl_sframe_writer writer({"a","b"},
+                          {flex_type_enum:INTEGER, flex_type_enum::INTEGER},
+                          4);
+
+  // for each segment, write a bunch of (i, i) pair values.
+  // segment 0 has 10 0's,
+  // segment 1 has 10 1's,
+  // etc
+  for (size_t seg = 0;seg < 4; ++seg) {
+    for (size_t i = 0;i < 10; ++i) {
+      writer.write({i, i}, seg);
+    }
+  }
+
+  gl_sframe sa = writer.close();
+  // sa is now an SFrame of 40 elements comprising of
+  // four consecutive sequences of (1,1) to (10,10)
+  \endcode
+
+  \note Different segments can be written safely in parallel.
+
+  \note It is not safe to write to the same segment simultanously.
+
+ \subsection sec_sframe_apply Apply User Defined Function
+
+ You can use \ref gl_sframe::apply
+ to perform a "map" operation which takes each row of the sframe
+ and returns a value of \ref flexible_type. The return object
+ is a \ref gl_sarray whose size equals to number of rows of the \ref gl_sframe.
+
+ This is often very useful for row-wise aggregation.
+
+ For example, we can use the following code for instance-wise normalization:
+ \code
+ gl_sframe sf{{"a", {1,2,3,4,5}},
+              {"c", {1.0,2.0,3.0,4.0,5.0}}};
+
+ gl_sarray row_sum = sf.apply(
+   [](const std::vector<flexible_type>& row) { return row[0] + row[1]; },
+   flex_type_enum::FLOAT);
+
+ gl_sframe sf_row_normalized;
+ sf_row_normalized["a"] = sf["a"] / row_sum;
+ sf_row_normalized["c"] = sf["c"] / row_sum;
+
+ std::cout << sf_row_normalized << std::endl;
+ \endcode
+
+ Produces output:
+ \code{.txt}
+ dtype: float
+ Rows: 5
+ [0.5, 0.5, 0.5, 0.5, 0.5]
+ \endcode
+
+ The apply interface only support many to one functions,
+ e.g. vector<flexible_type> -> flexible_type.
+ To make many to many transformation, i.e.
+ \ref gl_sframe -> \ref gl_sframe,
+ you can store the return value into a \ref flexible_type
+ of type \ref flex_type_enum::LIST and use \ref gl_sarray::unpack
+ to convert the resultant SArray into SFrame.
+
+ \subsection sec_sframe_groupby_aggregate Groupby Aggregate
+
+ Groupby aggregate is one of the most powerful operations for transforming
+ datasets. SFrame offers a simple \ref gl_sframe::groupby interface
+ with a large collection of aggregators ranging from standard ones like:
+ \ref aggregate::COUNT and \ref aggregate::MEAN, to advanced ones like:
+ \ref aggregate::QUANTILE and \ref aggregate::ARGMAX.
+
+ For instance, we can get the mean and standard deviation of rating for each user:
+ \code
+ sf2 = sf.groupby({"user"},
+                  { {"mean_rating", aggregate::MEAN("rating")},
+                    {"stdv_rating", aggregate::STDV("rating")} });
+ // The result sf2 has three columns: user, mean_rating and stdv_rating
+ \endcode
+
+ To extract the median:
+ \code
+ sf2 = sf.groupby( {"user"},
+                   { {"rating_quantiles", aggregate::QUANTILE("rating", 0.5)} });
+ // The result sf2 has two columns: user, rating_quantiles
+ \endcode
+
+ To extract a few quantiles:
+ \code
+ sf2 = sf.groupby({"user"},
+                  { {"rating_quantiles", aggregate::QUANTILE("rating", {0.25,0.5,0.75})} });
+ // The result sf2 has two columns: user, rating_quantiles
+ // The rating_quantile has type vector wand length 3
+ \endcode
+
+ Or equivalently
+ \code
+ sf2 = sf.groupby({"user"},
+                  { {"rating_quantiles", aggregate::QUANTILE("rating", {0.25,0.5,0.75})} });
+ \endcode
+
+ To tet the movie with maximum rating per user:
+ \code
+ sf2 = sf.groupby({"user"},
+                  { {"best_movie", aggregate::ARGMAX("rating", "movie")} });
+ \endcode
+
+ \subsubsection sec_sframe_customized_groupby User Defined Groupby Aggregator
+
+ In addition to the builtin aggregators, you can easily define your own
+ aggregators. To implement a new aggregator, start with a class which
+ inherits from the base \ref group_aggregate_value. The new aggregator class
+ needs to implement the following pure virtual functions in the base class:
+     - Factory \ref group_aggregate_value::new_instance
+     - Name \ref group_aggregate_value::name
+     - Supported types \ref group_aggregate_value::support_type
+     - Return output type \ref group_aggregate_value::set_input_types
+     - Update a single element \ref group_aggregate_value::add_element_simple
+     - Combine partial sums \ref group_aggregate_value::combine
+     - Return final result \ref group_aggregate_value::emit
+     - Save state of the aggregate value \ref group_aggregate_value::save
+     - Load the state of the aggregate value \ref group_aggregate_value::load
+
+ Let's start with a simple example: implemeting a geometric mean aggregator,
+ which takes values x0, x1, ... that belong to the same group,
+ and return their geometric mean: \f$ (x_0 * x_1 * ... * x_{n-1})^{1/n}\f$.
+
+ \code
+class geometric_mean: public group_aggregate_value {
+ public:
+
+  geometric_mean() { prod = 1.0; num_examples = 0; }
+
+  std::string name() const { return "geometric_mean"; }
+
+  group_aggregate_value* new_instance() const { return new geometric_mean(); }
+
+  void add_element_simple(const flexible_type& flex) {
+    prod  *= (double) flex;
+    num_examples++;
+  }
+
+  void combine(const group_aggregate_value& other) {
+    prod *= ((const geometric_mean&)(other)).prod;
+    num_examples += ((const geometric_mean&)(other)).num_examples;
+  }
+
+  flexible_type emit() const {
+    return pow(prod, 1.0 / num_examples);
+  }
+
+  bool support_type(flex_type_enum type) const {
+    return type == flex_type_enum::INTEGER || type == flex_type_enum::FLOAT;
+  }
+
+  flex_type_enum set_input_types(flex_type_enum type) {
+    // set nothing here because it's not needed
+    return flex_type_enum::FLOAT;
+  }
+
+  void save(oarchive& oarc) const {
+    oarc << prod << num_examples;
+  }
+
+  void load(iarchive& iarc) {
+    iarc >> prod >> num_examples;
+  }
+
+ private:
+  double prod;
+  size_t num_examples;
+};
+ \endcode
+
+ To apply the new aggregator we use the \ref aggregate::make_aggregator function.
+ \code
+ gl_sframe test_sframe { {"key", {"a","a","a","b","b","b"}},
+                         {"value", {1,1,1,2,2,2}} };
+ gl_sframe result_sframe = test_sframe.groupby( {"a"}, aggregate::make_aggregator<geometric_mean>({"b"}) );
+
+ // result_sframe will have two columns: "key" = ["a", "b"], and "value" = "1, 2";
+ \endcode
+
+ Note that the new aggregator class cannot be directly published to python as
+ a <code> graphlab.aggregate.GEOMETRIC_MEAN </code> and used by
+ <code> graphlab.SFrame.groupby </code>. But we can wrap it into an extension function
+ which we know how to publish.
+\code
+#include <graphlab/sdk/toolkit_function_macros.hpp>
+#include <graphlab/sdk/gl_sframe.hpp>
+
+gl_sframe groupby_geometric_mean(const gl_sframe& sf,
+                                 const std::string& key_column,
+                                 const std::string& value_column) {
+  gl_sframe result_sframe = sf.groupby( {key},
+      {{"output", aggregate::make_aggregator<geometric_mean>({value_column})}} );
+  return result_sframe;
+}
+BEGIN_FUNCTION_REGISTRATION
+REGISTER_FUNCTION(groupby_geometric_mean, "data", "key_column", "value_column")
+END_FUNCTION_REGISTRATION
+\endcode
+
+ The \ref group_aggregate_value interface is flexible to implement complicated
+ aggregators. For example, the aggregator can take multiple input columns,
+ carry interesting states. For more details, please see the API doc of
+ \ref group_aggregate_value.
+
+ \subsection sec_sframe_reshape Stack and Unstack (also known as reshape or pivot)
+
+ It is easier to show how <b>stack</b> and <b>unstack</b> work by example.
+
+ Intuitively, \ref gl_sframe::stack converts a "wide" \ref gl_sframe to
+ a "tall" \ref gl_sframe.
+
+ Suppose 'sf' is an SFrame that contains a user and his/her friends,
+ where 'friends' columns is an array type. Stack on 'friends' column
+ would create a user/friend list for each user/friend pair:
+ \code
+ auto  sf = gl_sframe({{"topic",{1,2,3}},
+                       {"friends",{{2,3,4}, {5,6}, {4,5,10,FLEX_UNDEFINED}}}
+                      });
+ std::cout <<  sf << std::endl;
+ std::cout <<  sf.stack("friends", "friend") << std::endl;
+ \endcode
+
+ Produces output:
+ \code{.txt}
+ +------+------------------+
+ | user |     friends      |
+ +------+------------------+
+ |  1   |     [2, 3, 4]    |
+ |  2   |      [5, 6]      |
+ |  3   | [4, 5, 10, None] |
+ +------+------------------+
+ [3 rows x 2 columns]
+
+ +------+--------+
+ | user | friend |
+ +------+--------+
+ |  1   |  2     |
+ |  1   |  3     |
+ |  1   |  4     |
+ |  2   |  5     |
+ |  2   |  6     |
+ |  3   |  4     |
+ |  3   |  5     |
+ |  3   |  1     |
+ |  3   |  None  |
+ +------+--------+
+ [9 rows x 2 columns]
+ \endcode
+
+ \ref gl_sframe::unstack is the inverse operation of \ref gl_sframe::stack.
+ It converts a "tall" \ref gl_sframe to a "wide" \ref gl_sframe.
+
+ For instance:
+ \code
+ auto  sf = gl_sframe({{"friend", {2, 3, 4, 5, 6, 4, 5, 2, 3}},
+                       {"user", {1, 1, 1, 2, 2, 2, 3, 4, 4}}});
+ std::cout <<  sf.unstack("friend", "friends") << std::endl;
+ \endcode
+
+ Produces output:
+ \code{.txt}
+ +------+-----------------------------+
+ | user |           friends           |
+ +------+-----------------------------+
+ |  3   |            [5.0]            |
+ |  1   |       [2.0, 4.0, 3.0]       |
+ |  2   |       [5.0, 6.0, 4.0]       |
+ |  4   |          [2.0, 3.0]         |
+ +------+-----------------------------+
+ [4 rows x 2 columns]
+ \endcode
+
+ \subsection sec_sframe_python_binding Python Binding
+
+ When used as an input argument in an SDK function, it permits a Python SFrame
+ to be passed as an argument. When used in an output argument, it will return
+ a Python SFrame.
+
+ For instance:
+ \code
+ //
+ // Compiled as example.so
+ //
+ gl_sframe add_ones_column(const gl_sframe& data) {
+   gl_sframe sf = data;
+   sf["ones"] = 1;
+   return sf;
+ }
+ BEGIN_FUNCTION_REGISTRATION
+ REGISTER_FUNCTION(add_ones_column, "data");
+ END_FUNCTION_REGISTRATION
+ \endcode
+
+ Will allow this to be done in Python:
+ \code{.py}
+ import graphlab as gl
+ import example
+ sa = SFrame({"a":[1,2,3,4,5]})
+ ret = example.add_ones_column(sa)
+ # ret now has two columns. "a":[1,2,3,4,5] and "ones":[1,1,1,1,1]
+ \endcode
+
+ \section sec_detail Details
+
+ The gl_sarray and gl_sframe are lazy evaluated behind the scenes to minimize disk
+ access. This may have the unfortunate effect of hiding errors until
+ materialization is forced to occur. i.e. it might be some time much later in
+ your code that errors will trigger.
+
+ However, not all operations are lazy and certain operations will force
+ materialization, and that is a constant target for optimization.
+
+ If you want to force materialization yourself, use \ref gl_sframe::materialize()
+ (\ref gl_sarray::materialize()).
+*/
+}

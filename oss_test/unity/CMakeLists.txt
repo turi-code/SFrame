@@ -1,0 +1,16 @@
+project(unity_test)
+
+
+make_cxxtest(unity_sarray.cxx REQUIRES unity_core pylambda)
+make_cxxtest(unity_sarray_lazy_eval.cxx REQUIRES unity_core pylambda)
+make_cxxtest(unity_sframe.cxx REQUIRES unity_core pylambda)
+make_cxxtest(unity_sframe_lazy_eval.cxx REQUIRES unity_core pylambda)
+make_cxxtest(unity_sgraph.cxx REQUIRES unity_core)
+make_cxxtest(flex_dict_view.cxx REQUIRES unity_core )
+make_cxxtest(unity_sketch.cxx REQUIRES unity_core pylambda)
+make_cxxtest(unity_toolkit.cxx REQUIRES unity_core)
+make_cxxtest(gl_sarray.cxx REQUIRES unity_core)
+make_cxxtest(gl_sframe.cxx REQUIRES unity_core)
+make_cxxtest(gl_sgraph.cxx REQUIRES unity_core)
+make_cxxtest(gl_gframe.cxx REQUIRES unity_core)
+make_executable(boostpython_test SOURCES boostpython_test.cpp REQUIRES pylambda)

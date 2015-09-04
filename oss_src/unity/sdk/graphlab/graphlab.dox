@@ -1,0 +1,218 @@
+namespace graphlab {
+/**
+
+\defgroup group_gl_ffi GraphLab Extension Interface
+See \ref page_graphlab_extension_interface for the tutorial.
+
+\defgroup group_glsdk SDK
+See \ref page_userguide_sframe and \ref page_userguide_sgraph for the tutorial.
+
+\defgroup group_gl_flexible_type Flexible Type
+The \ref graphlab::flexible_type is an object used to provide runtime dynamic
+typing and is automatic self-managing union between a \ref flex_type_enum "collection of types".
+See the documentation for \ref graphlab::flexible_type for details.
+
+\defgroup random Random Number Generators
+
+\mainpage SDK Overview
+
+\section mainpage_introduction Introduction
+The GraphLab Create SDK aims to provide 3rd party extensibility to GraphLab
+Create. The SDK provides:
+ - A really simple C++ to GraphLab Create to Python FFI interface.
+ - High level native access to the GraphLab Create datastructures (\ref gl_sarray "SArray",
+ \ref gl_sframe "SFrame" and \ref gl_sgraph "SGraph")
+
+It also provides a way for certain SFrame / SGraph Python operators which take
+functions (like
+<a href="https://dato.com/products/create/docs/generated/graphlab.SArray.apply.html#graphlab.SArray.apply">SArray.apply</a>,
+or <a href="https://dato.com/products/create/docs/generated/graphlab.SGraph.triple_apply.html#graphlab.SGraph.triple_apply">SGraph.triple_apply</a>)
+to use native functions instead of Python functions.
+
+\subsection mainpage_minimum_requirements Minimum Requirements
+\b Linux:
+ - GraphLab Create 1.1+ installation
+ - gcc 4.8 and above
+
+\b Mac:
+ - GraphLab Create 1.1+ installation
+ - XCode 6.1 Command Line Tools. (Apple LLVM version 6.0 (clang-600.0.54))
+
+The sdk also depends on boost 1.55 or above (headers only). We've included
+a copy of boost 1.56 under \b boost/.
+
+\subsection mainpage_quickstart Quick Start
+We will go through the process of exporting of a simple C++ function to Python
+via GraphLab Create. in this quick start guide. The
+\ref page_user_guide "User's Guide" will cover more details.
+
+<ol>
+
+<li> \b Download SDK
+
+To download the SDK, clone the git repository:
+
+\code
+~$ git clone https://github.com/graphlab-code/GraphLab-Create-SDK.git graphlab-sdk
+\endcode
+
+The SDK is organized into 4 subdirectories.
+ - \b graphlab/ contains all the required header files
+ - \b sdk_example/ contains all the SDK usage examples
+ - \b boost/ contains the boost headers we depend on
+ - \b doc/ contains Doxygen generated documentation
+
+</li>
+
+<li>\b Build the Examples
+\code
+~$ cd graphlab-sdk
+graphlab-sdk$ make
+\endcode
+</li>
+
+<li>\b Use the Examples
+\code
+graphlab-sdk$ ipython
+>>> import graphlab as gl
+>>> import sdk_example.example1 as example1
+>>> example1.add(2, 5)
+7
+\endcode
+</li>
+
+<li>\b Code New Extensions
+
+Now create a new directory for new extensions:
+\code
+~$ cd && mkdir gl_extensions && cd gl_extensions
+~/gl_extensions$
+\endcode
+
+Write the following into a file example.cpp
+\code
+#include <graphlab/sdk/toolkit_function_macros.hpp>
+using namespace graphlab;
+
+int add_integers(int a, int b) {
+  return a + b;
+}
+
+BEGIN_FUNCTION_REGISTRATION
+REGISTER_FUNCTION(add_integers, "a", "b"); // provide named parameters
+END_FUNCTION_REGISTRATION
+\endcode
+
+</li>
+
+<li> \ref mainpage_extension_compilation "Compile"
+
+\b Linux:
+\code{.sh}
+~/gl_extensions$ g++ -std=c++11 example.cpp -I ../graphlab-sdk -shared -fPIC -o example.so
+\endcode
+
+\b Mac:
+\code{.sh}
+~/gl_extensions$ clang++ -stdlib=libc++ -std=c++11 example.cpp -I ../graphlab-sdk -shared -fPIC -o example.so -undefined dynamic_lookup
+\endcode
+
+\b Makefile
+We provide you with a template makefile at the root of the project called makefile_template.
+
+It will search for all cpp files, and compile each one into a loadable extension module.
+
+To use the template, copy it to your own project folder, and rename it to makefile.
+You need to edit the makefile and change location of "GRAPHLAB_HOME_SDK" to your sdk installation
+directory.
+</li>
+
+<li>\b Use the new extension
+
+Assume example.so is in the current directory.
+\code{.py}
+import graphlab as gl
+import example
+print example.add_integers(5, 10)
+# or equivalently
+print gl.extensions.example.add_integers(5, 10)
+\endcode
+\note The <code>graphlab</code> module must be imported before any extensions.
+</li>
+
+</ol>
+
+\section mainpage_documentation_guide Documentation Guide
+ - Datastructure User's Guide: \ref page_userguide_sframe and \ref page_userguide_sgraph
+ - API Documentation
+    - Extensions FFI Interface \ref group_gl_ffi
+    - The flexible_type: \ref group_gl_flexible_type
+    - The SArray, SFrame, SGraph datastructures: \ref group_glsdk
+ - Other Utilities
+    - Serialization: \ref group_serialization
+    - Random number generation: \ref random
+ - \ref section_Examples "Examples"
+</ol>
+
+\section mainpage_extension_compilation Extension Compilation
+The basic compilation command for Linux and Mac is shown below with a
+corresponding Makefile. Additional include paths may be required if Boost not
+located in a system header location.
+
+\b Linux
+
+\a Command:
+\code{.sh}
+g++ -std=c++11 example.cpp -I /path/to/graphlab-sdk -shared -fPIC -o example.so
+\endcode
+
+\a Makefile
+\code{Makefile}
+example.so: example.cpp
+	g++ -std=c++11 $^ -I /path/to/graphlab-sdk -shared -fPIC -o $@
+\endcode
+
+\b Mac
+
+\a Command:
+\code{.sh}
+clang++ -stdlib=libc++ -std=c++11 example.cpp -I /path/to/graphlab-sdk -shared -fPIC -o example.so -undefined dynamic_lookup
+\endcode
+
+\a Makefile:
+\code{Makefile}
+example.so: example.cpp
+	clang++ -stdlib=libc++ -std=c++11 $^ -I /path/to/graphlab-sdk -shared -fPIC -o $@ -undefined dynamic_lookup
+\endcode
+
+\section main_page_api_abi_compatibility API and ABI Compatibility
+We will try our best to maintain API compatibility. i.e. the same extension
+source code which compiles with older versions of the SDK, should continue
+compiling (and working) with newer versions of the SDK.
+
+However, we will not guarantee backward (or forward) ABI compatibilty. What
+this means is that pre-compiled extensions built with earlier versions of the
+SDK may not be importable with newer versions of GraphLab Create, or vice
+versa. We will try to maintain ABI compatibility when we can and will
+explicitly document ABI breaking changes, however certain ABI breaking changes
+are not within our control; for instance due to ABI changes in clang++ or
+boost.
+
+\section mainpage_license License
+This SDK is provided under the 3-clause BSD license.
+
+Copyright (c) 2015 Dato, Inc.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+}

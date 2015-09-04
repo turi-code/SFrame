@@ -1,0 +1,55 @@
+/**
+
+\defgroup engines GraphLab Engines
+\defgroup util GraphLab Utility Classes and Functions
+\defgroup rpc GraphLab RPC
+\defgroup random Random Number Generators
+\defgroup group_serialization Serialization
+\defgroup toolkits GraphLab Toolkits
+\defgroup httpserver Metrics Reporting Webserver
+\defgroup warp Warp System
+\defgroup unity Unity Libraries
+
+\mainpage 
+   
+
+  The GraphLab project started in 2009 to develop a new parallel
+  computation abstraction tailored to machine learning. GraphLab 1.0
+  represents our first shared memoy design which, through the addition
+  of several matrix factorization toolkits, started to grow a community of users.
+
+  In the last couple of years, we have focused our development effort
+  on the distributed environment. Unfortunately, it took nearly a year
+  to figure out that distributing the GraphLab 1 abstraction was
+  excessively complicated and is unable to scale up to power-law
+  graphs commonly seen in the real world.
+
+  In GraphLab 2.1, we completely redesign of the GraphLab 1 framework
+  for the distributed environment. The implementation is distributed
+  by design and a "shared-memory" execution is essentially running a
+  distributed system on a cluster of 1 machine. 
+  
+  And in this new release of GraphLab 2.2, we introduce the new \ref warp
+  which through the use of fine-grained user-mode threading, introduces a new
+  API which brings about a major increase in useability, and will allow us to 
+  provide new capabilities more easily in the future.
+
+  There are two starting points where one may begin using GraphLab.  \li \ref
+  toolkits "Toolkits" You can lookup the toolkit documentation here if you have
+  a computation task which is already implemented by one of our toolkits.  \li
+  \ref using_graphlab "GraphLab C++ Tutorial" If you have a computation task
+  which is not implemented by our toolkits, you could try implementing
+  yourself! For now a certain degree of C++ knowledge is required. 
+
+  The new GraphLab 2.2 \ref warp is available for experimentation. A
+  \ref using_warp tutorial is provided, and we are are looking for feedback 
+  to continue extending and improving the Warp system. Performance tuning is 
+  also underway.
+
+  Software Stack
+  =============
+  \image html software_stack.png 
+  \image html system_overview.png 
+
+
+*/

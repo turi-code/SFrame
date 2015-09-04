@@ -1,0 +1,59 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+<meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+<meta name="author" content="GraphLab Dev Team" />
+<meta name="publisher" content="Carnegie Mellon University" />
+<meta name="copyright" content="(c) 2012. GraphLab.org" />
+<meta name="distribution" content="global" />
+<meta name="keywords" content="GraphLabUI" />
+<meta name="description" content="GraphLab Dashboard" />
+<meta name="robots" content="all" />
+<title>GraphLab Dashboard </title>
+<link type="text/css" rel="stylesheet" href="style.css"/> 
+
+
+<!-- Load external APIs -->
+<script 
+   type="text/javascript" 
+   src="https://www.google.com/jsapi">
+</script>
+
+
+<!-- The Main visualization script -->
+<script 
+   type="text/javascript" 
+   src="graphlab_visualization.js">
+</script>
+</head>
+
+
+
+<body>
+<h1> GraphLab Visualization Dashboard </h1>
+
+<INPUT TYPE="text" NAME="inputbox" id="newdomain" VALUE="http://localhost:8090"
+  onkeydown="if (event.keyCode == 13) document.getElementById('button').click()">
+<INPUT TYPE="button" NAME="button" id="button" Value="Change Domain" onClick="update_domain(document.getElementById('newdomain').value)">
+
+<div id="job_info">
+  <div id="program_name"> </div>
+  <!-- <div id="nprocs"> </div> -->
+  <div id="current_time"> </div>
+</div>
+
+<div id="instrument_panel">
+  <div id="gauges"> </div>
+  <div id="aggregate"> </div>
+  <div id="nodes"> </div>
+</div>
+
+</body>
+
+
+
+
+</html>

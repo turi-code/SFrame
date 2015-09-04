@@ -1,0 +1,10 @@
+
+The files associated for the Client library package are here:
+
+src/unity/python/graphlab/deploy/_predictive_services/_predictive_client.py # MAIN CLIENT
+src/unity/python/graphlab/test/test_predictive_client.py # TEST
+
+To build a client egg:
+1. cp ../../unity/python/graphlab/deploy/_predictive_service/_predictive_client.py graphlab_service_client/graphlab_service_client/_client.py
+2. cd graphlab_service_client
+3. python setup.py sdist

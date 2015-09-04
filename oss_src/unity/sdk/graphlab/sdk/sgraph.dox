@@ -1,0 +1,311 @@
+namespace graphlab {
+/**
+\page page_userguide_sgraph SGraph User Guide
+
+SGraph (\ref gl_sgraph in the sdk) is a scalable graph data
+structure backed by persistent storage SFrame (\ref gl_sframe).
+
+On a single commodity machine, SGraph can scale to a graph with
+billions of edges and hundreds of millions of vertices.
+
+\ref gl_sgraph makes it easy to do following tasks efficiently:
+  1. construct a graph from tabular data with optional data on vertices and edges.
+  2. query vertices or edges with given ids or field constraints.
+  3. manipulate vertex or edge data fields as SFrames.
+  4. apply user defined computation on the graph.
+
+In this tutorial, we first walk you through each of the bullet points above.
+Next, we emphasize several important technical details that
+makes SGraph efficient.
+Finally, we point you to the \b sdk_example/ for concrete examples.
+
+\section sec_sgraph_construction Construction
+
+There are several ways to create a \ref gl_sgraph.
+
+The simplest way is to add vertices and edges using the \ref gl_sgraph::add_vertices
+and \ref gl_sgraph::add_edges methods.
+
+\code
+#include <graphlab/sdk/toolkit_function_macros.hpp>
+#include <graphlab/sdk/gl_sgraph.hpp>
+
+gl_sgraph g;  // empty graph
+gl_sframe vertices { {"vid", {1,2,3} } };
+gl_sframe edges { {"src", {1, 3}}, {"dst", {2, 2}} };
+g = g.add_vertices(vertices, "vid").add_edges(edges, "src", "dst");
+\endcode
+
+\note The vertex id column in the original vertex SFrame will be renamed to "__id",
+and the source id and target id column in the original edge SFrame will be
+renamed to "__src_id", and "__dst_id" respectively.
+
+\note Columns in \ref gl_sframe that are not
+used as one of the id fields are treated as meta data fields.
+
+The second way is to use the \ref gl_sgraph constructor.
+
+\code
+gl_sframe vertices { {"vid", {1,2,3}, {"vdata", {"foo", "bar", "foobar"}} } };
+gl_sframe edges { {"src", {1,2,3, 2,3,1}}, {"dst", {2,3,1, 1,2,3}} };
+
+// g has edges 1->2, 2->1, 2->3, 3->2, 3->1, 1->3
+gl_sgraph g = gl_sgraph(vertices, edges, "vid", "src", "dst");
+\endcode
+
+By default, the constructor assumes columns "__id", "__src_id" and "__dst_id"
+exist. This can be very useful when <b> extracting subgraphs </b>.
+For instance, the following code removes bidirectional edges.
+\code
+// g2 has edges 1->2, 2->3, 1->3
+gl_sgraph g2 = gl_sgraph(g.vertices(),
+                         g.edges()[g.edges()["__src_id"] < g.edges()["__dst_id"]]);
+\endcode
+
+\section sec_sgraph_query Query vertices and edges
+
+There are two ways to query vertices and edges:
+ - Option 1 (non const): \ref gl_sgraph::vertices and \ref gl_sgraph::edges
+ - Option 2 (const): \ref gl_sgraph::get_vertices and \ref gl_sgraph::get_edges
+
+The main difference is that methods in option 2 are const, returning
+\ref gl_sframe independent of the queried graph. Methods in option 1
+are not const, returning \ref gl_gframe that can be used to
+modify the data of the queried graph.
+
+The distinction will be made more clear through examples.
+Let's begin with Option 2.
+
+\subsection sec_sgraph_nonconst_query Non-const Query
+
+The most convenient way to access vertex and edge data is through
+the \ref gl_sgraph::vertices and \ref gl_sgraph::edges methods.
+
+Both functions return a GFrame (\ref gl_gframe) object -- an SFrame like object
+but \b bound to its parent SGraph. This means the modification to GFrame is applied
+to SGraph, and vice versa.
+
+For instance, the following code shows how to add/remove columns
+to/from the vertex data. The change is applied to SGraph.
+\code
+// add a new edge attribute with const value.
+g.edges().add_column("likes", 0);
+
+// remove a vertex attribute.
+g.vertices().remove_column("age");
+
+// transforms one attribute to the other
+g.vertices()["likes_fish"] = g.vertices()["__id"] == "cat";
+\endcode
+
+This is equal to the following code which uses lower level SGraph APIs.
+\code
+// add a new edge attribute with const value.
+g.add_edge_field(gl_sarray::from_const(0, g.num_edges()), "likes");
+
+// remove a vertex attribute.
+g.remove_edge_field("age");
+
+// transforms one attribute to the other
+if "likes_fish" in g.get_vertex_fields():
+    g.remove_vertex_field("likes_fish")
+g.add_vertex_field(g.get_vertices()["__id"] == "cat", "likes_fish");
+\endcode
+As you can tell, using GFrame makes vertex and edge data manipulation much simpler.
+
+\note Special columns such as "__id", "__src_id" and "__dst_id"
+cannot be modified, because they represent the structure of the SGraph.
+
+\subsection sec_sgraph_const_query Const Query
+
+
+\ref gl_sgraph::get_vertices and \ref gl_sgraph::get_edges allow you to
+query for specific subset of vertices and edges. The return objects are
+SFrames that are \b independent of the SGraph.
+
+For instance,
+\code
+gl_sframe selected_edges = g.get_edges( { {0, UNDEFINED}, {UNDEFINED, 1}, {2, 3} },
+                                        { {"likes_fish", 1} } );
+\endcode
+selects out going edges of 0, incoming edges of 1, edge 2->3, such that
+the edge attribute "like_fish" evaluates to 1.
+
+\subsection sec_sframe_gframe Using SFrame or GFrame?
+
+GFrame is made to resemble SFrame as much as possible, and it can be used
+anywhere that expects an SFrame, and the output will be the same.
+
+You can perform non-mutating \ref gl_sframe operations like
+groupby, join, logical_filter with \ref gl_gframe in the same way,
+and the returned object will always be \ref gl_sframe.
+
+However, when you want to modify fields of the SGraph, make sure to use \ref gl_gframe.
+For instance,
+\code
+    // This will assign all vertex vertex with field "foo" equal to bar.
+    g.vertices()["foo"] = "bar";
+
+    // This will not have any effect on "g".
+    g.get_vertices()["foo"] = "bar";
+\endcode
+
+\note
+\ref gl_gframe is implemented as a subclass of \ref gl_sframe, with
+overloaded functions like: \ref gl_sframe::add_columns,
+\ref gl_sframe::remove_column, etc.
+It holds a pointer to the parent \ref gl_sgraph, and implements the
+overloading using corresponding \ref gl_sgraph operations.
+
+\section sec_sgraph_computation User Defined Graph Computation
+
+In the case where you want to perform vertex-specified operations,
+such as "gather"/"scatter" over the neighborhood of each vertex,
+we provide \ref gl_sgraph::triple_apply which is essentially a
+"parallel for" over (Vertex, Edge, Vertex) triplets, as shown in the following
+pseudo code:
+\code
+INPUT: G: gl_sgraph, lambda: (V, E, V)->void
+OUTPUT: G': gl_sgraph
+G' = copy(G)
+PARALLEL FOR (source, edge, target) in G':
+  LOCK (source, target)
+     edge_triple triple(source, edge, target)
+     lambda(triple)
+     FOR f in mutated_fields:
+       source[f] = triple.source[f] // if f in source
+       target[f] = triple.target[f] // if f in target
+       edge[f] = triple.edge[f] // if f in edge
+     END FOR
+  UNLOCK (source, target)
+END PARALLEL FOR
+RETURN G'
+\endcode
+
+For instance, the following code shows how to implement the update function
+for synchronous pagerank.
+
+\code
+// \file demo_pagerank.cpp
+
+#include <graphlab/sdk/toolkit_function_macros.hpp>
+#include <graphlab/sdk/gl_sgraph.hpp>
+
+using namespace graphlab;
+
+const double RESET_PROB = 0.15;
+
+void pr_update(edge_triple& triple) {
+  triple.target["pagerank"] += triple.source["pagerank_prev"] / triple.source["out_degree"];
+}
+
+gl_sgraph pagerank(const gl_sgraph& g, size_t num_iterations) {
+
+  // Count the out degree of each vertex into an gl_sframe.
+  gl_sframe out_degree = g.get_edges().groupby({"__src_id"}, {{"out_degree", aggregate::COUNT()}});
+
+  // Add the computed "out_degree" to the graph as vertex atrribute.
+  // We exploit that adding the same vertex will overwrite the vertex data.
+  gl_sgraph g2 = g.add_vertices(out_degree, "__src_id");
+
+  // Initialize pagerank value
+  g2.vertices()["pagerank"] = 0.0;
+  g2.vertices()["pagerank_prev"] = 1.0;
+
+  for (size_t i = 0; i < num_iterations; ++i) {
+    g2.vertices()["pagerank"] = 0.0;
+
+    g2 = g2.triple_apply(pr_update, {"pagerank"});
+
+    g2.vertices()["pagerank"] = RESET_PROB + (1 - RESET_PROB) * g2.vertices()["pagerank"];
+    g2.vertices()["pagerank_prev"] = g2.vertices()["pagerank"];
+  }
+
+  g2.vertices().remove_column("pagerank_prev");
+  g2.vertices().remove_column("out_degree");
+  return g2;
+}
+
+BEGIN_FUNCTION_REGISTRATION
+REGISTER_FUNCTION(pagerank, "g", "num_iterations");
+END_FUNCTION_REGISTRATION
+\endcode
+
+ \section sec_sgraph_python_binding Python Binding
+
+ When used as an input argument in an SDK function, it permits a Python SGraph
+ to be passed as an argument. When used in an output argument, it will return
+ a Python SGraph.
+
+ For instance:
+ \code
+ // \file example.cpp
+ // Compiled as example.so
+
+ #include <graphlab/sdk/toolkit_function_macros.hpp>
+ #include <graphlab/sdk/gl_sgraph.hpp>
+
+ using namespace graphlab;
+
+ gl_sframe count_out_degree(const gl_sgraph& g) {
+   gl_sframe sf = g.get_edges().groupby({"__src_id"},
+                                        {{"out_degree", aggregate::COUNT()}});
+   return sf;
+ }
+
+ BEGIN_FUNCTION_REGISTRATION
+ REGISTER_FUNCTION(count_out_degree, "g");
+ END_FUNCTION_REGISTRATION
+ \endcode
+
+ Will allow this to be done in Python:
+ \code{.py}
+ import graphlab as gl
+ import example
+ g = gl.load_sgraph('http://snap.stanford.edu/data/email-Enron.txt.gz', format='snap')
+ ret = example.count_out_degree(g)
+ # ret now has two columns. "__id":[7899,25263,5288...] and "out_degree":[5,1,4,...]
+ \endcode
+
+\section sec_sgraph_technical_details Technical Details
+
+\subsection sec_sgraph_mutability Mutability
+
+\ref gl_sgraph is structurally immutable. You can add new vertices
+and edges, but the operation returns a new \ref gl_sgraph. The original
+graph remains unchanged.
+
+For instance,
+\code
+g.add_vertices(verts)
+\endcode
+has no effect.
+
+However, you can modify the attributes of vertices and edges of a \ref gl_sgraph.
+The following code,
+\code
+g.vertices()["is_fluffy"] = g.vertices()["__id"] == "cat";
+g.vertices().remove_column("likes_fish");
+\endcode
+adds a "is_fluffy" column to vertices in g and removes "likes_fish" from vertices in g.
+
+\subsection sec_sgraph_lazy_eval Lazy Evaluation
+
+Like SArray and SFrame, SGraph is also lazily evaluated.
+Thus regardless of the size of the data, this operation will run quickly.
+\code
+g = g.add_vertices(verts).add_edges(edges);
+\endcode
+
+The actual computation doesn't happen until the new graph is queried.
+For instance, the following simple code may take a long time, because
+it triggers the graph to be fully materialized.
+\code
+g.num_vertices();
+\endcode
+
+\section sec_sgraph_example Example
+We provide end to end working code examples for various SGraph functions.
+Please see examples in \b sdk_example/.
+*/
+}

@@ -1,0 +1,1 @@
+../../../../lib/sdk_registration_function_types.hpp

@@ -1,0 +1,259 @@
+DATO, INC.
+
+END USER LICENSE AGREEMENT
+
+This Dato, Inc. End User License Agreement (this “Agreement”) governs your
+use of our binaries, Python source files, and directories of Python modules,
+application programming interfaces (APIs), executables, cloud web services,
+online, command-line, and print documentation, development and data importation
+tools, and other materials that we make available to you under this Agreement
+(collectively, the “GraphLab Create™ Product).
+
+1. Acceptance of Agreement. This Agreement is a binding contract between you
+   and Dato, Inc., a Delaware corporation (“Dato,” “we,” or “us”)which
+   makes available for your use the GraphLab Create™ Product and which allows
+   you to interact with Dato’s web-services made available to you by
+   Dato (the “Service”)subject to the applicable terms of service located
+   at dato.com/legal/terms_of_use.html (the “Terms of Service”)For purposes of
+   this Agreement, “you” means you individually and, if applicable, the company
+   you represent.  BY CHECKING THE “I ACCEPT” CHECKBOX AND INDICATING YOUR
+   ACCEPTANCE OF THIS AGREEMENT, YOU AGREE TO ALL OF THE TERMS AND CONDITIONS
+   OF THIS AGREEMENT AND THE TERMS OF SERVICE.  IF YOU DO NOT AGREE WITH THE
+   TERMS OF THIS AGREEMENT OR THE TERMS OF SERVICE, THEN YOU DO NOT HAVE THE
+   RIGHT TO USE EITHER THE GRAPHLAB CREATE™ PRODUCT OR DOWNLOAD AND CONSUME THE
+   MATERIALS PROVIDED ON THE GRAPHLAB-HOSTED SITE, AND YOU SHOULD NOT ACCEPT
+   THIS AGREEMENT OR THE TERMS OF SERVICE. 
+
+2. Modifications to Agreement. We may modify the terms and conditions of this
+   Agreement or the Terms of Service at any time upon written (electronic mail
+   sufficient) notice to you, and the Terms of Service may be modified at any
+   time upon Dato’s  posting of such amended Terms of Service on the
+   Dato Web Site from time to time.  We will provide this notice via email
+   to the address you give us when you register as a GraphLab Create™ Product
+   user (which is required in order to use the GraphLab Create™ Product and the
+   Service).  Your continued use of the GraphLab Create™ Product or the Service
+   after such notice will constitute your acceptance of the modified Agreement.
+   If you do not agree to the updated Agreement, you may terminate the
+   Agreement by email notice in the manner described in Section 4.2 below. 
+
+3. License and Permitted Use; Restrictions.
+
+3.1 License. We hereby grant you limited, revocable, non-exclusive,
+  non-transferable, non-sublicenseable right and license, during the term of
+  this Agreement, to access and use the GraphLab Create™ Product solely in
+  accordance with: 
+    (1) the terms and conditions of this Agreement; and 
+    (2) any published specifications or guidelines that we make available for
+    the GraphLab Create™ Product. Dato hereby reserves all rights not
+    expressly granted in this Agreement.
+
+3.2 Permitted Use. Subject to the limitations set forth in this Agreement and
+  the Terms of Use (each as amended from time to time), You may use the
+  GraphLab Create™ Product for any legal purpose, personal, educational, or
+  commercial. You agree not modify, distribute, re-distribute, or make
+  available the GraphLab Create™ Product to any third party.
+
+3.3 Scope of Agreement. For avoidance of doubt, this Agreement does not grant
+  you any right to use any current or future paid version of a Dato product
+  offering that may include the GraphLab Create™ Product or any other that we
+  may release from time to time. 
+
+3.4 Prohibited Uses. You agree not to do any of the following: 
+    (a) “frame,” distribute, resell, or permit any third party to access the
+    GraphLab Create™ Product (except by using the GraphLab Create™ Product to
+    integrate or make features available through Your Application to the 
+    extent expressly permitted under this Agreement and the Terms of Service); 
+    (b) compile or use any information obtained through the GraphLab Create™
+    Product for the purpose of direct marketing, spamming, or other unsolicited
+    communications;
+    (c) use the GraphLab Create™ Product other than in compliance with all
+    applicable federal, state, and local laws; 
+    (d) interfere with the Dato Web Site properties or disrupt any other
+    user’s access to Dato’s cloud services account, Dato Web Site or
+    GraphLab Create™ Product, including by submitting a high volume of
+    automated calls or queries to the Dato Web Site or the Service; 
+    (e) reverse engineer, attempt to gain unauthorized access to the Service or
+    the GraphLab Create™ Product, or attempt to discover the underlying source
+    code or structure of the GraphLab Create™ Product; 
+    (f) use the GraphLab Create™ Product to submit to the Dato Web Site any
+    content or data that is false, misleading, defamatory, threatening,
+    offensive, or infringing of intellectual property rights, or that contains
+    political campaigning, commercial solicitation, mass mailings, or any form
+    of “spam”; 
+    (g) submit to the Dato Web Site any routine, device or other
+    undisclosed feature, including a so-called time bomb, virus, software lock,
+    drop dead device, malicious  logic, worm, Trojan horse or trap or back door
+    or software routine, that is designed to delete, disable, deactivate,
+    interfere with or otherwise harm any software, program, data, device,
+    system or service, or which is intended to provide unauthorized access or
+    to produce unauthorized modifications; or 
+    (h) use any robot, spider, data gathering, scraping or extraction tools, or
+    similar mechanisms with respect to the Dato Web Site or GraphLab
+    Create™ Product.
+
+4. Term and Termination.
+
+4.1 Term. This Agreement will begin when you accept it (the “Effective Date”)
+  and will remain in effect indefinitely unless and until: (1) either party
+  terminates the Agreement in accordance with this Section; or (2) we cease
+  making GraphLab Create™ Product available at no cost.
+
+4.2 Termination for Convenience. Either party may terminate this Agreement at
+  any time, for any reason, by written notice to the other party via email in
+  accordance with Section 11 below.  We may also suspend your access to the
+  GraphLab Create™ Product at any time upon written notice (including via
+  email) to you. 
+
+4.3 Effect of Termination.  Upon termination of this Agreement for any reason:
+    (a) all rights and obligations of the parties will cease, except that the
+    following sections of the Agreement will survive any such termination or
+    expiration: 3.3, 3.4, 4.3, 5.2, 5.3, 6.1, and 7 through 12; and 
+    (b) notwithstanding any provision of a surviving section, you will have no
+    further right to use the GraphLab Create™ Product.
+
+5. Representations and Warranties; Disclaimers.
+
+5.1 General.  Each party represents and warrants that it has the necessary
+  authority to enter into this Agreement.
+
+5.2 Disclaimer of Warranties.  The GraphLab Create™ Product is made available
+  to you at no cost.  ACCORDINGLY, WE MAKE NO REPRESENTATION OR WARRANTY WITH
+  RESPECT TO THE GRAPHLAB CREATE™ PRODUCT OR ANY DATA OR CONTENT MADE AVAILABLE
+  THROUGH THE GRAPHLAB CREATE™ PRODUCT OR THE SERVICE, WHETHER EXPRESS OR
+  IMPLIED, AND WE SPECIFICALLY DISCLAIM ALL IMPLIED WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT,
+  ACCURACY, OR RESULTS TO BE OBTAINED.  WE DO NOT WARRANT THAT THE GRAPHLAB
+  CREATE™ PRODUCT, THE SERVICE, OR THE GRAPHLAB WEB SITE WILL BE ERROR-FREE OR
+  OPERATE WITHOUT INTERRUPTIONS OR DOWNTIME. IN NO EVENT WILL GRAPHLAB BE
+  LIABLE UNDER THIS AGREEMENT OR THE TERMS OF SERVICE FOR ANY AMOUNTS EXCEEDING
+  AMOUNTS IN THE AGGREGATE RECEIVED BY GRAPHLAB FROM YOU DURING THE TWELVE
+  (12)-MONTH PERIOD PRECEEDING THE EVENT GIVING RISE TO SUCH DAMAGES, EVEN IF
+  GRAPHLAB HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. THESE
+  LIMITATIONS ARE INDEPENDENT FROM ALL OTHER PROVISIONS OF THIS AGREEMENT AND
+  THE TERMS OF SERVICE AND SHALL APPLY NOTWITHSTANDING THE FAILURE OF ANY
+  REMEDY PROVIDED HEREIN.
+
+5.3 Modifications to GraphLab Create™ Product; Responsibility for Your
+  Application.  You acknowledge that we may modify the GraphLab Create™ Product
+  from time to time, and that we are not obligated to notify you of any such
+  modification. You are solely responsible to ensure the compatibility of Your
+  Application with the Service, the Dato Web Site, and GraphLab Create™
+  Product.  YOU FURTHER ACKNOWLEDGE THAT WE MAY TERMINATE THIS AGREEMENT, AND
+  DISCONTINUE YOUR ACCESS TO THE GRAPHLAB CREATE™ PRODUCT, AT ANY TIME PURSUANT
+  TO SECTION 4.2, AND THAT YOUR APPLICATION MAY CEASE TO INTERACT WITH THE
+  GRAPHLAB CREATE™ PRODUCT AS A RESULT OF SUCH TERMINATION.  YOU ACKNOWLEDGE
+  THAT WE WILL HAVE NO LIABILITY TO YOU OR TO END USERS OF YOUR APPLICATION IN
+  CONNECTION WITH ANY SUCH MODIFICATION OR TERMINATION.
+
+6. Trademarks.  
+
+6.1 Ownership. You acknowledge that the GraphLab Create™ Product may include
+  our trademarks or logos (“Dato Trademarks”), and that your use of the
+  GraphLab Create™ Product may cause Dato Trademarks to appear within Your
+  Application.  You agree not to remove or obscure any Dato Trademarks in
+  connection with using GraphLab Create™ Product.
+
+6.2 License. We grant you a limited, revocable license to display Dato
+  Trademarks as they appear in portions of the GraphLab Create™ Product that
+  you display in Your Application using the GraphLab Create™ Product, subject
+  to the specific limitations and requirements of this Agreement, and only
+  during the term of this Agreement.  Dato hereby reserves all rights not
+  expressly granted herein.
+
+7. Intellectual Property. 
+
+7.1 GraphLab Create™ Product. As between the parties, we retain all right,
+  title, and interest in and to the GraphLab Create™ Product, including the
+  technology and software we use to provide them.  Except for the limited
+  rights to access and use the GraphLab Create™ Product that we explicitly
+  grant you in this Agreement, we do not grant you any right or license in or
+  to any of our intellectual property or proprietary rights.
+
+7.2 Your Application. As between the parties, you retain all right, title,
+  and interest in and to Your Application (except and to the extent any
+  components of the GraphLab Create™ Product are incorporated into it).  
+
+7.3 Feedback. If you provide or communicate any suggestions for improvements
+  to the Dato Web Site, the Service,  or the GraphLab Create™ Product
+  (collectively, “Feedback”), we will own all right, title, and interest in and
+  to the Feedback, and we will be entitled to use the Feedback without
+  restriction or any obligation of compensation to you. You hereby irrevocably
+  assign all right, title, and interest in and to the Feedback to us.
+
+
+8. Confidentiality. You agree not to disclose, duplicate, publish, release,
+  transfer, or otherwise make available our Confidential Information in any form
+  to, or for the use or benefit of, any person or entity without our prior
+  written consent.  “Confidential Information” means any of our financial,
+  technical, or business information that we designate as confidential at the
+  time we disclose it to you, or that you reasonably should understand to be
+  confidential based on the nature of the information or the circumstances
+  surrounding its disclosure.  For avoidance of doubt, the GraphLab Create™
+  Product is our Confidential Information. Confidential Information does not
+  include any information that: 
+    (i) is or becomes generally known to the public without breach of your
+    confidentiality obligation under this Agreement; 
+    (ii) was independently developed by you without breach of your
+    confidentiality obligation under this Agreement; or 
+    (iii) is received from a third party who obtained such Confidential
+    Information without breach of any obligation owed to us.
+
+9. Product Instrumentation and Metrics. The GraphLab Create™ Product will
+periodically send usage data and metrics back to Dato for the purposes of
+improving the GraphLab Create™ Product, bug fixing, and crash reporting.
+Dato retains all right, title, and interest to this usage data and metrics
+(excluding any personally identifying information except to the extent
+aggregated and anonymized).
+
+10. Limited Liability; Exclusion of Certain Damages.  IN NO EVENT WILL WE BE
+LIABLE TO YOU, USERS OF YOUR APPLICATION, OR YOUR CUSTOMERS OR LICENSEES,
+WHETHER UNDER CONTRACT, TORT, OR ANY OTHER THEORY OF LIABILITY, FOR ANY DAMAGES
+ARISING OUT OF YOUR USE OF THE GRAPHLAB CREATE™ PRODUCT OR THE SERVICE WHETHER
+DIRECT, INCIDENTAL, CONSEQUENTIAL, SPECIAL, INDIRECT, PUNITIVE, OR OTHERWISE,
+EVEN IF WE HAVE BEEN GIVEN ADVANCE NOTICE OF SUCH POSSIBLE DAMAGES, AND
+INCLUDING ANY DAMAGES THAT RESULT FROM OUR MODIFICATION OF ANY GRAPHLAB CREATE™
+PRODUCT OR THE SERVICE OR DISCONTINUANCE OF YOUR ACCESS TO THE GRAPHLAB CREATE™
+PRODUCT OR THE SERVICE.  THE FOREGOING LIABILITY LIMITATION WILL NOT APPLY WITH
+RESPECT TO INFRINGEMENT OR MISAPPROPRIATION OF YOUR INTELLECTUAL PROPERTY
+RIGHTS.  
+
+11. Indemnification. You agree to defend, indemnify, and hold us and our
+subsidiaries, affiliates, directors, officers, agents, co-branders, or other
+partners, and employees harmless from and against any loss, damage, settlement,
+penalty, cost, expense, or any other liability (including but not limited to
+reasonable attorney fees and expenses) arising out of Your Application (or any
+content, trademarks, or intellectual property relating to Your
+Application),your use of the GraphLab Create™ Product or any allegation or
+claim that, if true, would establish your breach of this Agreement.
+
+12. Notices. All notices permitted or required under this Agreement may be
+given in writing via email. Notices from you to us will be sent to
+contact@dato.com; and notices from us to you will be sent to the contact
+name and address or email address that you provide when you register to use the
+GraphLab Create™ Product and accept this Agreement.  
+
+13. General. Neither you nor we will be liable for delay or default under this
+Agreement if caused by conditions beyond our or your reasonable control (e.g.,
+technology malfunctions or acts of God).  This Agreement is governed by the
+internal laws of the State of Washington, without regard to its conflicts of
+law rules, and each party hereby consents to exclusive jurisdiction and venue
+in the state and federal courts located in Seattle, Washington for any dispute
+arising out of this Agreement.  Neither party may assign this Agreement to a
+third party without the written consent of the other party in advance, except
+that we may assign this Agreement without such consent to a third party
+acquiring all or substantially all of our assets or equity securities (via
+merger or otherwise), or to any of our corporate affiliates. This Agreement
+will bind and benefit the parties, their successors, and their permitted
+assigns.  You and we are independent contractors to each other in our
+activities under this Agreement.  This Agreement and the Terms of Service
+represents the entire agreement between you and us with respect to your use of
+the GraphLab Create™ Product and the Service, and this Agreement supersedes any
+contemporaneous or prior agreements regarding the GraphLab Create™ Product or
+the Service. This Agreement may be modified only in accordance with Section 2
+above. You agree to abide by and conform to 
+    (a) all applicable laws and regulations with respect to the use of the
+    GraphLab Create™ Product and the Service; and 
+    (b) the Terms of Service (available at dato.com/legal/terms_of_use.html);,
+    in each case as they relate to your use of the GraphLab Create™ Product and
+    the Service.
+
