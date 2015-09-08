@@ -39,9 +39,6 @@ import numbers
 import sys
 import csv
 
-from graphlab import sys_util
-
-
 
 __all__ = ['SFrame']
 __LOGGER__ = _logging.getLogger(__name__)
