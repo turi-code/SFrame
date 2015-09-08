@@ -707,6 +707,20 @@ class SArrayTest(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             a.mean()
 
+    def test_max_min_sum_mean_missing(self):
+        # negative and positive
+        s = SArray([-2,0,None,None,None], int)
+        self.assertEqual(s.max(), 0)
+        self.assertEqual(s.min(), -2)
+        self.assertEqual(s.sum(), -2)
+        self.assertAlmostEqual(s.mean(), -1)
+
+        s = SArray([None,None,None], int)
+        self.assertEqual(s.max(), None)
+        self.assertEqual(s.min(), None)
+        self.assertEqual(s.sum(), 0)
+        self.assertEqual(s.mean(), None)
+
     def test_python_special_functions(self):
         s = SArray([], int)
         self.assertEqual(len(s), 0)

@@ -16,7 +16,7 @@ make_executable(unity_server
                   minipsutil_static)
 
 
-add_dependencies(unity_server pylambda_worker rddtosf_pickle rddtosf_nonpickle sftordd_pickle ./oss_src/sframe/graphlab-create-spark-integration.jar)
+add_dependencies(unity_server pylambda_worker spark_unity ./oss_src/sframe/spark_unity.jar)
 
 get_property(EXTENSIONS_LIST DIRECTORY "../extensions" PROPERTY EXTENSIONS_LIST)
 foreach(loop_var ${EXTENSIONS_LIST})

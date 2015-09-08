@@ -99,6 +99,11 @@ groupby_descriptor_type CONCAT(const std::string& col) {
 groupby_descriptor_type CONCAT(const std::string& key, const std::string& value) {
   return {"__builtin__concat__dict__", {key, value}};
 }
+
+groupby_descriptor_type COUNT_DISTINCT(const std::string& col) {
+  return {"__builtin__count__distinct__", {col}};
+}
+
 groupby_descriptor_type QUANTILE(const std::string& col, double quantile) {
   std::vector<double> q{quantile};
   return QUANTILE(col, q);

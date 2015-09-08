@@ -95,11 +95,11 @@ class InstallEngine(install):
         root_path = os.path.join(self.install_lib, 'sframe')
 
         # make sure all of our binaries are executable to all
-        packaged_binaries = ['unity_server', 'pylambda_worker', 'sftordd_pickle', 'rddtosf_pickle', 'rddtosf_nonpickle', 'spark_pipe_wrapper']
+        packaged_binaries = ['unity_server', 'pylambda_worker']
         packaged_binary_paths = []
         for exe_name in packaged_binaries:
             exe_path = os.path.join(root_path, exe_name)
-            if cur_platform.startswith("win") and exe_name != 'spark_pipe_wrapper':
+            if cur_platform.startswith("win"):
                 exe_path += ".exe"
             st = os.stat(exe_path)
             os.chmod(exe_path, st.st_mode | stat.S_IEXEC | stat.S_IXOTH | stat.S_IXGRP)
@@ -152,9 +152,8 @@ if __name__ == '__main__':
         package_data={
         'sframe': ['cython/*.so', 'cython/*.pyd', 'cython/*.dll',
                      'unity_server', 'pylambda_worker',
-                     'rddtosf_nonpickle', 'sftordd_pickle',
-                     'rddtosf_pickle', 'spark_pipe_wrapper', '*.so', '*.so.1', '*.dylib',
-                     '*.dll', '*.def', 'graphlab-create-spark-integration.jar',
+                     '*.so', '*.so.1', '*.dylib',
+                     '*.dll', '*.def', 'spark_unity.jar',
                      'deploy/*.jar', '*.exe', 'libminipsutil.*'
                      ]},
         packages=find_packages(

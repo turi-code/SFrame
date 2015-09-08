@@ -418,6 +418,12 @@ class gl_sarray {
   gl_sarray operator|(const gl_sarray& other) const;
   ///@}
 
+  /**
+   * Performs an element-wise substring search of "item". The current array
+   * must contains strings and item must be a string. Produces a 1 for each
+   * row if item is a substring of the row and 0 otherwise.
+   */
+  gl_sarray contains(const flexible_type& other) const;
 
   /**
    * Returns the value at a particular array index; generally inefficient.

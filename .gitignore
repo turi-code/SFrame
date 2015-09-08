@@ -1,6 +1,7 @@
 ###########  Deployment stuff ##################
 artifacts/*
 target/*
+src/unity/python/graphlab/deploy/graphlabHadoopYarn-*.jar
 
 ###########  C stuff ##################
 # use glob syntax
@@ -81,10 +82,10 @@ nosetests.xml
 
 *.swp
 
-# Mr Old School Data Scientist 
+# Mr Old School Data Scientist
 .Rhistory
 
-# log files 
+# log files
 *.log
 
 

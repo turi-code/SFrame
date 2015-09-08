@@ -717,7 +717,7 @@ struct city_hash_visitor {
     return graphlab::hash64_combine(ret, graphlab::hash64(t.microsecond()));
   }
   inline FLEX_ALWAYS_INLINE_FLATTEN size_t operator()(const flex_float& t) const {
-    return *reinterpret_cast<const size_t*>(&t);
+    return graphlab::hash64(*reinterpret_cast<const size_t*>(&t));
   }
   inline FLEX_ALWAYS_INLINE_FLATTEN size_t operator()(const flex_string& t) const {
     return graphlab::hash64(t);

@@ -281,6 +281,17 @@ groupby_descriptor_type STDV(const std::string& col);
  */
 groupby_descriptor_type SELECT_ONE(const std::string& col);
 
+/**
+ * Builtin arg minimum aggregator for groupby.
+ *
+ * Example: Get the number of unique movies
+ * \code
+ * sf.groupby("user",
+ *            {{"best_movie", aggregate::COUNT_DISTINCT("rating")}});
+ * \endcode
+ */
+groupby_descriptor_type COUNT_DISTINCT(const std::string& col);
+
 ///@{
 /**
  * Builtin aggregator that combines values from one or two columns in one group
