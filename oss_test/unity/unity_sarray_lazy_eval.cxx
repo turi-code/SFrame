@@ -102,9 +102,8 @@ class unity_sarray_lazy_eval_test: public CxxTest::TestSuite {
     auto u = left->logical_filter(right);
     assert_materialized(u, false);
 
-    // This will materialize the tree because max needs to know the size first and then run through the operation
     auto max = u->max();
-    assert_materialized(u, true);
+    assert_materialized(u, false);
   }
 
   /**

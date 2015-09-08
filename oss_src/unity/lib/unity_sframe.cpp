@@ -725,51 +725,8 @@ std::shared_ptr<unity_sframe_base> unity_sframe::tail(size_t nrows) {
 
 std::list<std::shared_ptr<unity_sframe_base>> unity_sframe::logical_filter_split(
   std::shared_ptr<unity_sarray_base> logical_filter_array) {
-  sframe left, right;
-  left.open_for_write(column_names(), dtype(), "", SFRAME_DEFAULT_NUM_SEGMENTS);
-  right.open_for_write(column_names(), dtype(), "", SFRAME_DEFAULT_NUM_SEGMENTS);
-  std::vector<sframe::iterator> left_writers;
-  std::vector<sframe::iterator> right_writers;
-  for (size_t i = 0; i < SFRAME_DEFAULT_NUM_SEGMENTS; ++i) {
-    left_writers.push_back(left.get_output_iterator(i));
-    right_writers.push_back(right.get_output_iterator(i));
-  }
-
-  // Temporary sframe with logical filter array added at the end
-  auto temp_sf = new unity_sframe();
-  temp_sf->construct_from_planner_node(this->get_planner_node(),
-                                       this->column_names());
-  temp_sf->add_column(logical_filter_array, "");
-  size_t num_columns = temp_sf->num_columns();
-
-  auto callback = [&left_writers, &right_writers, num_columns](size_t segment_id,
-                                                               const std::shared_ptr<sframe_rows>& data) {
-    // ignore the last column, which is the logical filter array
-    std::vector<flexible_type> row_buffer(num_columns-1);
-    auto& right_writer = right_writers[segment_id];
-    auto& left_writer = left_writers[segment_id];
-    for (const auto& row : (*data)) {
-      for (size_t i = 0; i < num_columns -1; ++i)
-        row_buffer[i] = row[i];
-      if (row[num_columns-1].is_zero()) {
-        *right_writer++ = row_buffer;
-      } else {
-        *left_writer++ = row_buffer;
-      }
-    }
-    return false;
-  };
-
-  query_eval::planner().materialize(temp_sf->get_planner_node(),
-                                    callback, SFRAME_DEFAULT_NUM_SEGMENTS);
-
-  left.close();
-  right.close();
-  std::shared_ptr<unity_sframe> ret_left(new unity_sframe());
-  std::shared_ptr<unity_sframe> ret_right(new unity_sframe());
-  ret_left->construct_from_sframe(left);
-  ret_right->construct_from_sframe(right);
-  return {ret_left, ret_right};
+  return {logical_filter(logical_filter_array),
+          logical_filter(logical_filter_array->right_scalar_operator(1, "-"))};
 }
 
 std::shared_ptr<unity_sframe_base> unity_sframe::logical_filter(

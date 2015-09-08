@@ -41,44 +41,21 @@ project(sframe)
     EXTERNAL_VISIBILITY
  )
 
-make_copy_target(spark_pipe_wrapper
-        FILES ${CMAKE_CURRENT_SOURCE_DIR}/spark_pipe_wrapper)
-
 make_copy_target(_local_sys_util_
         FILES ${CMAKE_CURRENT_SOURCE_DIR}/../unity/python/sframe/sys_util.py)
 
- make_executable(rddtosf_nonpickle
-   SOURCES
-     rddtosframe-nonpickle.cpp
-   REQUIRES
-     sframe
- )
-  
- make_executable(rddtosf_pickle
+ make_executable(spark_unity
                 SOURCES
-                  rddtosframe-pickle.cpp
+                  spark_unity.cpp
                 REQUIRES
                   logger
                   python
                   cppipc
                   sframe
                   pylambda
+                  graphlab
  )
-
- make_executable(sftordd_pickle
-                SOURCES
-                  sframetordd-pickle.cpp
-                REQUIRES
-                  logger
-                  python
-                  cppipc
-                  sframe
-                  pylambda
- )
-add_dependencies(sftordd_pickle spark_pipe_wrapper _local_sys_util_)
-add_dependencies(rddtosf_pickle spark_pipe_wrapper _local_sys_util_)
-add_dependencies(rddtosf_nonpickle spark_pipe_wrapper _local_sys_util_)
-
-file(DOWNLOAD http://s3-us-west-2.amazonaws.com/glbin-engine/graphlab-create-spark-integration_2.10-1.0.jar ${CMAKE_CURRENT_BINARY_DIR}/graphlab-create-spark-integration.jar
-      EXPECTED_MD5 5c4eebfd0426e4f5189c7e576639bc6a)
+add_dependencies(spark_unity _local_sys_util_)
+file(DOWNLOAD http://s3-us-west-2.amazonaws.com/glbin-engine/spark_unity.jar ${CMAKE_CURRENT_BINARY_DIR}/spark_unity.jar
+      EXPECTED_MD5 d41d8cd98f00b204e9800998ecf8427e)
 

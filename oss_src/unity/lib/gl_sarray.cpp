@@ -204,6 +204,10 @@ gl_sarray gl_sarray::operator||(const gl_sarray& other) const {
   return get_proxy()->vector_operator(other.get_proxy(), "|");
 }
 
+gl_sarray gl_sarray::contains(const flexible_type& other) const {
+  return get_proxy()->left_scalar_operator(other, "in");
+}
+
 flexible_type gl_sarray::operator[](int64_t i) const {
   if (i < 0 || (size_t)i >= get_proxy()->size()) {
     throw std::string("Index out of range");

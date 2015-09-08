@@ -252,3 +252,18 @@ def QUANTILE(src_column, *args):
         quantiles = [quantiles]
     query = ",".join([str(i) for i in quantiles])
     return ("__builtin__quantile__[" + query + "]", [src_column])
+
+
+
+def COUNT_DISTINCT(src_column):
+  """
+  Builtin unique counter for groupby. Counts the number of unique values
+
+  Example: Get the number of unique ratings produced by each user.
+
+  >>> sf.groupby("user",
+                 {'rating_distinct_count':gl.aggregate.COUNT_DISTINCT('rating')})
+
+  """
+  return ("__builtin__count__distinct__", [src_column])
+

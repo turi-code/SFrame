@@ -39,10 +39,15 @@ import numbers
 import sys
 import csv
 
+from graphlab import sys_util
+
+
+
 __all__ = ['SFrame']
 __LOGGER__ = _logging.getLogger(__name__)
 
 SFRAME_GARBAGE_COLLECTOR = []
+SFRAME_GRAPHLABUTIL_REF = None
 
 FOOTER_STRS = ['Note: Only the head of the SFrame is printed.',
                'You can use print_rows(num_rows=m, num_columns=n) to print more rows and columns.']
@@ -67,25 +72,19 @@ SFRAME_ROOTS = [# Binary/lib location in production egg
                         '..', '..',  '..', '..', '..', '..', 'deps', 'local', 'lib'))
                 ]
 
-RDD_SFRAME_PICKLE = "rddtosf_pickle"
-RDD_SFRAME_NONPICKLE = "rddtosf_nonpickle"
-SFRAME_RDD_PICKLE = "sftordd_pickle"
+SPARK_UNITY = "spark_unity"
 HDFS_LIB = "libhdfs.so"
-RDD_JAR_FILE = "graphlab-create-spark-integration.jar"
+RDD_JAR_FILE = "spark_unity.jar"
 SYS_UTIL_PY = "sys_util.py"
 RDD_SUPPORT_INITED = False
 BINARY_PATHS = {}
 STAGING_DIR = None
 RDD_SUPPORT = True
 PRODUCTION_RUN = False
-YARN_OS = None
-SPARK_SUPPORT_NAMES = {'RDD_SFRAME_PATH':'rddtosf_pickle',
-        'RDD_SFRAME_NONPICKLE_PATH':'rddtosf_nonpickle',
-        'SFRAME_RDD_PATH':'sftordd_pickle',
-        'HDFS_LIB_PATH':'libhdfs.so',
-        'RDD_JAR_PATH':'graphlab-create-spark-integration.jar',
-        'SYS_UTIL_PY_PATH':'sys_util.py',
-        'SPARK_PIPE_WRAPPER_PATH':'spark_pipe_wrapper'}
+REMOTE_OS = None
+SPARK_SUPPORT_NAMES = {
+        'RDD_JAR_PATH': 'spark_unity.jar',
+        'SYS_UTIL_PY_PATH':'sys_util.py'}
 
 first = True
 for i in SFRAME_ROOTS:
@@ -98,6 +97,10 @@ for i in SFRAME_ROOTS:
             PRODUCTION_RUN = True
         break
     first = False
+
+for name in SPARK_SUPPORT_NAMES.keys():
+    if (name not in BINARY_PATHS):
+        print name
 
 if not all(name in BINARY_PATHS for name in SPARK_SUPPORT_NAMES.keys()):
     RDD_SUPPORT = False
@@ -112,8 +115,8 @@ def get_spark_integration_jar_path():
             "Does your version of GraphLab Create support Spark Integration (is it >= 1.0)?")
     return BINARY_PATHS['RDD_JAR_PATH']
 
-def __rdd_support_init__(sprk_ctx):
-    global YARN_OS
+def __rdd_support_init__(sprk_ctx,graphlab_util_ref):
+    global REMOTE_OS
     global RDD_SUPPORT_INITED
     global STAGING_DIR
     global BINARY_PATHS
@@ -121,32 +124,33 @@ def __rdd_support_init__(sprk_ctx):
     if not RDD_SUPPORT or RDD_SUPPORT_INITED:
         return
 
+    sprk_ctx._jsc.addJar(BINARY_PATHS['RDD_JAR_PATH'])
+    
     # Make sure our GraphLabUtil scala functions are accessible from the driver
     try:
-        sprk_ctx._jvm.org.graphlab.create.GraphLabUtil.EscapeString(sprk_ctx._jvm.java.lang.String("1,2,3,4"))
+        graphlab_util_ref.getBinaryName()
     except:
         raise RuntimeError("Could not execute RDD translation functions. "\
-                           "Please make sure you have started Spark "\
-                           "(either with spark-submit or pyspark) with the following flag set:\n"\
-                           "'--driver-class-path " + BINARY_PATHS['RDD_JAR_PATH']+"'\n"\
-                           "OR set the property spark.driver.extraClassPath in spark-defaults.conf")
+                           "This means either SparkContext is not initialized correctly "\
+                           "or %s is not accessible.\n "\
+                           "jar file path: %s" % (RDD_JAR_FILE,BINARY_PATHS['RDD_JAR_PATH']))
 
     dummy_rdd = sprk_ctx.parallelize([1])
 
-    if PRODUCTION_RUN and sprk_ctx.master == 'yarn-client':
+    if PRODUCTION_RUN and (sprk_ctx.master.startswith('yarn-client') or sprk_ctx.master.startswith('spark://')):
         # Get cluster operating system
         os_rdd = dummy_rdd.map(lambda x: platform.system())
-        YARN_OS = os_rdd.collect()[0]
+        REMOTE_OS = os_rdd.collect()[0]
 
         # Set binary path
         for i in BINARY_PATHS.keys():
             s = BINARY_PATHS[i]
             if os.path.basename(s) == SPARK_SUPPORT_NAMES['SYS_UTIL_PY_PATH']:
                 continue
-            if YARN_OS == 'Linux':
-                BINARY_PATHS[i] = os.path.join(os.path.dirname(s), 'linux', os.path.basename(s))
-            elif YARN_OS == 'Darwin':
-                BINARY_PATHS[i] = os.path.join(os.path.dirname(s), 'osx', os.path.basename(s))
+            if REMOTE_OS == 'Linux':
+                BINARY_PATHS[i] = os.path.join(os.path.dirname(s),os.path.basename(s))
+            elif REMOTE_OS == 'Darwin':
+                BINARY_PATHS[i] = os.path.join(os.path.dirname(s),os.path.basename(s))
             else:
                 raise RuntimeError("YARN cluster has unsupported operating system "\
                                     "(something other than Linux or Mac OS X). "\
@@ -154,13 +158,9 @@ def __rdd_support_init__(sprk_ctx):
 
     # Create staging directory
     staging_dir = '.graphlabStaging'
-    if sprk_ctx.master == 'yarn-client':
-        tmp_loc = None
-
+    if sprk_ctx.master.startswith('yarn-client') or sprk_ctx.master.startswith('spark://'):
         # Get that staging directory's full name
-        tmp_loc = dummy_rdd.map(
-                lambda x: subprocess.check_output(
-                    ["hdfs", "getconf", "-confKey", "fs.defaultFS"]).rstrip()).collect()[0]
+        tmp_loc = graphlab_util_ref.getHadoopNameNode()
 
         STAGING_DIR = os.path.join(tmp_loc, "user", sprk_ctx.sparkUser(), staging_dir)
         if STAGING_DIR is None:
@@ -185,14 +185,13 @@ def __rdd_support_init__(sprk_ctx):
                 str(sprk_ctx.master) +
                 "'. Only 'local' and 'yarn-client' are supported.")
 
-    if sprk_ctx.master == 'yarn-client':
-        sprk_ctx.addFile(BINARY_PATHS['RDD_SFRAME_PATH'])
-        sprk_ctx.addFile(BINARY_PATHS['HDFS_LIB_PATH'])
-        sprk_ctx.addFile(BINARY_PATHS['SFRAME_RDD_PATH'])
-        sprk_ctx.addFile(BINARY_PATHS['RDD_SFRAME_NONPICKLE_PATH'])
-        sprk_ctx.addFile(BINARY_PATHS['SYS_UTIL_PY_PATH'])
-        sprk_ctx.addFile(BINARY_PATHS['SPARK_PIPE_WRAPPER_PATH'])
-        sprk_ctx._jsc.addJar(BINARY_PATHS['RDD_JAR_PATH'])
+    # sprk_ctx.addFile(BINARY_PATHS['SPARK_UNITY'])
+    # sprk_ctx.addFile(BINARY_PATHS['HDFS_LIB_PATH'])
+    # sprk_ctx.addFile(BINARY_PATHS['SFRAME_RDD_PATH'])
+    # sprk_ctx.addFile(BINARY_PATHS['RDD_SFRAME_NONPICKLE_PATH'])
+    # sprk_ctx.addFile(BINARY_PATHS['SYS_UTIL_PY_PATH'])
+    # sprk_ctx.addFile(BINARY_PATHS['SPARK_PIPE_WRAPPER_PATH'])
+
 
     RDD_SUPPORT_INITED = True
 
@@ -1655,10 +1654,37 @@ class SFrame(object):
                 return g
         else:
             raise ValueError("Invalid value for orient parameter (" + str(orient) + ")")
+   
+    @classmethod
+    def __get_graphlabutil_reference_on_spark_unity_jar(cls,sc):
+        '''
+        A utility function to get a handle to GraphLabUtil object in jar file.
+        This utility function dynamically loads the GraphLabUtil class and call
+        factory method ``getUtil()`` that returns a GraphLabUtil object.
 
-    def to_schema_rdd(self,sc,sql,number_of_partitions=4):
+        Parameters
+        ----------
+        sc : SparkContext
+            Current SparkContext.
+        '''
+        global SFRAME_GRAPHLABUTIL_REF
+
+        if SFRAME_GRAPHLABUTIL_REF is None:
+            jar_path = get_spark_integration_jar_path()
+            jar_file = sc._jvm.java.io.File(jar_path)
+            jar_url = jar_file.toURL()
+            url_array = sc._gateway.new_array(sc._jvm.java.net.URL,1)
+            url_array[0] = jar_url
+            child = sc._jvm.java.net.URLClassLoader(url_array)
+            load_class = child.loadClass("org.graphlab.create.GraphLabUtil")
+            method = load_class.getDeclaredMethod("getUtil",None)
+            SFRAME_GRAPHLABUTIL_REF = method.invoke(load_class,None)
+       
+        return SFRAME_GRAPHLABUTIL_REF
+
+    def to_spark_dataframe(self,sc,sql,number_of_partitions=4):
         """
-        Convert the current SFrame to the Spark SchemaRDD.
+        Convert the current SFrame to the Spark DataFrame.
 
         To enable this function, you must add the jar file bundled with GraphLab
         Create to the Spark driver's classpath.  This must happen BEFORE Spark
@@ -1688,7 +1714,7 @@ class SFrame(object):
 
         Returns
         ----------
-        out: SchemaRDD
+        out: DataFrame
 
         Examples
         --------
@@ -1698,7 +1724,7 @@ class SFrame(object):
         >>> sc = SparkContext('local')
         >>> sqlc = SQLContext(sc)
         >>> sf = SFrame({'x': [1,2,3], 'y': ['fish', 'chips', 'salad']})
-        >>> rdd = sf.to_schema_rdd(sc, sqlc)
+        >>> rdd = sf.to_spark_dataframe(sc, sqlc)
         >>> rdd.collect()
         [Row(x=1, y=u'fish'), Row(x=2, y=u'chips'), Row(x=3, y=u'salad')]
         """
@@ -1718,11 +1744,7 @@ class SFrame(object):
 
         for name in column_names:
             if hasattr(first_row[name],'__iter__') and homogeneous_type(first_row[name]) is not True:
-                raise TypeError("Support for translation to Spark SchemaRDD not enabled for heterogeneous iterable type (column: %s). Use SFrame.to_rdd()." % name)
-
-        for _type in self.column_types():
-                if(_type.__name__ == 'datetime'):
-                    raise TypeError("Support for translation to Spark SchemaRDD not enabled for datetime type. Use SFrame.to_rdd() ")
+                raise TypeError("Support for translation to Spark DataFrame not enabled for heterogeneous iterable type (column: %s). Use SFrame.to_rdd()." % name)
 
         rdd = self.to_rdd(sc,number_of_partitions);
         from pyspark.sql import Row
@@ -1763,6 +1785,10 @@ class SFrame(object):
         ----------
         out: RDD
 
+        Notes
+        ----------
+        - Look at to_spark_dataframe().
+
         Examples
         --------
 
@@ -1782,74 +1808,55 @@ class SFrame(object):
                 if(_type.__name__ == 'Image'):
                     raise TypeError("Support for translation to Spark RDDs not enabled for Image type.")
         
-        if sc.master[0:5] != 'local':
-            raise RuntimeError("Your spark context's master is %s. Only 'local' is supported. \n"\
-                    "We are working on a better Spark integration for the upcoming release. Please follow %s for further details." \
-                    % (sc.master,"https://dato.com/learn/userguide/data_formats_and_sources/spark_integration.html#limitations"))
-
-
+        if number_of_partitions is None:
+            number_of_partitions = sc.defaultParallelism
+        
         if type(number_of_partitions) is not int:
             raise ValueError("number_of_partitions parameter expects an integer type")
         if number_of_partitions == 0:
             raise ValueError("number_of_partitions can not be initialized to zero")
 
+        # get a handle to GraphLabUtil java object
+        graphlab_util_ref = self.__get_graphlabutil_reference_on_spark_unity_jar(sc)
+        
         # Save SFrame in a temporary place
-        tmp_loc = self.__get_staging_dir__(sc)
+        tmp_loc = self.__get_staging_dir__(sc,graphlab_util_ref)
         sf_loc = os.path.join(tmp_loc, str(uuid.uuid4()))
         self.save(sf_loc)
-
+        print sf_loc
         # Keep track of the temporary sframe that is saved(). We need to delete it eventually.
         dummysf = load_sframe(sf_loc)
         dummysf.__proxy__.delete_on_close()
         SFRAME_GARBAGE_COLLECTOR.append(dummysf)
+            
+        # Get the environment variables as a java map
+        # env  = sys_util.make_unity_server_env()
+        # java_env_map = MapConverter().convert(env, sc._gateway._gateway_client)
 
-        sframe_len = self.__len__()
-        small_partition_size = sframe_len/number_of_partitions
-        big_partition_size = small_partition_size + 1
-        num_big_partition_size = sframe_len % number_of_partitions
+        
+        # Run the spark job
+        javaRDD = graphlab_util_ref.pySparkToRDD(
+            sc._jsc.sc(),sf_loc,number_of_partitions,"")
 
-        count = 0
-        start_index = 0
-        ranges = []
-        while(count < number_of_partitions):
-            if(count < num_big_partition_size):
-                ranges.append((str(start_index)+":"+str(start_index + big_partition_size)))
-                start_index = start_index + big_partition_size
-            else:
-                ranges.append((str(start_index)+":"+str(start_index + small_partition_size)))
-                start_index = start_index + small_partition_size
-            count+=1
         from pyspark import RDD
-        rdd = sc.parallelize(ranges,number_of_partitions)
-        if sc.master[0:5] == 'local':
-            pipeRdd = sc._jvm.org.graphlab.create.GraphLabUtil.pythonToJava(
-                rdd._jrdd).pipe(
-                    BINARY_PATHS['SPARK_PIPE_WRAPPER_PATH'] + \
-                        " " + BINARY_PATHS['SFRAME_RDD_PATH'] + " " + sf_loc)
-        elif sc.master == 'yarn-client':
-            pipeRdd = sc._jvm.org.graphlab.create.GraphLabUtil.pythonToJava(
-                rdd._jrdd).pipe(
-                    "./" + SPARK_SUPPORT_NAMES['SPARK_PIPE_WRAPPER_PATH'] + \
-                    " " + "./" + SPARK_SUPPORT_NAMES['SFRAME_RDD_PATH'] + \
-                    " " + sf_loc)
-        serializedRdd = sc._jvm.org.graphlab.create.GraphLabUtil.stringToByte(pipeRdd)
         import pyspark
-        output_rdd = RDD(serializedRdd,sc,pyspark.serializers.PickleSerializer())
+        output_rdd = RDD(javaRDD,sc,pyspark.serializers.PickleSerializer())
 
         return output_rdd
-
+    
+    
     @classmethod
-    def __get_staging_dir__(cls,cur_sc):
+    def __get_staging_dir__(cls,cur_sc,graphlab_util_ref):
         if not RDD_SUPPORT_INITED:
-            __rdd_support_init__(cur_sc)
+            __rdd_support_init__(cur_sc,graphlab_util_ref)
 
 
         return STAGING_DIR
 
     @classmethod
-    def from_rdd(cls, rdd):
+    def from_rdd(cls, rdd,cur_sc):
         """
-        Convert a Spark RDD into a GraphLab Create SFrame.
+        Convert a Spark RDD into an SFrame.
 
         To enable this function, you must add the jar file bundled with GraphLab
         Create to the Spark driver's classpath.  This must happen BEFORE Spark
@@ -1869,10 +1876,17 @@ class SFrame(object):
         Parameters
         ----------
         rdd : pyspark.rdd.RDD
+            The input Spark RDD that is going to be converted to an SFrame.
+        cur_sc : SparkContext
+            An instance object of an SparkContext.
 
         Returns
         -------
         out : SFrame
+        
+        Notes
+        -------
+        - look at to_rdd()
 
         Examples
         --------
@@ -1881,7 +1895,7 @@ class SFrame(object):
         >>> from graphlab import SFrame
         >>> sc = SparkContext('local')
         >>> rdd = sc.parallelize([1,2,3])
-        >>> sf = SFrame.from_rdd(rdd)
+        >>> sf = SFrame.from_rdd(rdd,sc)
         >>> sf
         Data:
         +-----+
@@ -1897,192 +1911,60 @@ class SFrame(object):
         if not RDD_SUPPORT:
             raise Exception("Support for translation to Spark RDDs not enabled.")
         
-        cur_sc = None
-        jrdd = None
         jrdd_deserializer = None
-        if rdd.__class__.__name__ in {'DataFrame'}:
-            cur_sc = rdd._sc
-            jrdd = rdd.rdd._jrdd
+        from pyspark import RDD
+        from pyspark.sql import DataFrame
+
+        if isinstance(rdd,DataFrame):
             jrdd_deserializer = rdd.rdd._jrdd_deserializer
-        else:
-            cur_sc = rdd.ctx
-            jrdd = rdd._jrdd
+        elif isinstance(rdd,RDD):
             jrdd_deserializer = rdd._jrdd_deserializer
-        
-        
-        if cur_sc.master[0:5] != 'local':
-            raise RuntimeError("Your spark context's master is %s. Only 'local' is supported. \n"\
-                    "We are working on a better Spark integration for the upcoming release. Please follow %s for further details." \
-                    % (cur_sc.master,"https://dato.com/learn/userguide/data_formats_and_sources/spark_integration.html#limitations"))
-        
-        checkRes = rdd.take(1);
+        else:
+            raise RuntimeError("RDD type " + rdd.__class__.__name__ + " is currently unsupported.")
 
-        if len(checkRes) > 0 and checkRes[0].__class__.__name__ == 'Row' and rdd.__class__.__name__ not in {'SchemaRDD','DataFrame'}:
-            raise Exception("Conversion from RDD(pyspark.sql.Row) to SFrame not supported. Please call sql.createDataFrame(rdd) or sql.inferSchema(rdd) first.")
-        
-        if(jrdd_deserializer.__class__.__name__ == 'UTF8Deserializer'):
-            return SFrame.__from_UTF8Deserialized_rdd__(rdd)
-
-        sf_names = None
-        rdd_type = "rdd"
-        if rdd.__class__.__name__ in {'SchemaRDD','DataFrame'}:
-            rdd_type = "schemardd"
-            first_row = rdd.take(1)[0]
-            if hasattr(first_row, 'keys'):
-              sf_names = first_row.keys()
-            else:
-              sf_names = first_row.__FIELDS__
-
-            sf_names = [str(i) for i in sf_names]
-
-
-
-        tmp_loc = SFrame.__get_staging_dir__(cur_sc)
-
-        if tmp_loc is None:
-            raise RuntimeError("Could not determine staging directory for SFrame files.")
-
-        mode = "batch"
+        # Determine the encoding of the RDD
+        encoding = "batch" # default encoding in spark is batch
         if(jrdd_deserializer.__class__.__name__ == 'PickleSerializer'):
-            mode = "pickle"
-
-        if cur_sc.master[0:5] == 'local':
-            t = cur_sc._jvm.org.graphlab.create.GraphLabUtil.byteToString(
-                jrdd).pipe(
-                    BINARY_PATHS['SPARK_PIPE_WRAPPER_PATH'] + " " + \
-                    BINARY_PATHS['RDD_SFRAME_PATH'] + " " + tmp_loc +\
-                    " " + mode + " " + rdd_type)
-        else:
-            t = cur_sc._jvm.org.graphlab.create.GraphLabUtil.byteToString(
-                jrdd).pipe(
-                    "./" + SPARK_SUPPORT_NAMES['SPARK_PIPE_WRAPPER_PATH'] +\
-                    " " + "./" + SPARK_SUPPORT_NAMES['RDD_SFRAME_PATH'] + " " +\
-                    tmp_loc + " " + mode + " " + rdd_type)
-
-        # We get the location of an SFrame index file per Spark partition in
-        # the result.  We assume that this is in partition order.
-        res = t.collect()
-
-        out_sf = cls()
-        for url in res:
-            sf = SFrame()
-            sf.__proxy__.load_from_sframe_index(_make_internal_url(url))
-            sf.__proxy__.delete_on_close()
-            out_sf_coltypes = out_sf.column_types()
-            if(len(out_sf_coltypes) != 0):
-                sf_coltypes = sf.column_types()
-                sf_temp_names = sf.column_names()
-                out_sf_temp_names = out_sf.column_names()
-
-                for i in range(len(sf_coltypes)):
-                    if sf_coltypes[i] != out_sf_coltypes[i]:
-                        print "mismatch for types %s and %s" % (sf_coltypes[i],out_sf_coltypes[i])
-                        sf[sf_temp_names[i]] = sf[sf_temp_names[i]].astype(str)
-                        out_sf[out_sf_temp_names[i]] = out_sf[out_sf_temp_names[i]].astype(str)
-            out_sf = out_sf.append(sf)
-
-        out_sf.__proxy__.delete_on_close()
-
-        if sf_names is not None:
-            out_names = out_sf.column_names()
-            if(set(out_names) != set(sf_names)):
-                out_sf = out_sf.rename(dict(zip(out_names, sf_names)))
-
-        return out_sf
-
-    @classmethod
-    def __from_UTF8Deserialized_rdd__(cls, rdd):
-        _mt._get_metric_tracker().track('sframe.__from_UTF8Deserialized_rdd__')
-        if not RDD_SUPPORT:
-            raise Exception("Support for translation to Spark RDDs not enabled.")
-
-        cur_sc = None
-        jrdd = None
-        jrdd_deserializer = None
-        jsrdd = None
-
-        if rdd.__class__.__name__ in {'DataFrame'}:
-            cur_sc = rdd._sc
-            jrdd = rdd.rdd._jrdd
-            jrdd_deserializer = rdd.rdd._jrdd_deserializer
-            jsrdd = rdd._jdf
-        elif rdd.__class__.__name__ in {'SchemaRDD'}:
-            jsrdd = rdd._jschema_rdd
-        else:
-            cur_sc = rdd.ctx
-            jrdd = rdd._jrdd
-
-        sf_names = None
-        sf_types = None
-        tmp_loc = SFrame.__get_staging_dir__(cur_sc)
-
+            encoding = "pickle"
+        elif(jrdd_deserializer.__class__.__name__ == 'UTF8Deserializer'):
+            encoding = "utf8"
+       
+        # get a handle to GraphLabUtil java object
+        graphlab_util_ref = SFrame.__get_graphlabutil_reference_on_spark_unity_jar(cur_sc)
+        
+        # Prep the sframe environment
+        tmp_loc = SFrame.__get_staging_dir__(cur_sc,graphlab_util_ref)
         if tmp_loc is None:
             raise RuntimeError("Could not determine staging directory for SFrame files.")
 
-        if(rdd.__class__.__name__ in {'SchemaRDD','DataFrame'}):
-            first_row = rdd.take(1)[0]
-            if hasattr(first_row, 'keys'):
-              sf_names = first_row.keys()
-              sf_types = [type(i) for i in first_row.values()]
-            else:
-              sf_names = first_row.__FIELDS__
-              sf_types = [type(i) for i in first_row]
+        # directory to stage the SFrame
+        outputDir = tmp_loc
+        # prefix for the final SFrame name.  This would normally be a meaningful name
+        # however since this sframe will immediately be opened we use a random name
+        finalSFramePrefix = str(uuid.uuid4())
 
-            sf_names = [str(i) for i in sf_names]
-
-            for _type in sf_types:
-                if(_type != int and _type != str and _type != float and _type != unicode):
-                    raise TypeError("Only int, str, and float are supported for now")
-
-            types = ""
-            for i in sf_types:
-                types += i.__name__ + ","
-            if cur_sc.master[0:5] == 'local':
-              t = rdd._jschema_rdd.toJavaStringOfValues(jsrdd).pipe(
-                  BINARY_PATHS['SPARK_PIPE_WRAPPER_PATH'] + " " +\
-                  BINARY_PATHS['RDD_SFRAME_NONPICKLE_PATH']  + " " + tmp_loc +\
-                  " " + types)
-            else:
-              t = cur_sc._jvm.org.graphlab.create.GraphLabUtil.toJavaStringOfValues(
-                  jsrdd).pipe(
-                      "./" + SPARK_SUPPORT_NAMES['SPARK_PIPE_WRAPPER_PATH'] +\
-                      " " + "./" +\
-                      SPARK_SUPPORT_NAMES['RDD_SFRAME_NONPICKLE_PATH'] + " " +\
-                      tmp_loc + " " + types)
+        # run the spark job which returns the filename of the final sframe index
+        if isinstance(rdd,DataFrame):
+            # if its a dataframe use the special java code path.
+            df = rdd._jdf
+            finalSFrameFilename = graphlab_util_ref.toSFrame(
+                df, tmp_loc, finalSFramePrefix)
         else:
-            if cur_sc.master[0:5] == 'local':
-              t = cur_sc._jvm.org.graphlab.create.GraphLabUtil.pythonToJava(
-                  jrdd).pipe(
-                      BINARY_PATHS['SPARK_PIPE_WRAPPER_PATH'] + " " +\
-                      BINARY_PATHS['RDD_SFRAME_NONPICKLE_PATH'] +  " " +\
-                      tmp_loc)
+            if encoding == 'utf8':
+                finalSFrameFilename = graphlab_util_ref.toSFrame(
+                    rdd._jrdd.rdd(),tmp_loc, finalSFramePrefix)
             else:
-              t = cur_sc._jvm.org.graphlab.create.GraphLabUtil.pythonToJava(
-                  jrdd).pipe(
-                      "./" + SPARK_SUPPORT_NAMES['SPARK_PIPE_WRAPPER_PATH'] +\
-                      " " + "./" +\
-                      SPARK_SUPPORT_NAMES['RDD_SFRAME_NONPICKLE_PATH'] + " " +\
-                      tmp_loc)
+                # Prep the additional arguments to feed into the pySparkToSFrame function in Java 
+                # that will call the spark_unity binary which does the actual encoding
+                additiona_args = os.path.join(" --encoding=%s " % encoding +\
+                                    " --type=rdd ")
+                finalSFrameFilename = graphlab_util_ref.pySparkToSFrame(
+                    rdd._jrdd, tmp_loc, finalSFramePrefix, additiona_args)
 
-        # We get the location of an SFrame index file per Spark partition in
-        # the result.  We assume that this is in partition order.
-        res = t.collect()
-
-        out_sf = cls()
-        for url in res:
-            sf = SFrame()
-            sf.__proxy__.load_from_sframe_index(_make_internal_url(url))
-            sf.__proxy__.delete_on_close()
-            out_sf = out_sf.append(sf)
-
-        out_sf.__proxy__.delete_on_close()
-
-        if sf_names is not None:
-            out_names = out_sf.column_names()
-            if(set(out_names) != set(sf_names)):
-                out_sf = out_sf.rename(dict(zip(out_names, sf_names)))
-
-        return out_sf
+        # Load and return the sframe
+        sf = SFrame()
+        sf.__proxy__.load_from_sframe_index(_make_internal_url(finalSFrameFilename))
+        return sf
 
     @classmethod
     def from_odbc(cls, db, sql, verbose=False):

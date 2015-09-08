@@ -620,9 +620,24 @@ class SArray(object):
 
     def contains(self, item):
         """
-        Performs an element-wise substring test against "item". The current
-        array must contains strings and item must be a string. Produces a value
-        1 if item is a substring of the element and 0 otherwise.
+        Performs an element-wise substring search of "item". The current
+        array must contains strings and item must be a string. Produces a 1
+        for each row if item is a substring of the row and 0 otherwise.
+
+        Conceptually equivalent to:
+
+        >>> sa.apply(lambda x: item in x)
+
+        Parameters
+        ----------
+        item : str
+            The item to search for.
+
+        Returns
+        -------
+        out : SArray
+            A binary SArray where a non-zero value denotes that the string
+            was found in the SArray. And 0 if it is not found.
 
         Examples
         --------

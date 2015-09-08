@@ -1105,7 +1105,7 @@ class SFrameTest(unittest.TestCase):
             sf.__materialize__()
             built_ins = [aggregate.COUNT(), aggregate.SUM('value'),
                 aggregate.AVG('value'), aggregate.MIN('value'), aggregate.MAX('value'),
-                aggregate.VAR('value'), aggregate.STDV('value'), aggregate.SUM('vector_values'), aggregate.MEAN('vector_values')]
+                aggregate.VAR('value'), aggregate.STDV('value'), aggregate.SUM('vector_values'), aggregate.MEAN('vector_values'), aggregate.COUNT_DISTINCT('value')]
             sf2 = sf.groupby('key', built_ins)
             self.assertEqual(sf2['Count'], m)
             self.assertEqual(sf2['Sum of value'], sum(values))
@@ -1116,9 +1116,29 @@ class SFrameTest(unittest.TestCase):
             self.assertEqual(sf2['Stdv of value'], np.std(values))
             self.assertEqual(sf2['Vector Sum of vector_values'], np.sum(vector_values, axis=0))
             self.assertEqual(sf2['Vector Avg of vector_values'], np.mean(vector_values, axis=0))
+            self.assertEqual(sf2['Count Distinct of value'], len(np.unique(values)))
 
         # For vectors
 
+
+    def test_min_max_with_missing_values(self):
+        """
+        Test builtin groupby aggregators
+        """
+        sf = SFrame()
+        sf['key'] = [1,1,1,1,1,1,2,2,2,2]
+        sf['value'] = [1,None,None,None,None,None, None,None,None,None]
+        built_ins = [aggregate.COUNT(), aggregate.SUM('value'),
+                aggregate.AVG('value'), aggregate.MIN('value'), aggregate.MAX('value'),
+                aggregate.VAR('value'), aggregate.STDV('value'), aggregate.COUNT_DISTINCT('value')]
+        sf2 = sf.groupby('key', built_ins).sort('key')
+        self.assertEqual(sf2['Count'], [6,4])
+        self.assertEqual(sf2['Sum of value'], [1, 0])
+        self.assertEqual(sf2['Avg of value'], [1, None])
+        self.assertEqual(sf2['Min of value'], [1, None])
+        self.assertEqual(sf2['Max of value'],  [1, None])
+        self.assertEqual(sf2['Var of value'], [1, 0])
+        self.assertEqual(sf2['Stdv of value'], [1, 0])
 
 
 
@@ -1136,7 +1156,7 @@ class SFrameTest(unittest.TestCase):
             sf['value'] = sf['value'] + 0
             built_ins = [aggregate.COUNT(), aggregate.SUM('value'),
                 aggregate.AVG('value'), aggregate.MIN('value'), aggregate.MAX('value'),
-                aggregate.VAR('value'), aggregate.STDV('value'), aggregate.SUM('vector_values'), aggregate.MEAN('vector_values')]
+                aggregate.VAR('value'), aggregate.STDV('value'), aggregate.SUM('vector_values'), aggregate.MEAN('vector_values'), aggregate.COUNT_DISTINCT('value')]
             sf2 = sf.groupby('key', built_ins)
             self.assertEqual(sf2['Count'], m)
             self.assertEqual(sf2['Sum of value'], sum(values))
@@ -1147,6 +1167,7 @@ class SFrameTest(unittest.TestCase):
             self.assertEqual(sf2['Stdv of value'], np.std(values))
             self.assertEqual(sf2['Vector Sum of vector_values'], np.sum(vector_values, axis=0))
             self.assertEqual(sf2['Vector Avg of vector_values'], np.mean(vector_values, axis=0))
+            self.assertEqual(sf2['Count Distinct of value'], len(np.unique(values)))
 
     def test_aggregate_ops2(self):
         """
@@ -1163,7 +1184,7 @@ class SFrameTest(unittest.TestCase):
                 'avg':aggregate.AVG('value'),
                 'avg2':aggregate.MEAN('value'), 'min':aggregate.MIN('value'), 'max':aggregate.MAX('value'),
                 'var':aggregate.VAR('value'), 'var2':aggregate.VARIANCE('value'),
-                'stdv':aggregate.STD('value'), 'stdv2':aggregate.STDV('value'),'vector_sum': aggregate.SUM('vector_values'),'vector_mean': aggregate.MEAN('vector_values')}
+                'stdv':aggregate.STD('value'), 'stdv2':aggregate.STDV('value'),'vector_sum': aggregate.SUM('vector_values'),'vector_mean': aggregate.MEAN('vector_values'), 'unique':aggregate.COUNT_DISTINCT('value')}
             sf2 = sf.groupby('key', built_ins)
             self.assertEqual(sf2['count'], m)
             self.assertEqual(sf2['sum'], sum(values))
@@ -1177,6 +1198,7 @@ class SFrameTest(unittest.TestCase):
             self.assertEqual(sf2['stdv2'], np.std(values))
             self.assertEqual(sf2['vector_sum'], np.sum(vector_values, axis=0))
             self.assertEqual(sf2['vector_mean'], np.mean(vector_values, axis=0))
+            self.assertEqual(sf2['unique'], len(np.unique(values)))
 
     def test_groupby(self):
         """

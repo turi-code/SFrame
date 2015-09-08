@@ -66,4 +66,20 @@ except:
     import sklearn_mock as sklearn
 
 
+HAS_NLTK = True
+NLTK_MIN_VERSION = '3.0'
+def __get_nltk_version(version):
+    version_regex = '^\d+\.\d+'
+    version = re.search(version_regex, str(version)).group(0)
+    return StrictVersion(version)
 
+try:
+    import nltk
+    if __get_nltk_version(nltk.__version__) < StrictVersion(NLTK_MIN_VERSION):
+        HAS_NLTK = False
+        logging.warn(('nltk version %s is not supported. Minimum required version: %s. '
+                      'nltk support will be disabled.')
+                      % (nltk.__version__, NLTK_MIN_VERSION) )
+except:
+    HAS_NLTK = False
+    import nltk_mock as nltk

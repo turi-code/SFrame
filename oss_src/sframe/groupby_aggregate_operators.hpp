@@ -209,7 +209,8 @@ class min: public group_aggregate_value {
 
   /// Emits the min result
   flexible_type emit() const {
-    return value;
+    if (!init) return FLEX_UNDEFINED;
+    else return value;
   }
 
   /// The types supported by the min
@@ -469,7 +470,8 @@ class max: public group_aggregate_value {
 
   /// Emits the max result
   flexible_type emit() const {
-    return value;
+    if (!init) return FLEX_UNDEFINED;
+    else return value;
   }
 
   /// The types supported by the max
@@ -691,7 +693,8 @@ class average: public group_aggregate_value {
 
   /// Emits the count resulpt
   flexible_type emit() const {
-    return value;
+    if (count == 0) return FLEX_UNDEFINED;
+    else return value;
   }
 
   /// The types supported by the count. (everything)
@@ -1121,6 +1124,61 @@ class select_one: public group_aggregate_value {
  private:
   flexible_type m_value;
   bool m_has_value = false;
+};
+
+
+/**
+ * Implements an aggregator that computes the exact number of unique elements
+ */
+class count_distinct: public group_aggregate_value {
+ public:
+  /// Returns a new empty instance of sum with the same type
+  group_aggregate_value* new_instance() const {
+    count_distinct* ret = new count_distinct;
+    return ret;
+  }
+
+  void add_element_simple(const flexible_type& flex) {
+    m_values.insert(flex);
+  }
+
+  /// combines two partial zip
+  void combine(const group_aggregate_value& other) {
+    auto& v = dynamic_cast<const count_distinct&>(other);
+    m_values.insert(v.m_values.begin(), v.m_values.end());
+  }
+
+  /// Emits the zip result
+  flexible_type emit() const {
+    return m_values.size();
+  }
+
+  /// The types supported by the zip
+  bool support_type(flex_type_enum type) const {
+    return true;
+  }
+
+  flex_type_enum set_input_type(flex_type_enum type) {
+    return flex_type_enum::INTEGER;
+  }
+
+  /// Name of the class
+  std::string name() const {
+    return "Count Distinct";
+  }
+
+  /// Serializer
+  void save(oarchive& oarc) const {
+    oarc << m_values;
+  }
+
+  /// Deserializer
+  void load(iarchive& iarc) {
+    iarc >> m_values;
+  }
+
+ private:
+  std::unordered_set<flexible_type> m_values;
 };
 } // namespace groupby_operators
 } // namespace graphlab

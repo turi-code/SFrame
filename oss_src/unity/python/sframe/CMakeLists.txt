@@ -16,7 +16,7 @@ project(unity)
 
 set(INSTALLATION_BINARY_FILES
     ${CMAKE_SOURCE_DIR}/deps/local/lib/libhdfs.so
-    ${CMAKE_CURRENT_BINARY_DIR}/../../../sframe/graphlab-create-spark-integration.jar)
+    ${CMAKE_CURRENT_BINARY_DIR}/../../../sframe/spark_unity.jar)
 
 # extensions
 set(INSTALLATION_EXTENSIONS)
@@ -28,10 +28,7 @@ endforeach()
 
 set(INSTALLATION_BINARY_TARGETS
   unity_server
-  spark_pipe_wrapper
-  rddtosf_pickle
-  rddtosf_nonpickle
-  sftordd_pickle
+  spark_unity
   pylambda_worker
   minipsutil
 )

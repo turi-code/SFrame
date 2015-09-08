@@ -131,7 +131,7 @@ unit_test() {
 mac_patch_rpath() {
   echo -e "\n\n\n================= Patching Mac RPath ================\n\n\n"
   # on mac we need to do a little work to fix up RPaths
-  cd ${WORKSPACE}/${build_type}/src/unity/python
+  cd ${WORKSPACE}/${build_type}/oss_src/unity/python
   # - look for all files
   # - run 'file' on it
   # - look for binary files (shared libraries, executables)

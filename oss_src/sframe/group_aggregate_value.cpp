@@ -64,6 +64,8 @@ std::shared_ptr<group_aggregate_value> get_builtin_group_aggregator(const std::s
     auto quantile_operator = std::make_shared<groupby_operators::quantile>();
     quantile_operator->init(parsed_quantiles);
     return quantile_operator;
+  } else if (boost::algorithm::starts_with(name, "__builtin__count__distinct__")) {
+    return std::make_shared<groupby_operators::count_distinct>();
   } else {
     log_and_throw("Unknown groupby aggregator " + name);
   }

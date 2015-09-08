@@ -734,10 +734,6 @@ bool unity_sarray::any() {
 flexible_type unity_sarray::max() {
   log_func_entry();
 
-  if (size() == 0) {
-    return flex_undefined();
-  }
-
   flex_type_enum cur_type = dtype();
 
   if(cur_type == flex_type_enum::INTEGER ||
@@ -756,13 +752,14 @@ flexible_type unity_sarray::max() {
 
     auto reductionfn = [&](const flexible_type& f, flexible_type& maxv)->void {
                           if (f.get_type() != flex_type_enum::UNDEFINED) {
+                            if (maxv.get_type() == flex_type_enum::UNDEFINED) maxv = max_val;
                             if(f > maxv) maxv = f;
                           }
                         };
 
     max_val =
-      query_eval::reduce<flexible_type>(m_planner_node, reductionfn, 
-                                        reductionfn, max_val);
+      query_eval::reduce<flexible_type>(m_planner_node, reductionfn,
+                                        reductionfn, flex_undefined());
 
     return max_val;
   } else {
@@ -773,35 +770,33 @@ flexible_type unity_sarray::max() {
 flexible_type unity_sarray::min() {
   log_func_entry();
 
-  if(this->size() > 0) {
-    flex_type_enum cur_type = dtype();
-    if(cur_type == flex_type_enum::INTEGER ||
-       cur_type == flex_type_enum::DATETIME||
-       cur_type == flex_type_enum::FLOAT) {
+  flex_type_enum cur_type = dtype();
+  if(cur_type == flex_type_enum::INTEGER ||
+     cur_type == flex_type_enum::DATETIME||
+     cur_type == flex_type_enum::FLOAT) {
 
-      flexible_type min_val;
-      if(cur_type == flex_type_enum::INTEGER) {
-        min_val = std::numeric_limits<flex_int>::max();
-      } else if(cur_type == flex_type_enum::DATETIME) {
-        min_val = flex_date_time(
-            flexible_type_impl::ptime_to_time_t(boost::posix_time::max_date_time));
-      } else if(cur_type == flex_type_enum::FLOAT) {
-        min_val = std::numeric_limits<flex_float>::max();
-      }
-
-      auto reductionfn = [&](const flexible_type& f, flexible_type& minv)->void {
-                      if (f.get_type() != flex_type_enum::UNDEFINED) {
-                        if(f < minv) minv = f;
-                      }
-                    };
-
-      min_val =
-          query_eval::reduce<flexible_type>(m_planner_node, reductionfn, 
-                                            reductionfn, min_val);
-      return min_val;
-    } else {
-      log_and_throw("Cannot perform on non-numeric types!");
+    flexible_type min_val;
+    if(cur_type == flex_type_enum::INTEGER) {
+      min_val = std::numeric_limits<flex_int>::max();
+    } else if(cur_type == flex_type_enum::DATETIME) {
+      min_val = flex_date_time(
+          flexible_type_impl::ptime_to_time_t(boost::posix_time::max_date_time));
+    } else if(cur_type == flex_type_enum::FLOAT) {
+      min_val = std::numeric_limits<flex_float>::max();
     }
+    auto reductionfn = [&](const flexible_type& f, flexible_type& minv)->void {
+                    if (f.get_type() != flex_type_enum::UNDEFINED) {
+                      if (minv.get_type() == flex_type_enum::UNDEFINED) minv = min_val;
+                      if(f < minv) minv = f;
+                    }
+                  };
+
+    min_val =
+        query_eval::reduce<flexible_type>(m_planner_node, reductionfn,
+                                          reductionfn, flex_undefined());
+    return min_val;
+  } else {
+    log_and_throw("Cannot perform on non-numeric types!");
   }
 
   return flex_undefined();
@@ -877,7 +872,7 @@ flexible_type unity_sarray::sum() {
 
       std::pair<bool, flexible_type> start_val{false, flex_vec()};
       std::pair<bool, flexible_type> sum_val =
-        query_eval::reduce<std::pair<bool, flexible_type> >(m_planner_node, reductionfn, 
+        query_eval::reduce<std::pair<bool, flexible_type> >(m_planner_node, reductionfn,
                                                             combinefn , start_val);
 
       // failure indicates there is a missing value, or there is vector length
@@ -899,94 +894,92 @@ flexible_type unity_sarray::sum() {
 flexible_type unity_sarray::mean() {
   log_func_entry();
 
-  if(this->size() > 0) {
 
-    flex_type_enum cur_type = dtype();
-    if(cur_type == flex_type_enum::INTEGER ||
-       cur_type == flex_type_enum::FLOAT ) {
+  flex_type_enum cur_type = dtype();
+  if(cur_type == flex_type_enum::INTEGER ||
+     cur_type == flex_type_enum::FLOAT ) {
 
-      std::pair<double, size_t> start_val{0.0, 0.0}; // mean, and size
-      auto reductionfn =
-          [](const flexible_type& f,
-                      std::pair<double, size_t>& mean)->void {
-            if (f.get_type() != flex_type_enum::UNDEFINED) {
-              // Divide done each time to keep from overflowing
-              ++mean.second;
-              mean.first += (flex_float(f) - mean.first) / double(mean.second);
-            }
-          };
+    std::pair<double, size_t> start_val{0.0, 0.0}; // mean, and size
+    auto reductionfn =
+        [](const flexible_type& f,
+           std::pair<double, size_t>& mean)->void {
+          if (f.get_type() != flex_type_enum::UNDEFINED) {
+            // Divide done each time to keep from overflowing
+            ++mean.second;
+            mean.first += (flex_float(f) - mean.first) / double(mean.second);
+          }
+        };
 
-      // second reduction function to aggregate result
-      auto aggregatefn = [](const std::pair<double, size_t>& f,
-                            std::pair<double, size_t> &mean)->void {
-        // weighted sum of the two
-        if (mean.second + f.second > 0) {
-          mean.first =
-              mean.first * ((double)mean.second / (double)(mean.second + f.second)) +
-              f.first * ((double)f.second / (double)(mean.second + f.second));
-          mean.second += f.second;
-        }
-      };
+    // second reduction function to aggregate result
+    auto aggregatefn = [](const std::pair<double, size_t>& f,
+                          std::pair<double, size_t> &mean)->void {
+      // weighted sum of the two
+      if (mean.second + f.second > 0) {
+        mean.first =
+            mean.first * ((double)mean.second / (double)(mean.second + f.second)) +
+            f.first * ((double)f.second / (double)(mean.second + f.second));
+        mean.second += f.second;
+      }
+    };
 
-      std::pair<double, size_t> mean_val =
+    std::pair<double, size_t> mean_val =
         query_eval::reduce<std::pair<double, size_t> >(m_planner_node, reductionfn, 
                                                        aggregatefn, start_val);
 
-      return mean_val.first;
+    if (mean_val.second == 0) return flex_undefined();
+    else return mean_val.first;
 
 
-    } else if(cur_type == flex_type_enum::VECTOR) {
+  } else if(cur_type == flex_type_enum::VECTOR) {
 
-      std::pair<flexible_type, size_t> start_val{flexible_type(), 0}; // mean, and size
-      auto reductionfn =
-          [](const flexible_type& f,
-                      std::pair<flexible_type, size_t>& mean)->void {
-              // In the first operation in case of vector, initialzed vector will be size 0
-              // so we cannot simply add. Copy instead.
-              if (mean.second == 0){
-                ++mean.second;
-                mean.first = f;
-              } else {
-                if (f.get_type() == flex_type_enum::VECTOR && f.size() != mean.first.size()){
-                  log_and_throw("Cannot perform mean on SArray with vectors of different lengths.");
-                }
-              // Divide done each time to keep from overflowing
-                ++mean.second;
-                mean.first += (f - mean.first) / double(mean.second);
-              }
-          };
-
-      // second reduction function to aggregate result
-      auto aggregatefn = [](const std::pair<flexible_type, size_t>& f,
-                            std::pair<flexible_type, size_t> &mean)->void {
-        // weighted sum of the two
-        if (mean.second > 0 &&  f.second > 0) {
-          if (mean.first.get_type() == flex_type_enum::VECTOR && f.first.size() != mean.first.size()){
-                log_and_throw("Cannot perform mean on SArray with vectors of different lengths.");
+    std::pair<flexible_type, size_t> start_val{flexible_type(), 0}; // mean, and size
+    auto reductionfn =
+        [](const flexible_type& f,
+           std::pair<flexible_type, size_t>& mean)->void {
+          // In the first operation in case of vector, initialzed vector will be size 0
+          // so we cannot simply add. Copy instead.
+          if (mean.second == 0){
+            ++mean.second;
+            mean.first = f;
+          } else {
+            if (f.get_type() == flex_type_enum::VECTOR && f.size() != mean.first.size()){
+              log_and_throw("Cannot perform mean on SArray with vectors of different lengths.");
             }
-          mean.first =
-              mean.first * ((double)mean.second / (double)(mean.second + f.second)) +
-              f.first * ((double)f.second / (double)(mean.second + f.second));
-          mean.second += f.second;
+            // Divide done each time to keep from overflowing
+            ++mean.second;
+            mean.first += (f - mean.first) / double(mean.second);
+          }
+        };
+
+    // second reduction function to aggregate result
+    auto aggregatefn = [](const std::pair<flexible_type, size_t>& f,
+                          std::pair<flexible_type, size_t> &mean)->void {
+      // weighted sum of the two
+      if (mean.second > 0 &&  f.second > 0) {
+        if (mean.first.get_type() == flex_type_enum::VECTOR && f.first.size() != mean.first.size()){
+          log_and_throw("Cannot perform mean on SArray with vectors of different lengths.");
+        }
+        mean.first =
+            mean.first * ((double)mean.second / (double)(mean.second + f.second)) +
+            f.first * ((double)f.second / (double)(mean.second + f.second));
+        mean.second += f.second;
         // If count of mean is 0, simply copy the other over since we cannot add
         // vectors of different lengths.
-        } else if (f.second > 0){
-          mean.first = f.first;
-          mean.second = f.second;
-        }
-      };
+      } else if (f.second > 0){
+        mean.first = f.first;
+        mean.second = f.second;
+      }
+    };
 
-      std::pair<flexible_type, size_t> mean_val =
-        query_eval::reduce<std::pair<flexible_type, size_t> >(m_planner_node, reductionfn, 
+    std::pair<flexible_type, size_t> mean_val =
+        query_eval::reduce<std::pair<flexible_type, size_t> >(m_planner_node, reductionfn,
                                                               aggregatefn, start_val);
 
-      return mean_val.first;
-    } else {
-      log_and_throw("Cannot perform on types that are not numeric or vector!");
-    }
+    if (mean_val.second == 0) return flex_undefined();
+    else return mean_val.first;
+  } else {
+    log_and_throw("Cannot perform on types that are not numeric or vector!");
   }
-
-  return flex_undefined();
 }
 
 flexible_type unity_sarray::std(size_t ddof) {
