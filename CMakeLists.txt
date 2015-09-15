@@ -119,6 +119,7 @@ if(WIN32)
 endif()
 add_definitions(-DCURL_STATICLIB)
 add_definitions(-DIN_GRAPHLAB_SOURCE_TREE)
+add_definitions(-DFUSION_MAX_VECTOR_SIZE=20)
 
 #**************************************************************************/
 #*                                                                        */

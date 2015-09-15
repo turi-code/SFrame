@@ -1137,6 +1137,7 @@ class gl_sframe {
    */
   gl_sframe topk(const std::string& column_name, size_t k=10, bool reverse=false) const;
 
+  size_t column_index(const std::string &column_name) const;
 
   /**
    * Extracts one column of the gl_sframe.

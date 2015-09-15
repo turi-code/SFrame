@@ -16,6 +16,7 @@
 #include <fileio/fixed_size_cache_manager.hpp>
 #include <fileio/file_handle_pool.hpp>
 #include <fileio/s3_api.hpp>
+#include <fileio/sanitize_url.hpp>
 #include <export.hpp>
 
 namespace graphlab {
@@ -267,8 +268,10 @@ EXPORT bool create_directory(const std::string& path) {
   return false;
 }
 
-EXPORT bool delete_path(const std::string& path) {
-  file_status stat = get_file_status(path);
+EXPORT bool delete_path(const std::string& path,
+                        file_status stat) {
+  if (stat == file_status::FS_UNAVAILABLE) stat = get_file_status(path);
+
   if (stat == file_status::MISSING) {
     return false;
   }
@@ -277,21 +280,23 @@ EXPORT bool delete_path(const std::string& path) {
   // delete files that are in use by some SArray
   if (stat == file_status::REGULAR_FILE &&
     fileio::file_handle_pool::get_instance().mark_file_for_delete(path)) {
-    logstream(LOG_INFO) << "Attempting to delete " << path 
+    logstream(LOG_INFO) << "Attempting to delete " << sanitize_url(path)
                         << " but it is still in use. It will be deleted"
                         << " when all references to the file are closed"
                         << std::endl;
     return true;
   } else {
-    return delete_path_impl(path);
+    return delete_path_impl(path, stat);
   }
 }
 
-bool delete_path_impl(const std::string& path) {
-  file_status stat = get_file_status(path);
+bool delete_path_impl(const std::string& path,
+                      file_status stat) {
+  if (stat == file_status::FS_UNAVAILABLE) stat = get_file_status(path);
   if (stat == file_status::MISSING) {
     return false;
   }
+  logstream(LOG_INFO) << "Deleting " << sanitize_url(path) << std::endl;
   if(boost::starts_with(path, "hdfs://")) {
     // hdfs only has a recursive deleter. we need to make this safe
     // if the current path is a non-empty directory, fail

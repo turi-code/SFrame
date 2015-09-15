@@ -94,7 +94,9 @@ std::tuple<int, bool, std::string> download_url(std::string url) {
   if (tempname == "") return std::make_tuple(-1, false, "");
   // attach the trailing file extension if any
   size_t lastdot = url.find_last_of(".");
-  if (lastdot != std::string::npos) {
+  // the last dot must appear after the last directory separator
+  size_t last_separator = url.find_last_of("/");
+  if (lastdot != std::string::npos && lastdot > last_separator) {
     tempname = tempname + url.substr(lastdot);
   }
   int status = download_url(url, tempname);

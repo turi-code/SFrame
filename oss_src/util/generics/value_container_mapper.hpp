@@ -303,10 +303,12 @@ class value_container_mapper {
       
     if(UNLIKELY(hashkey::is_empty(kv_pair.first) )) {
       _insert_in_stack(kv_pair, _kv_empty, _kv_empty_overflow_stack);
+      return;
     }
       
     if(UNLIKELY(hashkey::is_deleted(kv_pair.first) )) {
       _insert_in_stack(kv_pair, _kv_deleted, _kv_deleted_overflow_stack);
+      return;
     }
     
     auto ret = table.insert(kv_pair);

@@ -1,4 +1,4 @@
-awscli==1.7.27
+awscli==1.6.2
 httpretty==0.8.8
 librato-metrics==0.8.2
 mixpanel==4.0.2

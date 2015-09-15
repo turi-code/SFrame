@@ -363,6 +363,7 @@ void CURLReadStreamBase::Init(size_t begin_bytes) {
   ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_WRITEDATA, &buffer_) == CURLE_OK);
   ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_HEADERFUNCTION, WriteStringCallback) == CURLE_OK);
   ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_HEADERDATA, &header_) == CURLE_OK);
+  curl_easy_setopt(ecurl_, CURLOPT_NOSIGNAL, 1);
   mcurl_ = curl_multi_init();
   ASSERT_TRUE(curl_multi_add_handle(mcurl_, ecurl_) == CURLM_OK);
   int nrun;
@@ -489,6 +490,7 @@ void ReadStream::InitRequest(size_t begin_bytes,
   ASSERT_TRUE(curl_easy_setopt(ecurl, CURLOPT_URL, surl.str().c_str()) == CURLE_OK);
   ASSERT_TRUE(curl_easy_setopt(ecurl, CURLOPT_HTTPGET, 1L) == CURLE_OK);
   ASSERT_TRUE(curl_easy_setopt(ecurl, CURLOPT_HEADER, 0L) == CURLE_OK);
+  curl_easy_setopt(ecurl, CURLOPT_NOSIGNAL, 1);
 }
 
 /*! \brief simple http read stream to check */
@@ -502,6 +504,7 @@ class HttpReadStream : public CURLReadStreamBase {
                            curl_slist **slist) {
     ASSERT_MSG(begin_bytes == 0, " HttpReadStream: do not support Seek");
     ASSERT_TRUE(curl_easy_setopt(ecurl, CURLOPT_URL, path_.str().c_str()) == CURLE_OK);
+    curl_easy_setopt(ecurl, CURLOPT_NOSIGNAL, 1);
   }
   
  private:
@@ -653,13 +656,15 @@ void WriteStream::Run(const std::string &method,
     // helper for read string
     ReadStringStream ss(data);
     curl_easy_reset(ecurl_);
+    auto surlstring = surl.str();
     ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_HTTPHEADER, slist) == CURLE_OK);
-    ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_URL, surl.str().c_str()) == CURLE_OK);
+    ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_URL, surlstring.c_str()) == CURLE_OK);
     ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_HEADER, 0L) == CURLE_OK);
     ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_WRITEFUNCTION, WriteSStreamCallback) == CURLE_OK);
     ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_WRITEDATA, &rdata) == CURLE_OK);  
     ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_WRITEHEADER, WriteSStreamCallback) == CURLE_OK);
     ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_HEADERDATA, &rheader) == CURLE_OK);
+    curl_easy_setopt(ecurl_, CURLOPT_NOSIGNAL, 1);
     if (method == "POST") {
       ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_POST, 0L) == CURLE_OK);
       ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_POSTFIELDSIZE, data.length()) == CURLE_OK);
@@ -672,7 +677,7 @@ void WriteStream::Run(const std::string &method,
     }
     CURLcode ret = curl_easy_perform(ecurl_);
     if (ret != CURLE_OK) {
-      logstream(LOG_INFO) << "request " << surl.str() << "failed with error "
+      logstream(LOG_INFO) << "request " << surlstring << "failed with error "
                 << curl_easy_strerror(ret) << " Progress " 
                 << etags_.size() << " uploaded " << " retry=" << num_retry << std::endl;
       num_retry += 1;
@@ -776,6 +781,7 @@ void ListObjects(const URI &path,
   ASSERT_TRUE(curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L) == CURLE_OK);
   ASSERT_TRUE(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteSStreamCallback) == CURLE_OK);
   ASSERT_TRUE(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result) == CURLE_OK);
+  curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
   ASSERT_TRUE(curl_easy_perform(curl) == CURLE_OK);
   curl_slist_free_all(slist);
   curl_easy_cleanup(curl);

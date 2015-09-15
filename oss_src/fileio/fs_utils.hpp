@@ -53,8 +53,12 @@ bool create_directory(const std::string& path);
  * later when the files are not used by anyone
  * If path doesn't exist, this returns true.
  * Returns true on success, false on failure.
+ *
+ * \param path The path to delete
+ * \param status The file status if known. (Optional)
  */
-bool delete_path(const std::string& path);
+bool delete_path(const std::string& path,
+                 file_status status = file_status::FS_UNAVAILABLE);
 
 /**
  * Deletes a path.
@@ -64,8 +68,12 @@ bool delete_path(const std::string& path);
  * If the path is a file, then file will be removed
  * If path doesn't exist, this returns true.
  * Returns true on success, false on failure.
+ *
+ * \param path The path to delete
+ * \param status The file status if known. (Optional)
  */
-bool delete_path_impl(const std::string& path);
+bool delete_path_impl(const std::string& path,
+                      file_status status = file_status::FS_UNAVAILABLE);
 
 /**
  * Deletes a path. if path is a directory, deletion will delete

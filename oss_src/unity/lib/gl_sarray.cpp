@@ -60,8 +60,7 @@ gl_sarray::gl_sarray(const gl_sarray& other) {
   m_sarray = other.get_proxy();
 }
 gl_sarray::gl_sarray(gl_sarray&& other) {
-  // m_sarray = std::move(other.get_proxy());
-  m_sarray = other.get_proxy();
+  m_sarray = std::move(other.get_proxy());
 }
 
 gl_sarray::gl_sarray(const std::string& directory) {
@@ -75,8 +74,7 @@ gl_sarray& gl_sarray::operator=(const gl_sarray& other) {
 }
 
 gl_sarray& gl_sarray::operator=(gl_sarray&& other) {
-  // m_sarray = std::move(other.get_proxy());
-  m_sarray = other.get_proxy();
+  m_sarray = std::move(other.get_proxy());
   return *this;
 }
 

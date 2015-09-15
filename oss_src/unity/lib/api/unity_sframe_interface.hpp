@@ -39,6 +39,7 @@ GENERATE_INTERFACE_AND_PROXY(unity_sframe_base, unity_sframe_proxy,
       (size_t, num_columns, )
       (std::vector<flex_type_enum>, dtype, )
       (std::vector<std::string>, column_names, )
+      (size_t, column_index, (const std::string &))
       (std::shared_ptr<unity_sframe_base>, head, (size_t))
       (std::shared_ptr<unity_sframe_base>, tail, (size_t))
       (dataframe_t, _head, (size_t))

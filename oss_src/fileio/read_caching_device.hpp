@@ -10,6 +10,9 @@
 #include <logger/logger.hpp>
 #include <fileio/block_cache.hpp>
 #include <fileio/sanitize_url.hpp>
+#include <parallel/mutex.hpp>
+#include <mutex>
+#include <map>
 namespace graphlab {
 
 // private namespace 
@@ -45,8 +48,22 @@ class read_caching_device {
 
   read_caching_device(const std::string& filename, const bool write = false) {
     m_filename = filename;
-    m_contents = std::make_shared<T>(filename, write);
-    m_file_size = m_contents->file_size();
+    if (write == false) {
+      // check the filesize cache for the filesize so we don't poke s3 again
+      // even if all the data we care about are in a cache
+      std::lock_guard<mutex> file_size_guard(m_filesize_cache_mutex);
+      auto iter = m_filename_to_filesize_map.find(filename);
+      if (iter != m_filename_to_filesize_map.end()) {
+        m_file_size = iter->second;
+      } else {
+        m_contents = std::make_shared<T>(filename, write);
+        m_file_size = m_contents->file_size();
+        m_filename_to_filesize_map[filename] = m_file_size;
+      }
+    } else {
+      m_contents = std::make_shared<T>(filename, write);
+    }
+
     m_writing = write;
   }
 
@@ -55,7 +72,7 @@ class read_caching_device {
   // Only close the file when the close tag matches the actual file type.
   void close(std::ios_base::openmode mode = std::ios_base::openmode()) {
     if (mode == std::ios_base::out && m_writing) {
-      m_contents->close(mode);
+      if (m_contents) m_contents->close(mode);
       m_contents.reset();
       // evict all blocks for this key
       auto& bc = block_cache::get_instance();
@@ -65,8 +82,14 @@ class read_caching_device {
         if (bc.evict_key(key) == false) break;
         ++ block_number;
       }
+      // evict the file size cache
+      {
+        std::lock_guard<mutex> file_size_guard(m_filesize_cache_mutex);
+        m_filename_to_filesize_map.erase(m_filename);
+      }
+
     } else if (mode == std::ios_base::in && !m_writing) {
-      m_contents->close(mode);
+      if (m_contents) m_contents->close(mode);
       m_contents.reset();
     }
   }
@@ -103,11 +126,11 @@ class read_caching_device {
   }
 
   std::streamsize write(const char* strm_ptr, std::streamsize n) {
-    m_contents->write(strm_ptr, n);
+    return get_contents()->write(strm_ptr, n);
   }
 
   bool good() const {
-    return m_contents->good();
+    return get_contents()->good();
   }
 
   /**
@@ -128,7 +151,7 @@ class read_caching_device {
       }
       return m_file_pos;
     } else {
-      m_contents->seek(off, way, openmode);
+      get_contents()->seek(off, way, openmode);
     }
   }
 
@@ -153,6 +176,15 @@ class read_caching_device {
   std::streamoff m_file_pos = 0;
   bool m_writing = true;
 
+  static mutex m_filesize_cache_mutex;
+  static std::map<std::string, size_t> m_filename_to_filesize_map;
+
+  std::shared_ptr<T>& get_contents() {
+    if (!m_contents) {
+      m_contents = std::make_shared<T>(m_filename, m_writing);
+    }
+    return m_contents;
+  }
   std::string get_key_name(size_t block_number) {
     // we generate a key name that will never appear in any filename
     return  m_filename + "////:" + std::to_string(block_number);
@@ -176,10 +208,11 @@ class read_caching_device {
     auto block_start = block_number * READ_CACHING_BLOCK_SIZE;
     auto block_end = std::min(block_start +  READ_CACHING_BLOCK_SIZE, m_file_size);
     // seek to the block and read the whole block at once
-    m_contents->seek(block_start, std::ios_base::beg, std::ios_base::in);
+    auto& contents = get_contents();
+    contents->seek(block_start, std::ios_base::beg, std::ios_base::in);
     std::string block_contents(block_end - block_start, 0);
-    auto bytes_read = m_contents->read(&(block_contents[0]), 
-                                       block_end - block_start);
+    auto bytes_read = contents->read(&(block_contents[0]),
+                                     block_end - block_start);
     // read failed.
     if (bytes_read < block_end - block_start) return false;
 
@@ -197,5 +230,10 @@ class read_caching_device {
 
 }; // end of read_caching_device
 
+template<typename T>
+mutex read_caching_device<T>::m_filesize_cache_mutex;
+
+template<typename T>
+std::map<std::string, size_t> read_caching_device<T>::m_filename_to_filesize_map;
 } // namespace graphlab
 #endif
