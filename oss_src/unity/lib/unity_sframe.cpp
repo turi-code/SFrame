@@ -316,6 +316,13 @@ size_t unity_sframe::num_columns() {
   return m_column_names.size();
 }
 
+size_t unity_sframe::column_index(const std::string &name) {
+  Dlog_func_entry();
+
+  auto sf = this->get_underlying_sframe();
+  return sf->column_index(name);
+}
+
 std::shared_ptr<unity_sarray_base> unity_sframe::select_column(const std::string &name) {
   Dlog_func_entry();
 

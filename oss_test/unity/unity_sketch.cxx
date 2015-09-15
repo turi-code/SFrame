@@ -144,5 +144,66 @@ class unity_sketch_test: public CxxTest::TestSuite {
     std::sort(ret.begin(), ret.end());
     TS_ASSERT_EQUALS(ret.size(), 0);
   }
+  
+  void test_nan_handling_1() {
+    std::shared_ptr<unity_sarray_base> dbl(new unity_sarray);
+    std::vector<flexible_type> vecb = {NAN, 1.0/0, 1.0, 2.0, 3.0};
+    std::vector<flexible_type> vec;
+    vec.reserve(4000);
+    for(size_t i = 0; i < 1000; ++i) vec.insert(vec.end(), vecb.begin(), vecb.end());
+            
+    std::static_pointer_cast<unity_sarray>(dbl)->construct_from_vector(vec, flex_type_enum::FLOAT);
+    std::shared_ptr<unity_sketch_base> sketch(new unity_sketch);
+    std::static_pointer_cast<unity_sketch>(sketch)->construct_from_sarray(dbl);
+  }
 
+  void test_nan_handling_2() {
+    std::shared_ptr<unity_sarray_base> dbl(new unity_sarray);
+    std::vector<flexible_type> vecb = {flex_vec{NAN, 1.0}, flex_vec{6.0, 1.0/0},
+                                      flex_vec{1.0}, flex_vec{2.0}, flex_vec{3.0}};
+    
+    std::vector<flexible_type> vec;
+    vec.reserve(5000);
+    
+    for(size_t i = 0; i < 1000; ++i)
+      vec.insert(vec.end(), vecb.begin(), vecb.end());
+    
+    std::static_pointer_cast<unity_sarray>(dbl)->construct_from_vector(vec, flex_type_enum::VECTOR);
+    std::shared_ptr<unity_sketch_base> sketch(new unity_sketch);
+    std::static_pointer_cast<unity_sketch>(sketch)->construct_from_sarray(dbl);
+  }
+
+  void test_nan_handling_3() {
+    std::shared_ptr<unity_sarray_base> dbl(new unity_sarray);
+    std::vector<flexible_type> vecb = {flex_dict{{NAN, 5.0}, {1.0, 8.0} },
+                                      flex_dict{{1.8, NAN}, {1.0, 8.0} },
+                                      flex_dict{{5, 4}, {1.0, 8.0} }};
+    std::vector<flexible_type> vec;
+    vec.reserve(3000);
+
+    for(size_t i = 0; i < 1000; ++i)
+      vec.insert(vec.end(), vecb.begin(), vecb.end());
+            
+    std::static_pointer_cast<unity_sarray>(dbl)->construct_from_vector(vec, flex_type_enum::DICT);
+    std::shared_ptr<unity_sketch_base> sketch(new unity_sketch);
+    std::static_pointer_cast<unity_sketch>(sketch)->construct_from_sarray(dbl);
+  }
+
+
+  void test_int_regression_case_1() {
+
+    // This caused an issue a while ago.
+    std::shared_ptr<unity_sarray_base> intl(new unity_sarray);
+    std::vector<flexible_type> vec = {flex_int(-1), flex_int(0), flex_int(1)};
+    vec.reserve(20000 + 3);
+    for(long i = 0; i < 10000; ++i) {
+      vec.push_back(i);
+      vec.push_back(-i);
+    }
+            
+    std::static_pointer_cast<unity_sarray>(intl)->construct_from_vector(vec, flex_type_enum::INTEGER);
+    std::shared_ptr<unity_sketch_base> sketch(new unity_sketch);
+    std::static_pointer_cast<unity_sketch>(sketch)->construct_from_sarray(intl);
+  }
+  
 };

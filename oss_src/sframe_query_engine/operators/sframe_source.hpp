@@ -34,7 +34,6 @@ struct operator_impl<planner_node_type::SFRAME_SOURCE_NODE> : public query_opera
       : m_source(source)
       , m_begin_index(begin_index)
       , m_end_index(end_index == size_t(-1) ? m_source.size() : end_index)
-      , m_reader(source.get_reader())
   { }
 
   static query_operator_attributes attributes() {
@@ -51,6 +50,7 @@ struct operator_impl<planner_node_type::SFRAME_SOURCE_NODE> : public query_opera
   }
 
   inline void execute(query_context& context) {
+    if (!m_reader) m_reader = m_source.get_reader();
     auto start = m_begin_index;
     std::shared_ptr<sframe_rows> rows;
     auto block_size = context.block_size();

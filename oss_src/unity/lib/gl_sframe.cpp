@@ -182,8 +182,7 @@ gl_sframe& gl_sframe::operator=(const gl_sframe& other) {
 
 
 gl_sframe& gl_sframe::operator=(gl_sframe&& other) {
-  // m_sframe = std::move(other.get_proxy());
-  m_sframe = other.get_proxy();
+  m_sframe = std::move(other.get_proxy());
   return *this;
 }
 
@@ -425,8 +424,7 @@ void gl_sframe::ensure_has_sframe_reader() const {
     std::lock_guard<mutex> guard(reader_shared_ptr_lock);
     if (!m_sframe_reader) {
       m_sframe_reader =
-          // std::move(get_proxy()->get_underlying_sframe()->get_reader());
-          get_proxy()->get_underlying_sframe()->get_reader();
+          std::move(get_proxy()->get_underlying_sframe()->get_reader());
     }
   }
 }
@@ -470,6 +468,10 @@ std::pair<gl_sframe, gl_sframe> gl_sframe::random_split(double fraction, size_t 
 gl_sframe gl_sframe::topk(const std::string& column_name, 
                           size_t k, bool reverse) const {
   return (*this)[(*this)[column_name].topk_index(k, reverse)].sort(column_name, reverse);
+}
+
+size_t gl_sframe::column_index(const std::string &column_name) const {
+  return get_proxy()->column_index(column_name);
 }
 
 gl_sarray gl_sframe::select_column(const std::string& colname) const {

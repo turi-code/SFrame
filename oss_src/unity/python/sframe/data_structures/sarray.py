@@ -162,7 +162,7 @@ class SArray(object):
     [5, 5, 5, 5, 5]
 
     Operators which are supported include all numeric operators (+,-,*,/), as
-    well as comparison operators (>, >=, <, <=), and logical operators (&, |).
+    well as comparison operators (>, >=, <, <=), and logical operators (&, | ).
 
     For instance:
 
@@ -297,7 +297,7 @@ class SArray(object):
     """
 
     __slots__ = ["__proxy__", "_getitem_cache"]
-    
+
     def __init__(self, data=[], dtype=None, ignore_cast_failure=False, _proxy=None):
         """
         __init__(data=list(), dtype=None, ignore_cast_failure=False)
@@ -378,6 +378,53 @@ class SArray(object):
                 raise TypeError("Unexpected data source. " \
                                 "Possible data source types are: list, " \
                                 "numpy.ndarray, pandas.Series, and string(url)")
+
+    @classmethod
+    def date_range(cls,start_time,end_time,freq):
+        '''
+        Returns a new SArray that represents a fixed frequency datetime index.
+
+        Parameters
+        ----------
+        start_time : datetime.datetime
+          Left bound for generating dates.
+
+        end_time : datetime.datetime
+          Right bound for generating dates.
+
+        freq : datetime.timedelta
+          Fixed frequency between two consecutive data points.
+
+        Returns
+        -------
+        out : SArray
+
+        Examples
+        --------
+        >>> import datetime as dt
+        >>> start = dt.datetime(2013, 5, 7, 10, 4, 10)
+        >>> end = dt.datetime(2013, 5, 10, 10, 4, 10)
+        >>> sa = gl.SArray.date_range(start,end,dt.timedelta(1))
+        >>> print sa
+        dtype: datetime
+        Rows: 4
+        [datetime.datetime(2013, 5, 7, 10, 4, 10),
+         datetime.datetime(2013, 5, 8, 10, 4, 10),
+         datetime.datetime(2013, 5, 9, 10, 4, 10),
+         datetime.datetime(2013, 5, 10, 10, 4, 10)]
+       '''
+
+        if not isinstance(start_time,datetime.datetime):
+            raise TypeError("The ``start_time`` argument must be from type datetime.datetime.")
+
+        if not isinstance(end_time,datetime.datetime):
+            raise TypeError("The ``end_time`` argument must be from type datetime.datetime.")
+
+        if not isinstance(freq,datetime.timedelta):
+            raise TypeError("The ``freq`` argument must be from type datetime.timedelta.")
+
+        from .. import extensions
+        return extensions.date_range(start_time,end_time,freq.total_seconds())
 
     @classmethod
     def from_const(cls, value, size):
@@ -1804,7 +1851,7 @@ class SArray(object):
             Index of the maximum value of SArray
 
         See Also
-        -------
+        --------
         argmin
 
         Examples
@@ -1836,7 +1883,7 @@ class SArray(object):
             index of the minimum value of SArray
 
         See Also
-        -------
+        --------
         argmax
 
         Examples
@@ -2339,7 +2386,7 @@ class SArray(object):
         topk : int
             The number of elements to determine if 'top'
 
-        reverse: bool
+        reverse : bool
             If True, return the topk elements in ascending order
 
         Returns
@@ -2370,11 +2417,10 @@ class SArray(object):
           the sketch can be queried incrementally, but at a performance penalty.
           Defaults to False.
 
-        sub_sketch_keys: int | str | list of int | list of str, optional
+        sub_sketch_keys : int | str | list of int | list of str, optional
             For SArray of dict type, also constructs sketches for a given set of keys,
             For SArray of array type, also constructs sketches for the given indexes.
-            The sub sketches may be queried using:
-                 :py:func:`~graphlab.Sketch.element_sub_sketch()`
+            The sub sketches may be queried using: :py:func:`~graphlab.Sketch.element_sub_sketch()`.
             Defaults to None in which case no subsketches will be constructed.
 
         Returns
@@ -2589,7 +2635,7 @@ class SArray(object):
             Limits the set of datetime elements to expand.
             Possible values are 'year','month','day','hour','minute','second',
             'weekday', 'isoweekday', 'tmweekday', and 'us'.
-            If not provided, only ['year','month','day','hour','minute','second'] 
+            If not provided, only ['year','month','day','hour','minute','second']
             are expanded.
 
             - 'year': The year number
@@ -2652,12 +2698,6 @@ class SArray(object):
             |    2010  |  4.5    |
             +----------+---------+
             [2 rows x 2 columns]
-
-        Notes
-        -----
-        Our 'weekday' values uses 0 is Sunday which is consistent with most
-        other languages as opposed to python datetime.datetime.weekday() which
-        uses 0 as Monday.
         """
         from .sframe import SFrame as _SFrame
 

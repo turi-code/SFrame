@@ -177,6 +177,8 @@ class unity_sframe : public unity_sframe_base {
    * returns only \ref size() rows.
    */
   std::shared_ptr<unity_sframe_base> head(size_t nrows);
+  
+  size_t column_index(const std::string &name);
 
   /**
    * Same as head, returning dataframe.

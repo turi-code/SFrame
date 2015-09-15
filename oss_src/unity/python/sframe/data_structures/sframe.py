@@ -23,7 +23,7 @@ from .sarray import SArray, _create_sequential_sarray
 from .. import aggregate
 from .image import Image as _Image
 from ..deps import pandas, HAS_PANDAS
-
+from .grouped_sframe import GroupedSFrame
 import array
 from prettytable import PrettyTable
 from textwrap import wrap
@@ -38,7 +38,6 @@ import platform
 import numbers
 import sys
 import csv
-
 
 __all__ = ['SFrame']
 __LOGGER__ = _logging.getLogger(__name__)
@@ -58,7 +57,7 @@ SFRAME_ROOTS = [# Binary/lib location in production egg
                 # Build tree location of SFrame binaries
                 os.path.abspath(os.path.join(os.path.dirname(
                     os.path.realpath(__file__)),
-                        '..', '..',  '..', '..', 'sframe')),
+                        '..', '..',  '..', '..','..','oss_src','sframe')),
                 # Location of python sources
                 os.path.abspath(os.path.join(os.path.dirname(
                     os.path.realpath(__file__)),
@@ -72,16 +71,13 @@ SFRAME_ROOTS = [# Binary/lib location in production egg
 SPARK_UNITY = "spark_unity"
 HDFS_LIB = "libhdfs.so"
 RDD_JAR_FILE = "spark_unity.jar"
-SYS_UTIL_PY = "sys_util.py"
 RDD_SUPPORT_INITED = False
 BINARY_PATHS = {}
 STAGING_DIR = None
 RDD_SUPPORT = True
 PRODUCTION_RUN = False
 REMOTE_OS = None
-SPARK_SUPPORT_NAMES = {
-        'RDD_JAR_PATH': 'spark_unity.jar',
-        'SYS_UTIL_PY_PATH':'sys_util.py'}
+SPARK_SUPPORT_NAMES = {'RDD_JAR_PATH': 'spark_unity.jar'}
 
 first = True
 for i in SFRAME_ROOTS:
@@ -97,7 +93,7 @@ for i in SFRAME_ROOTS:
 
 for name in SPARK_SUPPORT_NAMES.keys():
     if (name not in BINARY_PATHS):
-        print name
+        __LOGGER__.warn("GraphLab engine cannot find %s" % SPARK_SUPPORT_NAMES[name])
 
 if not all(name in BINARY_PATHS for name in SPARK_SUPPORT_NAMES.keys()):
     RDD_SUPPORT = False
@@ -122,7 +118,7 @@ def __rdd_support_init__(sprk_ctx,graphlab_util_ref):
         return
 
     sprk_ctx._jsc.addJar(BINARY_PATHS['RDD_JAR_PATH'])
-    
+
     # Make sure our GraphLabUtil scala functions are accessible from the driver
     try:
         graphlab_util_ref.getBinaryName()
@@ -142,8 +138,6 @@ def __rdd_support_init__(sprk_ctx,graphlab_util_ref):
         # Set binary path
         for i in BINARY_PATHS.keys():
             s = BINARY_PATHS[i]
-            if os.path.basename(s) == SPARK_SUPPORT_NAMES['SYS_UTIL_PY_PATH']:
-                continue
             if REMOTE_OS == 'Linux':
                 BINARY_PATHS[i] = os.path.join(os.path.dirname(s),os.path.basename(s))
             elif REMOTE_OS == 'Darwin':
@@ -181,14 +175,6 @@ def __rdd_support_init__(sprk_ctx,graphlab_util_ref):
         raise RuntimeError("Your spark context's master is '" +
                 str(sprk_ctx.master) +
                 "'. Only 'local' and 'yarn-client' are supported.")
-
-    # sprk_ctx.addFile(BINARY_PATHS['SPARK_UNITY'])
-    # sprk_ctx.addFile(BINARY_PATHS['HDFS_LIB_PATH'])
-    # sprk_ctx.addFile(BINARY_PATHS['SFRAME_RDD_PATH'])
-    # sprk_ctx.addFile(BINARY_PATHS['RDD_SFRAME_NONPICKLE_PATH'])
-    # sprk_ctx.addFile(BINARY_PATHS['SYS_UTIL_PY_PATH'])
-    # sprk_ctx.addFile(BINARY_PATHS['SPARK_PIPE_WRAPPER_PATH'])
-
 
     RDD_SUPPORT_INITED = True
 
@@ -568,7 +554,7 @@ class SFrame(object):
     >>> sf.save('mysframedir')
     >>> sf2 = graphlab.load_sframe('mysframedir')
 
-    **Column Manipulation **
+    **Column Manipulation**
 
     An SFrame is composed of a collection of columns of SArrays, and individual
     SArrays can be extracted easily. For instance given an SFrame:
@@ -623,6 +609,7 @@ class SFrame(object):
     2  3   C
 
     You can also select columns using types or a list of types:
+
     >>> sf2 = sf[int]
     >>> sf2
     Columns:
@@ -636,6 +623,7 @@ class SFrame(object):
     2  3   7
 
     Or a mix of types and names:
+
     >>> sf2 = sf[['id', str]]
     >>> sf2
     Columns:
@@ -675,6 +663,7 @@ class SFrame(object):
     2  C   3
 
     **Element Access and Slicing**
+
     SFrames can be accessed by integer keys just like a regular python list.
     Such operations may not be fast on large datasets so looping over an SFrame
     should be avoided.
@@ -1569,9 +1558,9 @@ class SFrame(object):
 
         Examples
         --------
-        The orient parameter describes the expected input format of the JSON 
-        file. 
-        
+        The orient parameter describes the expected input format of the JSON
+        file.
+
         If orient="records", the JSON file is expected to contain a single
         JSON Array where each array element is a dictionary describing the row.
         For instance:
@@ -1593,7 +1582,7 @@ class SFrame(object):
         +---+---+
 
         If orient="lines", the JSON file is expected to contain a JSON element
-        per line. If each line contains a dictionary, it is automatically 
+        per line. If each line contains a dictionary, it is automatically
         unpacked.
 
         >>> !cat input.json
@@ -1636,7 +1625,7 @@ class SFrame(object):
         [3 rows x 1 columns]
         """
         if orient == "records":
-            g = cls.read_csv(url, line_terminator='', 
+            g = cls.read_csv(url, line_terminator='',
                     header=False, column_type_hints=list)
             if g.num_cols() != 1:
                 raise RuntimeError("Input JSON not of expected format")
@@ -1651,7 +1640,7 @@ class SFrame(object):
                 return g
         else:
             raise ValueError("Invalid value for orient parameter (" + str(orient) + ")")
-   
+
     @classmethod
     def __get_graphlabutil_reference_on_spark_unity_jar(cls,sc):
         '''
@@ -1676,27 +1665,12 @@ class SFrame(object):
             load_class = child.loadClass("org.graphlab.create.GraphLabUtil")
             method = load_class.getDeclaredMethod("getUtil",None)
             SFRAME_GRAPHLABUTIL_REF = method.invoke(load_class,None)
-       
+
         return SFRAME_GRAPHLABUTIL_REF
 
     def to_spark_dataframe(self,sc,sql,number_of_partitions=4):
         """
         Convert the current SFrame to the Spark DataFrame.
-
-        To enable this function, you must add the jar file bundled with GraphLab
-        Create to the Spark driver's classpath.  This must happen BEFORE Spark
-        launches its JVM, or else it will have no effect.  To do this, first get
-        the location of the packaged jar with
-        `graphlab.get_spark_integration_jar_path`. You then have two options:
-
-            1. Add the path to the jar to your spark-defaults.conf file.  The
-               property to set is 'spark.driver.extraClassPath'.
-
-            OR
-
-            2. Add the jar's path as a command line option to your favorite way to
-               start pyspark (either spark-submit or pyspark).  For this, use the
-               command line option '--driver-class-path'.
 
         Parameters
         ----------
@@ -1711,7 +1685,12 @@ class SFrame(object):
 
         Returns
         ----------
-        out: DataFrame
+        out: pyspark.sql.DataFrame
+
+        Notes
+        -----
+        - Look at to_rdd()
+        - Look at from_rdd()
 
         Examples
         --------
@@ -1721,9 +1700,12 @@ class SFrame(object):
         >>> sc = SparkContext('local')
         >>> sqlc = SQLContext(sc)
         >>> sf = SFrame({'x': [1,2,3], 'y': ['fish', 'chips', 'salad']})
-        >>> rdd = sf.to_spark_dataframe(sc, sqlc)
-        >>> rdd.collect()
-        [Row(x=1, y=u'fish'), Row(x=2, y=u'chips'), Row(x=3, y=u'salad')]
+        >>> df = sf.to_spark_dataframe(sc, sqlc)
+        >>> df.show()
+        x y
+        1 fish
+        2 chips
+        3 salad
         """
 
         def homogeneous_type(seq):
@@ -1755,21 +1737,6 @@ class SFrame(object):
         """
         Convert the current SFrame to the Spark RDD.
 
-        To enable this function, you must add the jar file bundled with GraphLab
-        Create to the Spark driver's classpath.  This must happen BEFORE Spark
-        launches its JVM, or else it will have no effect.  To do this, first get
-        the location of the packaged jar with
-        `graphlab.get_spark_integration_jar_path`. You then have two options:
-
-            1. Add the path to the jar to your spark-defaults.conf file.  The
-               property to set is 'spark.driver.extraClassPath'.
-
-            OR
-
-            2. Add the jar's path as a command line option to your favorite way to
-               start pyspark (either spark-submit or pyspark).  For this, use the
-               command line option '--driver-class-path'.
-
         Parameters
         ----------
         sc : SparkContext
@@ -1780,10 +1747,11 @@ class SFrame(object):
 
         Returns
         ----------
-        out: RDD
+        out: pyspark.rdd.RDD
 
         Notes
         ----------
+        - Look at from_rdd().
         - Look at to_spark_dataframe().
 
         Examples
@@ -1804,10 +1772,10 @@ class SFrame(object):
         for _type in self.column_types():
                 if(_type.__name__ == 'Image'):
                     raise TypeError("Support for translation to Spark RDDs not enabled for Image type.")
-        
+
         if number_of_partitions is None:
             number_of_partitions = sc.defaultParallelism
-        
+
         if type(number_of_partitions) is not int:
             raise ValueError("number_of_partitions parameter expects an integer type")
         if number_of_partitions == 0:
@@ -1815,7 +1783,7 @@ class SFrame(object):
 
         # get a handle to GraphLabUtil java object
         graphlab_util_ref = self.__get_graphlabutil_reference_on_spark_unity_jar(sc)
-        
+
         # Save SFrame in a temporary place
         tmp_loc = self.__get_staging_dir__(sc,graphlab_util_ref)
         sf_loc = os.path.join(tmp_loc, str(uuid.uuid4()))
@@ -1825,12 +1793,12 @@ class SFrame(object):
         dummysf = load_sframe(sf_loc)
         dummysf.__proxy__.delete_on_close()
         SFRAME_GARBAGE_COLLECTOR.append(dummysf)
-            
+
         # Get the environment variables as a java map
         # env  = sys_util.make_unity_server_env()
         # java_env_map = MapConverter().convert(env, sc._gateway._gateway_client)
 
-        
+
         # Run the spark job
         javaRDD = graphlab_util_ref.pySparkToRDD(
             sc._jsc.sc(),sf_loc,number_of_partitions,"")
@@ -1840,8 +1808,8 @@ class SFrame(object):
         output_rdd = RDD(javaRDD,sc,pyspark.serializers.PickleSerializer())
 
         return output_rdd
-    
-    
+
+
     @classmethod
     def __get_staging_dir__(cls,cur_sc,graphlab_util_ref):
         if not RDD_SUPPORT_INITED:
@@ -1851,28 +1819,13 @@ class SFrame(object):
         return STAGING_DIR
 
     @classmethod
-    def from_rdd(cls, rdd,cur_sc):
+    def from_rdd(cls, rdd, cur_sc):
         """
         Convert a Spark RDD into an SFrame.
 
-        To enable this function, you must add the jar file bundled with GraphLab
-        Create to the Spark driver's classpath.  This must happen BEFORE Spark
-        launches its JVM, or else it will have no effect.  To do this, first get
-        the location of the packaged jar with
-        `graphlab.get_spark_integration_jar_path`. You then have two options:
-
-            1. Add the path to the jar to your spark-defaults.conf file.  The
-               property to set is 'spark.driver.extraClassPath'.
-
-            OR
-
-            2. Add the jar's path as a command line option to your favorite way to
-               start pyspark (either spark-submit or pyspark).  For this, use the
-               command line option '--driver-class-path'.
-
         Parameters
         ----------
-        rdd : pyspark.rdd.RDD
+        rdd : pyspark.rdd.RDD or pyspark.sql.DataFrame
             The input Spark RDD that is going to be converted to an SFrame.
         cur_sc : SparkContext
             An instance object of an SparkContext.
@@ -1880,10 +1833,11 @@ class SFrame(object):
         Returns
         -------
         out : SFrame
-        
+
         Notes
-        -------
-        - look at to_rdd()
+        ----------
+        - look at to_rdd().
+        - look at to_spark_dataframe().
 
         Examples
         --------
@@ -1892,7 +1846,7 @@ class SFrame(object):
         >>> from graphlab import SFrame
         >>> sc = SparkContext('local')
         >>> rdd = sc.parallelize([1,2,3])
-        >>> sf = SFrame.from_rdd(rdd,sc)
+        >>> sf = SFrame.from_rdd(rdd, sc)
         >>> sf
         Data:
         +-----+
@@ -1907,7 +1861,7 @@ class SFrame(object):
         _mt._get_metric_tracker().track('sframe.from_rdd')
         if not RDD_SUPPORT:
             raise Exception("Support for translation to Spark RDDs not enabled.")
-        
+
         jrdd_deserializer = None
         from pyspark import RDD
         from pyspark.sql import DataFrame
@@ -1925,10 +1879,10 @@ class SFrame(object):
             encoding = "pickle"
         elif(jrdd_deserializer.__class__.__name__ == 'UTF8Deserializer'):
             encoding = "utf8"
-       
+
         # get a handle to GraphLabUtil java object
         graphlab_util_ref = SFrame.__get_graphlabutil_reference_on_spark_unity_jar(cur_sc)
-        
+
         # Prep the sframe environment
         tmp_loc = SFrame.__get_staging_dir__(cur_sc,graphlab_util_ref)
         if tmp_loc is None:
@@ -1951,7 +1905,7 @@ class SFrame(object):
                 finalSFrameFilename = graphlab_util_ref.toSFrame(
                     rdd._jrdd.rdd(),tmp_loc, finalSFramePrefix)
             else:
-                # Prep the additional arguments to feed into the pySparkToSFrame function in Java 
+                # Prep the additional arguments to feed into the pySparkToSFrame function in Java
                 # that will call the spark_unity binary which does the actual encoding
                 additiona_args = os.path.join(" --encoding=%s " % encoding +\
                                     " --type=rdd ")
@@ -2896,7 +2850,7 @@ class SFrame(object):
             loaded much faster and without any format conversion losses. If not
             given, will try to infer the format from filename given. If file
             name ends with 'csv' or '.csv.gz', then save as 'csv' format,
-            otherwise save as 'binary' format. 
+            otherwise save as 'binary' format.
             See export_csv for more csv saving options.
 
         See Also
@@ -2939,10 +2893,10 @@ class SFrame(object):
             else:
                 raise ValueError("Unsupported format: {}".format(format))
 
-    def export_csv(self, filename, delimiter=',', line_terminator='\n', 
+    def export_csv(self, filename, delimiter=',', line_terminator='\n',
             header=True, quote_level=csv.QUOTE_NONNUMERIC, double_quote=True,
-            escape_char='\\', quote_char='\"', na_rep='', 
-            file_header='', file_footer='', line_prefix='', 
+            escape_char='\\', quote_char='\"', na_rep='',
+            file_header='', file_footer='', line_prefix='',
             _no_prefix_on_first_value=False, **kwargs):
         """
         Writes an SFrame to a CSV file.
@@ -2968,7 +2922,7 @@ class SFrame(object):
             csv.QUOTE_NONNUMERIC.
 
         double_quote : bool, optional
-            If True, quotes are escaped as two consecutive quotes 
+            If True, quotes are escaped as two consecutive quotes
 
         escape_char : string, optional
             Character which begins a C escape sequence
@@ -2986,7 +2940,7 @@ class SFrame(object):
             A string printed to the end of the file
 
         line_prefix: string, optional
-            A string printed at the start of each value line 
+            A string printed at the start of each value line
         """
         # Pandas argument compatibility
         if "sep" in kwargs:
@@ -3004,7 +2958,7 @@ class SFrame(object):
         if len(kwargs) > 0:
             raise TypeError("Unexpected keyword arguments " + str(kwargs.keys()))
 
-        write_csv_options = {} 
+        write_csv_options = {}
         write_csv_options['delimiter'] = delimiter
         write_csv_options['escape_char'] = escape_char
         write_csv_options['double_quote'] = double_quote
@@ -3020,8 +2974,8 @@ class SFrame(object):
         write_csv_options['header'] = header
         write_csv_options['line_terminator'] = line_terminator
         write_csv_options['na_value'] = na_rep
-        write_csv_options['file_header'] = file_header 
-        write_csv_options['file_footer'] = file_footer 
+        write_csv_options['file_header'] = file_header
+        write_csv_options['file_footer'] = file_footer
         write_csv_options['line_prefix'] = line_prefix
 
         # undocumented option. Disables line prefix on the first value line
@@ -3040,17 +2994,17 @@ class SFrame(object):
         ----------
         filename : string
             The location to save the JSON file.
-        
+
         orient : string, optional. Either "records" or "lines"
             If orient="records" the file is saved as a single JSON array.
             If orient="lines", the file is saves as a JSON value per line.
 
         Examples
         --------
-        The orient parameter describes the expected input format of the JSON 
-        file. 
-        
-        If orient="records", the output will be a single JSON Array where 
+        The orient parameter describes the expected input format of the JSON
+        file.
+
+        If orient="records", the output will be a single JSON Array where
         each array element is a dictionary describing the row.
 
         >>> g
@@ -3069,12 +3023,12 @@ class SFrame(object):
         >>> g.export('output.json', orient='records')
         >>> !cat output.json
         [
-        {'a':1,'b':1}, 
-        {'a':2,'b':2}, 
+        {'a':1,'b':1},
+        {'a':2,'b':2},
         {'a':3,'b':3},
         ]
 
-        If orient="rows", each row will be emitted as a JSON dictionary to 
+        If orient="rows", each row will be emitted as a JSON dictionary to
         each file line.
 
         >>> g
@@ -3098,10 +3052,10 @@ class SFrame(object):
         """
         if orient == "records":
             self.pack_columns(dtype=dict).export_csv(
-                    filename, file_header='[', file_footer=']', 
-                    header=False, double_quote=False, 
-                    quote_level=csv.QUOTE_NONE, 
-                    line_prefix=',', 
+                    filename, file_header='[', file_footer=']',
+                    header=False, double_quote=False,
+                    quote_level=csv.QUOTE_NONE,
+                    line_prefix=',',
                     _no_prefix_on_first_value=True)
         elif orient == "lines":
             self.pack_columns(dtype=dict).export_csv(
@@ -3238,13 +3192,13 @@ class SFrame(object):
 
         colnames_and_types = zip(self.column_names(), self.column_types())
 
-        # Ok. we want the string columns to be in the ordering defined by the 
+        # Ok. we want the string columns to be in the ordering defined by the
         # argument.  And then all the type selection columns.
         selected_columns = requested_str_columns
         typelist = [s for s in keylist if isinstance(s, type)]
 
         # next the type selection columns
-        # loop through all the columns, adding all columns with types in 
+        # loop through all the columns, adding all columns with types in
         # typelist. But don't add a column if it has already been added.
         for i in colnames_and_types:
             if i[1] in typelist and i[0] not in selected_columns:
@@ -3564,11 +3518,11 @@ class SFrame(object):
             return self.select_column(key)
         elif type(key) is type:
             return self.select_columns([key])
-        elif hasattr(key, '__iter__'):  
+        elif hasattr(key, '__iter__'):
             return self.select_columns(key)
         elif isinstance(key, numbers.Integral):
             sf_len = len(self)
-            
+
             if key < 0:
                 key = sf_len + key
             if key >= sf_len:
@@ -3576,7 +3530,7 @@ class SFrame(object):
 
             if not hasattr(self, '_cache') or self._cache is None:
                 self._cache = {}
-            
+
             try:
                 lb, ub, value_list = self._cache["getitem_cache"]
                 if lb <= key < ub:
@@ -3591,21 +3545,21 @@ class SFrame(object):
             if not "getitem_cache_blocksize" in self._cache:
                 block_size = \
                   (8*1024) / sum( (2 if dt in [int, long, float] else 8) for dt in self.column_types())
-                  
+
                 block_size = max(16, block_size)
                 self._cache["getitem_cache_blocksize"] = block_size
             else:
                 block_size = self._cache["getitem_cache_blocksize"]
-                
+
             block_num = int(key // block_size)
-            
+
             lb = block_num * block_size
             ub = min(sf_len, lb + block_size)
 
             val_list = list(SFrame(_proxy = self.__proxy__.copy_range(lb, 1, ub)))
             self._cache["getitem_cache"] = (lb, ub, val_list)
             return val_list[key - lb]
-        
+
         elif type(key) is slice:
             start = key.start
             stop = key.stop
@@ -3732,7 +3686,7 @@ class SFrame(object):
                     break
 
         return generator()
-    
+
     def append(self, other):
         """
         Add the rows of an SFrame to the end of this SFrame.
@@ -4394,6 +4348,10 @@ class SFrame(object):
         if type(column_name) is not str:
             raise TypeError("Must pass a str as column_name")
 
+        existing_columns = self.column_names()
+        if column_name not in existing_columns:
+            raise KeyError("Column '" + column_name + "' not in SFrame.")
+
         if type(values) is not SArray:
             # If we were given a single element, try to put in list and convert
             # to SArray
@@ -4404,19 +4362,15 @@ class SFrame(object):
         value_sf = SFrame()
         value_sf.add_column(values, column_name)
 
-        # Make sure the values list has unique values, or else join will not
-        # filter.
-        value_sf = value_sf.groupby(column_name, {})
-
-        existing_columns = self.column_names()
-        if column_name not in existing_columns:
-            raise KeyError("Column '" + column_name + "' not in SFrame.")
-
         existing_type = self.column_types()[self.column_names().index(column_name)]
         given_type = value_sf.column_types()[0]
         if given_type != existing_type:
             raise TypeError("Type of given values does not match type of column '" +
                 column_name + "' in SFrame.")
+
+        # Make sure the values list has unique values, or else join will not
+        # filter.
+        value_sf = value_sf.groupby(column_name, {})
 
         with cython_context():
             if exclude:
@@ -4765,11 +4719,9 @@ class SFrame(object):
         limit: list[str], optional
             Limits the set of datetime elements to expand.
             Possible values are 'year','month','day','hour','minute','second',
-            'weekday' and 'us'.
-            If not provided, only ['year','month','day','hour','minute','second'] 
-            are expanded. 'weekday' returns a column of range 0 to 6 where 0
-            is Sunday.
-
+            'weekday', 'isoweekday', 'tmweekday', and 'us'.
+            If not provided, only ['year','month','day','hour','minute','second']
+            are expanded.
 
         tzone : bool, optional
             A boolean parameter that determines whether to show the timezone
@@ -4810,12 +4762,6 @@ class SFrame(object):
         | 1  |        7        |        17         |
         | 2  |        5        |        43         |
         +----+-----------------+-------------------+
-
-        Notes
-        -----
-        Our 'weekday' values uses 0 is Sunday which is consistent with most
-        other languages as opposed to python datetime.datetime.weekday() which
-        uses 0 as Monday.
         """
         if expand_column not in self.column_names():
             raise KeyError("column '" + expand_column + "' does not exist in current SFrame")
@@ -5728,6 +5674,13 @@ class SFrame(object):
         new_sf.add_column(the_col, column_name)
         new_sf.add_columns(self)
         return new_sf
+
+    def _group(self, key_columns):
+        """
+        Left undocumented intentionally.
+        """
+        gsf = GroupedSFrame(self, key_columns)
+        return gsf
 
     @property
     def shape(self):

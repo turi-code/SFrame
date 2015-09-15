@@ -23,6 +23,7 @@
 #include <serialization/dir_archive.hpp>
 #include <serialization/dir_archive_cache.hpp>
 #include <random/random.hpp>
+#include <parallel/lambda_omp.hpp>
 
 namespace graphlab {
 
@@ -227,6 +228,20 @@ void dir_archive::init_for_read(const std::string& directory) {
 
   // the first 2 elements of the index_info are the INI file and the object file.
   m_read_prefix_index = 2;
+
+  // quickly parallel read all the index files.
+  auto dirlisting = fileio::get_directory_listing(directory);
+  parallel_for(0, dirlisting.size(), [&](size_t i) {
+    const auto& entry = dirlisting[i];
+      if (boost::ends_with(entry.first, ".sidx") ||
+          boost::ends_with(entry.first, ".frame_idx")) {
+            try {
+              general_ifstream fin(entry.first);
+              char tmp;
+              fin.read(&tmp, 1);
+            } catch(...) { }
+          }
+    });
 }
 
 void dir_archive::open_directory_for_write(std::string directory,
@@ -429,14 +444,15 @@ void dir_archive::delete_archive(std::string directory) {
     // enumerate all the files in the directory, test if it is a prefix
     // managed by the archive, and delete
     auto dirlisting = fileio::get_directory_listing(directory);
-    for (auto direntry: dirlisting) {
+    parallel_for(0, dirlisting.size(), [&](size_t i) {
+      const auto& direntry = dirlisting[i];
       if (is_prefix_in(direntry.first, prefixes)) {
         // its ok if we fail to delete
         try {
-          fileio::delete_path(direntry.first);
+          fileio::delete_path(direntry.first, direntry.second);
         } catch (...) { }
       }
-    }
+    });
 
     //  after finishing deletion, check if the directory is empty
     dirlisting = fileio::get_directory_listing(directory);

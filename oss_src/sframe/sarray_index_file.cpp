@@ -272,9 +272,37 @@ group_index_file_information read_array_group_index_file(std::string group_index
   return ret;
 }
 
+/*
+ * Earlier versions of the index format uses ini files as the format representation.
+ * However, ini files do not support "lists" and hence everythig is a dictionary.
+ * This emulates a dictionary by changing a list [a,b,c] to {0000:a, 0001:b, 0002:c} etc.
+ */
+template <typename T>
+std::map<std::string, std::string> legacy_vector_to_map(const std::vector<T>& vec) {
+  std::map<std::string, std::string> ret_map;
+  for(size_t i = 0;i < vec.size(); ++i) {
+    std::stringstream strm;
+    strm.fill('0'); strm.width(4); strm << i;
+    auto key = strm.str();
+    ret_map[key] = std::to_string(vec[i]);
+  }
+  return ret_map;
+}
+
+std::map<std::string, std::string> legacy_vector_to_map(const std::vector<std::string>& vec) {
+  std::map<std::string, std::string> ret_map;
+  for(size_t i = 0;i < vec.size(); ++i) {
+    std::stringstream strm;
+    strm.fill('0'); strm.width(4); strm << i;
+    auto key = strm.str();
+    ret_map[key] = vec[i];
+  }
+  return ret_map;
+}
 
 void write_array_group_index_file(std::string group_index_file,
                                   const group_index_file_information& info) {
+#define LEGACY_INDEX_FORMAT
   if (info.version == 1) {
     ASSERT_EQ(info.columns.size(), 1);
     write_index_file(group_index_file, info.columns[0]);
@@ -304,7 +332,12 @@ void write_array_group_index_file(std::string group_index_file,
     filename = fileio::make_relative_path(root_dir, filename);
     relativized_file_names.push_back(filename);
   }
+#ifdef LEGACY_INDEX_FORMAT
+  data.push_back(json::to_json_node("segment_files",
+                                    legacy_vector_to_map(relativized_file_names)));
+#else
   data.push_back(json::to_json_node("segment_files", relativized_file_names));
+#endif
 
   JSONNode columns(JSON_ARRAY);
   columns.set_name("columns");
@@ -313,7 +346,13 @@ void write_array_group_index_file(std::string group_index_file,
     column.push_back(JSONNode("content_type", info.columns[i].content_type));
     column.push_back(json::to_json_node("metadata", info.columns[i].metadata));
     ASSERT_EQ(info.columns[i].segment_sizes.size(), info.nsegments);
-    column.push_back(json::to_json_node("segment_sizes", info.columns[i].segment_sizes));
+
+#ifdef LEGACY_INDEX_FORMAT
+  column.push_back(json::to_json_node("segment_sizes",
+                                      legacy_vector_to_map(info.columns[i].segment_sizes)));
+#else
+  column.push_back(json::to_json_node("segment_sizes", info.columns[i].segment_sizes));
+#endif
     columns.push_back(column);
   }
   data.push_back(columns);
@@ -325,6 +364,7 @@ void write_array_group_index_file(std::string group_index_file,
     log_and_throw_io_failure("Fail to write. Disk may be full.");
   }
   fout.close();
+#undef LEGACY_INDEX_FORMAT
 }
 
 std::pair<std::string, size_t> parse_v2_segment_filename(std::string fname) {

@@ -53,9 +53,8 @@ make_copy_target(_local_sys_util_
                   cppipc
                   sframe
                   pylambda
-                  graphlab
  )
 add_dependencies(spark_unity _local_sys_util_)
-file(DOWNLOAD http://s3-us-west-2.amazonaws.com/glbin-engine/spark_unity.jar ${CMAKE_CURRENT_BINARY_DIR}/spark_unity.jar
-      EXPECTED_MD5 d41d8cd98f00b204e9800998ecf8427e)
+file(DOWNLOAD http://s3-us-west-2.amazonaws.com/glbin-engine/spark_unity_0.1.jar ${CMAKE_CURRENT_BINARY_DIR}/spark_unity.jar
+      EXPECTED_MD5 f5e0653648f0b474cee57bd134d9ee83)
 

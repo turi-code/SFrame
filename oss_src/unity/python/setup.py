@@ -171,7 +171,7 @@ if __name__ == '__main__':
             "tornado == 4.1",
             "prettytable == 0.7.2",
             "requests == 2.3.0",
-            "awscli == 1.7.27",
+            "awscli == 1.6.2",
             "multipledispatch>=0.4.7"
         ],
     )

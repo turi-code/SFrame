@@ -48,6 +48,7 @@ class Sketch(object):
     SArray:
 
     For numeric columns, the following information is provided exactly:
+
      - length (:func:`~graphlab.Sketch.size`)
      - number of missing Values (:func:`~graphlab.Sketch.num_undefined`)
      - minimum  value (:func:`~graphlab.Sketch.min`)
@@ -57,16 +58,19 @@ class Sketch(object):
      - standard deviation (:func:`~graphlab.Sketch.std`)
 
     And the following information is provided approximately:
+
      - number of unique values (:func:`~graphlab.Sketch.num_unique`)
      - quantiles (:func:`~graphlab.Sketch.quantile`)
      - frequent items (:func:`~graphlab.Sketch.frequent_items`)
      - frequency count for any value (:func:`~graphlab.Sketch.frequency_count`)
 
     For non-numeric columns(str), the following information is provided exactly:
+
      - length (:func:`~graphlab.Sketch.size`)
      - number of missing values (:func:`~graphlab.Sketch.num_undefined`)
 
     And the following information is provided approximately:
+
      - number of unique Values (:func:`~graphlab.Sketch.num_unique`)
      - frequent items (:func:`~graphlab.Sketch.frequent_items`)
      - frequency count of any value (:func:`~graphlab.Sketch.frequency_count`)
@@ -74,10 +78,12 @@ class Sketch(object):
     For SArray of type list or array, there is a sub sketch for all sub elements.
     The sub sketch flattens all list/array values and then computes sketch
     summary over flattened values. Element sub sketch may be retrieved through:
+
      - element_summary(:func:`~graphlab.Sketch.element_summary`)
 
     For SArray of type dict, there are sub sketches for both dict key and value.
     The sub sketch may be retrieved through:
+
      - dict_key_summary(:func:`~graphlab.Sketch.dict_key_summary`)
      - dict_value_summary(:func:`~graphlab.Sketch.dict_value_summary`)
 

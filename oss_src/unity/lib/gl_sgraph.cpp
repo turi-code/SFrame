@@ -32,7 +32,6 @@ gl_sgraph:: gl_sgraph(const gl_sgraph& other) {
 }
 
 gl_sgraph::gl_sgraph(gl_sgraph&& other) {
-  // m_sgraph = other.m_sgraph;
   m_sgraph = std::move(other.m_sgraph);
 }
 
@@ -42,7 +41,6 @@ gl_sgraph& gl_sgraph::operator=(const gl_sgraph& other) {
 }
 
 gl_sgraph& gl_sgraph::operator=(gl_sgraph&& other) {
-  // m_sgraph = other.m_sgraph;
   m_sgraph = std::move(other.m_sgraph);
   return *this;
 }

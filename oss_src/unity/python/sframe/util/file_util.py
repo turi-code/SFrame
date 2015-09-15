@@ -20,6 +20,7 @@ import boto.s3
 import tarfile
 import logging
 import shutil
+import tempfile
 import subprocess
 from subprocess import PIPE
 from boto.exception import S3ResponseError
@@ -83,6 +84,8 @@ def touch(path):
             os.utime(path, None)
     elif is_hdfs_path(path):
         hdfs_touch(path)
+    elif is_s3_path(path):
+        s3_touch(path)
     else:
         raise ValueError('Unsupported protocol %s' % path)
 
@@ -390,6 +393,13 @@ def s3_delete_key(s3_bucket_name, s3_key_name, aws_credentials = {}):
   conn = boto.connect_s3(**aws_credentials)
   bucket = conn.get_bucket(s3_bucket_name, validate=False)
   bucket.delete_key(s3_key_name)
+
+def s3_touch(path, aws_credentials = {}):
+    """
+    Create an empty file in s3
+    """
+    with tempfile.NamedTemporaryFile() as f:
+        upload_to_s3(f.name, path, aws_credentials=aws_credentials, silent=True)
 
 def read_file_to_string_hdfs(hdfs_path, max_size=None, hadoop_conf_dir=None):
     ''' Read a file from hdfs and return the string content

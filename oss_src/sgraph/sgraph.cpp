@@ -1279,6 +1279,25 @@ size_t sgraph::get_edge_field_id(std::string column_name, size_t groupa, size_t 
 /*                             Serialization                              */
 /*                                                                        */
 /**************************************************************************/
+
+void parallel_save_sframes(const std::vector<sframe>& sf_vec,
+                           oarchive& oarc,
+                           bool save_reference) {
+  std::vector<std::string> prefixes;
+  for (size_t i = 0; i < sf_vec.size(); ++i) {
+    prefixes.push_back(oarc.dir->get_next_write_prefix());
+  }
+
+  parallel_for(0, sf_vec.size(), [&](size_t i) {
+    std::string name = prefixes[i] + ".frame_idx";
+    if (save_reference) {
+      sframe_save_weak_reference(sf_vec[i], name);
+    } else {
+      sf_vec[i].save(name);
+    }
+  });
+}
+
 /**
  * \Internal
  *
@@ -1288,11 +1307,17 @@ void sgraph::save(oarchive& oarc) const {
   oarc << m_num_partitions << m_num_groups
        << m_num_vertices << m_num_edges << m_vid_type
        << m_vertex_group_names;
+  bool save_reference = false;
   for (const auto& vgroup : m_vertex_groups) {
-    oarc << vgroup;
+    // This relies on the serialization format of vector,
+    // otherwise old will not load.
+    oarc << vgroup.size();
+    parallel_save_sframes(vgroup, oarc, save_reference);
   }
   for (const auto& kv : m_edge_groups) {
-    oarc << kv.first << kv.second;
+    oarc << kv.first;
+    oarc << kv.second.size();
+    parallel_save_sframes(kv.second, oarc, save_reference);
   }
 }
 
@@ -1301,22 +1326,17 @@ void sgraph::save_reference(oarchive& oarc) const {
   oarc << m_num_partitions << m_num_groups
        << m_num_vertices << m_num_edges << m_vid_type
        << m_vertex_group_names;
-
+  bool save_reference = true;
   for (const auto& vgroup : m_vertex_groups) {
     // This relies on the serialization format of vector,
     // otherwise it will not load.
     oarc << vgroup.size();
-    for (const auto& sf: vgroup) {
-      std::string prefix = oarc.dir->get_next_write_prefix();
-      sframe_save_weak_reference(sf, prefix + ".frame_idx");
-    }
+    parallel_save_sframes(vgroup, oarc, save_reference);
   }
   for (const auto& kv : m_edge_groups) {
-    oarc << kv.first << kv.second.size();
-    for (auto sf: kv.second) {
-      std::string prefix = oarc.dir->get_next_write_prefix();
-      sframe_save_weak_reference(sf, prefix + ".frame_idx");
-    }
+    oarc << kv.first;
+    oarc << kv.second.size();
+    parallel_save_sframes(kv.second, oarc, save_reference);
   }
 }
 

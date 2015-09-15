@@ -216,7 +216,9 @@ struct approx_equality_operator {
     return std::fabs(t - u.microsecond_res_timestamp()) < flex_date_time::MICROSECOND_EPSILON; 
   }
   inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const flex_int t, const flex_int u) const { return t == u; }
-  inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const flex_float t, const flex_float u) const { return t == u; }
+  inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const flex_float t, const flex_float u) const {
+    return (std::isnan(t) && std::isnan(u)) || (t == u);
+  }
   inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const flex_int t, const flex_float u) const { return t == u; }
   inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const flex_float t, const flex_int u) const { return t == u; }
   inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const flex_string& t, const flex_string& u) const { return t == u; }
@@ -717,7 +719,8 @@ struct city_hash_visitor {
     return graphlab::hash64_combine(ret, graphlab::hash64(t.microsecond()));
   }
   inline FLEX_ALWAYS_INLINE_FLATTEN size_t operator()(const flex_float& t) const {
-    return graphlab::hash64(*reinterpret_cast<const size_t*>(&t));
+    flex_float t2 = std::isnan(t) ? NAN : t;
+    return graphlab::hash64(*reinterpret_cast<const size_t*>(&t2));
   }
   inline FLEX_ALWAYS_INLINE_FLATTEN size_t operator()(const flex_string& t) const {
     return graphlab::hash64(t);
@@ -751,7 +754,8 @@ struct city_hash128_visitor {
     return graphlab::hash128((long long)(t));
   }
   inline FLEX_ALWAYS_INLINE_FLATTEN uint128_t operator()(const flex_float& t) const {
-    return graphlab::hash128(reinterpret_cast<const char*>(&t), sizeof(double));
+    flex_float t2 = std::isnan(t) ? NAN : t;
+    return graphlab::hash128(*reinterpret_cast<const size_t*>(&t2));
   }
   inline FLEX_ALWAYS_INLINE_FLATTEN uint128_t operator()(const flex_string& t) const {
     return graphlab::hash128(t);

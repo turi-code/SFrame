@@ -28,7 +28,6 @@
 #include <sframe/csv_writer.hpp>
 #include <sframe/comma_escape_string.hpp>
 #include <lambda/pyflexible_type.hpp>
-#include <graphlab/options/command_line_options.hpp>
 #include <boost/iostreams/device/file.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -36,6 +35,8 @@
 #include <boost/python.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/tokenizer.hpp>
+#include <boost/program_options.hpp>
+
 
 #include <string>
 #include <iostream> 
@@ -49,6 +50,8 @@
 
 using namespace graphlab;
 namespace python = boost::python;
+namespace bpo = boost::program_options;
+
 
 /**
  * Read a binary encoded integer from standard in.
@@ -648,16 +651,23 @@ int concat_main(std::string & _output_directory, std::string & _prefix) {
  *
  **/
 int tordd_main(std::string & _output_directory, size_t & numPartitions, size_t & partId) {
-  // read the input sframe
-  dir_archive dirarc;
-  dirarc.open_directory_for_read(_output_directory);
-  std::string content_value;
-  if (dirarc.get_metadata("contents", content_value) == false ||
-      content_value != "sframe") {
-        log_and_throw_io_failure("Archive does not contain an SFrame");
-  }
-  std::string prefix = dirarc.get_next_read_prefix();
-  auto sframe_ptr = std::make_shared<sframe>(prefix + ".frame_idx");
+  
+  std::shared_ptr<sframe> sframe_ptr;
+  std::size_t found = _output_directory.find(".frame_idx");
+  if (found!=std::string::npos) { 
+    sframe_ptr = std::make_shared<sframe>(_output_directory);
+  } else {
+    dir_archive dirarc;
+    dirarc.open_directory_for_read(_output_directory);
+    std::string content_value;
+    if (dirarc.get_metadata("contents", content_value) == false ||
+        content_value != "sframe") {
+          log_and_throw_io_failure("Archive does not contain an SFrame");
+    }
+    std::string prefix = dirarc.get_next_read_prefix();
+    sframe_ptr = std::make_shared<sframe>(prefix + ".frame_idx");
+  }  
+
   auto sframe_len = sframe_ptr->size();
   const std::vector<std::string>& column_names = sframe_ptr->column_names();
   auto partition_size = sframe_len/numPartitions;
@@ -708,71 +718,97 @@ int tordd_main(std::string & _output_directory, size_t & numPartitions, size_t &
 }
 
 
-int error_if_arg_not_set(graphlab::command_line_options & clopts, std::string && arg) { 
-  if(!clopts.is_set(arg)) {
-      std::cerr << arg << " is not provided." << std::endl;
-      clopts.print_description();
-      return 1;
-  }
-  return 0;
+void print_help(std::string program_name, bpo::options_description& desc) {
+  std::cerr << "Usage of " << program_name << std::endl
+            << desc << std::endl;
 }
 
 
 int main(int argc, char **argv) {
+  std::string program_name = argv[0];
+  std::string output_directory;
+  std::string prefix;
+  std::string encoding;
+  std::string rdd_type;
+  std::string mode;
+  size_t numPartitions;
+  size_t partId;
 
-   std::string output_directory;
-   std::string prefix;
-   std::string encoding;
-   std::string rdd_type;
-   std::string mode;
-   size_t numPartitions;
-   size_t partId;
+  bpo::options_description desc("Program options for the spark_unity binary.");
+  bpo::variables_map vm; 
 
-   // Parse command line options
-   graphlab::command_line_options clopts("Spark Unity Command Line Options!");
-   clopts.attach_option("outputDir",output_directory, 
-                        "The output directory to save the result.");
-   clopts.attach_option("prefix",prefix, 
-                        "The output name for the final SFrame.");
-   clopts.attach_option("encoding",encoding, 
-                        "The serialization format of the standard input bytes.");
-   clopts.attach_option("type",rdd_type, 
-                        "dataframe|rdd");
-   clopts.attach_option("mode",mode, 
-                        "tosframe|tordd|concat");
-   clopts.attach_option("numPartitions",numPartitions, 
-                        "Number of partitions of the output rdd in tordd mode.");
-   clopts.attach_option("partId",partId, 
-                        "Partition index of the output rdd in tordd mode.");
-   
-   if(!clopts.parse(argc, argv)) { 
-     std::cerr << "Error in parsing arguments." << std::endl;
-     return EXIT_FAILURE;
-   }
-   
-//   logprogress_stream << "mode:" << mode << "type:" << rdd_type 
-//                      << "encoding:" << encoding << std::endl;
-   
-   if (error_if_arg_not_set(clopts,std::string("outputDir")) || 
-       error_if_arg_not_set(clopts,std::string("mode")))
-     return EXIT_FAILURE;
+  desc.add_options()
+    ("help", "Print this help message")
+    ("mode", bpo::value<std::string>(&mode)->required(), 
+     "tosframe|tordd|concat")
+    ("outputDir", bpo::value<std::string>(&output_directory)->required(), 
+      "The output directory to save the result.")
+    ("prefix", bpo::value<std::string>(&prefix), 
+      "The output name for the final SFrame.")
+    ("encoding", bpo::value<std::string>(&encoding), 
+     "The serialization format of the standard input bytes.")
+    ("type", bpo::value<std::string>(&rdd_type), 
+     "dataframe|rdd")
+    ("numPartitions", bpo::value<size_t>(&numPartitions), 
+     "Number of partitions of the output rdd in tordd mode.")
+    ("partId", bpo::value<size_t>(&partId), 
+     "Partition index of the output rdd in tordd mode.");
 
-   if(mode == "tosframe") { 
-     if (error_if_arg_not_set(clopts,std::string("encoding"))) 
-        return EXIT_FAILURE;
-     if (error_if_arg_not_set(clopts,std::string("type")))
-       return EXIT_FAILURE;
-     
-     return tosframe_main(output_directory, encoding, rdd_type);
-   
-   } else if(mode == "concat") {
-     return concat_main(output_directory,prefix);
-   } else if(mode == "tordd") { 
-     if (error_if_arg_not_set(clopts,std::string("partId")) || error_if_arg_not_set(clopts,std::string("numPartitions")))
-       return EXIT_FAILURE;
-     return tordd_main(output_directory,numPartitions,partId);
-   } else {
-    clopts.print_description();
-    return -1;
+  // // Parse command line options
+  // graphlab::command_line_options clopts("Spark Unity Command Line Options!");
+  // clopts.attach_option("outputDir",output_directory, 
+  //                     "The output directory to save the result.");
+  // clopts.attach_option("prefix",prefix, 
+  //                     "The output name for the final SFrame.");
+  // clopts.attach_option("encoding",encoding, 
+  //                     "The serialization format of the standard input bytes.");
+  // clopts.attach_option("type",rdd_type, 
+  //                     "dataframe|rdd");
+  // clopts.attach_option("mode",mode, 
+  //                     "tosframe|tordd|concat");
+  // clopts.attach_option("numPartitions",numPartitions, 
+  //                     "Number of partitions of the output rdd in tordd mode.");
+  // clopts.attach_option("partId",partId, 
+  //                     "Partition index of the output rdd in tordd mode.");
+  try {
+    bpo::store(bpo::command_line_parser(argc, argv).options(desc).run(), vm); 
+    bpo::notify(vm);    
+  } catch(std::exception& error) {
+    std::cerr << "Invalid syntax:\n"
+              << "\t" << error.what()
+              << "\n\n" << std::endl
+              << "Description:"
+              << std::endl;
+    print_help(program_name, desc);
+    return EXIT_FAILURE;
+  }
+
+  if(vm.count("help")) {
+    print_help(program_name, desc);
+    return EXIT_SUCCESS;
+  }
+
+  logprogress_stream << "mode: " << mode << " type: " << rdd_type 
+                     << " encoding: " << encoding << std::endl;
+
+  if(mode == "tosframe") { 
+    if (vm.count("encoding") == 0 || vm.count("type") == 0) {
+      std::cerr << "Encoding and type must be set for tosframe" << std::endl;
+      return EXIT_FAILURE;
+    }    
+    return tosframe_main(output_directory, encoding, rdd_type);
+  } else if(mode == "concat") {
+    return concat_main(output_directory, prefix);
+  } else if(mode == "tordd") { 
+    if (vm.count("partId") == 0 || vm.count("numPartitions") == 0) {
+      std::cerr << "partId and numPartitions must be set for mode tordd" 
+                << std::endl;
+      return EXIT_FAILURE;
+    }
+    return tordd_main(output_directory, numPartitions, partId);
+  } else { 
+    std::cerr << "Invalid mode type: " << mode << std::endl;
+    print_help(program_name, desc);
+    return EXIT_FAILURE;
   }
 }

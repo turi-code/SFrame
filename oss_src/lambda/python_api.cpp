@@ -71,7 +71,7 @@ void init_python(int argc, char** argv) {
     // we expect to be located in sframe/pylambda_worker or
     // graphlab/pylambda_worker
     curpath = fs::canonical(curpath);
-    module_name = curpath.parent_path().filename().native();
+    module_name = curpath.parent_path().filename().string();
 
     logstream(LOG_INFO) << "Module Name is " << module_name << std::endl;
     if (module_name != "graphlab" && module_name != "sframe") {

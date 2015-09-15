@@ -66,7 +66,7 @@ JSONNode to_json_node(const std::string& key,
 // 64 bit integers and casting has to happen. So it becomes ambiguous what
 // you can cast to.
 template <>
-JSONNode to_json_node<size_t>(const std::string& key,
+inline JSONNode to_json_node<size_t>(const std::string& key,
                        const std::vector<size_t>& values) {
   JSONNode ret(JSON_ARRAY);
   ret.set_name(key);
