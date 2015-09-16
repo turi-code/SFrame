@@ -5,11 +5,7 @@ include_directories(${NUMPY_INCLUDE_DIRS})
 function(cython_add_graphlab_module2 _module_name _sources)
   set_source_files_properties( ${_sources} PROPERTIES CYTHON_IS_CXX TRUE)
   cython_add_module( ${_module_name} ${_sources} )
-  if (APPLE)
-    set_property(TARGET ${_module_name} APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-rpath,@loader_path/.. ")
-  else()
-    set_property(TARGET ${_module_name} APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-rpath,$ORIGIN/.. ")
-  endif()
+  set_property(TARGET ${_module_name} APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-rpath,$ORIGIN -Wl,-rpath,$ORIGIN/.. -Wl,-rpath,${CMAKE_CURRENT_BINARY_DIR} ")
   target_link_libraries(${_module_name} boost zeromq ${UNITY_EXTENSION_LIBRARY})
   add_dependencies(${_module_name} release_binaries)
 endfunction()
@@ -39,6 +35,7 @@ if(WIN32)
     ${UNITY_EXTENSION_LIBRARY}
     FILES
     ${INSTALLATION_BINARY_FILES}
+    ${INSTALLATION_SYSTEM_BINARY_FILES}
     )
 endif()
 
