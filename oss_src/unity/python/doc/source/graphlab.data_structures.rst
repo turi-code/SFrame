@@ -18,7 +18,7 @@ Scalable Data Structure
   SArray
   SFrame
   SGraph
-
+  TimeSeries
 
 Data Types
 -----------------------
@@ -59,7 +59,9 @@ Utilities
   :nosignatures:
 
   load_sgraph
-  load_sframe  
+  load_sframe
+  load_timeseries
+  TimeSeries.save
   SArray.save
   SFrame.save
   SGraph.save

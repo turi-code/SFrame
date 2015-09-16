@@ -63,18 +63,6 @@ class ImageClassTest(unittest.TestCase):
 
         self.assertLess(sum(pixel_diff) / float(len(pil_data)), 2)
 
-        # pixel_data property  equal without numpy
-        image._HAS_NUMPY = False
-        no_numpy_diff = [abs(x - y) for (x, y) in izip(glimage.pixel_data, pil_data)]
-        self.assertLess(sum(no_numpy_diff) / float(len(no_numpy_diff)), 2)
-
-        # pixel_data property equal with numpy
-        image._HAS_NUMPY = True
-        numpy_diff = [abs(x - y) for (x, y) in izip(glimage.pixel_data.flatten(), _np.asarray(pilimage, _np.int16).flatten())]
-        self.assertLess(sum(numpy_diff) / float(len(numpy_diff)), 2)
-
-        image._HAS_NUMPY = HAS_NUMPY
-
     def __check_raw_image_metainfo(self, glimage, meta_image_info):
         # size channels equal
         self.assertEqual(glimage.channels, meta_image_info.channels)
