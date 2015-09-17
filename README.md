@@ -1,5 +1,5 @@
 SFrame Package
-=========
+==============
 
 Introduction
 ------------
@@ -11,76 +11,54 @@ The SFrame Package provides the complete implementation of:
  - SFrame
  - SArray
  - SGraph 
- - SFrame Query Evaluator
  - The C++ SDK surface area (gl_sframe, gl_sarray, gl_sgraph)
- - Sketch Summary
- - Serialization
- - flexible_type (efficient runtime typed object)
- - C++ interprocess communication library (used for C++ <--> Python
-     communication)
- - PowerGraph's RPC implementation
 
 License
 -------
 The SFrame Package is licensed under a BSD license. See [license](LICENSE) file.
 
-Open Source Commitment
-----------------------
-We will keep the open sourced components up to date with the latest released
-version of GraphLab Create by issuing a large "version update" pull request
-with every new version of GraphLab Create.
-
 Dependencies
 ------------
-* On OS X: Apple XCode 6 Command Line Tools [Required]
-  +  Required for compiling GraphLab Create.
+To simplify the development process, we use a pre-built dependency toolkit we
+call dato-deps which prepackages all compile-time dependencies like boost, curl,
+etc, some with patches which we should contribute back.  On Linux, we also
+prepackage the entire compiler toolchain. On configuration, dato-deps is
+downloaded and unpacked into the deps/ directory
 
-* On Linux: g++ (>= 4.8) or clang (>= 3.4) [Required]
-  +  Required for compiling GraphLab Create.
+### OS X
+At least OS X 10.9. OS X 10.10 preferred.
+
+* On OS X: Apple XCode 6 Command Line Tools [Required]
+  +  "clang --version" should report at least
+     "Apple LLVM version 6.1.0 (clang-602.0.53) (based on LLVM 3.6.0svn)"
+
+* ccache [Optional]
+   + Not required, but highly recommended
+
+* cmake >= 3.2 [Optional]
+   + Not required, but highly recommended
+
+### Linux
 
 * *nix build tools: patch, make [Required]
    +  Should come with most Mac/Linux systems by default. Recent Ubuntu versions
    will require installing the build-essential package.
 
-* cython [Required]
-   +  For compilation of GraphLab Create
-
 * zlib [Required]
    +   Comes with most Mac/Linux systems by default. Recent Ubuntu version will
    require the zlib1g-dev package.
 
-* JDK 6 or greater [Optional]
-   + Required for HDFS support 
+* ccache [Optional]
+   + Not required, but highly recommended
 
-* Open MPI or MPICH2 [Optional]
-   + Required only for the RPC library inherited from PowerGraph
+* cmake >= 3.2 [Optional]
+   + Not required, but highly recommended
 
-### Satisfying Dependencies on Mac OS X
+### Windows
 
-Install XCode 6 with the command line tools. Then:
+This is somewhat more involving. See the wiki.
 
-    brew install automake
-    brew install autoconf
-    brew install cmake
 
-### Satisfying Dependencies on Ubuntu
-
-In Ubuntu >= 12.10, you can satisfy the dependencies with the following:
-
-    sudo apt-get update
-    sudo apt-get install gcc g++ build-essential libopenmpi-dev default-jdk cmake zlib1g-dev \
-        libatlas-base-dev automake autoconf python-dev python-pip
-    sudo pip install cython
-
-For Ubuntu versions prior to 12.10, you will need to install a newer version of gcc
-
-    sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-    sudo apt-get update
-    sudo apt-get install gcc-4.8 g++-4.8 build-essential libopenmpi-dev default-jdk cmake zlib1g-dev
-    #redirect g++ to point to g++-4.8
-    sudo rm /usr/bin/g++
-    sudo ln -s /usr/bin/g++-4.8 /usr/bin/g++
-    
 Compiling
 ---------
 After you have done a git pull, cd into the SFrame directory and run the configure script:
@@ -91,11 +69,11 @@ After you have done a git pull, cd into the SFrame directory and run the configu
 Running configure will create two sub-directories, *release* and *debug*.  Select 
 either of these modes/directories and navigate to the *oss_src/unity* subdirectory:
 
-    cd <repo root>/debug/oss_src/unity
+    cd <repo root>/debug/oss_src/unity/python
    
    or
    
-    cd <repo root>/release/oss_src/unity
+    cd <repo root>/release/oss_src/unity/python
 
 Running **make** will build the project, according to the mode selected. 
 
@@ -104,32 +82,62 @@ process. For instance:
 
     make -j 4
 
-Will perform up to 4 build tasks in parallel. The number of tasks to run in parallel should
-be roughly equal to the number of CPUs you have.
+Will perform up to 4 build tasks in parallel. The number of tasks to run in
+parallel should be roughly equal to the number of CPUs you have.
 
-In order to use the dev build that you have just compiled, some environment variables will need to be set.
-This can be done by sourcing a script. You'll need to pass the script either "debug" or "release" depending
-on the type of build you have compiled:
+Running in the Build Tree
+-------------------------
+To avoid complicated interactions with python installed in your system, we
+install an entire miniconda toolchain into deps/.
+
+In order to use the dev build that you have just compiled, some environment
+variables will need to be set.  This can be done by sourcing a script. You'll
+need to pass the script either "debug" or "release" depending on the type of
+build you have compiled:
   
     source <repo root>/oss_local_scripts/python_env.sh [debug | release ]
+
+This will activate the miniconda toolchain, and you can run python directly
+and import sframe, etc.
  
 Running Unit Tests
 ------------------
 
 ### Running Python unit tests
+
 There is a script that makes it easy to run the python unit test. You will just need to call it and pass it
 your build type (either "debug" or "release).
 
     <repo root>/oss_local_scripts/run_python_test.sh [debug | release]
 
+Alternatively, you can run nosetests directly. For instance, if I am using
+the debug build directory:
+
+Activate the python environment
+
+    source <repo root>/oss_local_scripts/python_env.sh debug
+
+Switch the build output directory and run nosetests
+
+    cd <repo root>/debug/src/unity/python
+    nosetests -s -v sframe/test
+
 ### Running C++ Units Tests
+ 
 There are also C++ tests. To compile and run them, do the following:
 
     cd <repo root>/[debug | release]/oss_test
     make
     ctest
   
-Writing Your Own Apps
----------------------
+Packaging
+---------
+To build an egg for your platform, run
 
+   <repo root>/oss_local_scripts/make_egg.sh
+
+(See --help for options)
+
+SDK
+---
 See: https://github.com/dato-code/GraphLab-Create-SDK
