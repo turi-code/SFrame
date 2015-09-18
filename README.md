@@ -1,12 +1,7 @@
 SFrame
 ======
 
-Introduction
-------------
-The SFrame contains the open source components
-[GraphLab Create](https://dato.com/products/create/) from [Dato](http://dato.com).
- 
-For more details on GraphLab Create (including documentation and tutorials) see http://dato.com.
+Scalable tabular (**SFrame**, **SArray**) and graph (**SGraph**) data-structures built for out-of-core data analysis. 
 
 The SFrame package provides the complete implementation of:
  - SFrame
@@ -14,10 +9,30 @@ The SFrame package provides the complete implementation of:
  - SGraph 
  - The C++ SDK surface area (gl_sframe, gl_sarray, gl_sgraph)
 
+Introduction
+------------
+
+The SFrame contains the open source components [GraphLab Create](https://dato.com/products/create/) from [Dato](http://dato.com). 
+
+Some documentation to help get started:
+- [Getting started with SFrame](https://dato.com/learn/gallery/notebooks/introduction_to_sframes.html)
+- [SFrame user guide](https://dato.com/learn/userguide/sframe/tabular-data.html)
+- [SGraph user guide](https://dato.com/learn/userguide/sgraph/sgraph.html) 
+For more details on GraphLab Create (including documentation and tutorials) see http://dato.com.
+
+Some of the key features of this package are.
+
+- A scalable column compressed disk-backed dataframe optimized for machine learning and data science needs.
+- Designed for both **tabular** (SFrame, SArray) as well as **graph** data (SGraph)
+- Support for **strictly typed** columns (int, float, str, datetime), **weakly typed** columns (schema free lists, dictionaries) as well as **specialized types** such as Image.
+- Uniform support for **missing data**.
+- Query optimization and Lazy evaluation.
+- A C++ API (gl_sarray, gl_sframe, gl_sgraph) with direct native access via the C++ SDK.
+- A Python API (SArray, SFrame, SGraph) with an indirect access via an interprocess layer.
+
 License
 -------
 The SFrame Package is licensed under a BSD license. See [license](LICENSE) file.
-
 
 Installation
 ------------
