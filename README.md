@@ -12,9 +12,7 @@ The SFrame package provides the complete implementation of:
 Introduction
 ------------
 
-The SFrame contains the open source components [GraphLab Create](https://dato.com/products/create/) from [Dato](http://dato.com). The python package can be installed using.
-
-    pip install sframe
+The SFrame contains the open source components [GraphLab Create](https://dato.com/products/create/) from [Dato](http://dato.com). 
 
 Some documentation to help get started:
 - [Getting started with SFrame](https://dato.com/learn/gallery/notebooks/introduction_to_sframes.html)
