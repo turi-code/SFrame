@@ -1,13 +1,14 @@
-SFrame Package
-==============
+SFrame
+======
 
 Introduction
 ------------
-SFrame Package is the open source piece of [GraphLab Create](https://dato.com/products/create/).
+The SFrame contains the open source components
+[GraphLab Create](https://dato.com/products/create/) from [Dato](http://dato.com).
  
-For more details on the GraphLab Create (including documentation and tutorials) see http://dato.com.
+For more details on GraphLab Create (including documentation and tutorials) see http://dato.com.
 
-The SFrame Package provides the complete implementation of:
+The SFrame package provides the complete implementation of:
  - SFrame
  - SArray
  - SGraph 
@@ -16,6 +17,15 @@ The SFrame Package provides the complete implementation of:
 License
 -------
 The SFrame Package is licensed under a BSD license. See [license](LICENSE) file.
+
+
+Installation
+------------
+We release an updated version about once every 1.5 months or so. You can download
+the most recent version directly from [pypi](https://pypi.python.org/pypi/SFrame)
+or using pip:
+
+    pip install sframe
 
 Dependencies
 ------------
@@ -130,11 +140,26 @@ There are also C++ tests. To compile and run them, do the following:
     make
     ctest
   
+Compilation and Execution Summary
+---------------------------------
+To summarize the above, to just build and run SFrame in the debug build directory:
+
+    ./configure
+    cd debug/oss_src/unity
+    make -j4
+
+    # where root is the checked out SFrame directory
+    source <root>/oss_local_scripts/python_env.sh debug
+
+    # import sframe should work here
+    python
+
+
 Packaging
 ---------
 To build an egg for your platform, run
 
-   <repo root>/oss_local_scripts/make_egg.sh
+    <repo root>/oss_local_scripts/make_egg.sh
 
 (See --help for options)
 
