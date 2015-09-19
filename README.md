@@ -54,7 +54,7 @@ SFrame requires a 64-bit operating system.
  - Debian >= 6 
  - RHEL >= 6 
  - SLES >= 11
-- Windows (7, 8, Server 2012 R2)
+- Windows (7, 8, 10, Server 2012 R2)
 
 **Python**
 - Python 2.7.x
