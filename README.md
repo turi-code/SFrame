@@ -18,6 +18,7 @@ Some documentation to help get started:
 - [Getting started with SFrame](https://dato.com/learn/gallery/notebooks/introduction_to_sframes.html)
 - [SFrame user guide](https://dato.com/learn/userguide/sframe/tabular-data.html)
 - [SGraph user guide](https://dato.com/learn/userguide/sgraph/sgraph.html) 
+
 For more details on GraphLab Create (including documentation and tutorials) see http://dato.com.
 
 Some of the key features of this package are.
