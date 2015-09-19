@@ -42,8 +42,25 @@ or using pip:
 
     pip install sframe
 
-Dependencies
-------------
+**Requirements**
+
+SFrame requires a 64-bit operating system.
+
+**Operating Systems**
+- Mac OS X: 10.8+
+- Linux: Any distribution with GLIBC >= 2.11
+ - Ubuntu >= 11.04 
+ - Debian >= 6 
+ - RHEL >= 6 
+ - SLES >= 11
+- Windows (7, 8, Server 2012 R2)
+
+**Python**
+- Python 2.7.x
+- **Note**: Unfortunately, Python 3.x is currently not supported.
+
+Build Dependencies
+------------------
 To simplify the development process, we use a pre-built dependency toolkit we
 call dato-deps which prepackages all compile-time dependencies like boost, curl,
 etc, some with patches which we should contribute back.  On Linux, we also
