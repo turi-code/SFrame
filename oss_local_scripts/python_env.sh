@@ -61,12 +61,6 @@ fi
 export PYTHON_ENV_SET=1
 export OLD_PYTHON_ENV_PATH=$PATH
 
-if [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
-        # s3 credential - dataset user (locked down read-only access to S3)
-        export AWS_ACCESS_KEY_ID='AKIAJG2DI6AOIQOJIZYA'
-        export AWS_SECRET_ACCESS_KEY='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'
-fi
-
 # hadoop path
 if [ -e /opt/hadoop-1.2.1/bin ]; then
         export PATH=/opt/hadoop-1.2.1/bin:$PATH
