@@ -742,6 +742,14 @@ class SArrayTest(unittest.TestCase):
         self.assertEquals(sum2, realsum)
         self.assertEquals(sum3, realsum)
 
+        # abs
+        s=np.array(range(-10, 10))
+        t = SArray(s, int)
+        self.__test_equal(abs(t), list(abs(s)), int)
+        t = SArray(s, float)
+        self.__test_equal(abs(t), list(abs(s)), float)
+        t = SArray([s], array.array)
+        self.__test_equal(SArray(abs(t)[0]), list(abs(s)), float)
 
     def test_scalar_operators(self):
         s=np.array([1,2,3,4,5,6,7,8,9,10]);
@@ -751,6 +759,8 @@ class SArrayTest(unittest.TestCase):
         # we handle division differently. All divisions cast to float
         self.__test_equal(t / 2, list(s / 2.0), float)
         self.__test_equal(t * 2, list(s * 2), int)
+        self.__test_equal(t ** 2, list(s ** 2), float)
+        self.__test_equal(((t ** 2) ** 0.5 + 1e-8).astype(int), list(s), int)
         self.__test_equal(t < 5, list(s < 5), int)
         self.__test_equal(t > 5, list(s > 5), int)
         self.__test_equal(t <= 5, list(s <= 5), int)
@@ -759,12 +769,14 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(t != 5, list(s != 5), int)
         self.__test_equal(t % 5, list(s % 5), int)
         self.__test_equal(t // 5, list(s // 5), int)
-        self.__test_equal(1.5 + t, list(1.5 + s), float)
+        self.__test_equal(t + 1, list(s + 1), int)
+        self.__test_equal(+t, list(+s), int)
+        self.__test_equal(-t, list(-s), int)
         self.__test_equal(1.5 - t, list(1.5 - s), float)
         self.__test_equal(2.0 / t, list(2.0 / s), float)
         self.__test_equal(2 / t, list(2.0 / s), float)
         self.__test_equal(2.5 * t, list(2.5 * s), float)
-
+        self.__test_equal(2**t, list(2**s), float)
 
         s=["a","b","c"]
         t = SArray(s, str)
@@ -795,7 +807,7 @@ class SArrayTest(unittest.TestCase):
         # we handle division differently. All divisions cast to float
         self.__test_equal(t / t2, list(s.astype(float) / s2), float)
         self.__test_equal(t * t2, list(s * s2), int)
-        self.__test_equal(t < t2, list(s < s2), int)
+        self.__test_equal(t ** t2, list(s ** s2), float)
         self.__test_equal(t > t2, list(s > s2), int)
         self.__test_equal(t <= t2, list(s <= s2), int)
         self.__test_equal(t >= t2, list(s >= s2), int)
@@ -807,12 +819,16 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(s - s, [array.array('d', [float(j) - float(j) for j in i]) for i in self.vec_data], array.array)
         self.__test_equal(s * s, [array.array('d', [float(j) * float(j) for j in i]) for i in self.vec_data], array.array)
         self.__test_equal(s / s, [array.array('d', [float(j) / float(j) for j in i]) for i in self.vec_data], array.array)
+        self.__test_equal(s ** s, [array.array('d', [float(j) ** float(j) for j in i]) for i in self.vec_data], array.array)
         t = SArray(self.float_data, float)
 
         self.__test_equal(s + t, [array.array('d', [float(j) + i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
         self.__test_equal(s - t, [array.array('d', [float(j) - i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
         self.__test_equal(s * t, [array.array('d', [float(j) * i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
         self.__test_equal(s / t, [array.array('d', [float(j) / i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
+        self.__test_equal(s ** t, [array.array('d', [float(j) ** i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
+        self.__test_equal(+s, [array.array('d', [float(j) for j in i]) for i in self.vec_data], array.array)
+        self.__test_equal(-s, [array.array('d', [-float(j) for j in i]) for i in self.vec_data], array.array)
 
         s = SArray([1,2,3,4,None])
         self.assertTrue((s==s).all())

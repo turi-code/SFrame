@@ -768,6 +768,41 @@ class SArray(object):
             else:
                 return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '/')).astype(int)
 
+    def __pow__(self, other):
+        """
+        If other is a scalar value, raises each element of the current array to
+        the power of that value, returning floor of the result. If other
+        is an SArray, performs an element-wise power of the two
+        arrays.
+        """
+        with cython_context():
+            if type(other) is SArray:
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '**'))
+            else:
+                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '**'))
+
+    def __neg__(self):
+        """
+        Returns the negative of each element.
+        """
+        with cython_context():
+            return SArray(_proxy = self.__proxy__.right_scalar_operator(0, '-'))
+
+    def __pos__(self):
+        if self.dtype() not in [int, long, float, array.array]:
+            raise RuntimeError("Runtime Exception. Unsupported type operation. "
+                               "cannot perform operation + on type %s" % str(self.dtype()))
+
+        with cython_context():
+            return SArray(_proxy = self.__proxy__)
+
+    def __abs__(self):
+        """
+        Returns the absolute value of each element.
+        """
+        with cython_context():
+            return SArray(_proxy = self.__proxy__.left_scalar_operator(0, 'left_abs'))
+
     def __mod__(self, other):
         """
         Other must be a scalar value. Performs an element wise division remainder.
@@ -777,6 +812,7 @@ class SArray(object):
                 return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '%'))
             else:
                 return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '%'))
+
 
     def __lt__(self, other):
         """
@@ -891,6 +927,13 @@ class SArray(object):
         with cython_context():
             return SArray(_proxy = self.__proxy__.right_scalar_operator(other, '%'))
 
+    def __rpow__(self, other):
+        """
+        Raises each element of the current array to the power of that
+        value, returning floor of the result.
+        """
+        with cython_context():
+            return SArray(_proxy = self.__proxy__.right_scalar_operator(other, '**'))
 
     def __eq__(self, other):
         """

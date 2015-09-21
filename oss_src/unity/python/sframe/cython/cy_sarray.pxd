@@ -48,6 +48,8 @@ cdef extern from "<unity/lib/api/unity_sarray_interface.hpp>" namespace 'graphla
         flexible_type var(size_t) except +
         size_t nnz() except +
         size_t num_missing() except +
+        unity_sarray_base_ptr unary_negative() except +
+        unity_sarray_base_ptr _pow(double v) except +
         unity_sarray_base_ptr astype(flex_type_enum, bint) except +
         unity_sarray_base_ptr str_to_datetime(string) except +
         unity_sarray_base_ptr datetime_to_str(string) except +
