@@ -119,10 +119,6 @@ build_source() {
 unit_test() {
   echo -e "\n\n\n================= Running Unit Test ================\n\n\n"
 
-  # s3 credential - dataset user (locked down read-only access to S3)
-  export AWS_ACCESS_KEY_ID='AKIAJG2DI6AOIQOJIZYA'
-  export AWS_SECRET_ACCESS_KEY='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'
-
   cd ${WORKSPACE}
   oss_local_scripts/run_python_test.sh ${build_type}
   echo -e "\n\n================= Done Unit Test ================\n\n"
