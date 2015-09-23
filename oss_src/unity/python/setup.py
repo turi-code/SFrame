@@ -160,7 +160,7 @@ if __name__ == '__main__':
             exclude=["*.tests", "*.tests.*", "tests.*", "tests", "*.test", "*.test.*", "test.*", "test"]),
         url='https://dato.com',
         license='LICENSE.txt',
-        description='SFrame enables developers and data scientists to apply machine learning to build state of the art data products.',
+        description='SFrame is an scalable, out-of-core dataframe, which allows you to work with datasets that are larger than the amount of RAM on your system.',
         # long_description=open('README.txt').read(),
         classifiers=classifiers,
         install_requires=[
