@@ -41,7 +41,7 @@ We release an updated version about once every 1.5 months or so. You can downloa
 the most recent version directly from [pypi](https://pypi.python.org/pypi/SFrame)
 or using pip:
 
-    pip install sframe
+    pip install -U sframe
 
 **Requirements**
 

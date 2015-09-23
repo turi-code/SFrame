@@ -1697,10 +1697,11 @@ class SFrame(object):
 
         >>> from pyspark import SparkContext, SQLContext
         >>> from graphlab import SFrame
+        >>> from pyspark.sql import SQLContext
         >>> sc = SparkContext('local')
-        >>> sqlc = SQLContext(sc)
+        >>> sql = SQLContext(sc)
         >>> sf = SFrame({'x': [1,2,3], 'y': ['fish', 'chips', 'salad']})
-        >>> df = sf.to_spark_dataframe(sc, sqlc)
+        >>> df = sf.to_spark_dataframe(sc, sql)
         >>> df.show()
         x y
         1 fish
@@ -1902,15 +1903,28 @@ class SFrame(object):
                 df, tmp_loc, finalSFramePrefix)
         else:
             if encoding == 'utf8':
-                finalSFrameFilename = graphlab_util_ref.toSFrame(
-                    rdd._jrdd.rdd(),tmp_loc, finalSFramePrefix)
-            else:
-                # Prep the additional arguments to feed into the pySparkToSFrame function in Java
-                # that will call the spark_unity binary which does the actual encoding
-                additiona_args = os.path.join(" --encoding=%s " % encoding +\
-                                    " --type=rdd ")
-                finalSFrameFilename = graphlab_util_ref.pySparkToSFrame(
-                    rdd._jrdd, tmp_loc, finalSFramePrefix, additiona_args)
+                ## TODO: This is a temporary solution. Here we are completely bypassing 
+                ## toSFrame() codepath when encoding is 'utf8'. This is because of Spark1.5 error
+                ## for closure cleaning issue on deep nested functions.
+
+                def f(iterator): 
+                    for obj in iterator:
+                        yield obj.encode("utf-8")
+
+                rdd = rdd.mapPartitions(f)
+                encoding = "batch"
+                if(rdd._jrdd_deserializer.__class__.__name__ == 'PickleSerializer'):
+                    encoding = "pickle"
+                
+                #finalSFrameFilename = graphlab_util_ref.toSFrame(
+                #    rdd._jrdd.rdd(),tmp_loc, finalSFramePrefix)
+            #else:
+            # Prep the additional arguments to feed into the pySparkToSFrame function in Java
+            # that will call the spark_unity binary which does the actual encoding
+            additiona_args = os.path.join(" --encoding=%s " % encoding +\
+                                " --type=rdd ")
+            finalSFrameFilename = graphlab_util_ref.pySparkToSFrame(
+                rdd._jrdd, tmp_loc, finalSFramePrefix, additiona_args)
 
         # Load and return the sframe
         sf = SFrame()

@@ -427,10 +427,9 @@ class CustomModel(object):
         view : str, optional
             The name of the Model view to show. Can be one of:
 
-            - 'Summary': The summary description of a Model.
+            - Summary: Shows the statistics of the training process such as size of the data and time cost. The summary also shows the parameters and settings for the model training process if available.
+            - Evaluation: Shows precision recall plot as line chart. Tooltip is provided for pointwise analysis. Precision recall values are shown in the tooltip at any given cutoff value the mouse points to.
 
-            - 'Evaluation': A visual representation of the evaluation results for
-                a Model.
 
         Returns
         -------
