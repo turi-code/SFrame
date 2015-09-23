@@ -625,12 +625,8 @@ int concat_main(std::string & _output_directory, std::string & _prefix) {
 
   }
   
-  auto first_sframe_ptr = std::make_shared<sframe>(list_filenames[0]);
-  sframe append_sframe;
-  append_sframe.open_for_write(first_sframe_ptr->column_names(),first_sframe_ptr->column_types(), "", 1, false);
-  append_sframe.close();
-
-  for(int index=0;index<list_filenames.size();index++) { 
+  sframe append_sframe(list_filenames[0]);
+  for(int index=1;index<list_filenames.size();index++) { 
       auto sframe_ptr = std::make_shared<sframe>(list_filenames[index]);
       append_sframe = append_sframe.append(*sframe_ptr); 
   }

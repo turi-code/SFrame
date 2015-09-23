@@ -223,7 +223,7 @@ class Image(object):
         Displays the image. Requires PIL/Pillow.
 
         Alternatively, you can create an :class:`graphlab.SArray` of this image
-        and use :func:`graphlab.SArray.show()`
+        and use py:func:`graphlab.SArray.show()`
 
         See Also
         --------

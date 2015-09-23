@@ -16,5 +16,6 @@ scikit-learn==0.16.1
 scipy==0.15.1
 six==1.9.0
 tornado==4.1
+wheel==0.24.0
 statsmodels
 PIL

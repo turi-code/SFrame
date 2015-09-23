@@ -40,7 +40,6 @@ Spark RDD
 
   SFrame.from_rdd
   SFrame.to_rdd
-  SFrame.to_schema_rdd
 
 SQL Database
 ----------------
