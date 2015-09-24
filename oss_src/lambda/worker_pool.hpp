@@ -31,7 +31,7 @@ template<typename ProxyType>
 std::shared_ptr<worker_connection<ProxyType>> spawn_worker(std::string worker_binary,
                                                            std::string worker_address,
                                                            int connection_timeout) {
- namespace fs = boost::filesystem;
+  namespace fs = boost::filesystem;
   auto the_path = fs::path(worker_binary);
   if (!fs::exists(the_path)) {
     throw std::string("lambda_worker executable: ") + worker_binary + " not found.";
