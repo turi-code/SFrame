@@ -246,7 +246,7 @@ class SFrame(object):
     <https://dato.com/learn/translator>`_, `How-Tos
     <https://dato.com/learn/how-to>`_, and data science `Gallery
     <https://dato.com/learn/gallery>`_.
-
+    
     Parameters
     ----------
     data : array | pandas.DataFrame | string | dict, optional
@@ -5725,3 +5725,4 @@ class SFrame(object):
         assert type(value) is UnitySFrameProxy
         self._cache = None
         self._proxy = value
+        self._cache = None
