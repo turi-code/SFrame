@@ -272,15 +272,6 @@ class SArraySketchTest(unittest.TestCase):
         t = sketch.frequent_items()
         self.assertEqual(len(t), 0)
 
-    def test_background_sketch(self):
-        dict_data = [{str(i):1} for i in range(1,10000)]
-        sa = SArray(dict_data)
-        s = sa.sketch_summary(background=True, sub_sketch_keys=[str(i ) for i in range(100,200)])
-        s.sketch_ready() # cannot check the actual value as it depends on the speed of processing
-        t = s.element_sub_sketch([str(i) for i in range(100, 105)])
-        self.assertEqual(len(t), 5)
-
-
     def test_large_value_sketch(self):
         sa = SArray([1234567890 for i in range(100)])
         sk = sa.sketch_summary();
