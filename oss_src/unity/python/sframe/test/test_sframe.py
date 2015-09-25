@@ -2969,6 +2969,35 @@ class SFrameTest(unittest.TestCase):
             'category': ['A', 'B', 'A', 'E', 'A', 'A', 'B']})
         sf.groupby('id', aggregate.ARGMAX('value', 'category'))
 
+    def test_cache_invalidation(self):
+        # Changes to the SFrame should invalidate the indexing cache.
+
+        X = SFrame({'a' : range(4000),
+                    'b' : range(4000)})
+
+        for i in range(0, 4000, 20):
+            self.assertEqual(X[i], {'a' : i, 'b' : i})
+        
+        X['a'] = range(1000, 5000)                
+
+        for i in range(0, 4000, 20):
+            self.assertEqual(X[i], {'a' : 1000 + i, 'b' : i})
+
+        del X['b']
+
+        for i in range(0, 4000, 20):
+            self.assertEqual(X[i], {'a' : 1000 + i})
+
+        X['b'] = X['a']
+
+        for i in range(0, 4000, 20):
+            self.assertEqual(X[i], {'a' : 1000 + i, 'b' : 1000 + i})
+
+        X.rename({'b' : 'c'})
+        
+        for i in range(0, 4000, 20):
+            self.assertEqual(X[i], {'a' : 1000 + i, 'c' : 1000 + i})
+            
 
 if __name__ == "__main__":
 

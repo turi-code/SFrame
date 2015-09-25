@@ -3270,6 +3270,7 @@ class SFrame(object):
             raise TypeError("Invalid column name: must be str")
         with cython_context():
             self.__proxy__.add_column(data.__proxy__, name)
+        self._cache = None
         return self
 
     def add_columns(self, data, namelist=None):
@@ -3335,6 +3336,7 @@ class SFrame(object):
 
         with cython_context():
             self.__proxy__.add_columns([x.__proxy__ for x in datalist], namelist)
+        self._cache = None
         return self
 
     def remove_column(self, name):
@@ -3373,6 +3375,7 @@ class SFrame(object):
         colid = self.column_names().index(name)
         with cython_context():
             self.__proxy__.remove_column(colid)
+        self._cache = None
         return self
 
     def remove_columns(self, column_names):
@@ -3416,6 +3419,7 @@ class SFrame(object):
         for colid in reversed(deletion_indices):
             with cython_context():
                 self.__proxy__.remove_column(colid)
+        self._cache = None
         return self
 
 
@@ -3456,6 +3460,7 @@ class SFrame(object):
         colid_2 = colnames.index(column_2)
         with cython_context():
             self.__proxy__.swap_columns(colid_1, colid_2)
+        self._cache = None
         return self
 
     def rename(self, names):
@@ -3503,6 +3508,7 @@ class SFrame(object):
             for k in names:
                 colid = self.column_names().index(k)
                 self.__proxy__.set_column_name(colid, names[k])
+        self._cache = None
         return self
 
     def __getitem__(self, key):
@@ -5717,4 +5723,5 @@ class SFrame(object):
     @__proxy__.setter
     def __proxy__(self, value):
         assert type(value) is UnitySFrameProxy
+        self._cache = None
         self._proxy = value
