@@ -6,9 +6,11 @@
  * of the BSD license. See the LICENSE file for details.
  */
 #include <string>
+#include <cmath>
 #include <functional>
 #include <flexible_type/flexible_type.hpp>
 #include <unity/lib/unity_sarray_binary_operations.hpp>
+
 namespace graphlab {
 namespace unity_sarray_binary_operations {
 void check_operation_feasibility(flex_type_enum left,
@@ -26,9 +28,17 @@ void check_operation_feasibility(flex_type_enum left,
     }
   } else if (op == "+" || op == "-" || op == "*" || op == "/") {
     operation_is_feasible = flex_type_has_binary_op(left, right, op[0]);
-  } else if (op == "+" || op == "-" || op == "*" || op == "/" || op == "%") {
+  } else if (op == "%") {
     operation_is_feasible = left == flex_type_enum::INTEGER &&
                             right == flex_type_enum::INTEGER;
+  } else if (op == "**") {
+    operation_is_feasible = (
+        (left == flex_type_enum::FLOAT
+         || left == flex_type_enum::INTEGER
+         || left == flex_type_enum::VECTOR)
+         && (right == flex_type_enum::FLOAT
+             || right == flex_type_enum::INTEGER
+             || right == flex_type_enum::VECTOR));
   } else if (op == "<" || op == ">" || op == "<=" || op == ">=") {
     // the comparison operators are all compatible. we just need to check
     // the < operator
@@ -42,6 +52,11 @@ void check_operation_feasibility(flex_type_enum left,
   } else if (op == "in") {
     operation_is_feasible = left == flex_type_enum::STRING &&
                             right == flex_type_enum::STRING;
+  } else if (op == "left_abs") {
+    // right part of the operator is ignored in this one
+    operation_is_feasible = (left == flex_type_enum::FLOAT
+                             || left == flex_type_enum::INTEGER
+                             || left == flex_type_enum::VECTOR);
   } else {
     log_and_throw("Invalid scalar operation");
   }
@@ -67,6 +82,8 @@ flex_type_enum get_output_type(flex_type_enum left,
       // otherwise we take the type on the left hand side
       return left;
     }
+  } else if (op == "**") {
+    return flex_type_enum::FLOAT;
   } else if (op == "%") {
     return flex_type_enum::INTEGER;
   } else if (op == "/") {
@@ -82,6 +99,8 @@ flex_type_enum get_output_type(flex_type_enum left,
     return flex_type_enum::INTEGER;
   } else if (op == "in") {
     return flex_type_enum::INTEGER;
+  } else if (op == "left_abs") {
+    return left;
   } else {
     throw std::string("Invalid Operation Type");
   }
@@ -199,10 +218,54 @@ get_binary_operator(flex_type_enum left, flex_type_enum right, std::string op) {
     }
 /**************************************************************************/
 /*                                                                        */
+/*                               Operator **                              */
+/*                                                                        */
+/**************************************************************************/
+  } else if (op == "**") {
+
+    if (left == flex_type_enum::VECTOR && right == flex_type_enum::VECTOR) {
+     return [](const flexible_type& l, const flexible_type& r)->flexible_type{
+       const flex_vec& lv = l.get<flex_vec>();
+       const flex_vec& rv = r.get<flex_vec>();
+       if (lv.size() != rv.size()) return FLEX_UNDEFINED;
+       flex_vec ret(lv.size());
+       for(size_t i = 0; i < lv.size(); ++i) {
+         ret[i] = std::pow(lv[i], rv[i]);
+       }
+       return flexible_type(std::move(ret));
+     };
+    } else if (left == flex_type_enum::VECTOR) {
+     return [](const flexible_type& l, const flexible_type& r)->flexible_type{
+       const flex_vec& lv = l.get<flex_vec>();
+       flex_float rd = r.to<flex_float>();
+       flex_vec ret(lv.size());
+       for(size_t i = 0; i < lv.size(); ++i) {
+         ret[i] = std::pow(lv[i], rd);
+       }
+       return flexible_type(std::move(ret));
+     };
+    } else if (right == flex_type_enum::VECTOR) {
+     return [](const flexible_type& l, const flexible_type& r)->flexible_type{
+       flex_float ld = l.to<flex_float>();
+       const flex_vec& rv = r.get<flex_vec>();
+       flex_vec ret(rv.size());
+       for(size_t i = 0; i < rv.size(); ++i) {
+         ret[i] = std::pow(ld, rv[i]);
+       }
+       return flexible_type(std::move(ret));
+     };
+    } else {
+      // std::pow always returns floats
+      return [](const flexible_type& l, const flexible_type& r)->flexible_type{
+        return std::pow((flex_float)l, (flex_float)r);
+      };
+    }
+/**************************************************************************/
+/*                                                                        */
 /*                               Operator %                               */
 /*                                                                        */
 /**************************************************************************/
-    } else if (op == "%") {
+  } else if (op == "%") {
       return [](const flexible_type& l, const flexible_type& r)->flexible_type {
         if (l.get_type() == flex_type_enum::INTEGER &&
             r.get_type() == flex_type_enum::INTEGER) {
@@ -229,6 +292,32 @@ get_binary_operator(flex_type_enum left, flex_type_enum right, std::string op) {
           return 0;
         }
       };
+/**************************************************************************/
+/*                                                                        */
+/*                      abs of the left value                             */
+/*                                                                        */
+/**************************************************************************/
+  } else if (op == "left_abs") {
+    // ** always returns floats
+    if(left == flex_type_enum::VECTOR) {
+      return [](const flexible_type& l, const flexible_type& r)->flexible_type{
+        const flex_vec& v = l.get<flex_vec>();
+        flex_vec ret(v.size());
+        for(size_t i = 0; i < v.size(); ++i) {
+          ret[i] = std::abs(v[i]);
+        }
+        return flexible_type(std::move(ret));
+      };
+    } else if(left == flex_type_enum::INTEGER) {
+      return [](const flexible_type& l, const flexible_type& r)->flexible_type{
+        return std::abs(l.get<flex_int>());
+      };
+    } else {
+      return [](const flexible_type& l, const flexible_type& r)->flexible_type{
+        return std::abs(l.to<flex_float>());
+      };
+    }
+
 /**************************************************************************/
 /*                                                                        */
 /*                          Comparison Operators                          */
