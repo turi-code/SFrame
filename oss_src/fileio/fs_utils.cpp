@@ -609,6 +609,7 @@ bool change_file_mode(const std::string path, short mode) {
   }
 
   if(boost::starts_with(path, "hdfs://")) {
+#ifdef HAS_HADOOP
     // hdfs
     std::string host, port, hdfspath;
     std::tie(host, port, hdfspath) = parse_hdfs_url(path);
@@ -621,6 +622,9 @@ bool change_file_mode(const std::string path, short mode) {
       // failure for some reason. return with nothing
       return false;
     }
+#else
+      return false;
+#endif
   } else if (boost::starts_with(path, fileio::get_cache_prefix())) {
     // this is a cache file. There is no filesystem.
     return true;
