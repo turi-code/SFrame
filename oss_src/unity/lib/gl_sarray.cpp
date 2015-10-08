@@ -311,23 +311,6 @@ gl_sarray gl_sarray::tail(size_t n) const {
   return get_proxy()->tail(n);
 }
 
-gl_sarray gl_sarray::count_words(bool to_lower, graphlab::flex_list delimiters) const {
-  return get_proxy()->count_bag_of_words({{"to_lower",to_lower}, {"delimiters",delimiters}});
-}
-gl_sarray gl_sarray::count_ngrams(size_t n, std::string method, 
-                                  bool to_lower, bool ignore_space) const {
-  if (method == "word") {
-    return get_proxy()->count_ngrams(n, {{"to_lower",to_lower}, 
-                                      {"ignore_space",ignore_space}});
-  } else if (method == "character") {
-    return get_proxy()->count_character_ngrams(n, {{"to_lower",to_lower}, 
-                                                {"ignore_space",ignore_space}});
-  } else {
-    throw std::string("Invalid 'method' input  value. Please input either 'word' or 'character' ");
-    __builtin_unreachable();
-  }
-
-}
 gl_sarray gl_sarray::dict_trim_by_keys(const std::vector<flexible_type>& keys,
                             bool exclude) const {
   return get_proxy()->dict_trim_by_keys(keys, exclude);

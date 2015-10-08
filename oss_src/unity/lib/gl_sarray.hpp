@@ -669,73 +669,7 @@ class gl_sarray {
    * \endcode
    */
   gl_sarray tail(size_t n) const;
-  /**
-   *
-   * Count words in the gl_sarray.
-   *
-   * \param to_lower Optional. If True, all words are converted to lower case
-   * before counting.  
-   *
-   * Return an gl_sarray of dictionary type where each
-   * element contains the word count for each word that appeared in the
-   * corresponding input element. The words are split on all whitespace and
-   * punctuation characters. Only works if this SArray is of string type.
-   * Parameters:	
-   *
-   * \code
-   * sa = graphlab.SArray(["The quick brown fox jumps.",
-   *                     "Word word WORD, word!!!word"])
-   * auto ret = count_words(sa)
-   * // output array is of type flex_type_enum::DICT and contains
-   * [{'quick': 1, 'brown': 1, 'jumps': 1, 'fox': 1, 'the': 1}, {'word': 5}]
-   * \endcode
-   *
-   * \see count_ngrams
-   */
-  gl_sarray count_words(bool to_lower=true, graphlab::flex_list delimiters={"\r", "\v", "\n", "\f", "\t", " "}) const;
-
-
-  /** 
-   * Return an SArray of dict type where each element contains the count for
-   * each of the n-grams that appear in the corresponding input element. The
-   * n-grams can be specified to be either character n-grams or word n-grams. The
-   * input SArray must contain strings.  Parameters:	
-   * 
-   * \param n Optional. The number of words in each n-gram. An n value of 1
-   * returns word counts. Defaults to 2.
-   * 
-   * \param method Optional. Either "word" or "character". If “word”, the
-   * function performs a count of word n-grams. If “character”, does a character
-   * n-gram count. Defaults to "word".
-   * 
-   * \param to_lower Optional. If true, all words are converted to lower case
-   * before counting. Defaults to true.
-   * 
-   * \param ignore_space Optional. If method is “character”, indicates if
-   * spaces between words are counted as part of the n-gram. For instance, with
-   * the input SArray element of “fun games”, if this parameter is set to False
-   * one tri-gram would be ‘n g’. If ignore_space is set to True, there would be
-   * no such tri-gram (there would still be ‘nga’). This parameter has no effect
-   * if the method is set to “word”. Defaults to true.
-   *
-   * \code
-   *  gl_sarray sa({"I like big dogs. I LIKE BIG DOGS."});
-   *  gl_sarray ret = count_ngrams(sa, 3);
-   *  // returns gl_sarray of dictionary type containing
-   *  // [{'big dogs i': 1, 'like big dogs': 2, 'dogs i like': 1, 'i like big': 2}]
-   * \endcode
-   * \code
-   *  gl_sarray sa(["Fun. Is. Fun"]);
-   *  gl_sarray ret = count_ngrams(sa, 3, "character")
-   *  // returns gl_sarray of dictionary type containing
-   *  [{'fun': 2, 'nis': 1, 'sfu': 1, 'isf': 1, 'uni': 1}]
-   * \endcode
-   *
-   mp* \see count_words
-   */
-  gl_sarray count_ngrams(size_t n=2, std::string method="word", 
-                         bool to_lower=true, bool ignore_space=true) const;
-
+  
   /**
    * Filter an SArray of dictionary type by the given keys. By default, all
    * keys that are in the provided list in "keys" are \b excluded from the
