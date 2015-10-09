@@ -990,6 +990,9 @@ void odbc_connector::map_types_for_writing(sframe &sf, bool optimize_db_storage)
       // you an error.
       size_t cnt = 0;
       for(auto it = qk_checker.begin(0); it != qk_checker.end(0); ++it, ++cnt) {
+        if((*it).get_type() != flex_type_enum::DICT) {
+          continue;
+        }
         auto the_dict = (*it).get<flex_dict>();
         auto find_ret = std::find(the_dict.begin(), the_dict.end(),
             std::pair<flexible_type, flexible_type>("_SQL_INTERVAL", 1));
