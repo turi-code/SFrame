@@ -1254,8 +1254,9 @@ std::pair<flexible_type, flexible_type> odbc_connector::get_column_limits(
       case flex_type_enum::INTEGER:
       case flex_type_enum::FLOAT:
       case flex_type_enum::DATETIME:
-      case flex_type_enum::UNDEFINED:
         return false;
+      case flex_type_enum::UNDEFINED:
+        return true;
       //TODO: This probably doesn't work for image types.  I probably have to
       //worry about saving and loading and the size after that and such. You
       //probably shouldn't be loading images into an RDBMS anyways.
@@ -1671,7 +1672,13 @@ void odbc_connector::insert_data_impl(sframe &sf, const std::string &table_name,
         auto cur_elem_size = strified.size()+1;
 
         if(cur_elem_size > m_column_write_info[elem_num].max_size_in_bytes) { 
-          log_and_throw(strified + std::string(" is too big for buffer!"));
+          std::stringstream err_msg;
+          err_msg << "Row " << cur_row << " \"" << strified << "\"" <<
+            " is too big for buffer size of column " << elem_num << " '" <<
+            m_column_write_info[elem_num].column_name << "' (" <<
+            cur_elem_size << " > " <<
+            m_column_write_info[elem_num].max_size_in_bytes << ").";
+          log_and_throw(err_msg.str());
         }
 
         memcpy((char *)m_row_bound_params[elem_num] +
