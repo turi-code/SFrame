@@ -304,29 +304,6 @@ cdef class UnitySArrayProxy:
             proxy = (self.thisptr.append(other._base_ptr))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
-    cpdef count_bag_of_words(self, object op):
-        cdef gl_options_map option_values = gl_options_map_from_pydict(op)
-        cdef unity_sarray_base_ptr proxy
-        with nogil:
-            proxy = (self.thisptr.count_bag_of_words(option_values))
-        return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
-
-
-    cpdef count_character_ngrams(self, size_t n, object op):
-        cdef gl_options_map option_values = gl_options_map_from_pydict(op)
-        cdef unity_sarray_base_ptr proxy
-        with nogil:
-            proxy = (self.thisptr.count_character_ngrams(n, option_values))
-        return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
-
-
-    cpdef count_ngrams(self, size_t n, object op):
-        cdef gl_options_map option_values = gl_options_map_from_pydict(op)
-        cdef unity_sarray_base_ptr proxy
-        with nogil:
-            proxy = (self.thisptr.count_ngrams(n, option_values))
-        return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
-
     cpdef dict_trim_by_keys(self, object keys, bint exclude):
         cdef unity_sarray_base_ptr proxy = (self.thisptr.dict_trim_by_keys(
             glvec_from_iterable(keys), exclude))

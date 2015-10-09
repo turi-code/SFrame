@@ -244,20 +244,6 @@ class gl_sarray_test: public CxxTest::TestSuite {
       gl_sarray sa(array);
     }
 
-    void test_count_words() {
-      typedef flex_dict dict;
-      gl_sarray sa1({ "a", "b,b", "c,c,c"});
-      gl_sarray sa2({ "a", "b b", "c c c"});
-      _assert_sarray_equals(sa1.count_words(), { dict{{"a",1}}, dict{{"b,b",1}}, dict{{"c,c,c",1}} });
-      _assert_sarray_equals(sa2.count_words(), { dict{{"a",1}}, dict{{"b",2}}, dict{{"c",3}} });
-    }
-
-    void test_count_ngrams() {
-      typedef flex_dict dict;
-      gl_sarray sa({ "a", "b,b", "c,c,c"});
-      _assert_sarray_equals(sa.count_ngrams(2), { dict{}, dict{{"b b",1}}, dict{{"c c",2}} });
-    }
-
     void test_datetime() { 
       boost::posix_time::ptime t(boost::gregorian::date(2011, 1, 1));
       boost::posix_time::ptime epoch(boost::gregorian::date(1970,1,1));

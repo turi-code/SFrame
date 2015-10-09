@@ -67,9 +67,6 @@ cdef extern from "<unity/lib/api/unity_sarray_interface.hpp>" namespace 'graphla
         void materialize() except +
         bint is_materialized() except +
         unity_sarray_base_ptr append(unity_sarray_base_ptr) except +
-        unity_sarray_base_ptr count_bag_of_words(gl_options_map) except +
-        unity_sarray_base_ptr count_character_ngrams(size_t, gl_options_map) except +
-        unity_sarray_base_ptr count_ngrams(size_t, gl_options_map) except +
         unity_sarray_base_ptr dict_trim_by_keys(vector[flexible_type], bint) except +
         unity_sarray_base_ptr dict_trim_by_values(flexible_type, flexible_type) except +
         unity_sarray_base_ptr dict_keys() except +
@@ -177,12 +174,6 @@ cdef class UnitySArrayProxy:
     cpdef is_materialized(self)
 
     cpdef append(self, UnitySArrayProxy other)
-
-    cpdef count_bag_of_words(self, object op)
-
-    cpdef count_character_ngrams(self, size_t n, object op)
-
-    cpdef count_ngrams(self, size_t n, object op)
 
     cpdef dict_trim_by_keys(self, object keys, bint exclude)
 
