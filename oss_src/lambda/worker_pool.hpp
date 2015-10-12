@@ -69,7 +69,7 @@ std::shared_ptr<worker_connection<ProxyType>> spawn_worker(std::string worker_bi
       } else {
         // Connecting to server failed
         logstream(LOG_INFO) << "Fail connecting to worker at " << worker_address
-          << ". Status: " << cppipc::reply_status_to_string(status) 
+          << ". Status: " << cppipc::reply_status_to_string(status)
           << ". Retry: " << retry << std::endl;
       }
       // Exception happended during comm_client construction/starting
@@ -126,7 +126,7 @@ class worker_pool {
     ASSERT_GT(nworkers, 0);
 
     m_worker_binary = worker_binary;
-    m_connection_timeout = connection_timeout; 
+    m_connection_timeout = connection_timeout;
 
     parallel_for(0, nworkers, [&](size_t i) {
       try {
@@ -157,7 +157,7 @@ class worker_pool {
                          << "lambda operations will not be able to use all "
                          << "available cores." << std::endl;
       logprogress_stream << "To help us diagnose this issue, please send "
-                         << "the log file to product-feedback@dato.com." << std::endl;
+                         << "the log file to support@dato.com." << std::endl;
       logprogress_stream << "(The location of the log file is printed at the "
                          << "start of the GraphLab server)."  << std::endl;
       logstream(LOG_ERROR) << "Less than " << nworkers << " successfully started."
@@ -241,7 +241,7 @@ class worker_pool {
   };
 
   /**
-   * Returns number of available workers in the pool. 
+   * Returns number of available workers in the pool.
    */
   size_t num_available_workers() {
     std::unique_lock<graphlab::mutex> lck(mtx);
@@ -281,7 +281,7 @@ class worker_pool {
     }
 
     // Move the dead connection to deleted_connection
-    // the reason we cannot destroy the old connection object directly 
+    // the reason we cannot destroy the old connection object directly
     // is because the connection objects holds the unique ownership of
     // the comm_client object, however, at this point there might still
     // be shared pointers of the proxy object flying around and the client
