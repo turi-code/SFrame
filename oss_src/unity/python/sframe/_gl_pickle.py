@@ -7,6 +7,8 @@ of the BSD license. See the LICENSE file for details.
 '''
 from . import util as _util, toolkits as _toolkits, SFrame as _SFrame, SArray as _SArray, \
     SGraph as _SGraph, load_graph as _load_graph
+
+from util import _get_aws_credentials
 import util.cloudpickle as _cloudpickle
 import pickle as _pickle
 import uuid as _uuid
@@ -368,16 +370,18 @@ class GLPickler(_cloudpickle.CloudPickler):
         self.file = None
 
         if self.s3_path:
-            _file_util.s3_recursive_delete(self.s3_path)
+            _file_util.s3_recursive_delete(self.s3_path, \
+                    aws_credentials = _get_aws_credentials(), silent = True)
             _file_util.upload_to_s3(self.gl_temp_storage_path, self.s3_path,
+                                    aws_credentials = _get_aws_credentials(),
                                     is_dir = True, silent = True)
         if self.hdfs_path:
             _file_util.upload_to_hdfs(self.gl_temp_storage_path,
                                     self.hdfs_path, self.hadoop_conf_dir)
 
-
         for f in self.mark_for_delete:
             error = [False]
+
             def register_error(*args):
                 error[0] = True
 
@@ -432,15 +436,16 @@ class GLUnpickler(_pickle.Unpickler):
         # GLC 1.3 used Zipfiles for storing the objects.
         self.directory_mode = True
 
-
         if _file_util.is_s3_path(filename):
             self.tmp_file = _get_temp_filename()
             # GLC 1.3 uses zipfiles
             if _file_util._is_valid_s3_key(filename):
-                _file_util.download_from_s3(filename, self.tmp_file)
+                _file_util.download_from_s3(filename, self.tmp_file, \
+                        aws_credentials = _get_aws_credentials(), is_dir=False, silent=True)
             # GLC 1.4 uses directories
             else:
-                _file_util.download_from_s3(filename, self.tmp_file, is_dir=True, silent=True)
+                _file_util.download_from_s3(filename, self.tmp_file, \
+                        aws_credentials = _get_aws_credentials(), is_dir=True, silent=True)
 
             filename = self.tmp_file
         elif _file_util.is_hdfs_path(filename):
