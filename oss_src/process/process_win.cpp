@@ -19,7 +19,9 @@ char *convert_args(const std::string &cmd,
   std::stringstream master_arg_list;
   master_arg_list << cmd << " ";
   for(auto &i : args) {
+    master_arg_list << "\"";
     master_arg_list << i;
+    master_arg_list << "\"";
     master_arg_list << " ";
   }
 

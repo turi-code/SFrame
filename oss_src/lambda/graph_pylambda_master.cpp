@@ -15,7 +15,11 @@ namespace lambda {
 
 // Path of the pylambda_worker binary relative to the unity_server binary.
 // The relative path will be set when unity_server starts.
+#if _WIN32
+std::string graph_pylambda_master::pylambda_worker_binary = "pylambda_worker.exe";
+#else
 std::string graph_pylambda_master::pylambda_worker_binary = "pylambda_worker";
+#endif
 
 graph_pylambda_master& graph_pylambda_master::get_instance() {
   static graph_pylambda_master instance(std::min<size_t>(DEFAULT_NUM_GRAPH_LAMBDA_WORKERS,
