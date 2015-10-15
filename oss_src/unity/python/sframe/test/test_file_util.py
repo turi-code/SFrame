@@ -1,6 +1,5 @@
 import os
 import unittest
-import sframe
 import tempfile
 from sframe.util import file_util as fu
 
@@ -18,6 +17,8 @@ class FileUtilTests(unittest.TestCase):
 
         if self.run_s3_test:
             self.s3_test_path = os.environ['FILE_UTIL_TEST_S3_BUCKET']
+        else:
+            self.s3_test_path = None
 
     def test_get_protocol(self):
         self.assertEqual(fu.get_protocol(self.local_path), '')
