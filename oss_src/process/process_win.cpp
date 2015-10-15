@@ -192,7 +192,7 @@ ssize_t process::read_from_child(void *buf, size_t count) {
   DWORD bytes_read;
   BOOL ret = ReadFile(m_read_handle, (LPWORD)buf, count, &bytes_read, NULL);
   if(!ret) {
-    logstream(LOG_INFO) << "ReadFile failed: " <<
+    logstream(LOG_ERROR) << "ReadFile failed: " <<
       get_last_err_str(GetLastError()) << std::endl;
   }
 

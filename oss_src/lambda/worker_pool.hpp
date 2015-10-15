@@ -40,8 +40,9 @@ std::shared_ptr<worker_connection<ProxyType>> spawn_worker(std::string worker_bi
   logstream(LOG_INFO) << "Start lambda worker at " << worker_address
                       << " using binary: " << worker_binary << std::endl;
   auto worker_proc = std::make_shared<process>();
-  if(!worker_proc->launch(worker_binary, std::vector<std::string>{worker_address}))
+  if(!worker_proc->popen(worker_binary, std::vector<std::string>{worker_address}, STDERR_FILENO)) {
     throw("Fail launching lambda worker.");
+  }
 
   worker_proc->autoreap();
   size_t retry = 0;
@@ -68,9 +69,10 @@ std::shared_ptr<worker_connection<ProxyType>> spawn_worker(std::string worker_bi
         break;
       } else {
         // Connecting to server failed
-        logstream(LOG_INFO) << "Fail connecting to worker at " << worker_address
+        logstream(LOG_ERROR) << "Fail connecting to worker at " << worker_address
           << ". Status: " << cppipc::reply_status_to_string(status)
           << ". Retry: " << retry << std::endl;
+        logstream(LOG_ERROR) << "Stderr output from worker: " << worker_proc->read_from_child() << std::endl;
       }
       // Exception happended during comm_client construction/starting
     } catch (std::string error) {
@@ -149,7 +151,7 @@ class worker_pool {
     });
 
     if (num_workers() == 0) {
-      log_and_throw("Unable to evaluate lambdas. lambda workers did not start");
+      log_and_throw("Unable to evaluate lambdas. Check log for details (use graphlab.get_log_location).");
     } else if (num_workers() < nworkers) {
       logprogress_stream << "Less than " << nworkers << " successfully started. "
                          << "Using only " << num_workers()  << " workers." << std::endl;

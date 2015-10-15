@@ -73,6 +73,7 @@ class process {
    */
   ssize_t read_from_child(void *buf, size_t count);
 
+  std::string read_from_child();
   /**
    * Kill the launched process
    *

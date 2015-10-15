@@ -159,6 +159,18 @@ int main(int argc, char** argv) {
   }
 #endif
 
+#ifdef _WIN32
+  // Make sure dialog boxes don't come up for errors (apparently doesn't affect
+  // "hard system errors")
+  SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
+
+  // Don't listen to ctrl-c.  On Windows, a ctrl-c is delivered to every
+  // application "sharing" the console that is selected with the mouse. This
+  // causes unity_server to crash even though the client handles it correctly,
+  // unless we disable ctrl-c events.
+  SetConsoleCtrlHandler(NULL, true);
+#endif
+
   graphlab::configure_global_environment(argv[0]);
 
   std::string program_name = argv[0];
