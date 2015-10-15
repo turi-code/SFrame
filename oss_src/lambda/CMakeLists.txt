@@ -18,9 +18,9 @@ make_library(pylambda
     EXTERNAL_VISIBILITY
 )
 
-make_executable(pylambda_worker
+make_library(pylambda_worker
   SOURCES
-    pylambda_worker.cpp
+  pylambda_worker.cpp SHARED EXTERNAL_VISIBILITY 
   REQUIRES
     pylambda tcmalloc logger process
 )
@@ -51,15 +51,4 @@ if(${R_INTEGRATION} AND NOT WIN32)
       OUTPUT_NAME rcpplambda_shared
     )
 
-endif()
-
-if(WIN32)
-        # I could not get this to make a separate target without introducing 
-        # alot of CMake ugliness later on. So this will have to do.
-        add_custom_command(TARGET pylambda_worker POST_BUILD
-                COMMENT "Produced stripped version of pylambda_worker.exe"
-                COMMAND strip -s pylambda_worker.exe)
-        add_custom_command(TARGET pylambda_worker POST_BUILD
-                COMMENT "Add SxS manifest to pylambda_worker.exe"
-                COMMAND cmd.exe /c "mt.exe /manifest ${CMAKE_CURRENT_SOURCE_DIR}/pylambda_worker.exe.manifest /outputresource:${CMAKE_CURRENT_BINARY_DIR}/pylambda_worker.exe;#1")
 endif()

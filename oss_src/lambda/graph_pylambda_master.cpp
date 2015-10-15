@@ -8,18 +8,11 @@
 #include <lambda/graph_pylambda_master.hpp>
 #include <parallel/lambda_omp.hpp>
 #include <lambda/lambda_constants.hpp>
+#include <lambda/lambda_master.hpp>
 
 namespace graphlab {
 
 namespace lambda {
-
-// Path of the pylambda_worker binary relative to the unity_server binary.
-// The relative path will be set when unity_server starts.
-#if _WIN32
-std::string graph_pylambda_master::pylambda_worker_binary = "pylambda_worker.exe";
-#else
-std::string graph_pylambda_master::pylambda_worker_binary = "pylambda_worker";
-#endif
 
 graph_pylambda_master& graph_pylambda_master::get_instance() {
   static graph_pylambda_master instance(std::min<size_t>(DEFAULT_NUM_GRAPH_LAMBDA_WORKERS,
@@ -32,9 +25,11 @@ graph_pylambda_master::graph_pylambda_master(size_t nworkers) {
   for (size_t i = 0; i < nworkers; ++i) {
     worker_addresses.push_back(std::string("ipc://") + get_temp_name());
   }
-  m_worker_pool.reset(new worker_pool<graph_lambda_evaluator_proxy>(nworkers,
-        pylambda_worker_binary,
-        worker_addresses));
+  m_worker_pool.reset(
+      new worker_pool<graph_lambda_evaluator_proxy>(
+          nworkers,
+          lambda_master::get_lambda_worker_binary(),
+          worker_addresses));
 
   if (nworkers < thread::cpu_count()) {
     logprogress_stream << "Using default " << nworkers << " lambda workers.\n";

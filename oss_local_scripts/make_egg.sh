@@ -200,11 +200,7 @@ package_egg() {
     BINARY_LIST=`find . -type f -exec file {} \; | grep x86 | cut -d: -f 1`
     echo "Stripping binaries: $BINARY_LIST"
     for f in $BINARY_LIST; do
-      if [ $OSTYPE == "msys" ] && [ $f == "./pylambda_worker.exe" ]; then
-        echo "Skipping pylambda_worker"
-      else
-        strip -s $f;
-      fi
+	strip -s $f;
     done
     cd ..
   fi

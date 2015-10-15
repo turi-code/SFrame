@@ -13,16 +13,15 @@
 #include <lambda/lambda_constants.hpp>
 #include <shmipc/shmipc.hpp>
 
-namespace graphlab {
-namespace lambda {
+namespace graphlab { namespace lambda {
 
   // Path of the lambda_worker binary relative to the unity_server binary.
   // The relative path will be set when unity_server starts.
-#if _WIN32
-  std::string lambda_master::lambda_worker_binary = "pylambda_worker.exe";
-#else
-  std::string lambda_master::lambda_worker_binary = "pylambda_worker";
-#endif
+
+  // Get the python executable path
+
+std::vector<std::string> lambda_master::lambda_worker_binary_and_args = {};
+
   graphlab::mutex get_instance_lock;
 
   lambda_master& lambda_master::get_instance() {
@@ -38,7 +37,7 @@ namespace lambda {
       worker_addresses.push_back(std::string("ipc://") + get_temp_name());
     }
     m_worker_pool.reset(new worker_pool<lambda_evaluator_proxy>(nworkers,
-                                                                lambda_worker_binary,
+                                                                lambda_worker_binary_and_args,
                                                                 worker_addresses));
     if (nworkers < thread::cpu_count()) {
       logprogress_stream << "Using default " << nworkers << " lambda workers.\n";

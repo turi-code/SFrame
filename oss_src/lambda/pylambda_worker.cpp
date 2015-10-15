@@ -13,6 +13,8 @@
 #include <lambda/graph_pylambda.hpp>
 #include <logger/logger.hpp>
 #include <process/process_util.hpp>
+#include <boost/python.hpp>
+#include <util/try_finally.hpp>
 
 #ifdef HAS_TCMALLOC
 #include <google/malloc_extension.h>
@@ -42,94 +44,137 @@ void memory_release_loop() {
 }
 #endif
 
-void print_help(std::string program_name, po::options_description& desc) {
-  std::cerr << "Pylambda Server\n"
-            << desc << "\n"
-            << "Example: " << program_name << " ipc:///tmp/pylambda_worker\n"
-            << "Example: " << program_name << " tcp://127.0.0.1:10020\n"
-            << "Example: " << program_name << " tcp://*:10020\n"
-            << "Example: " << program_name << " tcp://127.0.0.1:10020 tcp://127.0.0.1:10021\n"
-            << "Example: " << program_name << " ipc:///tmp/unity_test_server --auth_token=secretkey\n"
-            << "Example: " << program_name << " ipc:///tmp/unity_test_server ipc:///tmp/unity_status secretkey\n";
-}
-
-int main(int argc, char** argv) {
-  size_t parent_pid = get_parent_pid();
+/** The main function to be called from the python ctypes library to
+ *  create a pylambda worker process.
+ *
+ *  Different error routes produce different error codes of 101 and
+ *  above.
+ */
+int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
   // Options
-  std::string program_name = argv[0];
-  std::string server_address;
-
-  // Handle server commandline options
-  boost::program_options::variables_map vm;
-  po::options_description desc("Allowed options");
-  desc.add_options()
-      ("help", "Print this help message.")
-      ("server_address", 
-       po::value<std::string>(&server_address)->implicit_value(server_address),
-       "This must be a valid ZeroMQ endpoint and "
-                         "is the address the server listens on");
-
-  po::positional_options_description positional;
-  positional.add("server_address", 1);
-
-  // try to parse the command line options
+  std::string server_address = _server_address;
+  std::string root_path = _root_path;
+  
+  size_t debug_mode = (server_address == "debug");
+    
   try {
-    po::command_line_parser parser(argc, argv);
-    parser.options(desc);
-    parser.positional(positional);
-    po::parsed_options parsed = parser.run();
-    po::store(parsed, vm);
-    po::notify(vm);
-  } catch(std::exception& error) {
-    std::cout << "Invalid syntax:\n"
-              << "\t" << error.what()
-              << "\n\n" << std::endl
-              << "Description:"
-              << std::endl;
-    print_help(program_name, desc);
-    return 1;
-  }
+   
+    size_t parent_pid = get_parent_pid();
+  
+    if(debug_mode) {
+      std::cerr << "INFO: Library function entered successfully." << std::endl;
+    }
 
-  if(vm.count("help")) {
-    print_help(program_name, desc);
+    // Whenever this is set, it must be restored upon return to python. 
+    PyThreadState *python_gil_thread_state = nullptr;
+    scoped_finally gil_restorer([&](){
+        if(python_gil_thread_state != nullptr) {
+          PyEval_RestoreThread(python_gil_thread_state);
+          python_gil_thread_state = nullptr;
+        }
+      });
+    
+    try {
+      if(debug_mode) {
+        std::cerr << "INFO: Attempting to initialize python." << std::endl;
+      }
+    
+      graphlab::lambda::init_python(root_path, debug_mode);
+    
+      if(debug_mode) {
+        std::cerr << "INFO: Python initialized successfully." << std::endl;
+      }
+    
+    } catch (const std::string& error) {
+
+      logstream(LOG_ERROR) << "Failed to initialize python (internal exception): " << error << std::endl;
+    
+      if(debug_mode)
+        std::cerr << "ERROR: (internal exception) Failed to initialize python: " << error << std::endl;
+    
+      return 101;
+    } catch (const std::exception& e) {
+
+      if(debug_mode)
+        std::cerr << "ERROR: Failed to initialize python: " << e.what() << std::endl;
+
+      logstream(LOG_ERROR) << "Failed to initialize python: " << e.what() << std::endl;
+    
+      return 102;
+    }
+
+    if(debug_mode) {
+      std::cerr << "INFO: No valid server address, exiting. \n"
+                << "   Example: ipc:///tmp/pylambda_worker\n"
+                << "   Example: tcp://127.0.0.1:10020\n"
+                << "   Example: tcp://*:10020\n"
+                << "   Example: tcp://127.0.0.1:10020 tcp://127.0.0.1:10021\n"
+                << "   Example: ipc:///tmp/unity_test_server --auth_token=secretkey\n"
+                << "   Example: ipc:///tmp/unity_test_server ipc:///tmp/unity_status secretkey\n"
+                << std::endl;
+      return 1; 
+    }
+
+    // Now, release the gil and continue. 
+    python_gil_thread_state = PyEval_SaveThread();
+    
+    graphlab::shmipc::server shm_comm_server;
+    bool has_shm = shm_comm_server.bind();
+    // construct the server
+    cppipc::comm_server server(std::vector<std::string>(), "", server_address);
+
+    server.register_type<graphlab::lambda::lambda_evaluator_interface>([&](){
+        if (has_shm) {
+          return new graphlab::lambda::pylambda_evaluator(&shm_comm_server);
+        } else {
+          return new graphlab::lambda::pylambda_evaluator();
+        }
+      });
+    server.register_type<graphlab::lambda::graph_lambda_evaluator_interface>([](){
+        return new graphlab::lambda::graph_pylambda_evaluator();
+      });
+
+    server.start();
+
+#ifdef HAS_TCMALLOC
+    graphlab::thread memory_release_thread;
+    memory_release_thread.launch(memory_release_loop);
+#endif
+
+    wait_for_parent_exit(parent_pid);
+
+#ifdef HAS_TCMALLOC
+    stop_memory_release_thread = true;
+    memory_release_cond.signal();
+    memory_release_thread.join();
+#endif
+
     return 0;
-  }
 
-  try {
-    graphlab::lambda::init_python(argc, argv);
+    /** Any exceptions happening?
+     */
   } catch (const std::string& error) {
-    logstream(LOG_WARNING) << "Fail initializing python: " << error << std::endl;
-    exit(-1);
+    logstream(LOG_ERROR) << "Internal PyLambda Error: " << error << std::endl;
+    if(debug_mode)
+      std::cerr << "Internal PyLambda Error: " << error << std::endl;
+    return 103;
+  } catch (const std::exception& error) {
+    logstream(LOG_ERROR) << "PyLambda C++ Error: " << error.what() << std::endl;
+    if(debug_mode)
+      std::cerr << "PyLambda C++ Error: " << error.what() << std::endl;
+    return 104;
+  } catch (...) {
+    logstream(LOG_ERROR) << "Unknown PyLambda Error." << std::endl;
+    if(debug_mode)
+      std::cerr << "Unknown PyLambda Error." << std::endl;
+    return 105;
   }
-  graphlab::shmipc::server shm_comm_server;
-  bool has_shm = shm_comm_server.bind();
-  // construct the server
-  cppipc::comm_server server(std::vector<std::string>(), "", server_address);
-
-  server.register_type<graphlab::lambda::lambda_evaluator_interface>([&](){
-                                            if (has_shm) {
-                                              return new graphlab::lambda::pylambda_evaluator(&shm_comm_server);
-                                            } else {
-                                              return new graphlab::lambda::pylambda_evaluator();
-                                            }
-                                          });
-  server.register_type<graphlab::lambda::graph_lambda_evaluator_interface>([](){
-                                            return new graphlab::lambda::graph_pylambda_evaluator();
-                                          });
-
-  server.start();
-
-#ifdef HAS_TCMALLOC
-  graphlab::thread memory_release_thread;
-  memory_release_thread.launch(memory_release_loop);
-#endif
-
-  wait_for_parent_exit(parent_pid);
-
-#ifdef HAS_TCMALLOC
-  stop_memory_release_thread = true;
-  memory_release_cond.signal();
-  memory_release_thread.join();
-#endif
-
 }
+
+// This one has to be accessible from python's ctypes.  
+extern "C" {
+  int EXPORT pylambda_worker_main(const char* _root_path, const char* _server_address) {
+    return _pylambda_worker_main(_root_path, _server_address);
+  }
+}
+

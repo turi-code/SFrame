@@ -21,10 +21,34 @@ namespace lambda {
 
 namespace python = boost::python;
 namespace fs = boost::filesystem;
-/**
- * Enforce the sys path to be the same as the GLC client's sys path.
+
+/** Initialize python.  Does not release the GIL. 
  */
-void set_gl_sys_path() {
+void init_python(const std::string& root_path, bool debug_mode) { 
+
+  /** Define some info and error handling macros for this function to
+   *  handle the debug_mode diagnostic stuff.  This allows users to
+   *  run python _pylambda_worker.py and get a report of what's going
+   *  on and how far things work to. 
+   */
+  
+#define __INFO(...) do {                                        \
+    std::cerr << "INFO: " << __VA_ARGS__ << std::endl;          \
+  } while(false)
+
+#define __ERROR(...) do {                                       \
+    std::cerr << "ERROR: " << __VA_ARGS__ << std::endl;         \
+    std::ostringstream ss; ss << __VA_ARGS__;                   \
+    throw(ss.str());                                            \
+  } while(false)
+  
+  Py_Initialize();
+
+  __INFO("Python initialized."); 
+
+  /**
+   * Enforce the sys path to be the same as the GLC client's sys path.
+   */
   try {
     python::object sys_path = python::import("sys").attr("path");
     python::object os_environ = python::import("os").attr("environ");
@@ -33,71 +57,71 @@ void set_gl_sys_path() {
     // If the __GL_SYS_PATH__ isn't present, then just keep the
     // regular sys.path.
     
-    if(sys_path_str != python::object() ) {  
+    if(sys_path_str != python::object() ) {
+      __INFO("Setting path from __GL_SYS_PATH__.");
+          
       // Simply doing "sys_path = sys_path_str.attr("split")(":");"
       // does not work as expected.
       // Have to manually clear the list and append with __GL_SYS_PATH__.
-      while(len(sys_path))
-        sys_path.attr("pop")();
+
+      // Clear the sys_path list
+      while(len(sys_path)) sys_path.attr("pop")();
+      
 #ifdef _WIN32
       sys_path.attr("extend")(sys_path_str.attr("split")(";"));
 #else
       sys_path.attr("extend")(sys_path_str.attr("split")(":"));
 #endif
+
+      // Log the path.
+      for(int i = 0; i < len(sys_path); ++i) {
+        const char* sp = python::extract<const char*>(python::str(sys_path.attr("__getitem__")(i)));
+        __INFO("sys.path[" << i << "]: " << sp);
+      }
     }
   } catch (python::error_already_set const& e) {
-      std::string error_string = parse_python_error();
-      std::cerr << error_string << std::endl;
-      throw(error_string);
+    std::string error_string = parse_python_error();
+    __ERROR(error_string); 
   } catch (...) {
-    std::cerr << "Warning: Error setting sys.path from __GL_SYS_PATH__" << std::endl;
+    __INFO("Warning: Error setting sys.path from __GL_SYS_PATH__");
   }
-}
 
-void init_python(int argc, char** argv) {
-  Py_Initialize();
-
-  PySys_SetArgvEx(argc, argv, 0);
-
-  set_gl_sys_path();
-
-  PyEval_InitThreads();
-  PyEval_SaveThread(); // release the GIL
-
+  __INFO("Path information set.");
+  
   std::string module_name;
   try {
     // I need to find my module name
-    fs::path curpath = argv[0];
+    fs::path curpath = root_path;
+    
     // we expect to be located in sframe/pylambda_worker or
     // graphlab/pylambda_worker
     curpath = fs::canonical(curpath);
-    module_name = curpath.parent_path().filename().string();
+    module_name = curpath.filename().string();
 
-    logstream(LOG_INFO) << "Module Name is " << module_name << std::endl;
+    __INFO("Module Name is " << module_name);
+    
     if (module_name != "graphlab" && module_name != "sframe") {
-      module_name = "";
-      logstream(LOG_ERROR)
-          << "Not in graphlab subdirectory nor sframe subdirectory. "
-          << "Module import disabled"
-          << std::endl;
+      __ERROR("Not in graphlab subdirectory nor sframe subdirectory; Module import disabled.");
     }
+  } catch (const std::exception& e) {
+    __ERROR("Failed to obtain module name: " << e.what());
   } catch (...) {
-    logstream(LOG_ERROR) << "Failed to obtain module name." << std::endl;
-    module_name = "";
+    __ERROR("Failed to obtain module name; unknown error.");
   }
 
-  {
-    python_thread_guard py_thread_guard;
-    try {
-      import_modules(module_name);
-    } catch (python::error_already_set const& e) {
-      std::string error_string = parse_python_error();
-      std::cerr << error_string << std::endl;
-      throw(error_string);
-    } catch (...) {
-      throw(std::string("Unknown error when import graphlab"));
-    }
+  __INFO("Using " << module_name << " module.");
+  
+  try {
+    import_modules(module_name);
+  } catch (python::error_already_set const& e) {
+    std::string error_string = parse_python_error();
+    __ERROR(error_string);
+  } catch (...) {
+    __ERROR("Unknown error when import graphlab.");
   }
+
+#undef __ERROR
+#undef __INFO
 }
 
 void py_set_random_seed(size_t seed) {

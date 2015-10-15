@@ -10,9 +10,9 @@ make_executable(dummy_worker
     process
 )
 
-make_executable(pyflexible_type_bench
+make_library(pyflexible_type_bench
   SOURCES
-    pyflexible_type_bench.cpp
-  REQUIRES
+    pyflexible_type_bench.cpp SHARED EXTERNAL_VISIBILITY
+  REQUIRES 
     pylambda
 )

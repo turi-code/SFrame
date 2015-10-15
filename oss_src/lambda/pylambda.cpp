@@ -35,11 +35,12 @@ namespace lambda {
     auto status = fileio::get_file_status(pylambda_str);
     if (status == fileio::file_status::DIRECTORY) {
       try {
+        // Does python::object(python::handle<>(lambda_filename)) decref this?
         PyObject* lambda_filename = 
             PyString_FromStringAndSize(pylambda_str.c_str(), pylambda_str.size());
         size_t hash_key = hash64(pylambda_str.c_str(), pylambda_str.size());
         auto unpickler = py_gl_pickle.attr("GLUnpickler")(python::object(python::handle<>(lambda_filename)));
-        m_lambda_hash[hash_key] = new python::object(unpickler.attr("load")()); 
+        m_lambda_hash[hash_key] = new python::object(unpickler.attr("load")());
         return hash_key;
       } catch (python::error_already_set const& e) {
         std::string error_string = parse_python_error();

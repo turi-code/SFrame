@@ -5,6 +5,17 @@
  * This software may be modified and distributed under the terms
  * of the BSD license. See the LICENSE file for details.
  */
+
+
+/**  To use:  In python, run 
+ *
+ *   from ctypes import *
+ *
+ *   lib = PyDLL("./libpyflexible_type_bench.so")
+ *   lib.test_int()
+ *   lib.test_string()
+ */
+
 #include <cmath>
 #include <lambda/python_api.hpp>
 #include <lambda/python_thread_guard.hpp>
@@ -31,7 +42,7 @@ std::string random_str(size_t len) {
   return s;
 }
 
-void test_string() {
+void _test_string() {
   std::vector<std::string> string_list(N);
   std::vector<flexible_type> flex_string_list(N);
   std::vector<python::object> obj_list(N);
@@ -91,7 +102,7 @@ void test_string() {
             << "\n" << std::endl;
 }
 
-void test_int() {
+void _test_int() {
   std::vector<size_t> int_list(N);
   std::vector<flexible_type> flex_int_list(N);
   std::vector<python::object> obj_list(N);
@@ -150,13 +161,15 @@ void test_int() {
             << "\n" << std::endl;
 }
 
-
-int main(int argc, char** argv) {
-  lambda::init_python(argc, argv);
-  {
-    python_thread_guard py_thread_gurad; // GIL
-    test_int();
-    test_string();
+extern "C" {
+  int test_int() {
+    _test_int();
+    return 0;
   }
-  return 0;
+
+  int test_string() {
+    _test_string();
+    return 0;
+  }
 }
+    

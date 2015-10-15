@@ -16,6 +16,10 @@ namespace graphlab {
 
 class flexible_type;
 
+extern std::string GLOBALS_MAIN_PROCESS_BINARY;
+extern std::string GLOBALS_MAIN_PROCESS_PATH;
+extern std::string GLOBALS_PYTHON_EXECUTABLE;
+
 namespace globals {
 
 template <typename T>
