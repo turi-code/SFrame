@@ -70,7 +70,7 @@ std::shared_ptr<worker_connection<ProxyType>> spawn_worker(std::string worker_bi
       } else {
         // Connecting to server failed
         logstream(LOG_ERROR) << "Fail connecting to worker at " << worker_address
-          << ". Status: " << cppipc::reply_status_to_string(status)
+          << ". Status: " << cppipc::reply_status_to_string(status) 
           << ". Retry: " << retry << std::endl;
         logstream(LOG_ERROR) << "Stderr output from worker: " << worker_proc->read_from_child() << std::endl;
       }
@@ -87,6 +87,7 @@ std::shared_ptr<worker_connection<ProxyType>> spawn_worker(std::string worker_bi
   if (!success) {
     throw std::string("Fail launching lambda worker.");
   } else {
+    worker_proc->close_read_pipe();
     return std::make_shared<worker_connection<ProxyType>>(worker_proc, worker_address, cli);
   }
 }

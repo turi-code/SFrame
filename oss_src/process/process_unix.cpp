@@ -240,6 +240,17 @@ int process::get_return_code() {
   return WEXITSTATUS(status);
 }
 
+void process::close_read_pipe() {
+  if(!m_launched)
+    log_and_throw("No process launched!");
+  if(!m_launched_with_popen)
+    log_and_throw("Cannot close pipe from process when launched without a pipe!");
+  if(m_read_handle == -1)
+    log_and_throw("Cannot close pipe from child, no pipe initialized.");
+  close(m_read_handle);
+  m_read_handle = -1;
+}
+
 size_t process::get_pid() {
   return size_t(m_pid);
 }

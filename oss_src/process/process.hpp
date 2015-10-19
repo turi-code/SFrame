@@ -96,6 +96,8 @@ class process {
    */
   int get_return_code();
 
+  void close_read_pipe();
+
   size_t get_pid();
 
   /**
