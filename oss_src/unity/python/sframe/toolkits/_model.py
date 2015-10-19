@@ -9,7 +9,6 @@ All rights reserved.
 This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
-from .. import extensions as _extensions
 from .. import connect as _mt
 from ..connect import main as glconnect
 from ..data_structures.sframe import SFrame as _SFrame
@@ -151,6 +150,7 @@ def _get_default_options_wrapper(unity_server_model_name,
           >>> out_sframe = graphlab.{module_name}.get_default_options('json')
         """
         _mt._get_metric_tracker().track('toolkit.%s.get_default_options' % module_name)
+        from .. import extensions as _extensions
         if sdk_model:
             response = _extensions._toolkits_sdk_get_default_options(
                                                           unity_server_model_name)
