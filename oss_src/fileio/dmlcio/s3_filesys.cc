@@ -378,7 +378,6 @@ void CURLReadStreamBase::Init(size_t begin_bytes) {
   ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_HEADERDATA, &header_) == CURLE_OK);
   SetSSLCertificates(ecurl_);
   curl_easy_setopt(ecurl_, CURLOPT_NOSIGNAL, 1);
-  curl_easy_setopt(ecurl_, CURLOPT_VERBOSE, 1);
   mcurl_ = curl_multi_init();
   ASSERT_TRUE(curl_multi_add_handle(mcurl_, ecurl_) == CURLM_OK);
   int nrun;
