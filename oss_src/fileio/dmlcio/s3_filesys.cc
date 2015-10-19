@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <ctime>
 #include <sstream>
+#include <fileio/fileio_constants.hpp>
 extern "C" {
 #include <errno.h>
 #include <curl/curl.h>
@@ -105,7 +106,7 @@ struct XMLIter {
  * \param len the length of data
  * \return the encoded string
  */
-std::string Base64(unsigned char md[], unsigned len) {
+static std::string Base64(unsigned char md[], unsigned len) {
   // encode base64
   BIO *fp = BIO_push(BIO_new(BIO_f_base64()),
                        BIO_new(BIO_s_mem()));    
@@ -122,7 +123,7 @@ std::string Base64(unsigned char md[], unsigned len) {
  * \param secret_key the key to compute the sign
  * \param content the content to sign
  */
-std::string Sign(const std::string &key, const std::string &content) {
+static std::string Sign(const std::string &key, const std::string &content) {
   HMAC_CTX ctx;
   unsigned char md[EVP_MAX_MD_SIZE];
   unsigned rlen = 0;
@@ -135,14 +136,15 @@ std::string Sign(const std::string &key, const std::string &content) {
   HMAC_CTX_cleanup(&ctx);
   return Base64(md, rlen);
 }
+
 // sign AWS key
-std::string Sign(const std::string &key,
-                 const std::string &method,
-                 const std::string &content_md5,
-                 const std::string &content_type,
-                 const std::string &date,
-                 std::vector<std::string> amz_headers,
-                 const std::string &resource) {
+static std::string Sign(const std::string &key,
+                        const std::string &method,
+                        const std::string &content_md5,
+                        const std::string &content_type,
+                        const std::string &date,
+                        std::vector<std::string> amz_headers,
+                        const std::string &resource) {
   std::ostringstream stream;
   stream << method << "\n";
   stream << content_md5 << "\n";
@@ -156,7 +158,7 @@ std::string Sign(const std::string &key,
   return Sign(key, stream.str());
 }
 
-std::string ComputeMD5(const std::string &buf) {
+static std::string ComputeMD5(const std::string &buf) {
   if (buf.length() == 0) return "";
   const int kLen = 128 / 8;
   unsigned char md[kLen];
@@ -173,7 +175,7 @@ inline const char *RemoveBeginSlash(const std::string &name) {
   return s;
 }
 // fin dthe error field of the header
-inline bool FindHttpError(const std::string &header) {
+static inline bool FindHttpError(const std::string &header) {
   std::string hd, ret;
   int code;
   std::istringstream is(header);
@@ -232,6 +234,17 @@ struct ReadStringStream {
     return nread;
   }
 };
+
+static void SetSSLCertificates(CURL *ecurl) {
+  using graphlab::fileio::get_alternative_ssl_cert_dir;
+  using graphlab::fileio::get_alternative_ssl_cert_file;
+  if (!get_alternative_ssl_cert_dir().empty()) {
+    ASSERT_EQ(curl_easy_setopt(ecurl, CURLOPT_CAPATH, get_alternative_ssl_cert_dir().c_str()), CURLE_OK);
+  }
+  if (!get_alternative_ssl_cert_file().empty()) {
+    ASSERT_EQ(curl_easy_setopt(ecurl, CURLOPT_CAINFO, get_alternative_ssl_cert_file().c_str()), CURLE_OK);
+  }
+}
 
 /*!
  * \brief reader stream that can be used to read from CURL
@@ -363,7 +376,9 @@ void CURLReadStreamBase::Init(size_t begin_bytes) {
   ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_WRITEDATA, &buffer_) == CURLE_OK);
   ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_HEADERFUNCTION, WriteStringCallback) == CURLE_OK);
   ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_HEADERDATA, &header_) == CURLE_OK);
+  SetSSLCertificates(ecurl_);
   curl_easy_setopt(ecurl_, CURLOPT_NOSIGNAL, 1);
+  curl_easy_setopt(ecurl_, CURLOPT_VERBOSE, 1);
   mcurl_ = curl_multi_init();
   ASSERT_TRUE(curl_multi_add_handle(mcurl_, ecurl_) == CURLM_OK);
   int nrun;
@@ -373,7 +388,9 @@ void CURLReadStreamBase::Init(size_t begin_bytes) {
   this->FillBuffer(1);
   if (FindHttpError(header_)) {
     while (this->FillBuffer(buffer_.length() + 256) != 0);
-    log_and_throw_io_failure(std::string("Request Error:") + header_ + buffer_);
+    std::string message = std::string("Request Error") + header_ + buffer_;
+    logstream(LOG_PROGRESS) << message << std::endl;
+    log_and_throw_io_failure(message);
   }
   // setup the variables
   at_end_ = false;
@@ -423,9 +440,22 @@ int CURLReadStreamBase::FillBuffer(size_t nwant) {
       CURLMcode ret = curl_multi_perform(mcurl_, &nrun);
       if (ret ==  CURLM_CALL_MULTI_PERFORM) continue;
       ASSERT_TRUE(ret == CURLM_OK);
-      if (nrun == 0) return 0;
+      if (nrun == 0) break;
     }
   }
+  // loop through all the subtasks in curl_multi_perform and look for errors
+  struct CURLMsg *m;
+  do {
+    int msgq = 0;
+    m = curl_multi_info_read(mcurl_, &msgq);
+    if(m && (m->msg == CURLMSG_DONE)) {
+      if (m->data.result != CURLE_OK) {
+        logstream(LOG_PROGRESS) << curl_easy_strerror(m->data.result) << std::endl;
+        log_and_throw_io_failure(curl_easy_strerror(m->data.result));
+      }
+    }
+  } while(m);
+
   return nrun;
 }
 // End of CURLReadStreamBase functions
@@ -480,7 +510,7 @@ void ReadStream::InitRequest(size_t begin_bytes,
   std::ostringstream result;
   sauth << "Authorization: AWS " << aws_id_ << ":" << signature;
   sdate << "Date: " << date;
-  surl << "http://" << path_.host << ".s3.amazonaws.com" << '/'
+  surl << "https://" << path_.host << ".s3.amazonaws.com" << '/'
        << RemoveBeginSlash(path_.name);
   srange << "Range: bytes=" << begin_bytes << "-";
   *slist = curl_slist_append(*slist, sdate.str().c_str());
@@ -638,7 +668,7 @@ void WriteStream::Run(const std::string &method,
   std::ostringstream rheader, rdata;
   sauth << "Authorization: AWS " << aws_id_ << ":" << signature;
   sdate << "Date: " << date;
-  surl << "http://" << path_.host << ".s3.amazonaws.com" << '/'
+  surl << "https://" << path_.host << ".s3.amazonaws.com" << '/'
        << RemoveBeginSlash(path_.name) << args;
   scontent << "Content-Type: " << content_type;
   // list
@@ -664,6 +694,7 @@ void WriteStream::Run(const std::string &method,
     ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_WRITEDATA, &rdata) == CURLE_OK);  
     ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_WRITEHEADER, WriteSStreamCallback) == CURLE_OK);
     ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_HEADERDATA, &rheader) == CURLE_OK);
+    SetSSLCertificates(ecurl_);
     curl_easy_setopt(ecurl_, CURLOPT_NOSIGNAL, 1);
     if (method == "POST") {
       ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_POST, 0L) == CURLE_OK);
@@ -677,7 +708,7 @@ void WriteStream::Run(const std::string &method,
     }
     CURLcode ret = curl_easy_perform(ecurl_);
     if (ret != CURLE_OK) {
-      logstream(LOG_INFO) << "request " << surlstring << "failed with error "
+      logstream(LOG_PROGRESS) << "request " << "failed with error "
                 << curl_easy_strerror(ret) << " Progress " 
                 << etags_.size() << " uploaded " << " retry=" << num_retry << std::endl;
       num_retry += 1;
@@ -693,9 +724,8 @@ void WriteStream::Run(const std::string &method,
   *out_data = rdata.str();
   if (FindHttpError(*out_header) ||
       out_data->find("<Error>") != std::string::npos) {
-    if (no_exception_) {
-      logstream(LOG_ERROR) << (std::string("AWS S3 Error:") + *out_header + *out_data) << std::endl;
-    } else {
+    logstream(LOG_PROGRESS) << (std::string("AWS S3 Error:") + *out_header + *out_data) << std::endl;
+    if (!no_exception_) {
       log_and_throw_io_failure(std::string("AWS S3 Error:") + *out_header + *out_data);
     }
   }
@@ -781,6 +811,7 @@ void ListObjects(const URI &path,
   ASSERT_TRUE(curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L) == CURLE_OK);
   ASSERT_TRUE(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteSStreamCallback) == CURLE_OK);
   ASSERT_TRUE(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result) == CURLE_OK);
+  SetSSLCertificates(curl);
   curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
   ASSERT_TRUE(curl_easy_perform(curl) == CURLE_OK);
   curl_slist_free_all(slist);
@@ -788,6 +819,7 @@ void ListObjects(const URI &path,
   // parse xml
   std::string ret = result.str();
   if (ret.find("<Error>") != std::string::npos) {
+    logstream(LOG_PROGRESS) << ret << std::endl;
     log_and_throw_io_failure(ret);
   }
   {// get files

@@ -149,11 +149,11 @@ EXPORT std::string FILEIO_ALTERNATIVE_SSL_CERT_FILE = "/etc/pki/tls/certs/ca-bun
 REGISTER_GLOBAL(std::string, FILEIO_ALTERNATIVE_SSL_CERT_FILE, true);
 REGISTER_GLOBAL(std::string, FILEIO_ALTERNATIVE_SSL_CERT_DIR, true);
 
-std::string get_alternative_ssl_cert_dir() {
+const std::string& get_alternative_ssl_cert_dir() {
   return FILEIO_ALTERNATIVE_SSL_CERT_DIR;
 }
 
-std::string get_alternative_ssl_cert_file() {
+const std::string& get_alternative_ssl_cert_file() {
   return FILEIO_ALTERNATIVE_SSL_CERT_FILE;
 }
 

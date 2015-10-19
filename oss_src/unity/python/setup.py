@@ -172,6 +172,7 @@ if __name__ == '__main__':
             "prettytable == 0.7.2",
             "requests == 2.3.0",
             "awscli == 1.6.2",
-            "multipledispatch>=0.4.7"
+            "multipledispatch>=0.4.7",
+            "certifi==2015.04.28" # we need to downgrade certifi to work with S3
         ],
     )

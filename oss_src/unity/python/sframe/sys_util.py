@@ -65,6 +65,12 @@ def make_unity_server_env():
 
     ## set local to be c standard so that unity_server will run ##
     env['LC_ALL']='C'
+    # add certificate file
+    try:
+        import certifi
+        env['GRAPHLAB_FILEIO_ALTERNATIVE_SSL_CERT_FILE'] = certifi.where()
+    except:
+        pass
     return env
 
 
