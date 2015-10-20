@@ -173,6 +173,8 @@ class GLPicklingTest(unittest.TestCase):
     def test_save_to_s3(self):
         # Arrange
         os.environ['GRAPHLAB_UNIT_TEST'] = 'PredictiveService'
+        os.environ['AWS_ACCESS_KEY_ID'] = ''
+        os.environ['AWS_SECRET_ACCESS_KEY'] = ''
         BUCKET_NAME = 'foo'
         boto.connect_s3().create_bucket(BUCKET_NAME)
         sf1 = gl.SFrame(range(10))
