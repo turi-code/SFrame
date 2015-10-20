@@ -371,7 +371,7 @@ class GLPickler(_cloudpickle.CloudPickler):
 
         if self.s3_path:
             _file_util.s3_recursive_delete(self.s3_path, \
-                    aws_credentials = _get_aws_credentials(), silent = True)
+                    aws_credentials = _get_aws_credentials())
             _file_util.upload_to_s3(self.gl_temp_storage_path, self.s3_path,
                                     aws_credentials = _get_aws_credentials(),
                                     is_dir = True, silent = True)
