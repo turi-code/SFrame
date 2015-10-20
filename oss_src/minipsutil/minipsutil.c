@@ -305,7 +305,29 @@ uint64_t total_mem() {
     if (sysinfo(&info) != 0) {
         return 0;
     }
-    return (uint64_t)info.totalram  * info.mem_unit;
+    uint64_t total_mem_from_sysinfo = (uint64_t)info.totalram  * info.mem_unit;
+
+    // we might be inside a container. check
+    // /sys/fs/cgroup/memory/memory.stats
+    FILE* f = fopen("/sys/fs/cgroup/memory/memory.stat", "r");
+    if (f == NULL) return total_mem_from_sysinfo;
+
+    uint64_t total_mem_from_cgroup = (uint64_t)(-1);
+    while(1) {
+      char key[64];
+      unsigned long long value;
+      // 63. one byte for null ptr
+      int ret = fscanf(f, "%63s %llu", key, &value);
+      if (ret != 2) break;
+      if (strcmp(key, "hierarchical_memory_limit") == 0) {
+        total_mem_from_cgroup = value;
+        break;
+      }
+    }
+    fclose(f);
+    // return the minimum of system or cgroup
+    if (total_mem_from_cgroup < total_mem_from_sysinfo) return total_mem_from_cgroup;
+    else return total_mem_from_sysinfo;
 }
 
 

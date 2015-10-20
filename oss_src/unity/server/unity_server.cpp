@@ -27,6 +27,7 @@
 #include <parallel/pthread_tools.hpp>
 #include <logger/logger.hpp>
 #include <logger/log_rotate.hpp>
+#include <minipsutil/minipsutil.h>
 
 #include <lambda/lambda_master.hpp>
 #include <lambda/graph_pylambda_master.hpp>
@@ -265,6 +266,7 @@ int main(int argc, char** argv) {
   graphlab::reap_unused_temp_files();
 
   logstream(LOG_EMPH) << "Unity server listening on: " <<  server_address<< std::endl;
+  logstream(LOG_EMPH) << "Total System Memory Detected: " << total_mem() << std::endl;
 
   // Prevent multiple server listen on the same ipc device.
   namespace fs = boost::filesystem;
