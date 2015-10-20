@@ -189,7 +189,7 @@ class GLPicklingTest(unittest.TestCase):
 
         del os.environ['GRAPHLAB_UNIT_TEST']
 
-    def test_backward_compatibility(self):
+    def _test_backward_compatibility(self):
 
         # Arrange
         file_name = 's3://gl-internal-datasets/models/1.3/gl-pickle.gl'
