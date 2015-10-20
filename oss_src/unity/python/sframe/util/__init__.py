@@ -380,13 +380,10 @@ def get_runtime_config():
 
 def set_runtime_config(name, value):
     """
-    Sets a runtime configuration value. These configuration values are also
+    Configures sytem behavior at runtime. These configuration values are also
     read from environment variables at program startup if available. See
     :py:func:`graphlab.get_runtime_config()` to get the current values for
     each variable.
-
-    The default configuration is conservatively defined for machines with about
-    4-8GB of RAM.
 
     Note that defaults may change across versions and the names
     of performance tuning constants may also change as improved algorithms
@@ -416,6 +413,19 @@ def set_runtime_config(name, value):
      `GRAPHLAB_CACHE_FILE_LOCATIONS`). On large systems, increasing this as well
      as `GRAPHLAB_FILEIO_MAXIMUM_CACHE_CAPACITY` can improve performance
      significantly for large SFrames. Defaults to 134217728 bytes (128MB).
+
+    **SSL Configuration**
+    - *GRAPHLAB_FILEIO_ALTERNATIVE_SSL_CERT_FILE*
+     The location of an SSL certificate file used to validate HTTPS / S3
+     connections. Defaults to the the Python certifi package certificates.
+
+    - *GRAPHLAB_FILEIO_ALTERNATIVE_SSL_CERT_DIR*
+     The location of an SSL certificate directory used to validate HTTPS / S3
+     connections. Defaults to the operating system certificates.
+
+    - *GRAPHLAB_FILEIO_DISABLE_SSL_CERTIFICATE_CHECKS*
+     If set to a non-zero value, disables all SSL certificate validation.
+     Defaults to False.
 
     **ODBC Configuration**
 

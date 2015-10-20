@@ -12,10 +12,9 @@
 #include <algorithm>
 #include <ctime>
 #include <sstream>
-#include <fileio/fileio_constants.hpp>
+#include <fileio/set_curl_ssl_options.hpp>
 extern "C" {
 #include <errno.h>
-#include <curl/curl.h>
 #include <curl/curl.h>
 #include <openssl/hmac.h>
 #include <openssl/md5.h>
@@ -25,6 +24,9 @@ extern "C" {
 #include "io.h"
 #include "./s3_filesys.h"
 #include <logger/assertions.hpp>
+
+using graphlab::fileio::set_ssl_certificate_options;
+
 /*!
  * \brief safely get the beginning address of a vector
  * \param vec input vector
@@ -235,17 +237,6 @@ struct ReadStringStream {
   }
 };
 
-static void SetSSLCertificates(CURL *ecurl) {
-  using graphlab::fileio::get_alternative_ssl_cert_dir;
-  using graphlab::fileio::get_alternative_ssl_cert_file;
-  if (!get_alternative_ssl_cert_dir().empty()) {
-    ASSERT_EQ(curl_easy_setopt(ecurl, CURLOPT_CAPATH, get_alternative_ssl_cert_dir().c_str()), CURLE_OK);
-  }
-  if (!get_alternative_ssl_cert_file().empty()) {
-    ASSERT_EQ(curl_easy_setopt(ecurl, CURLOPT_CAINFO, get_alternative_ssl_cert_file().c_str()), CURLE_OK);
-  }
-}
-
 /*!
  * \brief reader stream that can be used to read from CURL
  */
@@ -376,7 +367,7 @@ void CURLReadStreamBase::Init(size_t begin_bytes) {
   ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_WRITEDATA, &buffer_) == CURLE_OK);
   ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_HEADERFUNCTION, WriteStringCallback) == CURLE_OK);
   ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_HEADERDATA, &header_) == CURLE_OK);
-  SetSSLCertificates(ecurl_);
+  set_ssl_certificate_options(ecurl_);
   curl_easy_setopt(ecurl_, CURLOPT_NOSIGNAL, 1);
   mcurl_ = curl_multi_init();
   ASSERT_TRUE(curl_multi_add_handle(mcurl_, ecurl_) == CURLM_OK);
@@ -693,7 +684,7 @@ void WriteStream::Run(const std::string &method,
     ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_WRITEDATA, &rdata) == CURLE_OK);  
     ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_WRITEHEADER, WriteSStreamCallback) == CURLE_OK);
     ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_HEADERDATA, &rheader) == CURLE_OK);
-    SetSSLCertificates(ecurl_);
+    set_ssl_certificate_options(ecurl_);
     curl_easy_setopt(ecurl_, CURLOPT_NOSIGNAL, 1);
     if (method == "POST") {
       ASSERT_TRUE(curl_easy_setopt(ecurl_, CURLOPT_POST, 0L) == CURLE_OK);
@@ -810,7 +801,7 @@ void ListObjects(const URI &path,
   ASSERT_TRUE(curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L) == CURLE_OK);
   ASSERT_TRUE(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteSStreamCallback) == CURLE_OK);
   ASSERT_TRUE(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result) == CURLE_OK);
-  SetSSLCertificates(curl);
+  set_ssl_certificate_options(curl);
   curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
   ASSERT_TRUE(curl_easy_perform(curl) == CURLE_OK);
   curl_slist_free_all(slist);

@@ -14,6 +14,7 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <cppipc/server/cancel_ops.hpp>
+#include <fileio/set_curl_ssl_options.hpp>
 extern "C" {
 #include <curl/curl.h>
 }
@@ -48,6 +49,7 @@ int download_url(std::string url, std::string output_file) {
     curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &download_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)(f));
+    graphlab::fileio::set_ssl_certificate_options(curl);
     /* Perform the request, res will get the return code */ 
     res = curl_easy_perform(curl);
     /* Check for errors */ 
