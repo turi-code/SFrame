@@ -119,11 +119,14 @@ bool process::popen(const std::string &cmd,
     return false;
   } else if(pid == 0) {
     //***In child***
-    if(child_write_fd > -1) {
-      dup2(write_fd, child_write_fd);
-    }
-    close(write_fd);
     close(read_fd);
+    if((child_write_fd > -1) && (write_fd != child_write_fd)) {
+      errno = 0;
+      if(dup2(write_fd, child_write_fd) != child_write_fd) {
+        logstream(LOG_ERROR) << "dup2 failed to duplicate fd!" << strerror(errno) << std::endl;
+      }
+      close(write_fd);
+    }
 
     int exec_ret = execvp(&cmd[0], (char**)c_arglist);
     if(exec_ret == -1) {
@@ -247,8 +250,10 @@ void process::close_read_pipe() {
     log_and_throw("Cannot close pipe from process when launched without a pipe!");
   if(m_read_handle == -1)
     log_and_throw("Cannot close pipe from child, no pipe initialized.");
-  close(m_read_handle);
-  m_read_handle = -1;
+  if(m_read_handle > -1) {
+    close(m_read_handle);
+    m_read_handle = -1;
+  }
 }
 
 size_t process::get_pid() {

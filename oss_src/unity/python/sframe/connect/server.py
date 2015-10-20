@@ -155,12 +155,12 @@ class LocalServer(GraphLabServer):
                 self.proc = subprocess.Popen(arglist,
                         env=_sys_util.make_unity_server_env(),
                         stdin=subprocess.PIPE, stdout=FNULL,
-                        stderr=subprocess.STDOUT, bufsize=-1) # preexec_fn not supported on windows
+                        stderr=sys.stderr, bufsize=-1) # preexec_fn not supported on windows
             else:
                 self.proc = subprocess.Popen(arglist,
                         env=_sys_util.make_unity_server_env(),
                         stdin=subprocess.PIPE, stdout=FNULL,
-                        stderr=subprocess.STDOUT, bufsize=-1,
+                        stderr=sys.stderr, bufsize=-1,
                         preexec_fn=lambda: os.setpgrp())  # do not forward signal
         except OSError as e:
             raise RuntimeError('Invalid server binary \"%s\": %s' % (self.server_bin, str(e)))
