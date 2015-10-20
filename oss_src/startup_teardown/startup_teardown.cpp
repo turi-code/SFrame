@@ -118,7 +118,7 @@ void configure_global_environment(std::string argv0) {
     // duing these estimates to prevent us from having impractically small 
     // values.
     size_t CELL_SIZE_ESTIMATE = 64;
-    size_t ROW_SIZE_ESTIMATE = CELL_SIZE_ESTIMATE * 5
+    size_t ROW_SIZE_ESTIMATE = CELL_SIZE_ESTIMATE * 5;
     size_t max_cell_estimate = total_system_memory / 4 / CELL_SIZE_ESTIMATE;
     size_t max_row_estimate = total_system_memory / 4 / ROW_SIZE_ESTIMATE;
 
