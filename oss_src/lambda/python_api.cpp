@@ -33,7 +33,7 @@ void init_python(const std::string& root_path, bool debug_mode) {
    */
   
 #define __INFO(...) do {                                        \
-    std::cerr << "INFO: " << __VA_ARGS__ << std::endl;          \
+    std::cout << "INFO: " << __VA_ARGS__ << std::endl;          \
   } while(false)
 
 #define __ERROR(...) do {                                       \

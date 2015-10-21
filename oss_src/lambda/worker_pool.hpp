@@ -206,11 +206,8 @@ class worker_pool {
     available_workers.clear();
     proxy_to_connection.clear();
     for (auto& conn : connections) {
-      deleted_connections.push_back(std::move(conn));
+      conn.reset();
     }
-    parallel_for(0, deleted_connections.size(), [&](size_t i) {
-      deleted_connections[i].reset();
-    });
   }
 
   /**

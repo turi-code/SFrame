@@ -62,7 +62,7 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
     size_t parent_pid = get_parent_pid();
   
     if(debug_mode) {
-      std::cerr << "INFO: Library function entered successfully." << std::endl;
+      std::cout << "INFO: Library function entered successfully." << std::endl;
     }
 
     // Whenever this is set, it must be restored upon return to python. 
@@ -76,13 +76,13 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
     
     try {
       if(debug_mode) {
-        std::cerr << "INFO: Attempting to initialize python." << std::endl;
+        std::cout << "INFO: Attempting to initialize python." << std::endl;
       }
     
       graphlab::lambda::init_python(root_path, debug_mode);
     
       if(debug_mode) {
-        std::cerr << "INFO: Python initialized successfully." << std::endl;
+        std::cout << "INFO: Python initialized successfully." << std::endl;
       }
     
     } catch (const std::string& error) {
@@ -90,13 +90,13 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
       logstream(LOG_ERROR) << "Failed to initialize python (internal exception): " << error << std::endl;
     
       if(debug_mode)
-        std::cerr << "ERROR: (internal exception) Failed to initialize python: " << error << std::endl;
+        std::cout << "ERROR: (internal exception) Failed to initialize python: " << error << std::endl;
     
       return 101;
     } catch (const std::exception& e) {
 
       if(debug_mode)
-        std::cerr << "ERROR: Failed to initialize python: " << e.what() << std::endl;
+        std::cout << "ERROR: Failed to initialize python: " << e.what() << std::endl;
 
       logstream(LOG_ERROR) << "Failed to initialize python: " << e.what() << std::endl;
     
@@ -104,7 +104,7 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
     }
 
     if(debug_mode) {
-      std::cerr << "INFO: No valid server address, exiting. \n"
+      std::cout << "INFO: No valid server address, exiting. \n"
                 << "   Example: ipc:///tmp/pylambda_worker\n"
                 << "   Example: tcp://127.0.0.1:10020\n"
                 << "   Example: tcp://*:10020\n"
