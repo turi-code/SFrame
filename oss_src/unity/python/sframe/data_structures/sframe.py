@@ -3755,7 +3755,7 @@ class SFrame(object):
 
         if (left_empty or right_empty):
             non_empty_sframe = self if right_empty else other
-            return non_empty_sframe
+            return non_empty_sframe.__copy__()
 
         my_column_names = self.column_names()
         my_column_types = self.column_types()
