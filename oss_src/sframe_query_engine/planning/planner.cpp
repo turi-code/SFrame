@@ -23,45 +23,12 @@ size_t SFRAME_MAX_LAZY_NODE_SIZE = 10000;
 
 REGISTER_GLOBAL(int64_t, SFRAME_MAX_LAZY_NODE_SIZE, true);
 
+
 /**
- * Executes a linear query plan, potentially parallelizing it if possible.
- * Also implements fast paths in the event the input node is a source node.
+ * Directly executes a linear query plan potentially parallelizing it if possible.
+ * No fast path optimizations. You should use execute_node.
  */
-static sframe execute_node(pnode_ptr input_n, const materialize_options& exec_params) {
-  // fast path for SFRAME_SOURCE and SARRAY_SOURCE
-  if (exec_params.write_callback == nullptr) {
-    if (input_n->operator_type == planner_node_type::SFRAME_SOURCE_NODE) {
-      auto sf = input_n->any_operator_parameters.at("sframe").as<sframe>();
-      if (input_n->operator_parameters.at("begin_index") == 0 && 
-          input_n->operator_parameters.at("end_index") == sf.num_rows()) {
-        if (!exec_params.output_index_file.empty()) {
-          if (!exec_params.output_column_names.empty()) {
-            ASSERT_EQ(sf.num_columns(), exec_params.output_column_names.size());
-          }
-          for (size_t i = 0;i < sf.num_columns(); ++i) {
-            sf.set_column_name(i, exec_params.output_column_names[i]);
-          }
-          sf.save(exec_params.output_index_file);
-        }
-        return sf;
-      }
-    }
-    if (input_n->operator_type == planner_node_type::SARRAY_SOURCE_NODE) {
-      const auto& sa = input_n->any_operator_parameters.at("sarray").as<std::shared_ptr<sarray<flexible_type>>>();
-      if (input_n->operator_parameters.at("begin_index") == 0 && 
-          input_n->operator_parameters.at("end_index") == sa->size()) {
-        sframe sf({sa},{"X1"});
-        if (!exec_params.output_index_file.empty()) {
-          if (!exec_params.output_column_names.empty()) {
-            ASSERT_EQ(1, exec_params.output_column_names.size());
-          }
-          sf.set_column_name(0, exec_params.output_column_names.at(0));
-          sf.save(exec_params.output_index_file);
-        }
-        return sf;
-      }
-    }
-  }
+static sframe execute_node_impl(pnode_ptr input_n, const materialize_options& exec_params) {
   // Either run directly, or split it up into a parallel section
   if(is_parallel_slicable(input_n) && (exec_params.num_segments != 0)) {
 
@@ -78,6 +45,102 @@ static sframe execute_node(pnode_ptr input_n, const materialize_options& exec_pa
   } else {
     return subplan_executor().run(input_n, exec_params);
   }
+}
+
+/**
+ * Executes a linear query plan, potentially parallelizing it if possible.
+ * Also implements fast paths in the event the input node is a source node.
+ */
+static sframe execute_node(pnode_ptr input_n, const materialize_options& exec_params) {
+  // fast path for SFRAME_SOURCE. If I am not streaming into
+  // a callback, I can just call save
+  if (exec_params.write_callback == nullptr &&
+      input_n->operator_type == planner_node_type::SFRAME_SOURCE_NODE) {
+    auto sf = input_n->any_operator_parameters.at("sframe").as<sframe>();
+    if (input_n->operator_parameters.at("begin_index") == 0 &&
+        input_n->operator_parameters.at("end_index") == sf.num_rows()) {
+      if (!exec_params.output_index_file.empty()) {
+        if (!exec_params.output_column_names.empty()) {
+          ASSERT_EQ(sf.num_columns(), exec_params.output_column_names.size());
+        }
+        for (size_t i = 0;i < sf.num_columns(); ++i) {
+          sf.set_column_name(i, exec_params.output_column_names[i]);
+        }
+        sf.save(exec_params.output_index_file);
+      }
+      return sf;
+    } else {
+    }
+    // fast path for SARRAY_SOURCE . If I am not streaming into
+    // a callback, I can just call save
+  } else if (exec_params.write_callback == nullptr &&
+             input_n->operator_type == planner_node_type::SARRAY_SOURCE_NODE) {
+    const auto& sa = input_n->any_operator_parameters.at("sarray").as<std::shared_ptr<sarray<flexible_type>>>();
+    if (input_n->operator_parameters.at("begin_index") == 0 &&
+        input_n->operator_parameters.at("end_index") == sa->size()) {
+      sframe sf({sa},{"X1"});
+      if (!exec_params.output_index_file.empty()) {
+        if (!exec_params.output_column_names.empty()) {
+          ASSERT_EQ(1, exec_params.output_column_names.size());
+        }
+        sf.set_column_name(0, exec_params.output_column_names.at(0));
+        sf.save(exec_params.output_index_file);
+      }
+      return sf;
+    }
+    // if last node is a generalized union project and some come direct from sources
+    // we can take advantage that sarray columns are "moveable" and
+    // just materialize the modified columns
+  } else if (exec_params.write_callback == nullptr &&
+             input_n->operator_type == planner_node_type::GENERALIZED_UNION_PROJECT_NODE) {
+    if (input_n->any_operator_parameters.count("direct_source_mapping")) {
+      // ok we have a list of direct sources we don't need to rematerialize in the
+      // geneneralized union project.
+      auto existing_columns = input_n->any_operator_parameters
+          .at("direct_source_mapping")
+          .as<std::map<size_t, std::shared_ptr<sarray<flexible_type>>>>();
+
+      // if there are no existing columns, there is nothing to optimize
+      if (!existing_columns.empty()) {
+        auto ncolumns = infer_planner_node_num_output_columns(input_n);
+
+        // the indices the columns to materialize. we will project this out
+        // and materialize them
+        std::vector<size_t> columns_to_materialize;
+        // The final set of sframe columns;
+        // we fill in what we know first from existing_columns
+        std::vector<std::shared_ptr<sarray<flexible_type>>> resulting_sframe_columns(ncolumns);
+        for (size_t i = 0;i < ncolumns; ++i) {
+          auto iter = existing_columns.find(i);
+          if (iter == existing_columns.end()) {
+            // leave a gap in resulting_sframe_columns we will fill these in later
+            columns_to_materialize.push_back(i);
+          } else {
+            resulting_sframe_columns[i] = iter->second;
+          }
+        }
+        if (!columns_to_materialize.empty()) {
+          // add a project to the end selecting just this set of columns
+          // clear the column names if any. don't need them
+          auto new_exec_params = exec_params;
+          new_exec_params.output_column_names.clear();
+          input_n = op_project::make_planner_node(input_n, columns_to_materialize);
+          input_n = optimization_engine::optimize_planner_graph(input_n, new_exec_params);
+
+          sframe new_columns = execute_node_impl(input_n, new_exec_params);
+          // rebuild an sframe
+          // fill in the gaps in resulting_sframe_columns
+          // these are the columns we just materialized
+          for (size_t i = 0; i < columns_to_materialize.size(); ++i) {
+            resulting_sframe_columns[columns_to_materialize[i]] = new_columns.select_column(i);
+          }
+        }
+        return sframe(resulting_sframe_columns,
+                      exec_params.output_column_names);
+      }
+    }
+  }
+  return execute_node_impl(input_n, exec_params);
 }
 
 /** 

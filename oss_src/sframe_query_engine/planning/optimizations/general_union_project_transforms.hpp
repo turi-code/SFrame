@@ -224,10 +224,16 @@ class opt_project_add_direct_source_tags : public opt_transform {
       auto nn = n->inputs[idx_1];
       
       if(nn->type == planner_node_type::SFRAME_SOURCE_NODE) {
-        input_mapping[i] = nn->any_p<sframe>("sframe").select_column(idx_2); 
+        auto sa = nn->any_p<sframe>("sframe").select_column(idx_2);
+        if (nn->p("begin_index") == 0 && nn->p("end_index") == sa->size()) {
+          input_mapping[i] = sa;
+        }
       } else if (nn->type == planner_node_type::SARRAY_SOURCE_NODE) {
         DASSERT_EQ(idx_2, 0);
-        input_mapping[i] = nn->any_p<std::shared_ptr<sarray<flexible_type> > >("sarray");
+        auto sa = nn->any_p<std::shared_ptr<sarray<flexible_type> > >("sarray");
+        if (nn->p("begin_index") == 0 && nn->p("end_index") == sa->size()) {
+          input_mapping[i] = sa;
+        }
       }
     }
 
