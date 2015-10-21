@@ -20,9 +20,10 @@ make_library(pylambda
 
 make_library(pylambda_worker
   SOURCES
-  pylambda_worker.cpp SHARED EXTERNAL_VISIBILITY 
+  pylambda_worker.cpp
   REQUIRES
     pylambda tcmalloc logger process
+  SHARED
 )
 
 if(${R_INTEGRATION} AND NOT WIN32)

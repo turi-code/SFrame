@@ -95,7 +95,7 @@ class InstallEngine(install):
         root_path = os.path.join(self.install_lib, 'sframe')
 
         # make sure all of our binaries are executable to all
-        packaged_binaries = ['unity_server', 'pylambda_worker']
+        packaged_binaries = ['unity_server']
         packaged_binary_paths = []
         for exe_name in packaged_binaries:
             exe_path = os.path.join(root_path, exe_name)
@@ -151,7 +151,7 @@ if __name__ == '__main__':
         distclass=BinaryDistribution,
         package_data={
         'sframe': ['cython/*.so', 'cython/*.pyd', 'cython/*.dll',
-                     'unity_server', 'pylambda_worker',
+                     'unity_server',
                      '*.so', '*.so.1', '*.dylib',
                      '*.dll', '*.def', 'spark_unity.jar',
                      'deploy/*.jar', '*.exe', 'libminipsutil.*'
