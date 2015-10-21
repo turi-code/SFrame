@@ -9,13 +9,15 @@ of the BSD license. See the LICENSE file for details.
 from cython.operator cimport dereference as deref
 
 ### flexible_type utils ###
-from .cy_flexible_type cimport pytype_to_flex_type_enum
+from .cy_flexible_type cimport flex_type_enum_from_pytype
 from .cy_flexible_type cimport pytype_from_flex_type_enum
 from .cy_flexible_type cimport flexible_type_from_pyobject
-from .cy_flexible_type cimport glvec_from_iterable
+from .cy_flexible_type cimport flex_list_from_iterable
+from .cy_flexible_type cimport flex_list_from_typed_iterable
+from .cy_flexible_type cimport common_typed_flex_list_from_iterable
 from .cy_flexible_type cimport gl_options_map_from_pydict
 from .cy_flexible_type cimport pyobject_from_flexible_type
-from .cy_flexible_type cimport pylist_from_glvec
+from .cy_flexible_type cimport pylist_from_flex_list
 from .cy_flexible_type cimport pydict_from_gl_options_map
 
 ### sframe ###
@@ -46,16 +48,22 @@ cdef class UnitySArrayProxy:
 
     cpdef load_from_iterable(self, object d, type t, bint ignore_cast_failure=True):
         assert hasattr(d, '__iter__'), "object %s is not iterable" % str(d)
-        #debug print "load from iterable: object: %s type %s" % (str(d), str(t))
-        cdef flex_type_enum datatype = pytype_to_flex_type_enum(t)
-        cdef gl_vec vec
-        datatype = pytype_to_flex_type_enum(t)
-        vec = glvec_from_iterable(d, t,  ignore_cast_failure)
+
+        cdef flex_list data
+        cdef flex_type_enum datatype
+
+        # If the type of t is None, then do it a bit differently.
+        if t is None:
+            data = common_typed_flex_list_from_iterable(d, &datatype)
+        else:
+            datatype = flex_type_enum_from_pytype(t)
+            data = flex_list_from_typed_iterable(d, datatype, ignore_cast_failure)
+
         with nogil:
-            self.thisptr.construct_from_vector(vec, datatype)
+            self.thisptr.construct_from_vector(data, datatype)
 
     cpdef load_from_url(self, string url, type t):
-        cdef flex_type_enum datatype = pytype_to_flex_type_enum(t)
+        cdef flex_type_enum datatype = flex_type_enum_from_pytype(t)
         with nogil:
             self.thisptr.construct_from_files(url, datatype)
 
@@ -64,7 +72,7 @@ cdef class UnitySArrayProxy:
             self.thisptr.construct_from_sarray_index(index_file)
 
     cpdef load_autodetect(self, string url, type t):
-        cdef flex_type_enum datatype = pytype_to_flex_type_enum(t)
+        cdef flex_type_enum datatype = flex_type_enum_from_pytype(t)
         with nogil:
             self.thisptr.construct_from_autodetect(url, datatype)
 
@@ -106,7 +114,7 @@ cdef class UnitySArrayProxy:
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
     cpdef transform(self, fn, t, bint skip_undefined, int seed):
-        cdef flex_type_enum datatype = pytype_to_flex_type_enum(t)
+        cdef flex_type_enum datatype = flex_type_enum_from_pytype(t)
         cdef string lambda_str
         if type(fn) == str:
             lambda_str = fn
@@ -120,7 +128,7 @@ cdef class UnitySArrayProxy:
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
     cpdef transform_native(self, closure, t, bint skip_undefined, int seed):
-        cdef flex_type_enum datatype = pytype_to_flex_type_enum(t)
+        cdef flex_type_enum datatype = flex_type_enum_from_pytype(t)
         cdef unity_sarray_base_ptr proxy
 
         cl = make_function_closure_info(closure)
@@ -211,7 +219,7 @@ cdef class UnitySArrayProxy:
         return self.thisptr.nnz()
 
     cpdef astype(self, type dtype, bint undefined_on_failure):
-        cdef flex_type_enum datatype = pytype_to_flex_type_enum(dtype)
+        cdef flex_type_enum datatype = flex_type_enum_from_pytype(dtype)
         cdef unity_sarray_base_ptr proxy
         with nogil:
             proxy = (self.thisptr.astype(datatype, undefined_on_failure))
@@ -247,9 +255,9 @@ cdef class UnitySArrayProxy:
         self.thisptr.begin_iterator()
 
     cpdef iterator_get_next(self, size_t length):
-        cdef gl_vec tmp
+        cdef flex_list tmp
         tmp = self.thisptr.iterator_get_next(length)
-        return pylist_from_glvec(tmp)
+        return pylist_from_flex_list(tmp)
 
     cpdef left_scalar_operator(self, object other, string op):
         cdef unity_sarray_base_ptr proxy
@@ -304,9 +312,32 @@ cdef class UnitySArrayProxy:
             proxy = (self.thisptr.append(other._base_ptr))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
+    cpdef count_bag_of_words(self, object op):
+        cdef gl_options_map option_values = gl_options_map_from_pydict(op)
+        cdef unity_sarray_base_ptr proxy
+        with nogil:
+            proxy = (self.thisptr.count_bag_of_words(option_values))
+        return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
+
+
+    cpdef count_character_ngrams(self, size_t n, object op):
+        cdef gl_options_map option_values = gl_options_map_from_pydict(op)
+        cdef unity_sarray_base_ptr proxy
+        with nogil:
+            proxy = (self.thisptr.count_character_ngrams(n, option_values))
+        return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
+
+
+    cpdef count_ngrams(self, size_t n, object op):
+        cdef gl_options_map option_values = gl_options_map_from_pydict(op)
+        cdef unity_sarray_base_ptr proxy
+        with nogil:
+            proxy = (self.thisptr.count_ngrams(n, option_values))
+        return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
+
     cpdef dict_trim_by_keys(self, object keys, bint exclude):
         cdef unity_sarray_base_ptr proxy = (self.thisptr.dict_trim_by_keys(
-            glvec_from_iterable(keys), exclude))
+            flex_list_from_iterable(keys), exclude))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
     cpdef dict_trim_by_values(self, lower, upper):
@@ -330,14 +361,14 @@ cdef class UnitySArrayProxy:
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
     cpdef dict_has_any_keys(self, object keys):
-        cdef gl_vec vec = glvec_from_iterable(keys)
+        cdef flex_list vec = flex_list_from_iterable(keys)
         cdef unity_sarray_base_ptr proxy
         with nogil:
             proxy = (self.thisptr.dict_has_any_keys(vec))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
     cpdef dict_has_all_keys(self, object keys):
-        cdef gl_vec vec = glvec_from_iterable(keys)
+        cdef flex_list vec = flex_list_from_iterable(keys)
         cdef unity_sarray_base_ptr proxy
         with nogil:
             proxy = (self.thisptr.dict_has_all_keys(vec))
@@ -361,7 +392,7 @@ cdef class UnitySArrayProxy:
     cpdef unpack(self, string column_name_prefix, object limit, value_types, na_value):
         cdef vector[flex_type_enum] column_types
         for t in value_types:
-            column_types.push_back(pytype_to_flex_type_enum(t))
+            column_types.push_back(flex_type_enum_from_pytype(t))
 
         cdef vector[flexible_type] sub_keys
         for key in limit:
@@ -376,7 +407,7 @@ cdef class UnitySArrayProxy:
     cpdef expand(self, string column_name_prefix, object limit, value_types):
         cdef vector[flex_type_enum] column_types
         for t in value_types:
-            column_types.push_back(pytype_to_flex_type_enum(t))
+            column_types.push_back(flex_type_enum_from_pytype(t))
 
         cdef vector[flexible_type] sub_keys
         for key in limit:

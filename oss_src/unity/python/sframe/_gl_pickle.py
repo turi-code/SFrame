@@ -8,7 +8,7 @@ of the BSD license. See the LICENSE file for details.
 from . import util as _util, toolkits as _toolkits, SFrame as _SFrame, SArray as _SArray, \
     SGraph as _SGraph, load_graph as _load_graph
 
-from util import _get_aws_credentials
+from util import _get_aws_credentials as _util_get_aws_credentials
 import util.cloudpickle as _cloudpickle
 import pickle as _pickle
 import uuid as _uuid
@@ -18,6 +18,10 @@ import shutil as _shutil
 import atexit as _atexit
 from util import file_util as _file_util
 import glob as _glob
+
+def _get_aws_credentials():
+    (key, secret) = _util_get_aws_credentials()
+    return {'aws_access_key_id': key, 'aws_secret_access_key': secret}
 
 def _get_temp_filename():
     return _util._make_temp_filename(prefix='gl_pickle_')
@@ -371,7 +375,7 @@ class GLPickler(_cloudpickle.CloudPickler):
 
         if self.s3_path:
             _file_util.s3_recursive_delete(self.s3_path, \
-                    aws_credentials = _get_aws_credentials(), silent = True)
+                    aws_credentials = _get_aws_credentials())
             _file_util.upload_to_s3(self.gl_temp_storage_path, self.s3_path,
                                     aws_credentials = _get_aws_credentials(),
                                     is_dir = True, silent = True)

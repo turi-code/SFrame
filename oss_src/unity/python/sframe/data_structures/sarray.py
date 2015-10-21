@@ -16,7 +16,8 @@ of the BSD license. See the LICENSE file for details.
 
 from .. import connect as _mt
 from ..connect import main as glconnect
-from ..cython.cy_type_utils import pytype_from_dtype, infer_type_of_list, is_numeric_type
+from ..cython.cy_flexible_type import pytype_from_dtype, pytype_from_array_typecode
+from ..cython.cy_flexible_type import infer_type_of_list, infer_type_of_sequence
 from ..cython.cy_sarray import UnitySArrayProxy
 from ..cython.context import debug_trace as cython_context
 from ..util import _make_internal_url
@@ -27,6 +28,7 @@ from ..deps import pandas, HAS_PANDAS
 
 import time
 import array
+import collections
 import datetime
 import warnings
 import numbers
@@ -322,7 +324,7 @@ class SArray(object):
                     dtype = pytype_from_dtype(data.dtype)
                     if dtype == object:
                         # we need to get a bit more fine grained than that
-                        dtype = infer_type_of_list(data)
+                        dtype = infer_type_of_sequence(data.values)
 
                 elif HAS_NUMPY and isinstance(data, numpy.ndarray):
                     # first try the fast inproc method
@@ -335,6 +337,8 @@ class SArray(object):
                             # swap the proxy.
                             self.__proxy__, ret.__proxy__ = ret.__proxy__, self.__proxy__
                             return
+                        else:
+                            dtype = infer_type_of_sequence(data)
                     except:
                         pass
 
@@ -342,7 +346,7 @@ class SArray(object):
                     dtype = pytype_from_dtype(data.dtype)
                     if dtype == object:
                         # we need to get a bit more fine grained than that
-                        dtype = infer_type_of_list(data)
+                        dtype = infer_type_of_sequence(data)
                     if len(data.shape) == 2:
                         # we need to make it an array or a list
                         if dtype == float or dtype == int:
@@ -355,25 +359,28 @@ class SArray(object):
                 elif (isinstance(data, str) or isinstance(data, unicode)):
                     # if it is a file, we default to string
                     dtype = str
-                elif hasattr(data, '__iter__') and not isinstance(data, dict):
-                    # if it is a list, Get the first type and make sure
-                    # the remaining items are all of the same type
-                    #
-                    # While dicts are iterable, we disable constructing SArrays
-                    # in this way since it is really strange that
-                    # SArray({1:2,3:4}) --> SArray of [1,3]
-                    dtype = infer_type_of_list(data)
+                elif isinstance(data, array.array):
+                    dtype = pytype_from_array_typecode(data.typecode)
+                elif isinstance(data, collections.Sequence):
+                    # Covers any ordered python container and arrays.
+                    # Convert it to a list first.
+                    dtype = infer_type_of_sequence(data)
+                else:
+                    dtype = None
 
             if HAS_PANDAS and isinstance(data, pandas.Series):
                 with cython_context():
                     self.__proxy__.load_from_iterable(data.values, dtype, ignore_cast_failure)
-            elif (HAS_NUMPY and isinstance(data, numpy.ndarray)) or (hasattr(data, '__iter__') and not isinstance(data, dict)):
-                with cython_context():
-                    self.__proxy__.load_from_iterable(data, dtype, ignore_cast_failure)
             elif (isinstance(data, str) or isinstance(data, unicode)):
                 internal_url = _make_internal_url(data)
                 with cython_context():
                     self.__proxy__.load_autodetect(internal_url, dtype)
+            elif ((HAS_NUMPY and isinstance(data, numpy.ndarray))
+                  or isinstance(data, array.array)
+                  or isinstance(data, collections.Sequence)):
+
+                with cython_context():
+                    self.__proxy__.load_from_iterable(data, dtype, ignore_cast_failure)
             else:
                 raise TypeError("Unexpected data source. " \
                                 "Possible data source types are: list, " \
@@ -1244,6 +1251,98 @@ class SArray(object):
         from .. import extensions
         return extensions.sarray_subslice(self, start, step, stop)
 
+    def _count_words(self, to_lower=True, delimiters=["\r", "\v", "\n", "\f", "\t", " "]):
+        """
+        This returns an SArray with, for each input string, a dict from the unique,
+        delimited substrings to their number of occurrences within the original
+        string.
+
+        The SArray must be of type string.
+
+        ..WARNING:: This function is deprecated, and will be removed in future
+        versions of GraphLab Create. Please use the `text_analytics.count_words`
+        function instead.
+
+        Parameters
+        ----------
+        to_lower : bool, optional
+            "to_lower" indicates whether to map the input strings to lower case
+            before counts
+
+        delimiters: list[string], optional
+            "delimiters" is a list of which characters to delimit on to find tokens
+
+        Returns
+        -------
+        out : SArray
+            for each input string, a dict from the unique, delimited substrings
+            to their number of occurrences within the original string.
+
+        Examples
+        --------
+        >>> sa = graphlab.SArray(["The quick brown fox jumps.",
+                                 "Word word WORD, word!!!word"])
+        >>> sa._count_words()
+        dtype: dict
+        Rows: 2
+        [{'quick': 1, 'brown': 1, 'jumps': 1, 'fox': 1, 'the': 1},
+         {'word': 2, 'word,': 1, 'word!!!word': 1}]
+            """
+
+        if (self.dtype() != str):
+            raise TypeError("Only SArray of string type is supported for counting bag of words")
+
+        if (not all([len(delim) == 1 for delim in delimiters])):
+            raise ValueError("Delimiters must be single-character strings")
+
+        _mt._get_metric_tracker().track('sarray.count_words')
+
+        # construct options, will extend over time
+        options = dict()
+        options["to_lower"] = to_lower == True
+        # defaults to std::isspace whitespace delimiters if no others passed in
+    	options["delimiters"] = delimiters
+
+        with cython_context():
+            return SArray(_proxy=self.__proxy__.count_bag_of_words(options))
+
+    def _count_ngrams(self, n=2, method="word", to_lower=True, ignore_space=True):
+        """
+        For documentation, see graphlab.text_analytics.count_ngrams().
+
+        ..WARNING:: This function is deprecated, and will be removed in future
+        versions of GraphLab Create. Please use the `text_analytics.count_words`
+        function instead.
+        """
+        if (self.dtype() != str):
+            raise TypeError("Only SArray of string type is supported for counting n-grams")
+
+        if (type(n) != int):
+            raise TypeError("Input 'n' must be of type int")
+
+        if (n < 1):
+            raise ValueError("Input 'n' must be greater than 0")
+
+        if (n > 5):
+            warnings.warn("It is unusual for n-grams to be of size larger than 5.")
+
+        _mt._get_metric_tracker().track('sarray.count_ngrams', properties={'n':n, 'method':method})
+
+        # construct options, will extend over time
+        options = dict()
+        options["to_lower"] = to_lower == True
+        options["ignore_space"] = ignore_space == True
+
+
+        if method == "word":
+            with cython_context():
+                return SArray(_proxy=self.__proxy__.count_ngrams(n, options ))
+        elif method == "character" :
+            with cython_context():
+                return SArray(_proxy=self.__proxy__.count_character_ngrams(n, options ))
+        else:
+            raise ValueError("Invalid 'method' input  value. Please input either 'word' or 'character' ")
+
     def dict_trim_by_keys(self, keys, exclude=True):
         """
         Filter an SArray of dictionary type by the given keys. By default, all
@@ -1327,10 +1426,10 @@ class SArray(object):
         [{'this': 1, 'is': 5}, {'this': 2, 'are': 1, 'cat': 5}]
         """
 
-        if None != lower and (not is_numeric_type(type(lower))):
+        if not (lower is None or isinstance(lower, numbers.Number)):
             raise TypeError("lower bound has to be a numeric value")
 
-        if None != upper and (not is_numeric_type(type(upper))):
+        if not (upper is None or isinstance(upper, numbers.Number)):
             raise TypeError("upper bound has to be a numeric value")
 
         _mt._get_metric_tracker().track('sarray.dict_trim_by_values')

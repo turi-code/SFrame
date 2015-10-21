@@ -57,6 +57,7 @@ version = '{{VERSION_STRING}}'
 
 from .util import get_environment_config
 from .util import get_graphlab_object_type
+from .util import get_log_location, get_client_log_location, get_server_log_location
 
 from .version_info import version
 from .version_info import __VERSION__

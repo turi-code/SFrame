@@ -27,6 +27,7 @@
 #include <parallel/pthread_tools.hpp>
 #include <logger/logger.hpp>
 #include <logger/log_rotate.hpp>
+#include <minipsutil/minipsutil.h>
 
 #include <lambda/lambda_master.hpp>
 #include <lambda/graph_pylambda_master.hpp>
@@ -159,6 +160,18 @@ int main(int argc, char** argv) {
   }
 #endif
 
+#ifdef _WIN32
+  // Make sure dialog boxes don't come up for errors (apparently doesn't affect
+  // "hard system errors")
+  SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
+
+  // Don't listen to ctrl-c.  On Windows, a ctrl-c is delivered to every
+  // application "sharing" the console that is selected with the mouse. This
+  // causes unity_server to crash even though the client handles it correctly,
+  // unless we disable ctrl-c events.
+  SetConsoleCtrlHandler(NULL, true);
+#endif
+
   graphlab::configure_global_environment(argv[0]);
 
   std::string program_name = argv[0];
@@ -265,6 +278,7 @@ int main(int argc, char** argv) {
   graphlab::reap_unused_temp_files();
 
   logstream(LOG_EMPH) << "Unity server listening on: " <<  server_address<< std::endl;
+  logstream(LOG_EMPH) << "Total System Memory Detected: " << total_mem() << std::endl;
 
   // Prevent multiple server listen on the same ipc device.
   namespace fs = boost::filesystem;

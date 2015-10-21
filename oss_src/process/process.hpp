@@ -73,6 +73,7 @@ class process {
    */
   ssize_t read_from_child(void *buf, size_t count);
 
+  std::string read_from_child();
   /**
    * Kill the launched process
    *
@@ -94,6 +95,8 @@ class process {
    * Returns INT_MAX if getting the error code failed for some other reason.
    */
   int get_return_code();
+
+  void close_read_pipe();
 
   size_t get_pid();
 

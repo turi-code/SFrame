@@ -192,11 +192,20 @@ ssize_t process::read_from_child(void *buf, size_t count) {
   DWORD bytes_read;
   BOOL ret = ReadFile(m_read_handle, (LPWORD)buf, count, &bytes_read, NULL);
   if(!ret) {
-    logstream(LOG_INFO) << "ReadFile failed: " <<
+    logstream(LOG_ERROR) << "ReadFile failed: " <<
       get_last_err_str(GetLastError()) << std::endl;
   }
 
   return ret ? ssize_t(bytes_read) : ssize_t(-1);
+}
+
+void process::close_read_pipe() {
+  if(!m_launched)
+    log_and_throw("No process launched!");
+  if(!m_launched_with_popen || m_read_handle == NULL)
+    log_and_throw("Cannot close read pipe from child, no pipe initialized.");
+  CloseHandle(m_read_handle);
+  m_read_handle = NULL;
 }
 
 bool process::kill(bool async) {

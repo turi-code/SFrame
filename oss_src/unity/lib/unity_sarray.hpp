@@ -514,6 +514,28 @@ class unity_sarray: public unity_sarray_base {
    */
   std::shared_ptr<unity_sarray_base> sample(float percent, int random_seed);
 
+
+  /**
+   * Do a word-count for each element in the SArray and return a SArray of dictionary
+   **/
+  std::shared_ptr<unity_sarray_base> count_bag_of_words(std::map<std::string, flexible_type> options);
+
+   /**
+   * Do a character n-gram count for each element in the SArray and return a SArray of dictionary type.
+   * Parameter n is the number or charachters in each n-gram
+   * options takes: to_lower, which makes words lower case
+   *                ignore_space, which ignores spaces in calculating charachter n-grams
+   **/
+  std::shared_ptr<unity_sarray_base> count_character_ngrams(size_t n, std::map<std::string, flexible_type> options);
+
+
+   /**
+   * Do a character n-gram count for each element in the SArray and return a SArray of dictionary type.
+   * Parameter n is the number of words in each n-gram
+   * options takes: to_lower, which makes words lower case
+   **/
+  std::shared_ptr<unity_sarray_base> count_ngrams(size_t n, std::map<std::string, flexible_type> options);
+
   /**
   * If SArray dtype is dict, filter out each dict by the given keys.
   * If exclude is True, then all keys that are in the input key list are removed

@@ -19,6 +19,9 @@ from ..connect import __SERVER__, __CLIENT__, _get_metric_tracker
 import decorator
 import logging
 import os
+import subprocess as _subprocess
+from ..sys_util import make_unity_server_env as _make_unity_server_env
+from ..util.config import DEFAULT_CONFIG as _DEFAULT_CONFIG
 
 """ The module level logger object """
 __LOGGER__ = logging.getLogger(__name__)
@@ -28,6 +31,24 @@ REMOTE_SERVER_TYPE = 'remote'
 
 ENGINE_START_ERROR_MESSAGE = 'Cannot connect to GraphLab Create engine. ' + \
     'Contact support@dato.com for help.'
+
+def _verify_engine_binary(server_bin):
+    try:
+        cmd = "\"%s\" --help" % (server_bin)
+        # check_output allows us to view the output from the subprocess on
+        # failure. In this case, we don't care what the output is if it
+        # succeeds.
+        _subprocess.check_output(cmd, stderr=_subprocess.STDOUT,
+                env=_make_unity_server_env(), shell=True)
+    except _subprocess.CalledProcessError as e:
+        _get_metric_tracker().track('is_product_key_valid.unity_server_error')
+        __LOGGER__.error(\
+                'unity_server launched with command (%s) failed \nreturn code: %d\nmessage: %s' %
+                (e.cmd, e.returncode, e.output))
+    except Exception as e:
+        #TODO: When will this throw?
+        _get_metric_tracker().track('is_product_key_valid.unity_server_error')
+        raise
 
 # Decorator which catch the exception and output to log error.
 @decorator.decorator
@@ -81,7 +102,15 @@ def launch(server_addr=None, server_bin=None, server_log=None, auth_token=None,
         _get_metric_tracker().track('server_launch.server_type_error', send_sys_info=True)
         return
 
-    # construct a server server instance based on the server_type
+    # Check that the unity_server binary exists
+    if not hasattr(_DEFAULT_CONFIG, 'server_bin') and server_bin is None:
+        __LOGGER__.error("Could not find a unity_server binary. Please try reinstalling.")
+        raise AssertionError
+
+    # Test that the unity_server binary works
+    _verify_engine_binary(_DEFAULT_CONFIG.server_bin if server_bin is None else server_bin)
+
+    # construct a server instance based on the server_type
     if (server_type == LOCAL_SERVER_TYPE):
         server = LocalServer(server_addr, server_bin, server_log)
     elif (server_type == REMOTE_SERVER_TYPE):

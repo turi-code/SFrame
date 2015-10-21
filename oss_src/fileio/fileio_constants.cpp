@@ -144,16 +144,21 @@ std::string get_cache_file_hdfs_location() {
 }
 
 // Default SSL location for RHEL and FEDORA
+#ifdef __linux__
 EXPORT std::string FILEIO_ALTERNATIVE_SSL_CERT_DIR = "/etc/pki/tls/certs";
 EXPORT std::string FILEIO_ALTERNATIVE_SSL_CERT_FILE = "/etc/pki/tls/certs/ca-bundle.crt";
+#else
+EXPORT std::string FILEIO_ALTERNATIVE_SSL_CERT_DIR = "";
+EXPORT std::string FILEIO_ALTERNATIVE_SSL_CERT_FILE = "";
+#endif
 REGISTER_GLOBAL(std::string, FILEIO_ALTERNATIVE_SSL_CERT_FILE, true);
 REGISTER_GLOBAL(std::string, FILEIO_ALTERNATIVE_SSL_CERT_DIR, true);
 
-std::string get_alternative_ssl_cert_dir() {
+const std::string& get_alternative_ssl_cert_dir() {
   return FILEIO_ALTERNATIVE_SSL_CERT_DIR;
 }
 
-std::string get_alternative_ssl_cert_file() {
+const std::string& get_alternative_ssl_cert_file() {
   return FILEIO_ALTERNATIVE_SSL_CERT_FILE;
 }
 

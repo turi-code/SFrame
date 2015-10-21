@@ -88,10 +88,13 @@ void configure_global_environment(std::string argv0) {
   graphlab::SFRAME_SORT_MAX_SEGMENTS = 
       std::max(graphlab::SFRAME_SORT_MAX_SEGMENTS, graphlab::SFRAME_FILE_HANDLE_POOL_SIZE / 4);
   // configure all memory constants
+  // use up at most half of system memory.
   size_t total_system_memory = total_mem();
+  total_system_memory /= 2;
   char* envval = getenv("DISABLE_MEMORY_AUTOTUNE");
   bool disable_memory_autotune = envval != nullptr && (std::string(envval) == "1");
 
+  
   // memory limit
   envval = getenv("GRAPHLAB_MEMORY_LIMIT_IN_MB");
   if (envval != nullptr) {
@@ -109,26 +112,21 @@ void configure_global_environment(std::string argv0) {
     // assume we have 1/2 of working memory to do things like sort, join, etc.
     // and the other 1/2 of working memory goes to file caching
     // HUERISTIC 1: Cell size estimate is 64
-    // HUERISTIC 2: Row size estimate is Cell size estimate * 10
+    // HUERISTIC 2: Row size estimate is Cell size estimate * 5
     //
     // Also, we only allow upgrades on the existing conservative values when
     // duing these estimates to prevent us from having impractically small 
     // values.
     size_t CELL_SIZE_ESTIMATE = 64;
-    size_t ROW_SIZE_ESTIMATE = CELL_SIZE_ESTIMATE * 10;
+    size_t ROW_SIZE_ESTIMATE = CELL_SIZE_ESTIMATE * 5;
     size_t max_cell_estimate = total_system_memory / 4 / CELL_SIZE_ESTIMATE;
     size_t max_row_estimate = total_system_memory / 4 / ROW_SIZE_ESTIMATE;
 
-    graphlab::SFRAME_GROUPBY_BUFFER_NUM_ROWS = 
-        std::max(graphlab::SFRAME_GROUPBY_BUFFER_NUM_ROWS, max_row_estimate);
-    graphlab::SFRAME_JOIN_BUFFER_NUM_CELLS = 
-        std::max(graphlab::SFRAME_JOIN_BUFFER_NUM_CELLS, max_cell_estimate);
-    graphlab::sframe_config::SFRAME_SORT_BUFFER_SIZE = 
-        std::max(graphlab::sframe_config::SFRAME_SORT_BUFFER_SIZE, total_system_memory / 4);
-    graphlab::fileio::FILEIO_MAXIMUM_CACHE_CAPACITY_PER_FILE = 
-        std::max(graphlab::fileio::FILEIO_MAXIMUM_CACHE_CAPACITY_PER_FILE, total_system_memory / 2);
-    graphlab::fileio::FILEIO_MAXIMUM_CACHE_CAPACITY = 
-        std::max(graphlab::fileio::FILEIO_MAXIMUM_CACHE_CAPACITY, total_system_memory / 2);
+    graphlab::SFRAME_GROUPBY_BUFFER_NUM_ROWS = max_row_estimate;
+    graphlab::SFRAME_JOIN_BUFFER_NUM_CELLS = max_cell_estimate;
+    graphlab::sframe_config::SFRAME_SORT_BUFFER_SIZE = total_system_memory / 4;
+    graphlab::fileio::FILEIO_MAXIMUM_CACHE_CAPACITY_PER_FILE = total_system_memory / 2;
+    graphlab::fileio::FILEIO_MAXIMUM_CACHE_CAPACITY = total_system_memory / 2;
   }
   graphlab::globals::initialize_globals_from_environment(argv0);
   

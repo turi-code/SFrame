@@ -300,9 +300,9 @@ addDefaultCACerts( CURL * curl, void * sslctx, void * parm ) // nofail
 
     // If the user set the runtime config for ssl certificates,
     // we tell SSL to use it as the verify location.
-    const char* alterantive_ssl_cert_file = graphlab::fileio::get_alternative_ssl_cert_dir().c_str();
-    const char* alterantive_ssl_cert_dir = graphlab::fileio::get_alternative_ssl_cert_file().c_str();
-    SSL_CTX_load_verify_locations(reinterpret_cast< SSL_CTX * >( sslctx ), alterantive_ssl_cert_file, alterantive_ssl_cert_dir);
+    const char* alternative_ssl_cert_file = graphlab::fileio::get_alternative_ssl_cert_dir().c_str();
+    const char* alternative_ssl_cert_dir = graphlab::fileio::get_alternative_ssl_cert_file().c_str();
+    SSL_CTX_load_verify_locations(reinterpret_cast< SSL_CTX * >( sslctx ), alternative_ssl_cert_file, alternative_ssl_cert_dir);
 
     for ( const char **p = getDefaultCACerts(); *p != NULL; ++p ) 
     {

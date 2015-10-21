@@ -50,8 +50,9 @@ std::shared_ptr<worker_connection<ProxyType> > spawn_worker(std::vector<std::str
   std::vector<std::string> args(worker_binary_args.begin() + 1, worker_binary_args.end());
   args.push_back(worker_address);
   
-  if(!worker_proc->launch(worker_binary, args))
+  if(!worker_proc->launch(worker_binary, std::vector<std::string>{worker_address})) {
     throw("Fail launching lambda worker.");
+  }
 
   worker_proc->autoreap();
   size_t retry = 0;
@@ -78,7 +79,7 @@ std::shared_ptr<worker_connection<ProxyType> > spawn_worker(std::vector<std::str
         break;
       } else {
         // Connecting to server failed
-        logstream(LOG_INFO) << "Fail connecting to worker at " << worker_address
+        logstream(LOG_ERROR) << "Fail connecting to worker at " << worker_address
           << ". Status: " << cppipc::reply_status_to_string(status) 
           << ". Retry: " << retry << std::endl;
       }
@@ -170,14 +171,22 @@ class worker_pool {
       } catch(const char* e) {
         logstream(LOG_ERROR) << e << std::endl;
       } catch (...) {
+        std::exception_ptr eptr = std::current_exception();
         logstream(LOG_ERROR) << "Fail spawning worker " << i << ". Unknown failure" << std::endl;
+        try {
+          if(eptr) {
+            std::rethrow_exception(eptr);
+          }
+        } catch (const std::exception& e) {
+          logstream(LOG_ERROR) << "Caught exception \"" << e.what() << "\"\n";
+        }
         // spawning worker might fail. The acutal pool size may have
         // less worker or no worker at all.
       }
     });
 
     if (num_workers() == 0) {
-      log_and_throw("Unable to evaluate lambdas. lambda workers did not start");
+      log_and_throw("Unable to evaluate lambdas. Lambda workers did not start.");
     } else if (num_workers() < nworkers) {
       logprogress_stream << "Less than " << nworkers << " successfully started. "
                          << "Using only " << num_workers()  << " workers." << std::endl;

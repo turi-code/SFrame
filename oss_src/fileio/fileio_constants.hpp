@@ -70,8 +70,8 @@ extern size_t FILEIO_WRITER_BUFFER_SIZE;
 /**
  * The alternative ssl certificate file and directory.
  */
-std::string get_alternative_ssl_cert_dir();
-std::string get_alternative_ssl_cert_file();
+const std::string& get_alternative_ssl_cert_dir();
+const std::string& get_alternative_ssl_cert_file();
 
 }
 }

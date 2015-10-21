@@ -5,8 +5,6 @@ All rights reserved.
 This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
-from .. import extensions, set_runtime_config, get_runtime_config
-from .. import connect as _mt
 
 def connect_odbc(conn_str):
     """
@@ -30,6 +28,8 @@ def connect_odbc(conn_str):
     --------
     >>> db = graphlab.connect_odbc("DSN=my_awesome_dsn;UID=user;PWD=mypassword")
     """
+    from .. import extensions
+    from .. import connect as _mt
     db = extensions._odbc_connection.unity_odbc_connection()
     db._construct_from_odbc_conn_str(conn_str)
     _mt._get_metric_tracker().track('connect_odbc', properties={'dbms_name':db.dbms_name,'dbms_version':db.dbms_version})
@@ -45,11 +45,13 @@ def set_libodbc_path(path):
     if you installed your driver manager in a standard way, you shouldn't need
     to worry about this function.
     """
+    from .. import set_runtime_config
     set_runtime_config('GRAPHLAB_LIBODBC_PREFIX', path)
 
 def get_libodbc_path():
     """
     Get the first path that GraphLab Create will search for libodbc.so.
     """
+    from .. import set_runtime_config
     c = get_runtime_config()
     return c['GRAPHLAB_LIBODBC_PREFIX']

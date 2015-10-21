@@ -28,9 +28,15 @@ static graphlab::mutex reader_shared_ptr_lock;
  */
 flex_type_enum infer_type_of_list(const std::vector<flexible_type>& vec) {
   std::set<flex_type_enum> types;
+
+  // Since most of the types we encountered are likely to be the same,
+  // as an optimization only add new ones to the set and ignore the
+  // previous type.
+  flex_type_enum last_type = flex_type_enum::UNDEFINED;
   for (const flexible_type& val: vec) {
-    if (val.get_type() != flex_type_enum::UNDEFINED) {
+    if(val.get_type() != last_type && val.get_type() != flex_type_enum::UNDEFINED) {
       types.insert(val.get_type());
+      last_type = val.get_type();
     }
   }
   if (types.size() == 0) return flex_type_enum::FLOAT;
@@ -311,6 +317,23 @@ gl_sarray gl_sarray::tail(size_t n) const {
   return get_proxy()->tail(n);
 }
 
+gl_sarray gl_sarray::count_words(bool to_lower, graphlab::flex_list delimiters) const {
+  return get_proxy()->count_bag_of_words({{"to_lower",to_lower}, {"delimiters",delimiters}});
+}
+gl_sarray gl_sarray::count_ngrams(size_t n, std::string method, 
+                                  bool to_lower, bool ignore_space) const {
+  if (method == "word") {
+    return get_proxy()->count_ngrams(n, {{"to_lower",to_lower}, 
+                                      {"ignore_space",ignore_space}});
+  } else if (method == "character") {
+    return get_proxy()->count_character_ngrams(n, {{"to_lower",to_lower}, 
+                                                {"ignore_space",ignore_space}});
+  } else {
+    throw std::string("Invalid 'method' input  value. Please input either 'word' or 'character' ");
+    __builtin_unreachable();
+  }
+
+}
 gl_sarray gl_sarray::dict_trim_by_keys(const std::vector<flexible_type>& keys,
                             bool exclude) const {
   return get_proxy()->dict_trim_by_keys(keys, exclude);
