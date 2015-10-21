@@ -8,6 +8,7 @@ endif()
 
 make_library(process
   SOURCES
+    process.cpp
     ${PLATFORM_SOURCES}
   REQUIRES
     util

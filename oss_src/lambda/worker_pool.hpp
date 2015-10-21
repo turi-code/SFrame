@@ -40,8 +40,9 @@ std::shared_ptr<worker_connection<ProxyType>> spawn_worker(std::string worker_bi
   logstream(LOG_INFO) << "Start lambda worker at " << worker_address
                       << " using binary: " << worker_binary << std::endl;
   auto worker_proc = std::make_shared<process>();
-  if(!worker_proc->launch(worker_binary, std::vector<std::string>{worker_address}))
+  if(!worker_proc->launch(worker_binary, std::vector<std::string>{worker_address})) {
     throw("Fail launching lambda worker.");
+  }
 
   worker_proc->autoreap();
   size_t retry = 0;
@@ -68,8 +69,8 @@ std::shared_ptr<worker_connection<ProxyType>> spawn_worker(std::string worker_bi
         break;
       } else {
         // Connecting to server failed
-        logstream(LOG_INFO) << "Fail connecting to worker at " << worker_address
-          << ". Status: " << cppipc::reply_status_to_string(status)
+        logstream(LOG_ERROR) << "Fail connecting to worker at " << worker_address
+          << ". Status: " << cppipc::reply_status_to_string(status) 
           << ". Retry: " << retry << std::endl;
       }
       // Exception happended during comm_client construction/starting
@@ -131,7 +132,6 @@ class worker_pool {
     parallel_for(0, nworkers, [&](size_t i) {
       try {
         auto worker_conn = spawn_worker<ProxyType>(worker_binary, worker_addresses[i], m_connection_timeout);
-
         std::unique_lock<graphlab::mutex> lck(mtx);
         connections.push_back(worker_conn);
         available_workers.push_back(worker_conn->get_proxy());
@@ -142,14 +142,22 @@ class worker_pool {
       } catch(const char* e) {
         logstream(LOG_ERROR) << e << std::endl;
       } catch (...) {
+        std::exception_ptr eptr = std::current_exception();
         logstream(LOG_ERROR) << "Fail spawning worker " << i << ". Unknown failure" << std::endl;
+        try {
+          if(eptr) {
+            std::rethrow_exception(eptr);
+          }
+        } catch (const std::exception& e) {
+          logstream(LOG_ERROR) << "Caught exception \"" << e.what() << "\"\n";
+        }
         // spawning worker might fail. The acutal pool size may have
         // less worker or no worker at all.
       }
     });
 
     if (num_workers() == 0) {
-      log_and_throw("Unable to evaluate lambdas. lambda workers did not start");
+      log_and_throw("Unable to evaluate lambdas. Lambda workers did not start.");
     } else if (num_workers() < nworkers) {
       logprogress_stream << "Less than " << nworkers << " successfully started. "
                          << "Using only " << num_workers()  << " workers." << std::endl;

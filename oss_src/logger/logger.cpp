@@ -259,7 +259,11 @@ void file_logger::_lograw(int lineloglevel, const char* buf, int len) {
       textcolor(stderr, BRIGHT, GREEN);
     }
 #endif
-    std::cerr.write(buf,len);
+    if(lineloglevel >= LOG_WARNING) {
+      std::cerr.write(buf,len);
+    } else {
+      std::cout.write(buf,len);
+    }
 #ifdef COLOROUTPUT
 
     pthread_mutex_unlock(&mut);

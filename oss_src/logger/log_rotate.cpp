@@ -79,7 +79,7 @@ void begin_log_rotation(std::string _log_file_name,
   symlink_name = log_base_name;
 
   thread_running = true;
-  std::cerr << "Launching log rotate thread" << std::endl;
+  std::cout << "Launching log rotate thread" << std::endl;
   log_rotate_thread.launch(log_rotation_background_thread);
 }
 

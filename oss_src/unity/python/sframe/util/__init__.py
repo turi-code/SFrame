@@ -800,3 +800,16 @@ def _raise_error_if_not_function(arg, arg_name=None):
     if not hasattr(arg, '__call__'):
       raise TypeError, err_msg
 
+def get_log_location():
+    from ..connect import main as _glconnect
+    server = _glconnect.get_server()
+    if hasattr(server, 'unity_log'):
+        return server.unity_log
+    else:
+        return None
+
+def get_client_log_location():
+    return client_log_file
+
+def get_server_log_location():
+    return get_log_location()
