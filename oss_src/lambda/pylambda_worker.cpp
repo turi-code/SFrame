@@ -16,33 +16,9 @@
 #include <boost/python.hpp>
 #include <util/try_finally.hpp>
 
-#ifdef HAS_TCMALLOC
-#include <google/malloc_extension.h>
-#endif
-
 namespace po = boost::program_options;
 
 using namespace graphlab;
-
-#ifdef HAS_TCMALLOC
-/**
- *  If TCMalloc is available, we try to release memory back to the
- *  system every 15 seconds or so. TCMalloc is otherwise somewhat...
- *  aggressive about keeping memory around.
- */
-static bool stop_memory_release_thread = false;
-graphlab::mutex memory_release_lock;
-graphlab::conditional memory_release_cond;
-
-void memory_release_loop() {
-  memory_release_lock.lock();
-  while (!stop_memory_release_thread) {
-    memory_release_cond.timedwait(memory_release_lock, 15);
-    MallocExtension::instance()->ReleaseFreeMemory();
-  }
-  memory_release_lock.unlock();
-}
-#endif
 
 /** The main function to be called from the python ctypes library to
  *  create a pylambda worker process.
@@ -56,13 +32,16 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
   std::string root_path = _root_path;
   
   size_t debug_mode = (server_address == "debug");
-    
+
+  // THe things dumped to std error are 
+  global_logger().set_log_level(LOG_INFO);
+
   try {
-   
+    
     size_t parent_pid = get_parent_pid();
-  
+
     if(debug_mode) {
-      std::cout << "INFO: Library function entered successfully." << std::endl;
+      logstream(LOG_INFO) << "Library function entered successfully." << std::endl;
     }
 
     // Whenever this is set, it must be restored upon return to python. 
@@ -76,42 +55,32 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
     
     try {
       if(debug_mode) {
-        std::cout << "INFO: Attempting to initialize python." << std::endl;
+        logstream(LOG_INFO) << "Attempting to initialize python." << std::endl;
       }
     
-      graphlab::lambda::init_python(root_path, debug_mode);
+      graphlab::lambda::init_python(root_path);
     
       if(debug_mode) {
-        std::cout << "INFO: Python initialized successfully." << std::endl;
+        logstream(LOG_INFO) << "Python initialized successfully." << std::endl;
       }
     
     } catch (const std::string& error) {
-
       logstream(LOG_ERROR) << "Failed to initialize python (internal exception): " << error << std::endl;
-    
-      if(debug_mode)
-        std::cout << "ERROR: (internal exception) Failed to initialize python: " << error << std::endl;
-    
       return 101;
     } catch (const std::exception& e) {
-
-      if(debug_mode)
-        std::cout << "ERROR: Failed to initialize python: " << e.what() << std::endl;
-
       logstream(LOG_ERROR) << "Failed to initialize python: " << e.what() << std::endl;
-    
       return 102;
     }
 
     if(debug_mode) {
-      std::cout << "INFO: No valid server address, exiting. \n"
-                << "   Example: ipc:///tmp/pylambda_worker\n"
-                << "   Example: tcp://127.0.0.1:10020\n"
-                << "   Example: tcp://*:10020\n"
-                << "   Example: tcp://127.0.0.1:10020 tcp://127.0.0.1:10021\n"
-                << "   Example: ipc:///tmp/unity_test_server --auth_token=secretkey\n"
-                << "   Example: ipc:///tmp/unity_test_server ipc:///tmp/unity_status secretkey\n"
-                << std::endl;
+      logstream(LOG_INFO) << "No valid server address, exiting. \n"
+                          << "   Example: ipc:///tmp/pylambda_worker\n"
+                          << "   Example: tcp://127.0.0.1:10020\n"
+                          << "   Example: tcp://*:10020\n"
+                          << "   Example: tcp://127.0.0.1:10020 tcp://127.0.0.1:10021\n"
+                          << "   Example: ipc:///tmp/unity_test_server --auth_token=secretkey\n"
+                          << "   Example: ipc:///tmp/unity_test_server ipc:///tmp/unity_status secretkey\n"
+                          << std::endl;
       return 1; 
     }
 
@@ -136,18 +105,7 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
 
     server.start();
 
-#ifdef HAS_TCMALLOC
-    graphlab::thread memory_release_thread;
-    memory_release_thread.launch(memory_release_loop);
-#endif
-
     wait_for_parent_exit(parent_pid);
-
-#ifdef HAS_TCMALLOC
-    stop_memory_release_thread = true;
-    memory_release_cond.signal();
-    memory_release_thread.join();
-#endif
 
     return 0;
 
@@ -155,18 +113,12 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
      */
   } catch (const std::string& error) {
     logstream(LOG_ERROR) << "Internal PyLambda Error: " << error << std::endl;
-    if(debug_mode)
-      std::cerr << "Internal PyLambda Error: " << error << std::endl;
     return 103;
   } catch (const std::exception& error) {
     logstream(LOG_ERROR) << "PyLambda C++ Error: " << error.what() << std::endl;
-    if(debug_mode)
-      std::cerr << "PyLambda C++ Error: " << error.what() << std::endl;
     return 104;
   } catch (...) {
     logstream(LOG_ERROR) << "Unknown PyLambda Error." << std::endl;
-    if(debug_mode)
-      std::cerr << "Unknown PyLambda Error." << std::endl;
     return 105;
   }
 }

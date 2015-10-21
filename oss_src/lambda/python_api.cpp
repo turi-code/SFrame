@@ -24,27 +24,11 @@ namespace fs = boost::filesystem;
 
 /** Initialize python.  Does not release the GIL. 
  */
-void init_python(const std::string& root_path, bool debug_mode) { 
-
-  /** Define some info and error handling macros for this function to
-   *  handle the debug_mode diagnostic stuff.  This allows users to
-   *  run python _pylambda_worker.py and get a report of what's going
-   *  on and how far things work to. 
-   */
-  
-#define __INFO(...) do {                                        \
-    std::cout << "INFO: " << __VA_ARGS__ << std::endl;          \
-  } while(false)
-
-#define __ERROR(...) do {                                       \
-    std::cerr << "ERROR: " << __VA_ARGS__ << std::endl;         \
-    std::ostringstream ss; ss << __VA_ARGS__;                   \
-    throw(ss.str());                                            \
-  } while(false)
+void init_python(const std::string& root_path) { 
   
   Py_Initialize();
 
-  __INFO("Python initialized."); 
+  logstream(LOG_INFO) << "Python initialized." << std::endl;
 
   /**
    * Enforce the sys path to be the same as the GLC client's sys path.
@@ -58,7 +42,7 @@ void init_python(const std::string& root_path, bool debug_mode) {
     // regular sys.path.
     
     if(sys_path_str != python::object() ) {
-      __INFO("Setting path from __GL_SYS_PATH__.");
+      logstream(LOG_INFO) << "Setting path from __GL_SYS_PATH__." << std::endl;
           
       // Simply doing "sys_path = sys_path_str.attr("split")(":");"
       // does not work as expected.
@@ -76,17 +60,25 @@ void init_python(const std::string& root_path, bool debug_mode) {
       // Log the path.
       for(int i = 0; i < len(sys_path); ++i) {
         const char* sp = python::extract<const char*>(python::str(sys_path.attr("__getitem__")(i)));
-        __INFO("sys.path[" << i << "]: " << sp);
+        logstream(LOG_INFO) << "  sys.path[" << i << "]: " << sp << std::endl; 
       }
     }
   } catch (python::error_already_set const& e) {
     std::string error_string = parse_python_error();
-    __ERROR(error_string); 
+    logstream(LOG_ERROR) << "Error setting sys.path from __GL_SYS_PATH__: " << error_string << std::endl; 
+    throw error_string; 
+  } catch (const std::exception& e) {
+    logstream(LOG_ERROR) << "Error setting sys.path from __GL_SYS_PATH__: " << e.what() << std::endl; 
+    throw e; 
+  } catch (const std::string& e) {
+    logstream(LOG_ERROR) << "Internal error setting sys.path from __GL_SYS_PATH__: " << e << std::endl;
+    throw e; 
   } catch (...) {
-    __INFO("Warning: Error setting sys.path from __GL_SYS_PATH__");
+    logstream(LOG_ERROR) << "Unknown error setting sys.path from __GL_SYS_PATH__." << std::endl; 
+    throw std::current_exception();
   }
 
-  __INFO("Path information set.");
+  logstream(LOG_INFO) << "Path information set." << std::endl;
   
   std::string module_name;
   try {
@@ -98,30 +90,38 @@ void init_python(const std::string& root_path, bool debug_mode) {
     curpath = fs::canonical(curpath);
     module_name = curpath.filename().string();
 
-    __INFO("Module Name is " << module_name);
+    logstream(LOG_INFO) << "Module Name is " << module_name << std::endl;
     
     if (module_name != "graphlab" && module_name != "sframe") {
-      __ERROR("Not in graphlab subdirectory nor sframe subdirectory; Module import disabled.");
+      logstream(LOG_ERROR) << "Module name is " << module_name << std::endl;
+      throw std::string("graphlab subdirectory or sframe subdirectory not found.");
     }
   } catch (const std::exception& e) {
-    __ERROR("Failed to obtain module name: " << e.what());
+    logstream(LOG_ERROR) << "Error obtaining module name: " << e.what() << std::endl;
+    throw e;
+  } catch (const std::string& e) {
+    logstream(LOG_ERROR) << "Internal error obtaining module name: " << e << std::endl;
+    throw e; 
   } catch (...) {
-    __ERROR("Failed to obtain module name; unknown error.");
+    logstream(LOG_ERROR) << "Unknown error obtaining module name. " << std::endl;
+    throw std::current_exception(); 
   }
 
-  __INFO("Using " << module_name << " module.");
+  logstream(LOG_INFO) << "Using " << module_name << " module." << std::endl;
   
   try {
     import_modules(module_name);
   } catch (python::error_already_set const& e) {
     std::string error_string = parse_python_error();
-    __ERROR(error_string);
+    logstream(LOG_ERROR) << "Python Error on graphlab/sframe import: " << error_string << std::endl;
+    throw (std::string("Python Error: ") + error_string);
+  } catch (const std::exception& e) {
+    logstream(LOG_ERROR) << "Python Error on graphlab/sframe import: " << e.what() << std::endl;
+    throw e; 
   } catch (...) {
-    __ERROR("Unknown error when import graphlab.");
+    logstream(LOG_ERROR) << "Unknown error on graphlab/sframe module load." << std::endl;
+    throw std::current_exception();     
   }
-
-#undef __ERROR
-#undef __INFO
 }
 
 void py_set_random_seed(size_t seed) {
