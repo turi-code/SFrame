@@ -50,7 +50,7 @@ std::shared_ptr<worker_connection<ProxyType> > spawn_worker(std::vector<std::str
   std::vector<std::string> args(worker_binary_args.begin() + 1, worker_binary_args.end());
   args.push_back(worker_address);
   
-  if(!worker_proc->launch(worker_binary, std::vector<std::string>{worker_address})) {
+  if(!worker_proc->launch(worker_binary, args)) {
     throw("Fail launching lambda worker.");
   }
 
