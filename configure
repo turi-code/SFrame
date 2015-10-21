@@ -304,7 +304,11 @@ fi
 set -e
 set -o pipefail
 
-
+# Delete the cython make files. If cython files get removed,
+# CMake has a tendency to leave the build files around.
+# So we just delete them and reconfigure should take care of it.
+rm -rf ${RELEASE_DIR}/oss_src/unity/python/sframe/cython
+rm -rf ${DEBUG_DIR}/oss_src/unity/python/sframe/cython
 
 echo -e "\n\n\n======================= Release ========================" \
 
