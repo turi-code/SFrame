@@ -123,7 +123,7 @@ bool process::popen(const std::string &cmd,
     if((child_write_fd > -1) && (write_fd != child_write_fd)) {
       errno = 0;
       if(dup2(write_fd, child_write_fd) != child_write_fd) {
-        logstream(LOG_ERROR) << "dup2 failed to duplicate fd!" << strerror(errno) << std::endl;
+        _exit(1);
       }
       close(write_fd);
     }
