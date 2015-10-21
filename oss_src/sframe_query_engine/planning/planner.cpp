@@ -126,6 +126,7 @@ static sframe execute_node(pnode_ptr input_n, const materialize_options& exec_pa
           new_exec_params.output_column_names.clear();
           input_n = op_project::make_planner_node(input_n, columns_to_materialize);
           input_n = optimization_engine::optimize_planner_graph(input_n, new_exec_params);
+          logstream(LOG_INFO) << "Materializing only column subset: " << input_n << std::endl;
 
           sframe new_columns = execute_node_impl(input_n, new_exec_params);
           // rebuild an sframe
