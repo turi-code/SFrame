@@ -206,7 +206,10 @@ class worker_pool {
     available_workers.clear();
     proxy_to_connection.clear();
     for (auto& conn : connections) {
-      conn.reset();
+      deleted_connections.push_back(std::move(conn));
+    }
+    for(size_t i = 0; i < deleted_connections.size(); ++i) { 
+      deleted_connections[i].reset();
     }
   }
 
