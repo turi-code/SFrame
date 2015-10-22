@@ -41,9 +41,9 @@ namespace query_eval {
  */
 std::vector<size_t> get_stages_to_run(const materialize_options& exec_params) {
   if(exec_params.only_first_pass_optimizations) {
-    return {0, 1, 4, 5};
+    return {0, 1, 4, 5, 6};
   } else {
-    return {0, 1, 2, 3, 4, 5};
+    return {0, 1, 2, 3, 4, 5, 6};
   }
 }
 
