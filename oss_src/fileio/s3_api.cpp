@@ -456,6 +456,7 @@ list_objects_response list_objects_impl(s3url parsed_url,
   config.port = NULL;
   config.proxy = proxy.c_str();
   config.host = endpoint.c_str();
+  if (graphlab::fileio::insecure_ssl_cert_checks()) config.sslCertFile = "none";
 
   // create connection object.
   std::shared_ptr<WsConnection> conn(new WsConnection(config));
@@ -608,6 +609,7 @@ std::string delete_object_impl(s3url parsed_url,
   config.port = NULL;
   config.proxy = proxy.c_str();
   config.host = endpoint.c_str();
+  if (graphlab::fileio::insecure_ssl_cert_checks()) config.sslCertFile = "none";
 
   // create connection object.
   std::shared_ptr<WsConnection> conn(new WsConnection(config));
@@ -639,6 +641,7 @@ std::string delete_prefix_impl(s3url parsed_url,
   config.port = NULL;
   config.proxy = proxy.c_str();
   config.host = endpoint.c_str();
+  if (graphlab::fileio::insecure_ssl_cert_checks()) config.sslCertFile = "none";
 
   // create connection object.
   std::shared_ptr<WsConnection> conn(new WsConnection(config));

@@ -38,6 +38,7 @@ make_library(fileio
     fileio_constants.cpp
     s3_fstream.cpp
     block_cache.cpp
+    set_curl_ssl_options.cpp
     dmlcio/s3_filesys.cc
   REQUIRES
     curl openssl libxml2 logger pthread z cancel_serverside_ops globals process util soft_hdfs ${PLATFORM_DEPENDENCIES} network random

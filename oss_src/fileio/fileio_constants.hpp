@@ -72,6 +72,7 @@ extern size_t FILEIO_WRITER_BUFFER_SIZE;
  */
 const std::string& get_alternative_ssl_cert_dir();
 const std::string& get_alternative_ssl_cert_file();
+const bool insecure_ssl_cert_checks();
 
 }
 }
