@@ -94,11 +94,28 @@ class general_fstream_test: public CxxTest::TestSuite {
 
       TS_ASSERT_EQUALS(make_relative_path("/", "/hello"), "hello");
       TS_ASSERT_EQUALS(make_relative_path("/pika", "/pika/hello"), "hello");
-      TS_ASSERT_EQUALS(make_relative_path("/pika", "/pika2/hello"), "/pika2/hello");
+      TS_ASSERT_EQUALS(make_relative_path("/pika", "/pika2/hello"), "../pika2/hello");
       TS_ASSERT_EQUALS(make_relative_path("s3://pika/", "s3://pika/hello"), "hello");
       TS_ASSERT_EQUALS(make_relative_path("hdfs://pika/", "hdfs://pika/hello"), "hello");
       TS_ASSERT_EQUALS(make_relative_path("hdfs:///", "hdfs:///hello"), "hello");
       TS_ASSERT_EQUALS(make_relative_path("hdfs://", "hdfs:///hello"), "hello");
+      TS_ASSERT_EQUALS(make_relative_path("/pika/hello/world", "/pika/fish/fillet"), "../../fish/fillet");
+      TS_ASSERT_EQUALS(make_relative_path("/pika/hello/world", "/pika/hello/fillet"), "../fillet");
+      TS_ASSERT_EQUALS(make_relative_path("/pika/hello", "/pika/hello/fillet"), "fillet");
+      TS_ASSERT_EQUALS(make_relative_path("/pika/hello/world", "/pokemon/fish/fillet"), "../../../pokemon/fish/fillet");
+      TS_ASSERT_EQUALS(make_relative_path("/pika/hello/world/", "/pokemon/fish/fillet"), "../../../pokemon/fish/fillet");
+
+      TS_ASSERT_EQUALS(make_relative_path("hdfs:///pika/hello/world", "hdfs:///pika/fish/fillet"), "../../fish/fillet");
+      TS_ASSERT_EQUALS(make_relative_path("hdfs:///pika/hello/world", "hdfs:///pika/hello/fillet"), "../fillet");
+      TS_ASSERT_EQUALS(make_relative_path("hdfs:///pika/hello", "hdfs:///pika/hello/fillet"), "fillet");
+      TS_ASSERT_EQUALS(make_relative_path("hdfs:///pika/hello/world", "hdfs:///pokemon/fish/fillet"), "../../../pokemon/fish/fillet");
+      TS_ASSERT_EQUALS(make_relative_path("hdfs:///pika/hello/world/", "hdfs:///pokemon/fish/fillet"), "../../../pokemon/fish/fillet");
+
+      TS_ASSERT_EQUALS(make_relative_path("s3:///pika/hello/world", "s3:///pika/fish/fillet"), "../../fish/fillet");
+      TS_ASSERT_EQUALS(make_relative_path("s3:///pika/hello/world", "s3:///pika/hello/fillet"), "../fillet");
+      TS_ASSERT_EQUALS(make_relative_path("s3:///pika/hello", "s3:///pika/hello/fillet"), "fillet");
+      TS_ASSERT_EQUALS(make_relative_path("s3:///pika/hello/world", "s3:///pokemon/fish/fillet"), "../../../pokemon/fish/fillet");
+      TS_ASSERT_EQUALS(make_relative_path("s3:///pika/hello/world/", "s3:///pokemon/fish/fillet"), "../../../pokemon/fish/fillet");
 
       TS_ASSERT_EQUALS(get_protocol("hdfs://"), "hdfs");
       TS_ASSERT_EQUALS(get_protocol("s3://pikachu"), "s3");

@@ -433,28 +433,57 @@ std::string make_relative_path(std::string root_directory, std::string path) {
   // If backslashes, convert them to slashes
   root_directory = convert_to_generic(root_directory);
   path = convert_to_generic(path);
+  auto original_absolute_path = path;
 
-  // normalize the root directory.
-  // If it ends with a "/" drop it.
-  // If it is "hdfs://" or "s3://" something like that, its ok even though it
-  // ends with a "/"
-  if (boost::algorithm::ends_with(root_directory, "://") == false &&
-      boost::algorithm::ends_with(root_directory, "/")) {
-    root_directory = root_directory.substr(0, root_directory.length() - 1);
-  }
+  // if different protocols, it is not possible to relativize
+  if (get_protocol(root_directory) != get_protocol(path)) return original_absolute_path;
 
-  root_directory = root_directory + "/";
+  root_directory = remove_protocol(root_directory);
+  path = remove_protocol(path);
+
+  if (root_directory.empty()) root_directory = "/";
 
   // at this point the root directory should be a proper absolute file path
   // with a "/" at the end;
-
-  if (root_directory.length() > 0 &&
-      boost::starts_with(path, root_directory)) {
-    // we can relativize!
-    return path.substr(root_directory.length());
-  } else {
-    return path;
+  std::vector<std::string> root_elements;
+  std::vector<std::string> path_elements;
+  boost::algorithm::split(root_elements, root_directory, boost::is_any_of("/"));
+  // "/" is a special path. If we end with "/" delete the last element because
+  // "/" will return two empty strings, where the correct result really,
+  // is one empty string.
+  if (boost::ends_with(root_directory, "/") && root_elements.size() > 0) {
+    root_elements.pop_back();
   }
+  if (!path.empty()) {
+    boost::algorithm::split(path_elements, path, boost::is_any_of("/"));
+  }
+
+  // count the number of matching path elements
+  size_t num_root_elements_match = 0;
+  auto min_elements = std::min(root_elements.size(), path_elements.size());
+  for (size_t i = 0;i < min_elements; ++i) {
+    if (path_elements[i] == root_elements[i]) {
+      num_root_elements_match = i + 1;
+    } else {
+      break;
+    }
+  }
+
+  // if no path elements match, or if only an empty string path element
+  // match, just use the absolute path
+  if (num_root_elements_match == 0) return original_absolute_path;
+
+  // for each of the unmatched root elements, we go "../"
+  std::vector<std::string> new_relative_path_elements;
+  for (size_t i = num_root_elements_match; i < root_elements.size(); ++i) {
+    new_relative_path_elements.push_back("..");
+  }
+  // then all the rest of the regular path elements
+  std::copy(path_elements.begin() + num_root_elements_match,
+            path_elements.end(),
+            std::inserter(new_relative_path_elements, new_relative_path_elements.end()));
+  std::string retpath = boost::algorithm::join(new_relative_path_elements, "/");
+  return retpath;
 }
 
 EXPORT std::string make_absolute_path(std::string root_directory, std::string path) {
