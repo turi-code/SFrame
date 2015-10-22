@@ -8,10 +8,7 @@ of the BSD license. See the LICENSE file for details.
 
 import sys
 import time 
-
-cdef extern from "<cstdlib>":
-  void abort()
-       
+              
 cdef int access_null_ptr():
   cdef int* p = NULL
   p[0] = 10

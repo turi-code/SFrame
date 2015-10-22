@@ -124,7 +124,7 @@ def launch(server_addr=None, server_bin=None, server_log=None, auth_token=None,
     except Exception as e:
         __LOGGER__.error('Cannot start server: %s' % e)
         server.try_stop()
-        raise
+        return
 
     # start the client
     (public_key, secret_key) = ('', '')
