@@ -120,6 +120,7 @@ unit_test() {
   echo -e "\n\n\n================= Running Unit Test ================\n\n\n"
 
   cd ${WORKSPACE}
+  python -c 'import sframe; sframe.sys_util.test_pylambda_worker()'
   oss_local_scripts/run_python_test.sh ${build_type}
   echo -e "\n\n================= Done Unit Test ================\n\n"
 }
@@ -200,11 +201,7 @@ package_egg() {
     BINARY_LIST=`find . -type f -exec file {} \; | grep x86 | cut -d: -f 1`
     echo "Stripping binaries: $BINARY_LIST"
     for f in $BINARY_LIST; do
-      if [ $OSTYPE == "msys" ] && [ $f == "./pylambda_worker.exe" ]; then
-        echo "Skipping pylambda_worker"
-      else
-        strip -s $f;
-      fi
+	strip -s $f;
     done
     cd ..
   fi

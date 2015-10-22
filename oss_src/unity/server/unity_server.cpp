@@ -316,7 +316,6 @@ int main(int argc, char** argv) {
 
   g_toolkit_classes = init_models();
 
-
   /**
    * Set the path to the pylambda_slave binary used for evaluate python lambdas parallel in separate processes.
    * Two possible places are relative path to the server binary in the source build,
@@ -333,20 +332,24 @@ int main(int argc, char** argv) {
   candidate_paths.push_back(fs::system_complete(fs::path(program_name).parent_path() / fs::path("../../../oss_src/lambda/pylambda_worker")));
   #endif
   bool lambda_path_found = false;
-  for(auto p: candidate_paths) {
-    if (fs::exists(p)) {
-      // canonicalize if possible
-      p = fs::canonical(p);
-      logstream(LOG_INFO) << "Pylambda worker: " << p.string() << std::endl;
-      graphlab::lambda::lambda_master::set_lambda_worker_binary(p.string());
-      graphlab::lambda::graph_pylambda_master::set_pylambda_worker_binary(p.string());
-      lambda_path_found = true;
-      break;
-    }
-  }
-  if (lambda_path_found == false) {
-    logstream(LOG_ERROR) << "Cannot find lambda_worker binary. Lambda evaluation will fail." << std::endl;
-  }
+
+  /**
+   * Set the path to the python executable and the pylambda_slave
+   * binary script used for evaluate python lambdas parallel in
+   * separate processes.  
+   */
+  graphlab::GLOBALS_PYTHON_EXECUTABLE = std::getenv("__GL_PYTHON_EXECUTABLE__");
+  logstream(LOG_INFO) << "Python executable: " << graphlab::GLOBALS_PYTHON_EXECUTABLE << std::endl;
+  ASSERT_MSG(fs::exists(fs::path(graphlab::GLOBALS_PYTHON_EXECUTABLE)), "Python executable is not valid path. Do I exist?");
+
+  std::string pylambda_worker_script = std::getenv("__GL_PYLAMBDA_SCRIPT__");
+  logstream(LOG_INFO) << "PyLambda worker script: " << graphlab::GLOBALS_PYTHON_EXECUTABLE << std::endl;
+  ASSERT_MSG(fs::exists(fs::path(pylambda_worker_script)), "PyLambda worker script not valid.");
+
+  // Set the lambda_worker_binary_and_args
+  graphlab::lambda::lambda_master::set_lambda_worker_binary(
+      std::vector<std::string>{graphlab::GLOBALS_PYTHON_EXECUTABLE, pylambda_worker_script});
+
 
   server->register_type<graphlab::unity_sgraph_base>([](){ 
                                             return new graphlab::unity_sgraph();

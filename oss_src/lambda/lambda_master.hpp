@@ -9,10 +9,12 @@
 #define GRAPHLAB_LAMBDA_LAMBDA_MASTER_HPP
 
 #include <map>
-#include<lambda/lambda_interface.hpp>
-#include<lambda/worker_pool.hpp>
+#include <globals/globals.hpp>
+#include <lambda/lambda_interface.hpp>
+#include <lambda/worker_pool.hpp>
 
 namespace graphlab {
+
 namespace shmipc {
   class client;
 }
@@ -117,11 +119,27 @@ namespace lambda {
 
     inline size_t num_workers() { return m_worker_pool->num_workers(); }
 
+    static void set_lambda_worker_binary(const std::vector<std::string>& path) { 
+      lambda_worker_binary_and_args = path;
+      std::ostringstream ss;
+
+      for(size_t i = 0; i < path.size(); ++i) {
+        if(i != 0) ss << ' '; 
+        ss << path[i];
+      }
+      
+      logstream(LOG_INFO) << "Pylambda worker binary: " << ss.str() << std::endl;
+    };
+
     static void set_lambda_worker_binary(const std::string& path) { 
-      lambda_worker_binary = path; 
+      lambda_worker_binary_and_args = {path}; 
       logstream(LOG_INFO) << "Pylambda worker binary: " << path << std::endl;
     };
 
+    static const std::vector<std::string>& get_lambda_worker_binary() {
+      return lambda_worker_binary_and_args;
+    };
+    
    private:
 
     lambda_master(size_t nworkers);
@@ -137,7 +155,10 @@ namespace lambda {
     std::unordered_map<size_t, size_t> m_lambda_object_counter;
     graphlab::mutex m_mtx;
 
-    static std::string lambda_worker_binary;
+    /** The binary for executing the lambda_workers.
+     */
+    static std::vector<std::string> lambda_worker_binary_and_args;    
+
   };
 
 } // end lambda

@@ -41,13 +41,13 @@ class LambdaTests(unittest.TestCase):
         repeat = 8
         # execute the task bulk using one process to get a baseline
         start_time = time.time()
-        glconnect.get_unity().eval_lambda(lambda x: [fib(i) for i in x], [xin for i in range(repeat)])
+        glconnect.get_unity().eval_lambda(lambda x: [fib(i) for i in x], [xin]*repeat)
         single_thread_time = time.time() - start_time
         logging.info("Single thread lambda eval takes %s secs" % single_thread_time)
 
         # execute the task in parallel
         start_time = time.time()
-        ans_list = glconnect.get_unity().parallel_eval_lambda(lambda x: fib(x), [xin for i in range(repeat)])
+        ans_list = glconnect.get_unity().parallel_eval_lambda(lambda x: fib(x), [xin]*repeat)
         multi_thread_time = time.time() - start_time
         logging.info("Multi thread lambda eval takes %s secs" % multi_thread_time)
 
@@ -62,13 +62,14 @@ class LambdaTests(unittest.TestCase):
             self.assertEqual(a, ans)
 
     def test_crash_recovery(self):
+        import time, sys
         ls = range(1000)
 
         def good_fun(x):
             return x
 
         def bad_fun(x):
-            if (x % 251 == 0):
+            if (x+1) % 251 == 0:
                 cy_test_utils.force_exit_fun()  # this will force the worker process to exit
             return x
         self.assertRaises(RuntimeError, lambda: glconnect.get_unity().parallel_eval_lambda(lambda x: bad_fun(x), ls))

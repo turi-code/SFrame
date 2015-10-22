@@ -28,10 +28,16 @@ namespace lambda {
  * Returns a pointer to the worker_connection or throws an exception if failed.
  */
 template<typename ProxyType>
-std::shared_ptr<worker_connection<ProxyType>> spawn_worker(std::string worker_binary,
+std::shared_ptr<worker_connection<ProxyType> > spawn_worker(std::vector<std::string> worker_binary_args,
                                                            std::string worker_address,
                                                            int connection_timeout) {
+
+  ASSERT_MSG(worker_binary_args.size() >= 1, "Error in worker binary specification.");
+
+  const std::string& worker_binary = worker_binary_args.front();
+  
   namespace fs = boost::filesystem;
+  
   auto the_path = fs::path(worker_binary);
   if (!fs::exists(the_path)) {
     throw std::string("lambda_worker executable: ") + worker_binary + " not found.";
@@ -40,7 +46,11 @@ std::shared_ptr<worker_connection<ProxyType>> spawn_worker(std::string worker_bi
   logstream(LOG_INFO) << "Start lambda worker at " << worker_address
                       << " using binary: " << worker_binary << std::endl;
   auto worker_proc = std::make_shared<process>();
-  if(!worker_proc->launch(worker_binary, std::vector<std::string>{worker_address})) {
+
+  std::vector<std::string> args(worker_binary_args.begin() + 1, worker_binary_args.end());
+  args.push_back(worker_address);
+  
+  if(!worker_proc->launch(worker_binary, args)) {
     throw("Fail launching lambda worker.");
   }
 
@@ -90,6 +100,14 @@ std::shared_ptr<worker_connection<ProxyType>> spawn_worker(std::string worker_bi
   }
 }
 
+template<typename ProxyType>
+std::shared_ptr<worker_connection<ProxyType> > spawn_worker(std::string worker_binary_args,
+                                                           std::string worker_address,
+                                                           int connection_timeout) {
+  return spawn_worker<ProxyType>(std::vector<std::string>{worker_binary_args},
+                                 worker_address, connection_timeout);
+}
+
 /**
  * Forward declaration. RAII for worker proxy allocation.
  */
@@ -110,15 +128,24 @@ class worker_pool {
   typedef std::shared_ptr<worker_connection<ProxyType>> worker_conn_ptr;
 
  public:
+  worker_pool(size_t nworkers,
+              const std::string& worker_binary,
+              std::vector<std::string> worker_addresses={},
+              int connection_timeout=5)
+      : worker_pool(nworkers, std::vector<std::string>{worker_binary},
+                    worker_addresses, connection_timeout)
+  {}
+  
   /**
    * Creates a worker pool of given size.
    * The actual pool size may be smaller due to resource limitation.
    * Throws exception if zero worker is started.
    */
   worker_pool(size_t nworkers,
-              std::string worker_binary,
+              const std::vector<std::string>& worker_binary_and_args,
               std::vector<std::string> worker_addresses={},
               int connection_timeout=5) {
+    
     if (worker_addresses.empty()) {
       for (size_t i = 0; i < nworkers; ++i)
         worker_addresses.push_back("ipc://" + get_temp_name());
@@ -126,12 +153,14 @@ class worker_pool {
     ASSERT_EQ(worker_addresses.size(), nworkers);
     ASSERT_GT(nworkers, 0);
 
-    m_worker_binary = worker_binary;
-    m_connection_timeout = connection_timeout;
+    m_worker_binary_and_args = worker_binary_and_args;
+    m_connection_timeout = connection_timeout; 
 
     parallel_for(0, nworkers, [&](size_t i) {
       try {
-        auto worker_conn = spawn_worker<ProxyType>(worker_binary, worker_addresses[i], m_connection_timeout);
+        auto worker_conn = spawn_worker<ProxyType>(
+            worker_binary_and_args, worker_addresses[i], m_connection_timeout);
+
         std::unique_lock<graphlab::mutex> lck(mtx);
         connections.push_back(worker_conn);
         available_workers.push_back(worker_conn->get_proxy());
@@ -165,7 +194,7 @@ class worker_pool {
                          << "lambda operations will not be able to use all "
                          << "available cores." << std::endl;
       logprogress_stream << "To help us diagnose this issue, please send "
-                         << "the log file to support@dato.com." << std::endl;
+                         << "the log file to product-feedback@dato.com." << std::endl;
       logprogress_stream << "(The location of the log file is printed at the "
                          << "start of the GraphLab server)."  << std::endl;
       logstream(LOG_ERROR) << "Less than " << nworkers << " successfully started."
@@ -179,9 +208,9 @@ class worker_pool {
     for (auto& conn : connections) {
       deleted_connections.push_back(std::move(conn));
     }
-    parallel_for(0, deleted_connections.size(), [&](size_t i) {
+    for(size_t i = 0; i < deleted_connections.size(); ++i) { 
       deleted_connections[i].reset();
-    });
+    }
   }
 
   /**
@@ -246,10 +275,10 @@ class worker_pool {
    */
   size_t num_workers() const {
     return connections.size();
-  };
+  }
 
   /**
-   * Returns number of available workers in the pool.
+   * Returns number of available workers in the pool. 
    */
   size_t num_available_workers() {
     std::unique_lock<graphlab::mutex> lck(mtx);
@@ -289,7 +318,7 @@ class worker_pool {
     }
 
     // Move the dead connection to deleted_connection
-    // the reason we cannot destroy the old connection object directly
+    // the reason we cannot destroy the old connection object directly 
     // is because the connection objects holds the unique ownership of
     // the comm_client object, however, at this point there might still
     // be shared pointers of the proxy object flying around and the client
@@ -298,7 +327,7 @@ class worker_pool {
 
     // spawn new worker
     try {
-      conn = (spawn_worker<ProxyType>(m_worker_binary, address, m_connection_timeout));
+      conn = (spawn_worker<ProxyType>(m_worker_binary_and_args, address, m_connection_timeout));
       logstream(LOG_INFO) << "New worker pid: " << conn->get_pid()
                           << " address: " << address << std::endl;
 
@@ -335,7 +364,7 @@ class worker_pool {
 
   std::deque<std::shared_ptr<ProxyType>> available_workers;
 
-  std::string m_worker_binary;
+  std::vector<std::string> m_worker_binary_and_args;
   std::vector<std::string> m_worker_addresses;
   int m_connection_timeout;
 

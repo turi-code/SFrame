@@ -25,7 +25,6 @@ if (WIN32)
                 unity_core_shared # this will refer to the shared library
                 DIRECT)
 
-
         make_empty_library(unity REQUIRES unity_toolkits_shared unity_core_shared)
         set(UNITY_ALL_LIBRARIES unity_toolkits_shared unity_core_shared)
         set(UNITY_EXTENSION_LIBRARY unity_core_shared)
@@ -37,7 +36,7 @@ else()
                 unity_toolkits
                 cppipc
                 )
-
+	      
         make_empty_library(unity REQUIRES unity_shared)
         set(UNITY_ALL_LIBRARIES unity_shared)
         set(UNITY_EXTENSION_LIBRARY unity_shared)

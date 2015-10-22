@@ -24,7 +24,7 @@ namespace lambda {
  *
  * Throws string exception on error.
  */
-void init_python(int argc, char** argv); 
+void init_python(const std::string& root_path);
 
 /**
  * Extract the exception error string from the python interpreter.

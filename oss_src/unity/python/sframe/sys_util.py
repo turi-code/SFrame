@@ -11,7 +11,7 @@ import logging
 from distutils.util import get_platform as _get_platform
 import glob as _glob
 import subprocess as _subprocess
-
+import _pylambda_worker
 
 def make_unity_server_env():
     """
@@ -53,6 +53,12 @@ def make_unity_server_env():
     # Add python syspath
     env['__GL_SYS_PATH__'] = (os.path.pathsep).join(sys.path)
 
+    # Add the python executable to the runtime config
+    env['__GL_PYTHON_EXECUTABLE__'] = os.path.abspath(sys.executable)
+
+    # Add the pylambda execution script to the runtime config
+    env['__GL_PYLAMBDA_SCRIPT__'] = os.path.abspath(_pylambda_worker.__file__)
+    
     #### Remove PYTHONEXECUTABLE ####
     # Anaconda overwrites this environment variable
     # which forces all python sub-processes to use the same binary.
@@ -62,7 +68,7 @@ def make_unity_server_env():
     # to all packeages installed inside virtualenv.
     if 'PYTHONEXECUTABLE' in env:
         del env['PYTHONEXECUTABLE']
-
+        
     ## set local to be c standard so that unity_server will run ##
     env['LC_ALL']='C'
     # add certificate file
@@ -74,6 +80,22 @@ def make_unity_server_env():
             pass
     return env
 
+def test_pylambda_worker():
+    """
+    Tests the pylambda workers by spawning off a seperate python
+    process in order to print out additional diagnostic information
+    in case there is an error.
+    """
+
+    import subprocess
+
+    print "\nLaunch pylambda_worker process with simulated unity_server environment."
+
+    proc = subprocess.Popen(
+        [sys.executable, os.path.abspath(_pylambda_worker.__file__)],
+        env=make_unity_server_env())
+
+    proc.wait()
 
 def get_libpython_path():
     """
