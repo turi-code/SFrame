@@ -380,7 +380,7 @@ def get_runtime_config():
 
 def set_runtime_config(name, value):
     """
-    Configures sytem behavior at runtime. These configuration values are also
+    Configures system behavior at runtime. These configuration values are also
     read from environment variables at program startup if available. See
     :py:func:`graphlab.get_runtime_config()` to get the current values for
     each variable.
@@ -423,7 +423,7 @@ def set_runtime_config(name, value):
      The location of an SSL certificate directory used to validate HTTPS / S3
      connections. Defaults to the operating system certificates.
 
-    - *GRAPHLAB_FILEIO_DISABLE_SSL_CERTIFICATE_CHECKS*
+    - *GRAPHLAB_FILEIO_INSECURE_SSL_CERTIFICATE_CHECKS*
      If set to a non-zero value, disables all SSL certificate validation.
      Defaults to False.
 

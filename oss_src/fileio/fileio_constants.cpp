@@ -151,10 +151,10 @@ EXPORT std::string FILEIO_ALTERNATIVE_SSL_CERT_FILE = "/etc/pki/tls/certs/ca-bun
 EXPORT std::string FILEIO_ALTERNATIVE_SSL_CERT_DIR = "";
 EXPORT std::string FILEIO_ALTERNATIVE_SSL_CERT_FILE = "";
 #endif
-EXPORT int64_t FILEIO_DISABLE_SSL_CERTIFICATE_CHECKS = 0;
+EXPORT int64_t FILEIO_INSECURE_SSL_CERTIFICATE_CHECKS = 0;
 REGISTER_GLOBAL(std::string, FILEIO_ALTERNATIVE_SSL_CERT_FILE, true);
 REGISTER_GLOBAL(std::string, FILEIO_ALTERNATIVE_SSL_CERT_DIR, true);
-REGISTER_GLOBAL(int64_t, FILEIO_DISABLE_SSL_CERTIFICATE_CHECKS, true);
+REGISTER_GLOBAL(int64_t, FILEIO_INSECURE_SSL_CERTIFICATE_CHECKS, true);
 
 const std::string& get_alternative_ssl_cert_dir() {
   return FILEIO_ALTERNATIVE_SSL_CERT_DIR;
@@ -164,8 +164,8 @@ const std::string& get_alternative_ssl_cert_file() {
   return FILEIO_ALTERNATIVE_SSL_CERT_FILE;
 }
 
-const bool disable_ssl_cert_checks() {
-  return FILEIO_DISABLE_SSL_CERTIFICATE_CHECKS != 0;
+const bool insecure_ssl_cert_checks() {
+  return FILEIO_INSECURE_SSL_CERTIFICATE_CHECKS != 0;
 }
 
 }
