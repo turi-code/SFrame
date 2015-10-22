@@ -1454,6 +1454,13 @@ class SFrameTest(unittest.TestCase):
         self.assertEqual(sorted(list(res['a'])), sorted([1,2,3,4,None]))
         self.assertEqual(sorted(list(res['b'])), sorted([1,2,3,4,None]))
 
+    def test_append_empty(self):
+        sf_with_data = SFrame(data=self.dataframe)
+        empty_sf = SFrame()
+        self.assertFalse(sf_with_data.append(empty_sf) is sf_with_data)
+        self.assertFalse(empty_sf.append(sf_with_data) is sf_with_data)
+        self.assertFalse(empty_sf.append(empty_sf) is empty_sf)
+
     def test_append_all_match(self):
         sf1 = SFrame(data=self.dataframe)
         sf2 = SFrame(data=self.dataframe2)
