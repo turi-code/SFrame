@@ -41,6 +41,7 @@ class opt_logical_filter_linear_transform_exchange
     // node, and only if there is one output.
 
     if(!n->inputs[0]->is_linear_transform()
+       || n->inputs[0]->outputs.size() > 1
        || n->inputs[0]->type == planner_node_type::PROJECT_NODE)
       return false;
 
