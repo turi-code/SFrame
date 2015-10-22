@@ -70,20 +70,21 @@ public:
    */
   bool unmark_file_for_delete(std::string file_name);
 private:
-  file_handle_pool() {};
+  file_handle_pool() {}
   file_handle_pool(file_handle_pool const&) = delete;
   file_handle_pool& operator=(file_handle_pool const&) = delete;
 
   std::shared_ptr<file_ownership_handle>  get_file_handle(const std::string& file_name);
 
 private:
+
   graphlab::mutex m_mutex;
 
   // We need to periodically clear out the map below in order to avoid
   // a memory leak.  Here we clear out all the expired weak pointers
   // every 16K times we register a new file.
   size_t num_file_registers = 0;
-  std::map<std::string, std::weak_ptr<file_ownership_handle>> m_file_handles;
+  std::map<std::string, std::weak_ptr<file_ownership_handle> > m_file_handles;
 };
 
 } // namespace fileio

@@ -69,12 +69,8 @@ class LambdaTests(unittest.TestCase):
             return x
 
         def bad_fun(x):
-            sys.stderr.write("HERE: " + str(x) + "\n")
-            sys.stderr.flush()
-            time.sleep(10)            
-            sys.stderr.write("RUNNING\n")
-            
-            cy_test_utils.force_exit_fun()  # this will force the worker process to exit
+            if (x+1) % 251 == 0:
+                cy_test_utils.force_exit_fun()  # this will force the worker process to exit
             return x
         self.assertRaises(RuntimeError, lambda: glconnect.get_unity().parallel_eval_lambda(lambda x: bad_fun(x), ls))
         glconnect.get_unity().parallel_eval_lambda(lambda x: good_fun(x), ls)

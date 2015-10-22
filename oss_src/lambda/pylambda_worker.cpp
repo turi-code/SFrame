@@ -33,7 +33,6 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
   
   size_t debug_mode = (server_address == "debug");
 
-  // THe things dumped to std error are 
   global_logger().set_log_level(LOG_INFO);
 
   try {
