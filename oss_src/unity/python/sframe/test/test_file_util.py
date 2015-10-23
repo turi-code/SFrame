@@ -1,7 +1,7 @@
 import os
 import unittest
 import tempfile
-from sframe.util import file_util as fu
+from ..util import file_util as fu
 
 class FileUtilTests(unittest.TestCase):
     def setUp(self):
