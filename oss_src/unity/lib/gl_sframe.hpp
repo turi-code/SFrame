@@ -1159,7 +1159,7 @@ class gl_sframe {
 
   /**  Returns the name of column `index`.
    */
-  std::string column_name(size_t index) const;
+  const std::string& column_name(size_t index) const;
   
   
   /**

@@ -319,17 +319,16 @@ size_t unity_sframe::num_columns() {
 size_t unity_sframe::column_index(const std::string &name) {
   Dlog_func_entry();
 
-  auto sf = this->get_underlying_sframe();
-  return sf->column_index(name);
+  auto it = std::find(m_column_names.begin(), m_column_names.end(), name);
+  ASSERT_MSG(it != m_column_names.end(),
+             (std::string("Column '") + name + "' not found.").c_str());
+  return std::distance(m_column_names.begin(), it);
 }
 
-std::string unity_sframe::column_name(size_t index) {
+const std::string& unity_sframe::column_name(size_t index) {
   Dlog_func_entry();
 
-  auto sf = this->get_underlying_sframe();
-  std::string ret = sf->column_name(index);
-  DASSERT_TRUE(ret == column_names().at(index));
-  return ret;
+  return m_column_names.at(index);
 }
 
 

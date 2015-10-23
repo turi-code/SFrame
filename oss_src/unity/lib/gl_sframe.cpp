@@ -486,7 +486,7 @@ size_t gl_sframe::column_index(const std::string &column_name) const {
 
 /**  Returns the name of column `index`.
  */
-std::string gl_sframe::column_name(size_t index) const {
+const std::string& gl_sframe::column_name(size_t index) const {
   return get_proxy()->column_name(index);
 }
 
