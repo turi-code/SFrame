@@ -9,8 +9,8 @@ import pickle
 from sframe.util import cloudpickle
 
 import sframe as gl
-from sframe import _gl_pickle as gl_pickle
-from sframe.util import _assert_sframe_equal as assert_sframe_equal
+from .. import _gl_pickle as gl_pickle
+from ..util import _assert_sframe_equal as assert_sframe_equal
 
 
 class GLPicklingTest(unittest.TestCase):
