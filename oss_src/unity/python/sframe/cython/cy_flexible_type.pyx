@@ -135,7 +135,7 @@ from ..data_structures import image
 
 from cpython.ref cimport PyObject, PyTypeObject
 import itertools
-from sframe.util import timezone
+from ..util import timezone
 import datetime
 import calendar
 import collections
