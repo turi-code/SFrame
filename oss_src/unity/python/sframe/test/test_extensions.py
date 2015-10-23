@@ -9,8 +9,6 @@ import unittest
 from ..data_structures.sarray import SArray
 from ..data_structures.sframe import SFrame
 
-sa = SArray([1,2,3,4,5])
-sf = SFrame({'a':sa})
 
 
 class VariantCheckTest(unittest.TestCase):
@@ -38,6 +36,8 @@ class VariantCheckTest(unittest.TestCase):
         self.identical(expected_result, _demo_identity(reference))
 
     def test_variant_check(self):
+        sa = SArray([1,2,3,4,5])
+        sf = SFrame({'a':sa})
         import array
         self.variant_turnaround(1)
         self.variant_turnaround(1.0)
