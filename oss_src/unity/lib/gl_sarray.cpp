@@ -138,11 +138,21 @@ gl_sarray::gl_sarray(std::shared_ptr<unity_sarray_base> sarray) {
   m_sarray = std::dynamic_pointer_cast<unity_sarray>(sarray);
 }
 
+gl_sarray::gl_sarray(std::shared_ptr<sarray<flexible_type> > sa)
+    : m_sarray(new unity_sarray)
+{
+  m_sarray->construct_from_sarray(sa);
+}
+
 gl_sarray::operator std::shared_ptr<unity_sarray>() const {
   return get_proxy();
 }
 gl_sarray::operator std::shared_ptr<unity_sarray_base>() const {
   return get_proxy();
+}
+
+std::shared_ptr<sarray<flexible_type> > gl_sarray::materialize_to_sarray() const {
+  return get_proxy()->get_underlying_sarray();
 }
 
 /**************************************************************************/

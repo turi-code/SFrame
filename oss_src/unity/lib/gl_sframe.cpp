@@ -226,11 +226,21 @@ gl_sframe::gl_sframe(std::shared_ptr<unity_sframe_base> sframe) {
   m_sframe = std::dynamic_pointer_cast<unity_sframe>(sframe);
 }
 
+gl_sframe::gl_sframe(const sframe& sf)
+    : m_sframe(new unity_sframe)
+{
+  m_sframe->construct_from_sframe(sf);
+}
+
 gl_sframe::operator std::shared_ptr<unity_sframe>() const {
   return get_proxy();
 }
 gl_sframe::operator std::shared_ptr<unity_sframe_base>() const {
   return get_proxy();
+}
+
+sframe gl_sframe::materialize_to_sframe() const {
+  return *(get_proxy()->get_underlying_sframe());
 }
 
 /**************************************************************************/
@@ -472,6 +482,16 @@ gl_sframe gl_sframe::topk(const std::string& column_name,
 
 size_t gl_sframe::column_index(const std::string &column_name) const {
   return get_proxy()->column_index(column_name);
+}
+
+/**  Returns the name of column `index`.
+ */
+std::string gl_sframe::column_name(size_t index) const {
+  return get_proxy()->column_name(index);
+}
+
+bool gl_sframe::contains_column(const std::string& column_name) const {
+  return get_proxy()->contains_column(column_name);
 }
 
 gl_sarray gl_sframe::select_column(const std::string& colname) const {
@@ -1153,4 +1173,3 @@ gl_sframe gl_sframe_writer::close() {
 gl_sframe_writer::~gl_sframe_writer() { }
 
 } // graphlab
-

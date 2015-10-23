@@ -300,7 +300,7 @@ class sframe : public swriter_base<sframe_output_iterator> {
   /**
    * Return the index file of the sframe 
    */
-  inline std::string get_index_file() const {
+  inline const std::string& get_index_file() const {
     ASSERT_TRUE(inited);
     return index_file;
   }
@@ -310,7 +310,7 @@ class sframe : public swriter_base<sframe_output_iterator> {
    * Reads the value of a key associated with the sframe
    * Returns true on success, false on failure.
    */
-  inline bool get_metadata(std::string key, std::string &val) const {
+  inline bool get_metadata(const std::string& key, std::string &val) const {
     bool ret;
     std::tie(ret, val) = get_metadata(key);
     return ret;
@@ -322,7 +322,7 @@ class sframe : public swriter_base<sframe_output_iterator> {
    * Returns a pair of (true, value) on success, and (false, empty_string)
    * on failure.
    */
-  inline std::pair<bool, std::string> get_metadata(std::string key) const {
+  inline std::pair<bool, std::string> get_metadata(const std::string& key) const {
     ASSERT_MSG(inited, "Invalid SFrame");
     if (index_info.metadata.count(key)) {
       return std::pair<bool, std::string>(true, index_info.metadata.at(key));
@@ -534,7 +534,7 @@ class sframe : public swriter_base<sframe_output_iterator> {
    *
    */
   sframe add_column(std::shared_ptr<sarray<flexible_type> > sarr_ptr,
-                    std::string column_name=std::string("")) const;
+                    const std::string& column_name=std::string("")) const;
 
 
 
@@ -543,7 +543,7 @@ class sframe : public swriter_base<sframe_output_iterator> {
    * frame is open in either reading or writing mode. Changes are ephemeral,
    * and do not affect what is stored on disk.
    */
-  void set_column_name(size_t column_id, std::string name);
+  void set_column_name(size_t column_id, const std::string& name);
 
   /**
    * Returns a new ephemeral SFrame with the column removed.
@@ -575,7 +575,7 @@ class sframe : public swriter_base<sframe_output_iterator> {
                         const std::string& column_name) const;
 
 /**************************************************************************/
-/*                                                                        */
+  /*                                                                        */
 /*                           Writing Functions                            */
 /*                                                                        */
 /**************************************************************************/
@@ -642,7 +642,7 @@ class sframe : public swriter_base<sframe_output_iterator> {
    * Adds meta data to the frame.
    * Frame must be first opened for writing.
    */
-  bool set_metadata(std::string key, std::string val);
+  bool set_metadata(const std::string& key, std::string val);
 
   /**
    * Saves a copy of the current sframe into a different location.

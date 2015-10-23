@@ -21,6 +21,7 @@
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/filesystem.hpp>
 #include <parallel/lambda_omp.hpp>
+#include <sframe/sframe.hpp>
 
 using namespace graphlab;
 
@@ -353,6 +354,25 @@ class gl_sframe_test: public CxxTest::TestSuite {
       TS_ASSERT_EQUALS(ctr.value, 1000);
     }
 
+  void test_sframe_casts() {
+    gl_sframe sf = _make_reference_frame();
+
+    sframe sf2 = sf.materialize_to_sframe();
+    gl_sframe sf3 = sf2;
+
+    _assert_sframe_equals(sf, sf3); 
+  }
+  
+  void test_sframe_contains_column() {
+    gl_sframe sf = _make_reference_frame();
+
+    TS_ASSERT(sf.contains_column(sf.column_name(0)));
+    TS_ASSERT(sf.contains_column(sf.column_name(1)));
+    TS_ASSERT_EQUALS(sf.column_index(sf.column_name(0)), 0);
+    TS_ASSERT_EQUALS(sf.column_index(sf.column_name(1)), 1);
+    TS_ASSERT(!sf.contains_column("the-column-of-awesome"));
+  }
+  
   private:
 
     gl_sframe _make_reference_frame() {

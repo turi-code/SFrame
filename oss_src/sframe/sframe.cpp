@@ -400,7 +400,7 @@ sframe sframe::select_columns(const std::vector<std::string>& names) const {
 
 
 sframe sframe::add_column(std::shared_ptr<sarray<flexible_type> > sarr_ptr,
-                          std::string column_name) const {
+                          const std::string& column_name) const {
   log_func_entry();
   if (num_columns() == 0) {
     // appending to an empty sframe. just return a new sframe of 1 column
@@ -457,7 +457,7 @@ std::string sframe::generate_valid_column_name(const std::string &column_name) c
 }
 
 
-void sframe::set_column_name(size_t i, std::string name) {
+void sframe::set_column_name(size_t i, const std::string& name) {
   ASSERT_LT(i, num_columns());
   index_info.column_names[i] = name;
 }
@@ -662,7 +662,7 @@ void sframe::save_as_csv(std::string csv_file,
   }
 }
 
-bool sframe::set_metadata(std::string key, std::string val) {
+bool sframe::set_metadata(const std::string& key, std::string val) {
   Dlog_func_entry();
   ASSERT_MSG(inited, "Invalid SFrame");
   ASSERT_MSG(writing, "SFrame not opened for writing");

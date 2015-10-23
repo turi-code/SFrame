@@ -323,6 +323,23 @@ size_t unity_sframe::column_index(const std::string &name) {
   return sf->column_index(name);
 }
 
+std::string unity_sframe::column_name(size_t index) {
+  Dlog_func_entry();
+
+  auto sf = this->get_underlying_sframe();
+  std::string ret = sf->column_name(index);
+  DASSERT_TRUE(ret == column_names().at(index));
+  return ret;
+}
+
+
+bool unity_sframe::contains_column(const std::string& name) {
+  Dlog_func_entry();
+
+  const auto& sf = this->get_underlying_sframe();
+  return sf->contains_column(name);
+}
+
 std::shared_ptr<unity_sarray_base> unity_sframe::select_column(const std::string &name) {
   Dlog_func_entry();
 
