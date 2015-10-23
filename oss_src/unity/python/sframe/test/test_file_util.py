@@ -92,3 +92,9 @@ class FileUtilTests(unittest.TestCase):
         (bucket, path) = fu.parse_s3_path(s3_path)
         self.assertEqual(bucket, 'a')
         self.assertEqual(path, 'b/c')
+
+    def test_cert_directories(self):
+        import sframe as sf
+        import certifi
+        self.assertEqual(sf.get_runtime_config()['GRAPHLAB_FILEIO_ALTERNATIVE_SSL_CERT_FILE'], certifi.where())
+        self.assertEqual(sf.get_runtime_config()['GRAPHLAB_FILEIO_ALTERNATIVE_SSL_CERT_DIR'], "")

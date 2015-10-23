@@ -379,7 +379,6 @@ void CURLReadStreamBase::Init(size_t begin_bytes) {
   if (FindHttpError(header_)) {
     while (this->FillBuffer(buffer_.length() + 256) != 0);
     std::string message = std::string("Request Error") + header_ + buffer_;
-    logstream(LOG_PROGRESS) << message << std::endl;
     log_and_throw_io_failure(message);
   }
   // setup the variables
@@ -440,7 +439,6 @@ int CURLReadStreamBase::FillBuffer(size_t nwant) {
     m = curl_multi_info_read(mcurl_, &msgq);
     if(m && (m->msg == CURLMSG_DONE)) {
       if (m->data.result != CURLE_OK) {
-        logstream(LOG_PROGRESS) << curl_easy_strerror(m->data.result) << std::endl;
         log_and_throw_io_failure(curl_easy_strerror(m->data.result));
       }
     }
@@ -698,7 +696,7 @@ void WriteStream::Run(const std::string &method,
     }
     CURLcode ret = curl_easy_perform(ecurl_);
     if (ret != CURLE_OK) {
-      logstream(LOG_PROGRESS) << "request " << "failed with error "
+      logstream(LOG_ERROR) << "request " << "failed with error "
                 << curl_easy_strerror(ret) << " Progress " 
                 << etags_.size() << " uploaded " << " retry=" << num_retry << std::endl;
       num_retry += 1;
@@ -714,7 +712,6 @@ void WriteStream::Run(const std::string &method,
   *out_data = rdata.str();
   if (FindHttpError(*out_header) ||
       out_data->find("<Error>") != std::string::npos) {
-    logstream(LOG_PROGRESS) << (std::string("AWS S3 Error:") + *out_header + *out_data) << std::endl;
     if (!no_exception_) {
       log_and_throw_io_failure(std::string("AWS S3 Error:") + *out_header + *out_data);
     }
@@ -809,7 +806,6 @@ void ListObjects(const URI &path,
   // parse xml
   std::string ret = result.str();
   if (ret.find("<Error>") != std::string::npos) {
-    logstream(LOG_PROGRESS) << ret << std::endl;
     log_and_throw_io_failure(ret);
   }
   {// get files
