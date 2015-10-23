@@ -6,12 +6,14 @@ import uuid
 import shutil
 
 import pickle
-from sframe.util import cloudpickle
+from ..util import cloudpickle
 
-import sframe as gl
+from ..data_structures.sframe import SFrame
+from ..data_structures.sarray import SArray
+from ..data_structures.sgraph import SGraph, Vertex, Edge
+
 from .. import _gl_pickle as gl_pickle
 from ..util import _assert_sframe_equal as assert_sframe_equal
-
 
 class GLPicklingTest(unittest.TestCase):
 
@@ -43,9 +45,9 @@ class GLPicklingTest(unittest.TestCase):
     def test_pickling_sarray_types(self):
 
         sarray_list = [
-            gl.SArray([1,2,3]),
-            gl.SArray([1.0,2.0,3.5]),
-            gl.SArray(["foo", "bar"]),
+            SArray([1,2,3]),
+            SArray([1.0,2.0,3.5]),
+            SArray(["foo", "bar"]),
         ]
         for obj in sarray_list:
             pickler = gl_pickle.GLPickler(self.filename)
@@ -58,9 +60,9 @@ class GLPicklingTest(unittest.TestCase):
     def test_pickling_sframe_types(self):
 
         sarray_list = [
-            gl.SFrame([1,2,3]),
-            gl.SFrame([1.0,2.0,3.5]),
-            gl.SFrame(["foo", "bar"]),
+            SFrame([1,2,3]),
+            SFrame([1.0,2.0,3.5]),
+            SFrame(["foo", "bar"]),
         ]
         for obj in sarray_list:
             pickler = gl_pickle.GLPickler(self.filename)
@@ -71,18 +73,18 @@ class GLPicklingTest(unittest.TestCase):
 
     def test_pickling_sgraph_types(self):
 
-        sg_test_1 = gl.SGraph().add_vertices([
-                                gl.Vertex(0, {'fluffy': 1}),
-                                gl.Vertex(1, {'fluffy': 1, 'woof': 1}),
-                                gl.Vertex(2, {})])
+        sg_test_1 = SGraph().add_vertices([
+                                Vertex(0, {'fluffy': 1}),
+                                Vertex(1, {'fluffy': 1, 'woof': 1}),
+                                Vertex(2, {})])
 
-        sg_test_2 = gl.SGraph()
+        sg_test_2 = SGraph()
         sg_test_2 = sg_test_2.add_vertices([
-                            gl.Vertex(x) for x in [0, 1, 2]])
+                            Vertex(x) for x in [0, 1, 2]])
         sg_test_2 = sg_test_2.add_edges([
-                        gl.Edge(0, 1, attr={'relationship': 'dislikes'}),
-                        gl.Edge(1, 2, attr={'relationship': 'likes'}),
-                        gl.Edge(1, 0, attr={'relationship': 'likes'})])
+                        Edge(0, 1, attr={'relationship': 'dislikes'}),
+                        Edge(1, 2, attr={'relationship': 'likes'}),
+                        Edge(1, 0, attr={'relationship': 'likes'})])
 
         sarray_list = [
             sg_test_1,
@@ -98,12 +100,12 @@ class GLPicklingTest(unittest.TestCase):
 
     def test_combination_gl_python_types(self):
 
-        sg_test_1 = gl.SGraph().add_vertices([
-                                gl.Vertex(1, {'fluffy': 1}),
-                                gl.Vertex(2, {'fluffy': 1, 'woof': 1}),
-                                gl.Vertex(3, {})])
-        sarray_test_1 = gl.SArray([1,2,3])
-        sframe_test_1 = gl.SFrame([1,2,3])
+        sg_test_1 = SGraph().add_vertices([
+                                Vertex(1, {'fluffy': 1}),
+                                Vertex(2, {'fluffy': 1, 'woof': 1}),
+                                Vertex(3, {})])
+        sarray_test_1 = SArray([1,2,3])
+        sframe_test_1 = SFrame([1,2,3])
 
         obj_list = [
             [sg_test_1, sframe_test_1, sarray_test_1],
@@ -118,7 +120,7 @@ class GLPicklingTest(unittest.TestCase):
             assert_sframe_equal(obj[0].get_vertices(), obj_ret[0].get_vertices())
             assert_sframe_equal(obj[0].get_edges(), obj_ret[0].get_edges())
             assert_sframe_equal(obj[1], obj_ret[1])
-            assert list(obj[2]) ==  list(obj_ret[2])
+            assert list(obj[2]) == list(obj_ret[2])
 
     def test_pickle_compatibility(self):
         obj_list = [
@@ -154,7 +156,7 @@ class GLPicklingTest(unittest.TestCase):
 
     def test_relative_path(self):
         # Arrange
-        sf1 = gl.SFrame(range(10))
+        sf1 = SFrame(range(10))
         relative_path = 'tmp/%s' % self.filename
 
         # Act
@@ -177,7 +179,7 @@ class GLPicklingTest(unittest.TestCase):
         os.environ['AWS_SECRET_ACCESS_KEY'] = ''
         BUCKET_NAME = 'foo'
         boto.connect_s3().create_bucket(BUCKET_NAME)
-        sf1 = gl.SFrame(range(10))
+        sf1 = SFrame(range(10))
         S3_PATH = "s3://%s/foobar" % BUCKET_NAME
 
         # Act
@@ -195,10 +197,9 @@ class GLPicklingTest(unittest.TestCase):
 
         # Arrange
         file_name = 's3://gl-internal-datasets/models/1.3/gl-pickle.gl'
-        obj = {'foo': gl.SFrame([1,2,3]),
-               'bar': gl.SFrame(),
-               'foo-bar': ['foo-and-bar', gl.SFrame([1])]}
-
+        obj = {'foo': SFrame([1,2,3]),
+               'bar': SFrame(),
+               'foo-bar': ['foo-and-bar', SFrame([1])]}
 
         # Act
         unpickler = gl_pickle.GLUnpickler(file_name)
@@ -213,9 +214,9 @@ class GLPicklingTest(unittest.TestCase):
     def test_save_over_previous(self):
 
         sarray_list = [
-            gl.SFrame([1,2,3]),
-            gl.SFrame([1.0,2.0,3.5]),
-            gl.SFrame(["foo", "bar"]),
+            SFrame([1,2,3]),
+            SFrame([1.0,2.0,3.5]),
+            SFrame(["foo", "bar"]),
         ]
         for obj in sarray_list:
             pickler = gl_pickle.GLPickler(self.filename)
