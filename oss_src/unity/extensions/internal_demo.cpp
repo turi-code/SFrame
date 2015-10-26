@@ -15,6 +15,10 @@ int _demo_addone(int param) {
   return param + 1;
 }
 
+variant_type _demo_identity(variant_type input) {
+  // this is used in unit tests
+  return input;
+}
 
 double _demo_add(double param, double param2) {
   return param + param2;
@@ -166,6 +170,7 @@ class demo_vector : public std::vector<std::string>, public toolkit_class_base {
 
 BEGIN_FUNCTION_REGISTRATION
 REGISTER_FUNCTION(_demo_addone, "param");
+REGISTER_FUNCTION(_demo_identity, "param");
 REGISTER_FUNCTION(_demo_add, "param", "param2");
 REGISTER_FUNCTION(_demo_to_string, "param");
 REGISTER_FUNCTION(_replicate, "input");

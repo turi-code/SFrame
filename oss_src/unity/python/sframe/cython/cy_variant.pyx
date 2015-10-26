@@ -77,6 +77,43 @@ cdef variant_map_type from_dict(object d) except *:
 
     return ret
 
+cdef bint contains_top_level_variant_type(object v):
+    if isinstance(v, UnityGraphProxy):
+        return True
+    elif str(type(v)) == "<class 'graphlab.data_structures.sgraph.SGraph'>":
+        return True
+    elif str(type(v)) == "<class 'sframe.data_structures.sgraph.SGraph'>":
+        return True
+    elif is_pandas_dataframe(v):
+        return True
+    elif isinstance(v, UnityModel):
+        return True
+    elif hasattr(v, '_tkclass') and isinstance(v._tkclass, UnityModel):
+        return True
+    elif str(type(v)) == "<class 'graphlab.data_structures.sframe.SFrame'>":
+        return True
+    elif str(type(v)) == "<class 'sframe.data_structures.sframe.SFrame'>":
+        return True
+    elif isinstance(v, UnitySFrameProxy):
+        return True
+    elif str(type(v)) == "<class 'graphlab.data_structures.sarray.SArray'>":
+        return True
+    elif str(type(v)) == "<class 'sframe.data_structures.sarray.SArray'>":
+        return True
+    elif isinstance(v, UnitySArrayProxy):
+        return True
+    elif isinstance(v, list):
+        # ok... can the list be stored in a flexible_type?
+        return any([contains_top_level_variant_type(i) for i in v])
+    elif isinstance(v, dict):
+        return any([contains_top_level_variant_type(i) for i in v.iterkeys()]) or \
+                any([contains_top_level_variant_type(i) for i in v.itervalues()]) 
+    elif is_function_closure_info(v):
+        return True
+    else:
+        return False
+    return False
+
 cdef variant_type from_value(object v) except *:
     cdef variant_type ret 
     cdef flexible_type flex
@@ -105,22 +142,16 @@ cdef variant_type from_value(object v) except *:
     elif isinstance(v, UnitySArrayProxy):
         variant_set_sarray(ret, (<UnitySArrayProxy?>(v))._base_ptr)
     elif isinstance(v, list):
-        # ok... can the list be stored in a flexible_type?
-        try:
-            flex = flexible_type_from_pyobject(v)
-        except:
-            # nope
+        if contains_top_level_variant_type(v):
             variant_set_variant_vector(ret, from_list(v))
         else:
+            flex = flexible_type_from_pyobject(v)
             variant_set_flexible_type(ret, flex)
     elif isinstance(v, dict):
-        # ok... can the list be stored in a flexible_type?
-        try:
-            flex = flexible_type_from_pyobject(v)
-        except:
-            # nope
+        if contains_top_level_variant_type(v):
             variant_set_variant_map(ret, from_dict(v))
         else:
+            flex = flexible_type_from_pyobject(v)
             variant_set_flexible_type(ret, flex)
     elif is_function_closure_info(v):
         variant_set_closure(ret, make_function_closure_info(v))
