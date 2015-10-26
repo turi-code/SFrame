@@ -28,6 +28,9 @@ class gl_sframe;
 class gl_sarray_range;
 
 template <typename T>
+class sarray;
+
+template <typename T>
 class sarray_reader;
 
 template <typename T>
@@ -304,14 +307,19 @@ class gl_sarray {
   /// \cond GRAPHLAB_INTERNAL
   /**
    * \internal
-   * Implicit conversion from backend sarray objects.
+   * Implicit conversion from backend unity_sarray objects.
    */ 
   gl_sarray(std::shared_ptr<unity_sarray> sarray);
   /**
    * \internal
-   * Implicit conversion from backend sarray objects.
+   * Implicit conversion from backend unity_sarray_base objects.
    */ 
   gl_sarray(std::shared_ptr<unity_sarray_base> sarray);
+  /**
+   * \internal
+   * Implicit conversion from backend sarray objects.
+   */ 
+  gl_sarray(std::shared_ptr<sarray<flexible_type> > sarray);
   /**
    * \internal
    * Implicit conversion to backend sarray objects.
@@ -323,6 +331,12 @@ class gl_sarray {
    */ 
   operator std::shared_ptr<unity_sarray_base>() const;
 
+  /**
+   * \internal
+   * Conversion to materialized backend sarray object.
+   */ 
+  std::shared_ptr<sarray<flexible_type> > materialize_to_sarray() const;
+  
   /// \endcond
  
   /**************************************************************************/

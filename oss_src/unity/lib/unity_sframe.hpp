@@ -177,9 +177,23 @@ class unity_sframe : public unity_sframe_base {
    * returns only \ref size() rows.
    */
   std::shared_ptr<unity_sframe_base> head(size_t nrows);
-  
-  size_t column_index(const std::string &name);
 
+  /**
+   *  Returns the index of the column `name`
+   */
+  size_t column_index(const std::string& name);
+
+  /**
+   *  Returns the name of the column in position `index.`
+   */
+  const std::string& column_name(size_t index);
+  
+  /** 
+   * Returns true if the column is present in the sframe, and false
+   * otherwise.
+   */
+  bool contains_column(const std::string &name);
+  
   /**
    * Same as head, returning dataframe.
    */

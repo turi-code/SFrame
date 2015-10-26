@@ -23,6 +23,7 @@ class unity_sarray;
 class unity_sframe;
 class unity_sframe_base;
 class gl_sarray;
+class sframe;
 class sframe_reader;
 class sframe_reader_buffer;
 
@@ -573,13 +574,18 @@ class gl_sframe {
   
   /// \cond GRAPHLAB_INTERNAL
   /**
-   * Implicit conversion from backend sframe object
+   * Implicit conversion from backend unity_sframe object
    */
   gl_sframe(std::shared_ptr<unity_sframe> sframe);
   /**
-   * Implicit conversion from backend sframe object
+   * Implicit conversion from backend unity_sframe_base object
    */
   gl_sframe(std::shared_ptr<unity_sframe_base> sframe);
+  /**
+   * Implicit conversion from backend sframe object
+   */
+  gl_sframe(const sframe& sframe);
+
   /**
    * Implicit conversion to backend sframe object
    */
@@ -588,6 +594,11 @@ class gl_sframe {
    * Implicit conversion to backend sframe object
    */
   operator std::shared_ptr<unity_sframe_base>() const;
+  
+  /**
+   * Conversion to materialized backend sframe object.
+   */
+  sframe materialize_to_sframe() const;
   /// \endcond
 
 
@@ -916,7 +927,12 @@ class gl_sframe {
    */
   virtual std::vector<std::string> column_names() const;
 
-
+  /** 
+   * Returns true if the column is present in the sframe, and false
+   * otherwise.
+   */
+  bool contains_column(const std::string& col_name) const;
+  
   /**
    * Returns a gl_sframe which contains the first n rows of this gl_sframe.
    *
@@ -1137,8 +1153,15 @@ class gl_sframe {
    */
   gl_sframe topk(const std::string& column_name, size_t k=10, bool reverse=false) const;
 
+  /**  Returns the index of column `column_name`.
+   */
   size_t column_index(const std::string &column_name) const;
 
+  /**  Returns the name of column `index`.
+   */
+  const std::string& column_name(size_t index) const;
+  
+  
   /**
    * Extracts one column of the gl_sframe.
    *

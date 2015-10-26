@@ -21,6 +21,7 @@
 #include <unity/lib/gl_sframe.hpp>
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <sframe/sarray.hpp>
 
 using namespace graphlab;
 
@@ -439,6 +440,16 @@ class gl_sarray_test: public CxxTest::TestSuite {
       std::cout << "\n" << a[{-3,-1}];  // start at end - 3, end at index end - 1
       // ret is the array [8,9]
     }
+
+  void test_sarray() {
+    gl_sarray sa{1,2,3,4,5,6};
+
+    auto sa2 = sa.materialize_to_sarray();
+    gl_sarray sa3 = sa2;
+
+    _assert_sarray_equals(sa, _to_vec(sa3)); 
+  }
+  
   private:
 
     std::vector<flexible_type> _to_vec(gl_sarray sa) {
