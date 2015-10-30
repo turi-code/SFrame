@@ -27,7 +27,6 @@ class VariantCheckTest(unittest.TestCase):
             self.identical(list(reference), list(b))
         if isinstance(reference, SFrame):
             self.identical(list(reference), list(b))
-            
 
     def variant_turnaround(self, reference, expected_result=None):
         if expected_result is None:
@@ -59,3 +58,5 @@ class VariantCheckTest(unittest.TestCase):
         self.variant_turnaround({'a':sa, 'b':sf, 'c':['a','b','c','d']})
         self.variant_turnaround({'a':[sa,sf,{'a':sa,'b':'c'}],
             'b':sf, 'c':['a','b','c','d']})
+
+        

@@ -391,7 +391,7 @@ class EXPORT comm_client {
    */
   comm_client(std::vector<std::string> zkhosts, 
               std::string name,
-              size_t num_tolerable_ping_failures = 10,
+              size_t num_tolerable_ping_failures = (size_t)(-1),
               std::string alternate_control_address="",
               std::string alternate_publish_address="", 
               const std::string public_key = "",

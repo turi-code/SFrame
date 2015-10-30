@@ -447,9 +447,9 @@ class gl_sarray_test: public CxxTest::TestSuite {
     auto sa2 = sa.materialize_to_sarray();
     gl_sarray sa3 = sa2;
 
-    _assert_sarray_equals(sa, _to_vec(sa3)); 
+    _assert_sarray_equals(sa, _to_vec(sa3));
   }
-  
+
   private:
 
     std::vector<flexible_type> _to_vec(gl_sarray sa) {

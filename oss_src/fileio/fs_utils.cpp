@@ -611,6 +611,10 @@ size_t get_io_parallelism_id(const std::string url) {
 }
 
 bool try_to_open_file(const std::string url) {
+  // if file doesn't exist, we fail immediately
+  if (get_file_status(url) != file_status::REGULAR_FILE) {
+    return false;
+  }
   bool success = true;
   try {
     general_ifstream fin(url);

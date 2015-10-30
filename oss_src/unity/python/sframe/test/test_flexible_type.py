@@ -61,14 +61,16 @@ special_types.add(id(AnyValue))
 
 # All the different types of float sequences we support
 FloatSequence = (
-    [[0.5, 1.5, 2.5], (0.5, 1.5, 2.5)]
+    [[0.5, 1.5, 2.5], (0.5, 1.5, 2.5),
+     {0.5, 1.5, 2.5}, frozenset([0.5, 1.5, 2.5])]
     + [array.array(c, [0.5, 1.5, 2.5]) for c in 'fd']
     + [np.array([0.5, 1.5, 2.5], dtype= _dt) for _dt in np.sctypes['float']])
 special_types.add(id(FloatSequence))
 
 # All the different types of float sequences we support
 FloatSequenceWithNAN = (
-    [[0.5, 1.5, 2.5, nan], (0.5, 1.5, 2.5, nan)]
+    [[0.5, 1.5, 2.5, nan], (0.5, 1.5, 2.5, nan),
+     {0.5, 1.5, 2.5, nan}, frozenset([0.5, 1.5, 2.5, nan])]
     + [array.array(c, [0.5, 1.5, 2.5, nan]) for c in 'fd']
     + [np.array([0.5, 1.5, 2.5, nan], dtype= _dt) for _dt in np.sctypes['float']])
 special_types.add(id(FloatSequenceWithNAN))
@@ -83,7 +85,10 @@ IntegerSequence = (
     [[int(i) for i in range(3)]
      , [long(i) for i in range(3)]
      , tuple(range(3))
-     , tuple(long(i) for i in range(3))]
+     , tuple(long(i) for i in range(3))
+     , set(range(3))
+     , frozenset(range(3))
+    ]
     + [array.array(c, range(3)) for c in 'bBhHiIlL']
     + [np.array(range(3), dtype = _dt) for _dt in np.sctypes['int']]
     + [np.array(range(3), dtype = _dt) for _dt in np.sctypes['uint']])
@@ -94,7 +99,9 @@ IntegerSequenceWithNAN = (
     [[int(i) for i in range(3)] + [nan]
      , [long(i) for i in range(3)] + [nan]
      , tuple(range(3)) + (nan,)
-     , tuple(long(i) for i in range(3)) + (nan,)])
+     , tuple(long(i) for i in range(3)) + (nan,)
+     , set([long(i) for i in range(3)] + [nan])
+     , frozenset([long(i) for i in range(3)] + [nan])])
 special_types.add(id(IntegerSequenceWithNAN))
 
 # All the different types of string
@@ -102,7 +109,9 @@ IntegerSequenceWithNone = (
     [[int(i) for i in range(3)] + [None]
      , [long(i) for i in range(3)] + [None]
      , tuple(range(3)) + (None,)
-     , tuple(long(i) for i in range(3)) + (None,)])
+     , tuple(long(i) for i in range(3)) + (None,)
+     , set([long(i) for i in range(3)] + [None])
+     , frozenset([long(i) for i in range(3)] + [None])])
 special_types.add(id(IntegerSequenceWithNone))
 
 # Empty but typed float arrays
@@ -122,13 +131,14 @@ special_types.add(id(EmptyIntegerArray))
 EmptyArray = EmptyIntegerArray + EmptyFloatArray
 special_types.add(id(EmptyArray))
 
-EmptySequence = [[], tuple()]
+EmptySequence = [[], tuple(), set()]
 special_types.add(id(EmptySequence))
 
 # Boolean Sequences
 BooleanSequence = (
     [ list( (i%2 == 0) for i in range(3))
-      , tuple( (i%2 == 0) for i in range(3)) ]
+      , tuple( (i%2 == 0) for i in range(3))
+      , set([True]), set([False]), set([True, False])]
     + [np.array([i%2==0 for i in range(3)], dtype= _dt)
        for _dt in [np.bool, np.bool_, bool]])
 special_types.add(id(BooleanSequence))
@@ -136,7 +146,9 @@ special_types.add(id(BooleanSequence))
 # String sequences
 StringSequence = (
     [ list( str(i) for i in range(3))
-      , tuple( str(i) for i in range(3))]
+      , tuple( str(i) for i in range(3))
+    , set( str(i) for i in range(3))
+      , frozenset( str(i) for i in range(3))]
     + [np.array([_dt('a'), _dt('b')], dtype = _dt)
        for _dt in [np.unicode, np.unicode_, str, unicode, np.str, np.str_, np.string_]]
     + [np.array([_dt('a'), _dt('b')], dtype = object)
@@ -202,8 +214,8 @@ class FlexibleTypeInference(unittest.TestCase):
         verify_inference([IntegerValue, IntegerValue], int)
         verify_inference([IntegerValue, FloatValue], float)
         verify_inference([IntegerValue, nan], float)
-        verify_inference([], int)
-        verify_inference([None], int)
+        verify_inference([], float)
+        verify_inference([None], float)
         verify_inference([IntegerValue, nan], float)
         verify_inference([IntegerValue, None, nan], float)
         verify_inference([IntegerValue, None, FloatValue], float)

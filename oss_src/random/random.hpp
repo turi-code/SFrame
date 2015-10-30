@@ -266,7 +266,41 @@ namespace graphlab {
         return ind;
       } // end of multinomial
 
+      /**
+       *  Draw a random number from a multinomial with normalizing
+       *  constant provided.
+       */
+      template <typename VecType, typename VType>
+      size_t multinomial_normalized(const VecType& prb, VType norm) {
 
+        if(norm < 1e-20) {
+          return fast_uniform<VType>(0, prb.size() - 1);
+        }
+        
+#ifndef NDEBUG
+        VType total = 0;
+        
+        for(size_t i = 0; i < size_t(prb.size()); ++i) {
+          total += VType(prb[i]);
+        }
+
+        ASSERT_LT(double(abs(norm - total)), std::max(1e-20, 1e-6 * norm));
+#endif 
+
+        VType rnd = fast_uniform<VType>(0,norm - (std::is_integral<VType>::value ? 1 : 0));
+
+        for(size_t i = 0; i < size_t(prb.size()); ++i) {
+          if(rnd <= prb[i]) {
+            return i;
+          } else {
+            rnd -= prb[i];
+          }
+        }
+
+        return 0; 
+      } // end of multinomial
+
+      
       /**
        * Generate a draw from a multinomial using a CDF.  This is
        * slightly more efficient since normalization is not required
@@ -477,6 +511,15 @@ namespace graphlab {
       return get_source().multinomial(prb);
     }
 
+    /**
+     * \ingroup random
+     * Generate a draw from a multinomial, with preknown normalization  This function
+     * automatically normalizes as well.
+     */
+    template<typename VecLike, typename Double>
+    inline size_t multinomial_normalized(const VecLike& prb, Double norm) {
+      return get_source().multinomial_normalized(prb, norm);
+    }
 
     /**
      * \ingroup random

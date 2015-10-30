@@ -22,10 +22,7 @@ namespace graphlab { namespace lambda {
 
 std::vector<std::string> lambda_master::lambda_worker_binary_and_args = {};
 
-  graphlab::mutex get_instance_lock;
-
   lambda_master& lambda_master::get_instance() {
-    std::lock_guard<graphlab::mutex> lock(get_instance_lock);
     static lambda_master instance(std::min<size_t>(DEFAULT_NUM_PYLAMBDA_WORKERS,
                                                      std::max<size_t>(thread::cpu_count(), 1)));
     return instance;

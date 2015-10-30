@@ -32,7 +32,7 @@
 #include <openssl/hmac.h>
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
-
+#include <fileio/set_curl_ssl_options.hpp>
 #include <algorithm>
 #include <memory>
 #include <fileio/fileio_constants.hpp>
@@ -297,12 +297,6 @@ addDefaultCACerts( CURL * curl, void * sslctx, void * parm ) // nofail
     // Get X509 certificate store.
 
     X509_STORE* store = SSL_CTX_get_cert_store( reinterpret_cast< SSL_CTX * >( sslctx ) );
-
-    // If the user set the runtime config for ssl certificates,
-    // we tell SSL to use it as the verify location.
-    const char* alternative_ssl_cert_file = graphlab::fileio::get_alternative_ssl_cert_dir().c_str();
-    const char* alternative_ssl_cert_dir = graphlab::fileio::get_alternative_ssl_cert_file().c_str();
-    SSL_CTX_load_verify_locations(reinterpret_cast< SSL_CTX * >( sslctx ), alternative_ssl_cert_file, alternative_ssl_cert_dir);
 
     for ( const char **p = getDefaultCACerts(); *p != NULL; ++p ) 
     {
@@ -2538,12 +2532,12 @@ WsConnection::prepare( WsRequest *request, const char *bucketName, const char *k
             } 
             else 
             {
-                curl_easy_setopt_checked( m_curl, CURLOPT_CAINFO, m_sslCertFile.c_str() );
+              graphlab::fileio::set_ssl_certificate_options(m_curl);
             }
         } 
         else 
         {
-            curl_easy_setopt_checked( m_curl, CURLOPT_SSL_CTX_FUNCTION, addDefaultCACerts);
+          graphlab::fileio::set_ssl_certificate_options(m_curl);
         }
     }
 

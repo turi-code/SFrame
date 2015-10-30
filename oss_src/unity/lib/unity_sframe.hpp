@@ -187,13 +187,13 @@ class unity_sframe : public unity_sframe_base {
    *  Returns the name of the column in position `index.`
    */
   const std::string& column_name(size_t index);
-  
-  /** 
+
+  /**
    * Returns true if the column is present in the sframe, and false
    * otherwise.
    */
   bool contains_column(const std::string &name);
-  
+
   /**
    * Same as head, returning dataframe.
    */

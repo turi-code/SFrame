@@ -115,6 +115,7 @@ reply_status comm_client::start() {
           boost::get_system_time() + boost::posix_time::milliseconds(1000);
       this->ping_cond.timed_wait(lock, timeout);
       lock.unlock();
+      if (this->ping_thread_done) return;
 
       std::string ping_body = std::string("");
       if(console_cancel_handler::get_instance().get_cancel_flag()) {
@@ -135,9 +136,16 @@ reply_status comm_client::start() {
 
       auto future = this->internal_call_future(msg, true);
       // now, we wait on the future for 5 seconds
-      auto future_timeout =
-          boost::chrono::system_clock::now() + boost::chrono::milliseconds(5000);
-      future.wait_until(future_timeout);
+      // do it in 1 second increments
+      // this speeds up client termination somewhat since it doesn't have
+      // to wait for the full 5 seconds to cancel.
+      for (size_t i = 0;i < 5; ++i) {
+        auto future_timeout =
+            boost::chrono::system_clock::now() + boost::chrono::milliseconds(1000);
+        future.wait_until(future_timeout);
+        if (future.has_value()) break;
+        if (this->ping_thread_done) return;
+      }
       lock.lock();
       if (future.has_value()) {
         // we ignore the message as long as we get a reply
@@ -149,8 +157,6 @@ reply_status comm_client::start() {
       } else {
         ++ping_failure_count;
         if (ping_failure_count >= this->num_tolerable_ping_failures) {
-          std::cerr << "Unable to reach server for " << ping_failure_count
-                    << " consecutive pings. Server is considered dead. Please exit and restart." << std::endl;
           server_alive = false;
         }
       }
