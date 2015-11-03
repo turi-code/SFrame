@@ -27,6 +27,12 @@ import uuid as _uuid
 import datetime as _datetime
 import time as _time
 import logging as _logging
+import sys as _sys
+
+def _i_am_a_lambda_worker():
+    if _re.match(".*lambda_worker.*", _sys.argv[0]) is not None:
+        return True
+    return False
 
 
 __LOGGER__ = _logging.getLogger(__name__)
@@ -70,8 +76,12 @@ logging.config.dictConfig({
 # Set module specific log levels
 logging.getLogger('librato').setLevel(logging.CRITICAL)
 logging.getLogger('requests').setLevel(logging.CRITICAL)
-logging.getLogger(root_package_name).setLevel(logging.INFO)
-logging.getLogger(__name__).setLevel(logging.INFO)
+if _i_am_a_lambda_worker():
+    logging.getLogger(root_package_name).setLevel(logging.WARNING)
+    logging.getLogger(__name__).setLevel(logging.WARNING)
+else:
+    logging.getLogger(root_package_name).setLevel(logging.INFO)
+    logging.getLogger(__name__).setLevel(logging.INFO)
 
 #amend the logging configuration with a handler streaming to a message queue
 

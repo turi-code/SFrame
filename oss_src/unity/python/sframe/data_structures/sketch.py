@@ -460,7 +460,6 @@ class Sketch(object):
         out : float | str
             An estimate of the value at a quantile.
         """
-        _mt._get_metric_tracker().track('sketch.quantile.%g' % quantile_val)
 
         with cython_context():
             return self.__proxy__.get_quantile(quantile_val)

@@ -55,8 +55,6 @@ def run(toolkit_name, options, verbose=True, show_progress=False):
     if (not verbose):
         glconnect.get_client().set_log_progress(False)
     # spawn progress threads
-    server_addr = glconnect.get_server().get_server_addr()
-    splits = server_addr.split(':')
     try:
         start_time = time.time()
         (success, message, params) = unity.run_toolkit(toolkit_name, options)
@@ -85,4 +83,7 @@ def run(toolkit_name, options, verbose=True, show_progress=False):
     if success:
         return params
     else:
+        metric_name = 'toolkit.%s.toolkit_error' % (toolkit_name)
+        _get_metric_tracker().track(metric_name, value=1, properties=track_props, send_sys_info=False)
+
         raise ToolkitError(str(message))
