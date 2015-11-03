@@ -58,6 +58,11 @@ def make_unity_server_env():
 
     # Add the pylambda execution script to the runtime config
     env['__GL_PYLAMBDA_SCRIPT__'] = os.path.abspath(_pylambda_worker.__file__)
+
+    # For Windows, add path to DLLs for the pylambda_worker
+    if sys.platform == 'win32':
+        env['PATH'] = os.path.dirname(os.path.abspath(_pylambda_worker.__file__)) +\
+                os.path.pathsep + env['PATH']
     
     #### Remove PYTHONEXECUTABLE ####
     # Anaconda overwrites this environment variable
