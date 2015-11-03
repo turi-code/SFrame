@@ -63,7 +63,6 @@ def make_unity_server_env():
     if sys.platform == 'win32':
         env['PATH'] = os.path.dirname(os.path.abspath(_pylambda_worker.__file__)) +\
                 os.path.pathsep + env['PATH']
-                
     
     #### Remove PYTHONEXECUTABLE ####
     # Anaconda overwrites this environment variable
