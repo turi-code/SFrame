@@ -115,7 +115,6 @@ AnySequence: Any of the above.
 [StringSequence, FloatSequence]       --> list
 
 (Note, Adding a None in any of these does not change it.)
-
 '''
 
 # Turn off a couple things in the code that we don't need here, for
@@ -269,6 +268,8 @@ cdef dict _code_by_name_lookup = {
     'datetime' : FT_DATETIME_TYPE + FT_SAFE,
     'date'     : FT_DATETIME_TYPE + FT_SAFE,
     'time'     : FT_DATETIME_TYPE + FT_SAFE,
+    'set'      : FT_LIST_TYPE + FT_SAFE,
+    'frozenset': FT_LIST_TYPE + FT_SAFE,
     'ndarray'  : FT_BUFFER_TYPE  # Just go by name on this one since it's not always imported
 }
 
@@ -602,7 +603,7 @@ DEF FTI_EMPTY_LIST     = 1024
 cdef map[size_t, flex_type_enum] _common_type_inference_rules = map[size_t, flex_type_enum]()
 
 # The empty case
-_common_type_inference_rules[0]                = INTEGER
+_common_type_inference_rules[0]                = FLOAT
 
 # Standalone types
 _common_type_inference_rules[FTI_INTEGER]      = INTEGER
@@ -1644,7 +1645,7 @@ cdef inline flex_type_enum tr_buffer_to_flex_list(
         return tr_listlike_to_flex_list(retl, object_buffer, common_type, ignore_translation_errors)
 
     # Numpy array that is not an object array?
-    if HAS_NUMPY and type(v) is np_ndarray:
+    if isinstance(v, collections.Iterable) or (HAS_NUMPY and type(v) is np_ndarray):
         return tr_listlike_to_flex_list(retl, list(v), common_type, ignore_translation_errors)
 
     # Error if there are no more options.

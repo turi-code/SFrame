@@ -107,7 +107,7 @@ cdef bint contains_top_level_variant_type(object v):
         return any([contains_top_level_variant_type(i) for i in v])
     elif isinstance(v, dict):
         return any([contains_top_level_variant_type(i) for i in v.iterkeys()]) or \
-                any([contains_top_level_variant_type(i) for i in v.itervalues()]) 
+                any([contains_top_level_variant_type(i) for i in v.itervalues()])
     elif is_function_closure_info(v):
         return True
     else:

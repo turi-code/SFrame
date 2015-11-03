@@ -360,9 +360,9 @@ class gl_sframe_test: public CxxTest::TestSuite {
     sframe sf2 = sf.materialize_to_sframe();
     gl_sframe sf3 = sf2;
 
-    _assert_sframe_equals(sf, sf3); 
+    _assert_sframe_equals(sf, sf3);
   }
-  
+
   void test_sframe_contains_column() {
     gl_sframe sf = _make_reference_frame();
 
@@ -372,7 +372,7 @@ class gl_sframe_test: public CxxTest::TestSuite {
     TS_ASSERT_EQUALS(sf.column_index(sf.column_name(1)), 1);
     TS_ASSERT(!sf.contains_column("the-column-of-awesome"));
   }
-  
+
   private:
 
     gl_sframe _make_reference_frame() {

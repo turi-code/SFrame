@@ -49,7 +49,7 @@
 #include <crash_handler/crash_handler.hpp>
 #include <signal.h>
 #endif
-
+#include <Eigen/Core>
 #include "unity_server_init.hpp"
 
 void exported_symbols();
@@ -140,6 +140,7 @@ int main(int argc, char** argv) {
   global_logger().set_log_level(LOG_DEBUG);
 #endif
 
+  Eigen::initParallel();
   //TODO: This functionality can be mirrored in Windows. Potentially with SEH,
   //WER, and possibly needing some asm code written? Too complicated without a
   //high payout to be on the critical path for now.  Revisit later.
@@ -331,20 +332,32 @@ int main(int argc, char** argv) {
   candidate_paths.push_back(fs::system_complete(fs::path(program_name).parent_path() / fs::path("../../lambda/pylambda_worker")));
   candidate_paths.push_back(fs::system_complete(fs::path(program_name).parent_path() / fs::path("../../../oss_src/lambda/pylambda_worker")));
   #endif
-  bool lambda_path_found = false;
 
   /**
    * Set the path to the python executable and the pylambda_slave
    * binary script used for evaluate python lambdas parallel in
    * separate processes.  
    */
-  graphlab::GLOBALS_PYTHON_EXECUTABLE = std::getenv("__GL_PYTHON_EXECUTABLE__");
-  logstream(LOG_INFO) << "Python executable: " << graphlab::GLOBALS_PYTHON_EXECUTABLE << std::endl;
-  ASSERT_MSG(fs::exists(fs::path(graphlab::GLOBALS_PYTHON_EXECUTABLE)), "Python executable is not valid path. Do I exist?");
+  const char* python_executable_env = std::getenv("__GL_PYTHON_EXECUTABLE__");
+  if (python_executable_env) {
+    graphlab::GLOBALS_PYTHON_EXECUTABLE = python_executable_env;
+    logstream(LOG_INFO) << "Python executable: " << graphlab::GLOBALS_PYTHON_EXECUTABLE << std::endl;
+    ASSERT_MSG(fs::exists(fs::path(graphlab::GLOBALS_PYTHON_EXECUTABLE)), "Python executable is not valid path. Do I exist?");
+  } else {
+    logstream(LOG_WARNING) << "Python executable not set. Python lambdas may not be available" << std::endl;
+  }
 
-  std::string pylambda_worker_script = std::getenv("__GL_PYLAMBDA_SCRIPT__");
-  logstream(LOG_INFO) << "PyLambda worker script: " << graphlab::GLOBALS_PYTHON_EXECUTABLE << std::endl;
-  ASSERT_MSG(fs::exists(fs::path(pylambda_worker_script)), "PyLambda worker script not valid.");
+  std::string pylambda_worker_script;
+  {
+    const char* pylambda_worker_script_env = std::getenv("__GL_PYLAMBDA_SCRIPT__");
+    if (pylambda_worker_script_env) {
+      logstream(LOG_INFO) << "PyLambda worker script: " << pylambda_worker_script_env << std::endl;
+      pylambda_worker_script = pylambda_worker_script_env;
+      ASSERT_MSG(fs::exists(fs::path(pylambda_worker_script)), "PyLambda worker script not valid.");
+    } else {
+      logstream(LOG_WARNING) << "Python lambda worker script not set. Python lambdas may not be available" << std::endl;
+    }
+  }
 
   // Set the lambda_worker_binary_and_args
   graphlab::lambda::lambda_master::set_lambda_worker_binary(
@@ -437,4 +450,13 @@ int main(int argc, char** argv) {
   delete g_toolkit_functions;
 
   graphlab::global_teardown::get_instance().perform_teardown();
+
+#ifdef _WIN32
+  // windows appears to kill threads then call DLLUnload (which calls the
+  // global object destructors). This is problematic since all of our
+  // state is in DLLs. We can do more cleanup here or we can just die.
+  // (this is going to be a problem when we eliminate the unity_server
+  // subprocess)
+  TerminateProcess(GetCurrentProcess(), 0);
+#endif
 }

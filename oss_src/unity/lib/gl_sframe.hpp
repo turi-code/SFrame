@@ -594,7 +594,7 @@ class gl_sframe {
    * Implicit conversion to backend sframe object
    */
   operator std::shared_ptr<unity_sframe_base>() const;
-  
+
   /**
    * Conversion to materialized backend sframe object.
    */
@@ -927,12 +927,12 @@ class gl_sframe {
    */
   virtual std::vector<std::string> column_names() const;
 
-  /** 
+  /**
    * Returns true if the column is present in the sframe, and false
    * otherwise.
    */
   bool contains_column(const std::string& col_name) const;
-  
+
   /**
    * Returns a gl_sframe which contains the first n rows of this gl_sframe.
    *
@@ -1160,8 +1160,8 @@ class gl_sframe {
   /**  Returns the name of column `index`.
    */
   const std::string& column_name(size_t index) const;
-  
-  
+
+
   /**
    * Extracts one column of the gl_sframe.
    *

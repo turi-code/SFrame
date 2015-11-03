@@ -52,7 +52,7 @@ make_copy_target(_local_sys_util_
                   python
                   cppipc
                   sframe
-                  pylambda
+                  pylambda_worker_lib
  )
 add_dependencies(spark_unity _local_sys_util_)
 file(DOWNLOAD http://s3-us-west-2.amazonaws.com/glbin-engine/spark_unity_0.4.jar ${CMAKE_CURRENT_BINARY_DIR}/spark_unity.jar

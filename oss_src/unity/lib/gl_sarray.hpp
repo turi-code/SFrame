@@ -318,7 +318,7 @@ class gl_sarray {
   /**
    * \internal
    * Implicit conversion from backend sarray objects.
-   */ 
+   */
   gl_sarray(std::shared_ptr<sarray<flexible_type> > sarray);
   /**
    * \internal
@@ -334,9 +334,9 @@ class gl_sarray {
   /**
    * \internal
    * Conversion to materialized backend sarray object.
-   */ 
+   */
   std::shared_ptr<sarray<flexible_type> > materialize_to_sarray() const;
-  
+
   /// \endcond
  
   /**************************************************************************/

@@ -247,19 +247,19 @@ void file_logger::_lograw(int lineloglevel, const char* buf, int len) {
       textcolor(stderr, BRIGHT, RED);
     }
     else if (lineloglevel == LOG_ERROR) {
-      textcolor(stderr, BRIGHT, RED);
+      textcolor(stdout, BRIGHT, RED);
     }
     else if (lineloglevel == LOG_WARNING) {
-      textcolor(stderr, BRIGHT, MAGENTA);
+      textcolor(stdout, BRIGHT, MAGENTA);
     }
     else if (lineloglevel == LOG_DEBUG) {
-      textcolor(stderr, BRIGHT, YELLOW);
+      textcolor(stdout, BRIGHT, YELLOW);
     }
     else if (lineloglevel == LOG_EMPH) {
-      textcolor(stderr, BRIGHT, GREEN);
+      textcolor(stdout, BRIGHT, GREEN);
     }
 #endif
-    if(lineloglevel >= LOG_WARNING) {
+    if(lineloglevel >= LOG_FATAL) {
       std::cerr.write(buf,len);
     } else {
       std::cout.write(buf,len);
@@ -267,7 +267,11 @@ void file_logger::_lograw(int lineloglevel, const char* buf, int len) {
 #ifdef COLOROUTPUT
 
     pthread_mutex_unlock(&mut);
-    reset_color(stderr);
+    if (lineloglevel >= LOG_FATAL) {
+      reset_color(stderr);
+    } else {
+      reset_color(stdout);
+    }
 #endif
   }
 }
