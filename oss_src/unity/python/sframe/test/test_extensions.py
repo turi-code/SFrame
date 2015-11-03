@@ -14,7 +14,10 @@ from ..data_structures.sframe import SFrame
 class VariantCheckTest(unittest.TestCase):
 
     def identical(self, reference, b):
-        self.assertEquals(type(reference), type(b))
+    	if type(reference) in [int, long]:
+	    self.assertTrue(type(b) in [int, long])
+	else:
+            self.assertEquals(type(reference), type(b))
         if isinstance(reference, list):
             self.assertEquals(len(reference), len(b))
             for i in range(len(reference)):
