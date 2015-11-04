@@ -40,7 +40,7 @@ class GLPicklingTest(unittest.TestCase):
             pickler.dump(obj)
             pickler.close()
             obj_ret = gl_pickle.GLUnpickler(self.filename).load()
-            assert obj == obj_ret, "Failed pickling in %s (Got back %s)" % (obj, obj_ret)
+            self.assertEqual(obj, obj_ret)
 
     def test_pickling_sarray_types(self):
 
@@ -54,8 +54,7 @@ class GLPicklingTest(unittest.TestCase):
             pickler.dump(obj)
             pickler.close()
             obj_ret = gl_pickle.GLUnpickler(self.filename).load()
-            assert list(obj) ==  list(obj_ret), \
-                       "Failed pickling in %s (Got back %s)" % (obj, obj_ret)
+            self.assertEqual(list(obj), list(obj_ret))
 
     def test_pickling_sframe_types(self):
 
@@ -120,7 +119,7 @@ class GLPicklingTest(unittest.TestCase):
             assert_sframe_equal(obj[0].get_vertices(), obj_ret[0].get_vertices())
             assert_sframe_equal(obj[0].get_edges(), obj_ret[0].get_edges())
             assert_sframe_equal(obj[1], obj_ret[1])
-            assert list(obj[2]) == list(obj_ret[2])
+            self.assertEqual(list(obj[2]), list(obj_ret[2]))
 
     def test_pickle_compatibility(self):
         obj_list = [
@@ -135,8 +134,7 @@ class GLPicklingTest(unittest.TestCase):
             pickler.dump(obj)
             file.close()
             obj_ret = gl_pickle.GLUnpickler(self.filename).load()
-            assert obj == obj_ret, \
-                "Failed pickling in %s (Got back %s)" % (obj, obj_ret)
+            self.assertTrue(obj, obj_ret)
 
     def test_cloud_pickle_compatibility(self):
         obj_list = [
@@ -151,8 +149,7 @@ class GLPicklingTest(unittest.TestCase):
             pickler.dump(obj)
             file.close()
             obj_ret = gl_pickle.GLUnpickler(self.filename).load()
-            assert obj == obj_ret, \
-                "Failed pickling in %s (Got back %s)" % (obj, obj_ret)
+            self.assertTrue(obj, obj_ret)
 
     def test_relative_path(self):
         # Arrange
@@ -170,6 +167,47 @@ class GLPicklingTest(unittest.TestCase):
 
         # Clean up
         shutil.rmtree(relative_path)
+
+    def test_user_path(self):
+        # Arrange
+        sf1 = SFrame(range(10))
+        relative_path = '~/tmp/%s' % self.filename
+
+
+        # Act
+        pickler = gl_pickle.GLPickler(relative_path)
+        pickler.dump(sf1)
+        pickler.close()
+        sf2 = gl_pickle.GLUnpickler(relative_path).load()
+
+        # Assert
+        abs_path = os.path.expanduser(relative_path)
+        self.assertTrue(os.path.exists(abs_path))
+        assert_sframe_equal(sf1, sf2)
+
+        # Clean up
+        shutil.rmtree(abs_path)
+
+    def test_env_path(self):
+        # Arrange
+        sf1 = SFrame(range(10))
+        os.environ["FOO"] = '~/bar'
+        relative_path = '${FOO}/tmp/%s' % self.filename
+
+        # Act
+        pickler = gl_pickle.GLPickler(relative_path)
+        pickler.dump(sf1)
+        pickler.close()
+        sf2 = gl_pickle.GLUnpickler(relative_path).load()
+
+        # Assert
+        abs_path = os.path.expanduser(os.path.expandvars(relative_path))
+        self.assertTrue(os.path.exists(abs_path))
+        assert_sframe_equal(sf1, sf2)
+
+        # Clean up
+        shutil.rmtree(abs_path)
+        del(os.environ["FOO"])
 
     @moto.mock_s3
     def test_save_to_s3(self):
