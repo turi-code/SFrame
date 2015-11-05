@@ -252,7 +252,9 @@ class GLPickler(_cloudpickle.CloudPickler):
             self.hadoop_conf_dir = None
         else:
             # Make sure the directory exists.
-            filename = _os.path.abspath(filename)
+            filename = _os.path.abspath(
+                         _os.path.expanduser(
+                           _os.path.expandvars(filename)))
             if not _os.path.exists(filename):
                 _os.makedirs(filename)
             elif _os.path.isdir(filename):
@@ -457,6 +459,9 @@ class GLUnpickler(_pickle.Unpickler):
             _file_util.download_from_hdfs(filename, self.tmp_file)
             filename = self.tmp_file
         else:
+            filename = _os.path.abspath(
+                         _os.path.expanduser(
+                           _os.path.expandvars(filename)))
             if not _os.path.exists(filename):
                 raise IOError('%s is not a valid file name.' % filename)
 
