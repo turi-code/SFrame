@@ -271,7 +271,7 @@ namespace graphlab {
        *  constant provided.
        */
       template <typename VecType, typename VType>
-      size_t multinomial_normalized(const VecType& prb, VType norm) {
+      size_t multinomial(const VecType& prb, VType norm) {
 
         if(norm < 1e-20) {
           return fast_uniform<VType>(0, prb.size() - 1);
@@ -517,8 +517,8 @@ namespace graphlab {
      * automatically normalizes as well.
      */
     template<typename VecLike, typename Double>
-    inline size_t multinomial_normalized(const VecLike& prb, Double norm) {
-      return get_source().multinomial_normalized(prb, norm);
+    inline size_t multinomial(const VecLike& prb, Double norm) {
+      return get_source().multinomial(prb, norm);
     }
 
     /**
