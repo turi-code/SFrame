@@ -23,7 +23,7 @@ from ..util import _make_internal_url
 from .sarray import SArray, _create_sequential_sarray
 from .. import aggregate
 from .image import Image as _Image
-from ..deps import pandas, HAS_PANDAS
+from ..deps import pandas, HAS_PANDAS, HAS_NUMPY
 from .grouped_sframe import GroupedSFrame
 import array
 from prettytable import PrettyTable
@@ -2475,6 +2475,23 @@ class SFrame(object):
             if len(df[column_name]) == 0:
                 df[column_name] = df[column_name].astype(self.column_types()[i])
         return df
+
+    def to_numpy(self):
+        """
+        Converts this SFrame to a numpy array
+
+        This operation will construct a numpy array in memory. Care must
+        be taken when size of the returned object is big.
+
+        Returns
+        -------
+        out : numpy.ndarray
+            A Numpy Array containing all the values of the SFrame
+
+        """
+        assert HAS_NUMPY
+        import numpy
+        return numpy.transpose(numpy.asarray([self[x] for x in self.column_names()]))
 
     def tail(self, n=10):
         """
