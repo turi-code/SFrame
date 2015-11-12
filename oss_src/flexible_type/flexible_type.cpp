@@ -66,11 +66,12 @@ flex_int ptime_to_fractional_microseconds(const boost::posix_time::ptime & time)
 }
 
 
-std::string date_time_to_string(const flex_date_time& i) {
- return boost::posix_time::to_iso_string(
-     ptime_from_time_t(i.shifted_posix_timestamp(),
-                       i.microsecond())); 
+gl_string date_time_to_string(const flex_date_time& i) {
+  return gl_string(boost::posix_time::to_iso_string(
+      ptime_from_time_t(i.shifted_posix_timestamp(),
+                        i.microsecond()))); 
 }
+
 flex_string get_string_visitor::operator()(const flex_vec& vec) const {
   std::stringstream strm; strm << "[";
   for (size_t i = 0; i < vec.size(); ++i) {
@@ -78,12 +79,13 @@ flex_string get_string_visitor::operator()(const flex_vec& vec) const {
     if (i + 1 < vec.size()) strm << " ";
   }
   strm << "]";
-  return strm.str();
+  return flex_string(strm.str());
 }
 
 flex_string get_string_visitor::operator()(const flex_date_time& i) const { 
   return date_time_to_string(i);
 }
+
 flex_string get_string_visitor::operator()(const flex_list& vec) const {
   std::stringstream strm; strm << "[";
   for (size_t i = 0; i < vec.size(); ++i) {
@@ -95,7 +97,7 @@ flex_string get_string_visitor::operator()(const flex_list& vec) const {
     if (i + 1 < vec.size()) strm << ",";
   }
   strm << "]";
-  return strm.str();
+  return flex_string(strm.str());
 }
 
 flex_string get_string_visitor::operator()(const flex_dict& vec) const {
@@ -118,7 +120,7 @@ flex_string get_string_visitor::operator()(const flex_dict& vec) const {
     ++i;
   }
   strm << "}";
-  return strm.str();
+  return flex_string(strm.str());
 }
 
  flex_string get_string_visitor::operator() (const flex_image& img) const {
@@ -126,7 +128,7 @@ flex_string get_string_visitor::operator()(const flex_dict& vec) const {
   strm << "Height: " << img.m_height;
   strm << " Width: " << img.m_width;
   
-  return strm.str();
+  return flex_string(strm.str());
  }
 
  flex_vec get_vec_visitor::operator() (const flex_image& img) const {

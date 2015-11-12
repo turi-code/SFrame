@@ -169,13 +169,13 @@ struct flexible_type_parser_impl: qi::grammar<Iterator, flexible_type(), SpaceTy
   qi::rule<Iterator, flexible_type(), SpaceType> robust_dict_key_parser;
   qi::rule<Iterator, flexible_type(), SpaceType> robust_dict_val_parser;
   // parses a dictionary
-  qi::rule<Iterator, std::vector<std::pair<flexible_type, flexible_type>>(), SpaceType> dict;
+  qi::rule<Iterator, flex_dict(), SpaceType> dict;
   // parses a key-value pair
   qi::rule<Iterator, std::pair<flexible_type, flexible_type>(), SpaceType> key_value_pair;
   // parses the recursive type
-  qi::rule<Iterator, std::vector<flexible_type>(), SpaceType> recursive;
+  qi::rule<Iterator, flex_list(), SpaceType> recursive;
   // parses a regular numeric vector
-  qi::rule<Iterator, std::vector<double>(), SpaceType> vec;
+  qi::rule<Iterator, flex_vec(), SpaceType> vec;
 
   qi::rule<Iterator, flexible_type(), SpaceType> string;
 

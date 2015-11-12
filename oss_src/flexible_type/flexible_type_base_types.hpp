@@ -9,7 +9,8 @@
 #ifndef GRAPHLAB_UNITY_FLEXIBLE_TYPE_BASE_TYPES_HPP
 #define GRAPHLAB_UNITY_FLEXIBLE_TYPE_BASE_TYPES_HPP
 #include <string>
-#include <vector>
+#include <generics/gl_vector.hpp>
+#include <generics/gl_string.hpp>
 #include <cstdint>
 #include <serialization/serialization_includes.hpp>
 #include <image/image_type.hpp>
@@ -37,22 +38,22 @@ typedef double flex_float;
  * A string that can be stored in a flexible_type.
  * Corresponds to the type enum \ref flex_type_enum::STRING.
  */
-typedef std::string flex_string;
+typedef gl_string flex_string;
 /**
  * A vector<double> that can be stored in a flexible_type.
  * Corresponds to the type enum \ref flex_type_enum::VECTOR.
  */
-typedef std::vector<double> flex_vec;
+typedef gl_vector<double> flex_vec;
 /**
  * A recursive object vector<flexible_type> that can be stored in a flexible_type.
  * Corresponds to the type enum \ref flex_type_enum::LIST.
  */
-typedef std::vector<flexible_type> flex_list;
+typedef gl_vector<flexible_type> flex_list;
 /**
  * An recursive associate dictionary object vector<std::pair<flexible_type, flexible_type> >
  * Corresponds to the type enum \ref flex_type_enum::DICT.
  */
-typedef std::vector<std::pair<flexible_type, flexible_type>> flex_dict;
+typedef gl_vector<std::pair<flexible_type, flexible_type> > flex_dict;
 /**
  * An \ref image_type "image type" that can be stored in a flexible_type.
  * Corresponds to the type enum \ref flex_type_enum::IMAGE. 

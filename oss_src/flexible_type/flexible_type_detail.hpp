@@ -95,7 +95,7 @@ struct lt_operator {
   inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const flex_date_time& t, const flex_date_time& u) const { return t < u; }
   inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const flex_int t, const flex_float u) const { return t < u; }
   inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const flex_float t, const flex_int u) const { return t < u; }
-  inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const std::string& t, const std::string& u) const { return t < u; }
+  inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const flex_string& t, const flex_string& u) const { return t < u; }
   inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const flex_vec& t, const flex_vec& u) const {
     // [1,2,3] < [1,2,3,4] true
     // [1,2,3,4] < [1,2,3] false
@@ -135,7 +135,7 @@ struct gt_operator {
   inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const flex_int t, const flex_int u) const { return t > u; }
   inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const flex_int t, const flex_float u) const { return t > u; }
   inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const flex_float t, const flex_int u) const { return t > u; }
-  inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const std::string& t, const std::string& u) const { return t > u; }
+  inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const flex_string& t, const flex_string& u) const { return t > u; }
   inline FLEX_ALWAYS_INLINE_FLATTEN bool operator()(const flex_vec& t, const flex_vec& u) const {
     for(size_t i = 0; i < t.size(); i++) {
       if (u.size() <= i || t[i] > u[i]) return true;
@@ -307,7 +307,7 @@ struct plus_equal_operator{
   inline FLEX_ALWAYS_INLINE_FLATTEN void operator()(flex_int& t, const flex_float u) const { t += u; }
   inline FLEX_ALWAYS_INLINE_FLATTEN void operator()(flex_float& t, const flex_int u) const { t += u; }
   inline FLEX_ALWAYS_INLINE_FLATTEN void operator()(flex_float& t, const flex_float u) const { t += u; }
-  inline FLEX_ALWAYS_INLINE_FLATTEN void operator()(std::string& t, const std::string& u) const { t += u; }
+  inline FLEX_ALWAYS_INLINE_FLATTEN void operator()(flex_string& t, const flex_string& u) const { t += u; }
   inline FLEX_ALWAYS_INLINE_FLATTEN void operator()(flex_vec& t, const flex_vec& u) const {
     FLEX_TYPE_ASSERT(t.size() == u.size());
     for (size_t i = 0;i < t.size(); ++i) t[i] += u[i];
@@ -484,7 +484,7 @@ struct get_int_visitor {
     return dt.posix_timestamp();
   }
   inline FLEX_ALWAYS_INLINE_FLATTEN flex_int operator()(flex_float i) const {return i; }
-  inline FLEX_ALWAYS_INLINE_FLATTEN flex_int operator()(const flex_string& t) const { return std::atoll(t.c_str()); }
+  inline FLEX_ALWAYS_INLINE_FLATTEN flex_int operator()(const flex_string& t) const { return std::stoll(t); }
 };
 
 /**
@@ -501,7 +501,7 @@ struct get_float_visitor {
   }
   inline FLEX_ALWAYS_INLINE_FLATTEN flex_float operator()(flex_int i) const {return i; }
   inline FLEX_ALWAYS_INLINE_FLATTEN flex_float operator()(flex_float i) const {return i; }
-  inline FLEX_ALWAYS_INLINE_FLATTEN flex_float operator()(const flex_string& t) const { return std::atof(t.c_str()); }
+  inline FLEX_ALWAYS_INLINE_FLATTEN flex_float operator()(const flex_string& t) const { return std::stof(t); }
 };
 
 
@@ -513,8 +513,8 @@ struct get_float_visitor {
  */
 struct get_string_visitor {
   inline FLEX_ALWAYS_INLINE_FLATTEN flex_string operator()(flex_undefined u) const { return flex_string(); }
-  inline FLEX_ALWAYS_INLINE_FLATTEN flex_string operator()(flex_float i) const { return tostr(i); }
-  inline FLEX_ALWAYS_INLINE_FLATTEN flex_string operator()(flex_int i) const { return tostr(i); }
+  inline FLEX_ALWAYS_INLINE_FLATTEN flex_string operator()(flex_float i) const { return to_gl_string(i); }
+  inline FLEX_ALWAYS_INLINE_FLATTEN flex_string operator()(flex_int i) const { return to_gl_string(i); }
   flex_string operator()(const flex_date_time& i) const;
   inline FLEX_ALWAYS_INLINE_FLATTEN flex_string operator()(const flex_string& i) const { return i; }
 

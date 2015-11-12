@@ -805,7 +805,13 @@ static inline local_uint128 Murmor3MixRoutine128(uint128_t x, uint128_t y, uint6
   return std::make_pair(h1, h2); 
 }
 
-}
+}}
+
+#include <vector> 
+#include <string> 
+#include <generics/gl_string.hpp>
+
+namespace graphlab {
 
 // Now, all the external wrappers for the above functions
 
@@ -832,7 +838,17 @@ static inline uint128_t hash128(const char* s, size_t len) {
  * \param s   std::string instance to hash.
  */
 static inline uint128_t hash128(const std::string& s) {
-  return hash128(s.c_str(), s.size());
+  return hash128(s.data(), s.size());
+}
+
+/**
+ * Returns a 128 bit hash of a string using the city hash function.
+ * The hash is strong but not cryptographically secure.
+ *
+ * \param s   gl_string instance to hash.
+ */
+static inline uint128_t hash128(const gl_string& s) {
+  return hash128(s.data(), s.size());
 }
 
 /**
@@ -910,10 +926,20 @@ static inline uint64_t hash64(const char* s, size_t len) {
  * Returns a 64 bit hash of a string using the city hash function.
  * The hash is strong but not cryptographically secure.
  *
+ * \param s   gl_string instance to hash.
+ */
+static inline uint64_t hash64(const gl_string& s) {
+  return hash64(s.data(), s.size());
+}
+
+/**
+ * Returns a 64 bit hash of a string using the city hash function.
+ * The hash is strong but not cryptographically secure.
+ *
  * \param s   std::string instance to hash.
  */
 static inline uint64_t hash64(const std::string& s) {
-  return hash64(s.c_str(), s.size());
+  return hash64(s.data(), s.size());
 }
 
 /**
@@ -1029,16 +1055,31 @@ static inline uint128_t hash128_update(uint128_t h, const T& v) {
  * Returns a 128 bit hash of a vector of strings using the city hash
  * function.  The hash is strong but not cryptographically secure.
  *
- * \param v   vector of std::strings to hash.
+ * \param v   vector of values to hash.
  */
-static inline uint128_t hash128(const std::vector<std::string>& v) {
+template <typename T>
+static inline uint128_t hash128(const std::vector<T>& v) {
   uint128_t h = hash128(v.size());
-  for(const std::string& s : v)
+  for(const T& s : v)
     h = hash128_update(h, s);
   
   return h; 
 }
 
+/**
+ * Returns a 128 bit hash of a vector of strings using the city hash
+ * function.  The hash is strong but not cryptographically secure.
+ *
+ * \param v   vector of std::strings to hash.
+ */
+template <typename T>
+static inline uint128_t hash128(const gl_vector<T>& v) {
+  uint128_t h = hash128(v.size());
+  for(const T& s : v)
+    h = hash128_update(h, s);
+  
+  return h; 
+}
 
 /**
  * Combines two 64 bit hashes in a simple, order dependent way.
@@ -1073,9 +1114,25 @@ static inline uint64_t hash64_update(uint64_t h1, const T& t) {
  *
  * \param v   vector of std::strings to hash.
  */
-static inline uint64_t hash64(const std::vector<std::string>& v) {
+template <typename T>
+static inline uint64_t hash64(const std::vector<T>& v) {
   uint64_t h = hash64(v.size());
-  for(const std::string& s : v)
+  for(const T& s : v)
+    h = hash64_update(h, s);
+  
+  return h; 
+}
+
+/**
+ * Returns a 128 bit hash of a vector of strings using the city hash
+ * function.  The hash is strong but not cryptographically secure.
+ *
+ * \param v   vector of std::strings to hash.
+ */
+template <typename T>
+static inline uint64_t hash64(const gl_vector<T>& v) {
+  uint64_t h = hash64(v.size());
+  for(const T& s : v)
     h = hash64_update(h, s);
   
   return h; 

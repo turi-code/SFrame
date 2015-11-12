@@ -73,7 +73,7 @@ namespace graphlab {
  *    f += 2.5; // f is now 6.5
  *
  *    // convert to string
- *    f = std::string(f); f is now "5"
+ *    f = flex_string(f); f is now "5"
  *    f += "hello";  // f is now "5hello"
  *
  *    // vector test
@@ -86,7 +86,7 @@ namespace graphlab {
  *    }
  *    // f is now a vector from 1.0 to 10.0
  *
- *    f = std::string("hello"); // f is now a string again
+ *    f = flex_string("hello"); // f is now a string again
  *    f.mutable_get<flex_string>() = "boo";  // this gets a reference to the underlying storage
  *    f.mutable_get<flex_int>() = 5; // this will implode at runtime
  * \endcode
@@ -2342,13 +2342,13 @@ typename std::enable_if<has_direct_conversion_to_flexible_type<T>::value && std:
 
 /*
  * Prints the contents of the flexible type.
- * Equivalent to os << std::string(f);
+ * Equivalent to os << flex_string(f);
  */
 template <typename T>
 inline FLEX_ALWAYS_INLINE
 typename std::enable_if<std::is_same<T, flexible_type>::value, std::ostream&>::type
     operator<<(std::ostream& os, const T& f) {
-  os << (std::string)(f);
+  os << (flex_string)(f);
   return os;
 }
 
