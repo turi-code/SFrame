@@ -905,7 +905,7 @@ class SFrame(object):
             if (len(d) == 1):
               # easy case. both agree on the type
               continue
-            if ((int in d) and (float in d)):
+            if (((long in d) or (int in d)) and (float in d)):
               # one is an int, one is a float. its a float
               column_type_hints[j] = float
             elif ((array.array in d) and (list in d)):
