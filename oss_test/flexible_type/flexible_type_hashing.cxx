@@ -61,21 +61,21 @@ void stress_test_flex_type(std::function<HT(flexible_type)> hf) {
   hash_tracker<HT, flexible_type> htest;
 
   // Do several things to make sure we don't have collisions
-  for(long i1 = 0; i1 < K; ++i1) {
-    for(long i2 = 0; i2 < K; ++i2) {
-      for(long i3 = 0; i3 < K; ++i3) {
+  for(size_t i1 = 0; i1 < K; ++i1) {
+    for(size_t i2 = 0; i2 < K; ++i2) {
+      for(size_t i3 = 0; i3 < K; ++i3) {
         {
-          flexible_type k = std::vector<flexible_type>{flexible_type(i1),
-                                                       flexible_type(i2),
-                                                       flexible_type(i3)};
+          flexible_type k = flex_list{flexible_type(i1),
+                                      flexible_type(i2),
+                                      flexible_type(i3)};
 
           htest.check_and_add(hf(k), k);
         }
 
         {
-          flexible_type k = std::vector<flexible_type>{flexible_type(std::to_string(i1)),
-                                                       flexible_type(std::to_string(i2)),
-                                                       flexible_type(std::to_string(i3))};
+          flexible_type k = flex_list{flexible_type(to_gl_string(i1)),
+                                                       flexible_type(to_gl_string(i2)),
+                                                       flexible_type(to_gl_string(i3))};
 
           htest.check_and_add(hf(k), k);
         }
@@ -87,29 +87,29 @@ void stress_test_flex_type(std::function<HT(flexible_type)> hf) {
         }
 
         {
-          flexible_type k = std::to_string(i1*K*K + i2*K + i3);
+          flexible_type k = to_gl_string(i1*K*K + i2*K + i3);
 
           htest.check_and_add(hf(k), k);
         }
 
         {
-          flexible_type k = std::vector<flexible_type>{flexible_type(i1*K*K + i2*K + i3)};
+          flexible_type k = flex_list{flexible_type(i1*K*K + i2*K + i3)};
 
           htest.check_and_add(hf(k), k);
         }
 
         {
-          flexible_type k = std::vector<flexible_type>{
+          flexible_type k = flex_list{
             flexible_type(i1),
-            flexible_type(std::vector<flexible_type>{i2, i3})};
+            flexible_type(flex_list{i2, i3})};
 
           htest.check_and_add(hf(k), k);
         }
 
         {
-          flexible_type k = std::vector<flexible_type>{
-            flexible_type(std::to_string(i1)),
-            flexible_type(std::vector<flexible_type>{std::to_string(i2), std::to_string(i3)})};
+          flexible_type k = flex_list{
+            flexible_type(to_gl_string(i1)),
+            flexible_type(flex_list{to_gl_string(i2), to_gl_string(i3)})};
 
           htest.check_and_add(hf(k), k);
         }
@@ -142,7 +142,7 @@ class flexible_type_hash_test : public CxxTest::TestSuite {
   // Just make sure they equal the original string ones
   void test_ft_string_hashes_128() {
     for(long v : values) {
-      std::string s = std::to_string(v);
+      std::string s = to_gl_string(v);
 
       uint128_t h1 = flexible_type(s).hash128();
       uint128_t h2 = hash128(s);
@@ -156,7 +156,7 @@ class flexible_type_hash_test : public CxxTest::TestSuite {
 
   void test_ft_string_hashes_64() {
     for(long v : values) {
-      std::string s = std::to_string(v);
+      std::string s = to_gl_string(v);
 
       uint64_t h1 = flexible_type(s).hash();
       uint64_t h2 = hash64(s);

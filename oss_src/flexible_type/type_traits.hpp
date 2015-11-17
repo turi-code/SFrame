@@ -1,0 +1,121 @@
+#ifndef GRAPHLAB_TYPE_TRAITS_H_
+#define GRAPHLAB_TYPE_TRAITS_H_
+
+#include <type_traits>
+#include <map>
+#include <unordered_map>
+#include <vector>
+#include <tuple>
+
+// namespace std {
+
+// template <typename T, typename Alloc> class vector;
+// template <typename... T> class map;
+// template <typename T, typename U, class typename Alloc> class unordered_map;
+
+// }
+
+namespace graphlab { 
+
+template <typename T> class gl_vector;
+
+struct invalid_type {};
+
+////////////////////////////////////////////////////////////////////////////////
+// Is it an std::vector?
+
+template<class T> struct is_std_vector : public std::false_type {};
+template<typename... A> struct is_std_vector<std::vector<A...> > : public std::true_type {};
+
+////////////////////////////////////////////////////////////////////////////////
+// Is it a gl_vector?
+
+template<class T> struct is_gl_vector : public std::false_type {};
+template<typename... A> struct is_gl_vector<gl_vector<A...> > : public std::true_type {};
+
+////////////////////////////////////////////////////////////////////////////////
+// Is it an std::map?
+
+template<class T> struct is_std_map : public std::false_type {};
+template<typename... A> struct is_std_map<std::map<A...> > : public std::true_type {};
+
+////////////////////////////////////////////////////////////////////////////////
+// Is it an std::unordered_map?
+
+template<class T> struct is_std_unordered_map : public std::false_type {};
+template<typename... A> struct is_std_unordered_map<std::unordered_map<A...> > : public std::true_type {};
+
+////////////////////////////////////////////////////////////////////////////////
+// Is it an std::pair?
+
+template<class T> struct is_std_pair : public std::false_type {};
+template<typename... A> struct is_std_pair<std::pair<A...> > : public std::true_type {};
+
+////////////////////////////////////////////////////////////////////////////////
+// Extract the first nested type from a template parameterized type
+// definition; return invalid_type on failure.
+
+template<class T> struct first_nested_type {
+  typedef invalid_type type;
+};
+
+template<>
+template<class T, typename... A, template <typename...> class C>
+struct first_nested_type<C<T, A...> > {
+  typedef T type;
+};
+
+template<>
+template<class T, template <typename T> class C>
+struct first_nested_type<C<T> > {
+  typedef T type;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// Extract the second nested type from a template parameterized type
+// definition; return invalid_type on failure.
+
+template<class T> struct second_nested_type {
+  typedef invalid_type type;
+};
+
+template<>
+template<class T, class U, typename... A, template <typename...> class C>
+struct second_nested_type<C<T, U, A...> > {
+  typedef U type;
+};
+
+template<>
+template<class T, class U, template <typename...> class C>
+struct second_nested_type<C<T, U> > {
+  typedef U type;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// All true
+
+template <template <typename> class P, typename... Args>
+struct all_true : public std::false_type {};
+
+template <template <typename> class P>
+template <class T>
+struct all_true<P, T> : public P<T> {}; 
+
+
+template<template <typename> class P>
+template<class T, typename... Args>
+struct all_true<P, T, Args...> {
+  static constexpr bool value = (P<T>::value && all_true<P, Args...>::value);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// Is tuple
+
+template<class T> struct is_tuple : public std::false_type {};
+template<typename... A> struct is_tuple<std::tuple<A...> > : public std::true_type {};
+
+}
+
+template<typename T> struct swallow_to_false : std::false_type {};
+
+#endif /* GRAPHLAB_TYPE_TRAITS_H_ */

@@ -1,7 +1,6 @@
 #ifndef GRAPHLAB_CITYHASH_GL_H_
 #define GRAPHLAB_CITYHASH_GL_H_
 
-#include <vector> 
 #include <util/code_optimization.hpp>
 
 // Copyright (c) 2011 Google, Inc.
@@ -810,6 +809,7 @@ static inline local_uint128 Murmor3MixRoutine128(uint128_t x, uint128_t y, uint6
 #include <vector> 
 #include <string> 
 #include <generics/gl_string.hpp>
+#include <generics/gl_vector.hpp>
 
 namespace graphlab {
 

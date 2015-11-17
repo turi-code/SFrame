@@ -92,9 +92,6 @@ struct legacy_flex_date_time {
   }
 };
 
-
-#include <graphlab/macros_def.hpp>
-
 class flexible_datatype_test : public CxxTest::TestSuite {
 
   public:
@@ -104,10 +101,10 @@ class flexible_datatype_test : public CxxTest::TestSuite {
    }
 
    void test_containers() {
-     std::vector<flexible_type> f;
+     flex_list f;
      f.emplace_back(123);
      f.emplace_back("hello world");
-     std::map<flexible_type, std::vector<flexible_type> > m;
+     std::map<flexible_type, flex_list > m;
      m["123"].push_back(123);
 
      flexible_type e("234");
@@ -185,14 +182,14 @@ class flexible_datatype_test : public CxxTest::TestSuite {
     TS_ASSERT_DIFFERS(f, f2);
     TS_ASSERT_DIFFERS(f2, "Hey man!");
 
-    std::string s = f;
+    gl_string s = f;
 
     TS_ASSERT_EQUALS(s, "Hey man!");
   }
 
   void test_types_vector() {
-    std::vector<double> v = {1.0, 2.0};
-    std::vector<double> v2 = {2.0, 1.0};
+    flex_vec v = {1.0, 2.0};
+    flex_vec v2 = {2.0, 1.0};
 
     flexible_type f = v;
     flexible_type f2 = v2;
@@ -204,12 +201,12 @@ class flexible_datatype_test : public CxxTest::TestSuite {
     TS_ASSERT_EQUALS(f[1], 2.0);
     TS_ASSERT_DIFFERS(f, f2);
 
-    std::vector<double> v3 = f;
+    flex_vec v3 = f;
     TS_ASSERT(v == v3);
   }
   void test_types_recursive() {
-    std::vector<flexible_type> v = {flexible_type(1.0), flexible_type("hey")};
-    std::vector<flexible_type> v2 = {flexible_type("hey"), flexible_type(1.0)};
+    flex_list v = {flexible_type(1.0), flexible_type("hey")};
+    flex_list v2 = {flexible_type("hey"), flexible_type(1.0)};
 
     flexible_type f = v;
     flexible_type f2 = v2;
@@ -224,7 +221,7 @@ class flexible_datatype_test : public CxxTest::TestSuite {
     TS_ASSERT(f(1) == std::string("hey") );
     TS_ASSERT_DIFFERS(f, f2);
 
-    std::vector<flexible_type> v3 = f;
+    flex_list v3 = f;
 
     TS_ASSERT(v == v3);
 
@@ -279,33 +276,33 @@ class flexible_datatype_test : public CxxTest::TestSuite {
   void test_types_dict() {
     flexible_type vector_v = flex_vec{1,2,3};
 
-    std::vector<std::pair<flexible_type, flexible_type>> m{
+    flex_dict m{
       std::make_pair(flexible_type("foo"), flexible_type(1.0)),
       std::make_pair(flexible_type(123), flexible_type("string")),
       std::make_pair(vector_v, vector_v)
     };
 
     // same as m but different order
-    std::vector<std::pair<flexible_type, flexible_type>> m2{
+    flex_dict m2{
       std::make_pair(vector_v, vector_v),
       std::make_pair(flexible_type(123), flexible_type("string")),
       std::make_pair(flexible_type("foo"), flexible_type(1.0))
     };
 
     // different length
-    std::vector<std::pair<flexible_type, flexible_type>> m3{
+    flex_dict m3{
       std::make_pair(flexible_type("foo"), flexible_type(1.0)),
     };
 
     // same length but different key
-    std::vector<std::pair<flexible_type, flexible_type>> m4{
+    flex_dict m4{
       std::make_pair(flexible_type("fooo"), flexible_type(2.0)),
       std::make_pair(flexible_type(1234), flexible_type("string2")),
       std::make_pair(vector_v, vector_v)
     };
 
     // same key but different value
-    std::vector<std::pair<flexible_type, flexible_type>> m5{
+    flex_dict m5{
       std::make_pair(flexible_type("foo"), flexible_type(2.0)),
       std::make_pair(flexible_type(123), flexible_type("string2")),
       std::make_pair(vector_v, flexible_type(1))
@@ -332,7 +329,7 @@ class flexible_datatype_test : public CxxTest::TestSuite {
     TS_ASSERT_DIFFERS(f, f4);
     TS_ASSERT_DIFFERS(f, f5);
 
-    std::vector<std::pair<flexible_type, flexible_type>> new_f = f.get<flex_dict>();
+    flex_dict new_f = f.get<flex_dict>();
 
     TS_ASSERT(new_f == m);
 
@@ -572,20 +569,18 @@ class flexible_datatype_test : public CxxTest::TestSuite {
     
     enum class TestEnum {A, B, C};
 
-    flexible_type_converter<TestEnum> converter; 
-    
-    flexible_type f = converter.set(TestEnum::A);
-    flexible_type f2 = converter.set(TestEnum::A);
-    flexible_type f3 = converter.set(TestEnum::B);
+    flexible_type f = convert_to_flexible_type(TestEnum::A);
+    flexible_type f2 = convert_to_flexible_type(TestEnum::A);
+    flexible_type f3 = convert_to_flexible_type(TestEnum::B);
 
     TS_ASSERT_EQUALS(f.get_type(), flex_type_enum::INTEGER);
 
     TS_ASSERT(f == f2);
     TS_ASSERT(f != f3);
 
-    TestEnum x = converter.get(f);
-    TestEnum x2 = converter.get(f2);
-    TestEnum x3 = converter.get(f3);
+    TestEnum x; convert_from_flexible_type(x, f);
+    TestEnum x2; convert_from_flexible_type(x, f2);
+    TestEnum x3; convert_from_flexible_type(x, f3);
 
     TS_ASSERT_EQUALS(x, TestEnum::A);
     TS_ASSERT_EQUALS(x2, TestEnum::A);
@@ -593,5 +588,3 @@ class flexible_datatype_test : public CxxTest::TestSuite {
   }
 
 }; // class
-
-#include <graphlab/macros_undef.hpp>

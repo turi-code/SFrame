@@ -693,22 +693,36 @@ class flexible_type {
    * Implicit cast to string
    */
   operator flex_string() const;
-
+  
   /**
    * Implicit cast to vector<double>
    */
   operator flex_vec() const;
 
   /**
+   * Implicit cast to std::vector<double>
+   */
+  operator std::vector<double>() const;
+  
+  /**
    * Implicit cast to vector<flexible_type>
    */
   operator flex_list() const;
 
   /**
+   * Implicit cast to std::vector<flexible_type>
+   */
+  operator std::vector<flexible_type>() const;
+  
+  /**
    * Implicit cast to vector<pair<flexible_type, flexible_type>>
    */
   operator flex_dict() const;
 
+  /**
+   * Implicit cast to vector<pair<flexible_type, flexible_type>>
+   */
+  operator std::vector<std::pair<flexible_type, flexible_type> >() const;
   
   /**
    * Implicit cast to flex_date_time
@@ -1943,12 +1957,28 @@ inline FLEX_ALWAYS_INLINE_FLATTEN flexible_type::operator flex_vec() const {
   return to<flex_vec>();
 }
 
+inline FLEX_ALWAYS_INLINE_FLATTEN flexible_type::operator std::vector<double>() const {
+  flex_vec f = to<flex_vec>();
+  return std::vector<double>(f.begin(), f.end());
+}
+
 inline FLEX_ALWAYS_INLINE_FLATTEN flexible_type::operator flex_list() const {
   return to<flex_list>();
 }
 
+inline FLEX_ALWAYS_INLINE_FLATTEN flexible_type::operator std::vector<flexible_type>() const {
+  flex_list f = to<flex_list>();
+  return std::vector<flexible_type>(f.begin(), f.end());
+}
+
 inline FLEX_ALWAYS_INLINE_FLATTEN flexible_type::operator flex_dict() const {
   return to<flex_dict>();
+}
+
+inline FLEX_ALWAYS_INLINE_FLATTEN
+flexible_type::operator std::vector<std::pair<flexible_type, flexible_type> >() const {
+  flex_dict f = to<flex_dict>();
+  return std::vector<std::pair<flexible_type, flexible_type> >(f.begin(), f.end());
 }
 
 inline FLEX_ALWAYS_INLINE_FLATTEN flexible_type::operator flex_date_time() const {

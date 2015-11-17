@@ -70,7 +70,7 @@ void pi_apx_flex3(flexible_type& val) {
 
 
 
-void sort_vec(std::vector<double>& s) {
+void sort_vec(flex_vec& s) {
   for (size_t i = 0;i < s.size(); ++i) {
     auto& a = s[i];
     for (size_t j = i + 1;j < s.size(); ++j) {
@@ -143,7 +143,7 @@ int main(int argc, char** argv) {
             << "Double Array Sort (really... a bad insertion sort)\n";
 
   srand(144);
-  std::vector<double> s;
+  flex_vec s;
   s.resize(BUBBLE_SORT_SIZE);
   for (size_t i = 0;i < BUBBLE_SORT_SIZE; ++i) s[i] =rand();
   f = s;

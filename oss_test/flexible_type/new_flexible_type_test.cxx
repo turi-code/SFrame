@@ -118,7 +118,7 @@ class new_flexible_type_test : public CxxTest::TestSuite {
       TS_ASSERT_EQUALS((float)f, 5.0);
 
       // convert to string
-      f = std::string(f);
+      f = flex_string(f);
       TS_ASSERT_EQUALS(f, "5");
       f += "hello";
       TS_ASSERT_EQUALS(f, "5hello");
@@ -129,7 +129,7 @@ class new_flexible_type_test : public CxxTest::TestSuite {
       for (flexible_type i = 0; i < 10; i++) {
         f.push_back(i);
       }
-      std::vector<double> vvec;
+      flex_vec vvec;
       vvec = f;
       TS_ASSERT_DELTA(f[0], 1.1, 1E-6);
       TS_ASSERT_DELTA(f[1], 2.2, 1E-6);
@@ -436,8 +436,8 @@ class new_flexible_type_test : public CxxTest::TestSuite {
     // check flexible_type for equality
     template <typename T>
     void converter_test(T value) {  
-      static_assert(flexible_type_converter<T>::value, "bad");
-      TS_ASSERT(flexible_type_converter<T>::value == true);
+      static_assert(is_flexible_type_convertible<T>::value, "bad");
+      TS_ASSERT(is_flexible_type_convertible<T>::value == true);
       flexible_type fval = flexible_type_converter<T>().set(T(value));
       T val = flexible_type_converter<T>().get(fval);
       flexible_type fval2 = flexible_type_converter<T>().set(val);

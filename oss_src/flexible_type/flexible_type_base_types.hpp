@@ -747,15 +747,18 @@ template <typename T>
 struct has_direct_conversion_to_flexible_type {
   static constexpr bool value =
       !std::is_same<T, flexible_type>::value && (
-      std::is_integral<T>::value || 
-      std::is_floating_point<T>::value || 
-      std::is_convertible<T, flex_string>::value ||
-      std::is_convertible<T, flex_list>::value ||
-      std::is_convertible<T, flex_vec>::value ||
-      std::is_convertible<T, flex_dict>::value ||
-      std::is_convertible<T, flex_date_time>::value ||
-      std::is_convertible<T, flex_image>::value ||
-      std::is_same<T, flex_undefined>::value);
+      std::is_integral<T>::value                                 || 
+      std::is_floating_point<T>::value                           || 
+      std::is_convertible<T, flex_string>::value                 ||
+      std::is_convertible<T, flex_list>::value                   ||
+      std::is_convertible<T, flex_vec>::value                    ||
+      std::is_convertible<T, flex_dict>::value                   ||
+      std::is_convertible<T, flex_date_time>::value              ||
+      std::is_convertible<T, flex_image>::value                  ||
+      std::is_same<T, flex_undefined>::value                     ||
+      std::is_convertible<T, std::string>::value                 ||
+      std::is_convertible<T, std::vector<flexible_type> >::value ||
+      std::is_convertible<T, std::vector<double> >::value);
 
   static constexpr flex_type_enum desired_type =
       std::is_integral<T>::value ? flex_type_enum::INTEGER :
@@ -766,6 +769,9 @@ struct has_direct_conversion_to_flexible_type {
       std::is_convertible<T, flex_dict>::value ? flex_type_enum::DICT :
       std::is_convertible<T, flex_date_time>::value ? flex_type_enum::DATETIME :
       std::is_convertible<T, flex_image>::value ? flex_type_enum::IMAGE :
+      std::is_convertible<T, std::string >::value ? flex_type_enum::STRING :
+      std::is_convertible<T, std::vector<flexible_type> >::value ? flex_type_enum::LIST :
+      std::is_convertible<T, std::vector<double> >::value ? flex_type_enum::VECTOR :
       flex_type_enum::UNDEFINED;
 };
 

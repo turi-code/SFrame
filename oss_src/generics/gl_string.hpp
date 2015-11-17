@@ -1124,6 +1124,11 @@ static inline void swap (graphlab::gl_string& a, graphlab::gl_string& b) noexcep
 
 #include <util/cityhash_gl.hpp>
 
+namespace graphlab {
+static inline uint64_t hash64(const char* l, size_t n);
+}
+
+
 namespace std {
 template <> struct hash<graphlab::gl_string>
     : public unary_function<graphlab::gl_string, size_t> {
