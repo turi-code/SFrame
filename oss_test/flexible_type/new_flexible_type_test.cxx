@@ -460,26 +460,62 @@ class new_flexible_type_test : public CxxTest::TestSuite {
       converter_test<bool>(true);
       converter_test<uint32_t>(5);
       
+      // we try to enumerate all cases... in flexible_type/flexible_type_converter.hpp
+      // Case 1:
+      converter_test<flex_string>("hello world");
+      converter_test<std::string>("hello world");
+      converter_test<flex_vec>({1,2,3});
+      converter_test<std::vector<double> >({1,2,3});      
+      converter_test<flex_list>({1.0,"hello world",2});
+      converter_test<std::vector<flexible_type> >({1.0,"hello world",2});
+      converter_test<flex_dict>({{1.0,"hello world"}, {2, "pika"}});
+      converter_test<std::vector<std::pair<flexible_type, flexible_type> > >
+          ({{1.0,"hello world"}, {2, "pika"}});
+
       
-      // // we try to enumerate all cases... in flexible_type/flexible_type_converter.hpp
-      // // Case 1:
-      // converter_test<flex_string>("hello world");
-      // converter_test<flex_vec>({1,2,3});
-      // converter_test<flex_list>({1.0,"hello world",2});
-      // converter_test<flex_dict>({{1.0,"hello world"},{2, "pika"}});
+      // vectors, but with std::vector.
+      converter_test<std::vector<int> >({-4,3,-2,1,0});
+      converter_test<std::vector<float>>({-4.0,3.0,-2.0,1.0,0.0});
+      converter_test<std::vector<double>>({-4.0,3.0,-2.0,1.0,0.0});
+      converter_test<std::vector<bool>>({true, false, true});
+      converter_test<std::vector<bool>>({true, false, true});
 
+      converter_test<std::vector<std::string>>({"hello", "world"});
+      converter_test<std::vector<flexible_type>>({flexible_type("hello"), flexible_type("world")});
+      converter_test<std::vector<std::vector<std::string>>>({{"hello"},{"world"}});
 
+      converter_test<std::vector<int>>({-4,3,-2,1,0});
+      converter_test<std::vector<float>>({-4.0,3.0,-2.0,1.0,0.0});
+      converter_test<std::vector<double>>({-4.0,3.0,-2.0,1.0,0.0});
+      converter_test<std::vector<bool>>({true, false, true});
+      converter_test<std::vector<bool>>({true, false, true});
 
-      // // case 4
-      // converter_test<std::vector<int>>({-4,3,-2,1,0});
-      // converter_test<std::vector<float>>({-4.0,3.0,-2.0,1.0,0.0});
-      // converter_test<std::vector<double>>({-4.0,3.0,-2.0,1.0,0.0});
-      // converter_test<std::vector<bool>>({true, false, true});
-      // converter_test<std::vector<bool>>({true, false, true});
-      // // case 5:
-      // converter_test<std::vector<std::string>>({"hello", "world"});
-      // converter_test<std::vector<flexible_type>>({flexible_type("hello"), flexible_type("world")});
-      // converter_test<std::vector<std::vector<std::string>>>({{"hello"},{"world"}});
+      converter_test<std::vector<std::string>>({"hello", "world"});
+      converter_test<std::vector<flexible_type>>({flexible_type("hello"), flexible_type("world")});
+      converter_test<std::vector<std::vector<std::string>>>({{"hello"},{"world"}});
+
+      // vectors, with gl_vector.
+      converter_test<gl_vector<int>>({-4,3,-2,1,0});
+      converter_test<gl_vector<float>>({-4.0,3.0,-2.0,1.0,0.0});
+      converter_test<gl_vector<double>>({-4.0,3.0,-2.0,1.0,0.0});
+      converter_test<gl_vector<bool>>({true, false, true});
+      converter_test<gl_vector<bool>>({true, false, true});
+
+      converter_test<gl_vector<std::string>>({"hello", "world"});
+      converter_test<gl_vector<flexible_type>>({flexible_type("hello"), flexible_type("world")});
+      converter_test<gl_vector<gl_vector<std::string>>>({{"hello"},{"world"}});
+
+      converter_test<gl_vector<int>>({-4,3,-2,1,0});
+      converter_test<gl_vector<float>>({-4.0,3.0,-2.0,1.0,0.0});
+      converter_test<gl_vector<double>>({-4.0,3.0,-2.0,1.0,0.0});
+      converter_test<gl_vector<bool>>({true, false, true});
+      converter_test<gl_vector<bool>>({true, false, true});
+
+      converter_test<gl_vector<std::string>>({"hello", "world"});
+      converter_test<gl_vector<flexible_type>>({flexible_type("hello"), flexible_type("world")});
+      converter_test<gl_vector<std::vector<std::string>>>({{"hello"},{"world"}});
+
+      
 
       // // case 6:
       // converter_test<std::map<std::string, std::string>>({{"hello","world"}, {"pika","chu"}});

@@ -171,9 +171,8 @@ template <> struct ft_converter<4> : public ft_base_resolver {
    *
    */
   template <typename V> static constexpr bool matches() {
-    return (std::is_same<V, flex_vec>::value
-            || (std::is_floating_point<typename first_nested_type<V>::type>::value 
-                && (is_gl_vector<V>::value || is_std_vector<V>::value)));
+    return (is_sequence_container<V>::value
+            && std::is_floating_point<typename first_nested_type<V>::type>::value);
   }
   
   template <typename Vector> 
@@ -194,35 +193,12 @@ template <> struct ft_converter<4> : public ft_base_resolver {
   }
 };
 
-/** flex_list
- */
-template <> struct ft_converter<5> : public ft_base_resolver {
-  
-  template <typename T> static constexpr bool matches() {
-    return std::is_same<T, flex_list>::value;
-  }
-
-  static void get(flex_list& dest, const flexible_type& src) {
-    if(src.get_type() == flex_type_enum::LIST) {
-      dest = src.get<flex_list>();
-    } else if(src.get_type() == flex_type_enum::VECTOR) {
-      const flex_vec& f = src.get<flex_vec>();
-      dest.assign(f.begin(), f.end());
-    } else {
-      throw_type_conversion_error(src, "flex_list");
-    }
-  }
-  
-  static void set(flexible_type& dest, const flex_list& src) {
-    dest = src; 
-  }
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 
 /** flex_date_time
  */
-template <> struct ft_converter<6> : public ft_base_resolver {
+template <> struct ft_converter<5> : public ft_base_resolver {
   
   template <typename T> static constexpr bool matches() {
     return std::is_same<T, flex_date_time>::value;
@@ -243,12 +219,12 @@ template <> struct ft_converter<6> : public ft_base_resolver {
 
 /** flex_dict and variants
  */
-template <> struct ft_converter<7> : public ft_base_resolver {
+template <> struct ft_converter<6> : public ft_base_resolver {
   
   template <typename T> static constexpr bool matches() {
     typedef typename first_nested_type<T>::type pair_type;
     
-    return test_if<is_vector<T>::value && is_std_pair<pair_type>::value,
+    return conditional_test<is_vector<T>::value && is_std_pair<pair_type>::value,
                    is_flexible_type_convertible, pair_type>::value;
   }
 
@@ -262,7 +238,7 @@ template <> struct ft_converter<7> : public ft_base_resolver {
         convert_from_flexible_type(dest[i].second, fd[i].second);
       }
     } else if(src.get_type() == flex_type_enum::LIST) {
-      const flex_list& fl = src.get<flex_dict>();
+      const flex_list& fl = src.get<flex_list>();
       dest.resize(fl.size());
       for(size_t i = 0; i < fl.size(); ++i) {
         convert_from_flexible_type(dest[i], fl[i]);
@@ -274,21 +250,24 @@ template <> struct ft_converter<7> : public ft_base_resolver {
 
   template <typename T, typename U, template <typename...> class C>
   static void set(flexible_type& dest, const C<std::pair<T, U> >& src) {
-    dest = flex_dict(src.size());
+   flex_dict d(src.size());
     for(size_t i = 0; i < src.size();++i) {
-      dest[i] = std::make_pair(convert_to_flexible_type(src.first), convert_to_flexible_type(src.second));
+      d[i] = std::make_pair(convert_to_flexible_type(src[i].first), convert_to_flexible_type(src[i].second));
     }
+    dest = std::move(d); 
   }
 };
 
 // std::pair of flexible_type convertable stuff.
-template <> struct ft_converter<8> : public ft_base_resolver {
+template <> struct ft_converter<7> : public ft_base_resolver {
   
   template <typename T> static constexpr bool matches() {
+    typedef typename first_nested_type<T>::type  U1; 
+    typedef typename second_nested_type<T>::type U2; 
     
     return (is_std_pair<T>::value
-            && std::is_arithmetic<typename first_nested_type<T>::type>::value
-            && std::is_arithmetic<typename second_nested_type<T>::type>::value);
+            && conditional_test<is_std_pair<T>::value, is_flexible_type_convertible, U1>::value
+            && conditional_test<is_std_pair<T>::value, is_flexible_type_convertible, U2>::value);
   }
 
   template <typename T, typename U>
@@ -301,7 +280,7 @@ template <> struct ft_converter<8> : public ft_base_resolver {
       convert_from_flexible_type(dest.first, l[0]);
       convert_from_flexible_type(dest.second, l[1]);
     } else if(src.get_type() == flex_type_enum::VECTOR) {
-      const flex_vec& v = src.get<flex_list>();
+      const flex_vec& v = src.get<flex_vec>();
       if(v.size() != 2){
         throw_type_conversion_error(src, "2-element flex_list/flex_vec (vector size != 2)");
       } 
@@ -326,7 +305,7 @@ template <> struct ft_converter<8> : public ft_base_resolver {
 };
 
 // std::map<T, U> or std::unordered_map<T, U>, with T and U convertable to flexible_type.
-template <> struct ft_converter<9> : public ft_base_resolver {
+template <> struct ft_converter<8> : public ft_base_resolver {
 
   template <typename T> static constexpr bool matches() {
 
@@ -334,8 +313,8 @@ template <> struct ft_converter<9> : public ft_base_resolver {
     typedef typename second_nested_type<T>::type U2;
 
     return (is_map<T>::value
-            && test_if<is_map<T>::value, is_flexible_type_convertible, U1>::value
-            && test_if<is_map<T>::value, is_flexible_type_convertible, U2>::value);
+            && conditional_test<is_map<T>::value, is_flexible_type_convertible, U1>::value
+            && conditional_test<is_map<T>::value, is_flexible_type_convertible, U2>::value);
   }
   
   template <typename T>
@@ -373,8 +352,110 @@ template <> struct ft_converter<9> : public ft_base_resolver {
   }
 };
 
+// std::vector<std::pair<A, B> >
+template <> struct ft_converter<9> : public ft_base_resolver {
 
-namespace flexible_type_converter_impl {
+  template <typename T> static constexpr bool matches() {
+    typedef typename first_nested_type<T>::type U;  
+    
+    return conditional_test<is_sequence_container<T>::value && is_std_pair<U>::value,
+                            is_flexible_type_convertible, U>::value;
+  }
+  
+  template <typename Vector>
+  static void get(Vector& dest, const flexible_type& src) {
+    typedef typename Vector::value_type pair_type;
+    
+    std::pair<typename pair_type::key_type, typename pair_type::value_type> p; 
+    
+    if(src.get_type() == flex_type_enum::DICT) {
+      const flex_dict& fd = src.get<flex_dict>();
+      dest.assign(fd.begin(), fd.end());
+    } else if(src.get_type() == flex_type_enum::LIST) {
+      const flex_list& l = src.get<flex_list>();
+      dest.assign(l.begin(), l.end());
+    } else {
+      throw_type_conversion_error(src, "flex_dict / list of 2-element flex_lists/flex_vec");
+    }
+  }
+
+  template <typename Vector>
+  static void set(flexible_type& dest, const Vector& src) {
+    flex_dict fd;
+    fd.reserve(src.size());
+    for(const auto& p : src) {
+      fd.push_back({convert_to_flexible_type(p.first), convert_to_flexible_type(p.second)});
+    }
+    dest = std::move(fd);
+  }
+};
+
+
+/** flex_list -- anything cap
+ */
+template <> struct ft_converter<10> : public ft_base_resolver {
+  
+  template <typename T> static constexpr bool matches() {
+    return (conditional_test<
+               is_sequence_container<T>::value,
+               is_flexible_type_convertible, typename first_nested_type<T>::type>::value);
+  }
+
+  template <typename FlexContainer>
+  static void get(FlexContainer& dest, const flexible_type& src) {
+    switch(src.get_type()) { 
+      case flex_type_enum::LIST: {
+        const flex_list& fl = src.get<flex_list>();
+        dest.assign(fl.begin(), fl.end());
+        break; 
+      }
+      case flex_type_enum::VECTOR: {
+        const flex_vec& f = src.get<flex_vec>();
+        dest.assign(f.begin(), f.end());
+        break;
+      }
+      case flex_type_enum::DICT: {
+        const flex_dict& f = src.get<flex_dict>();
+        dest.assign(f.begin(), f.end());
+        break; 
+      } default: 
+        throw_type_conversion_error(src, "flex_list / flex_dict");
+    }
+  }
+  
+  template <typename FlexContainer>
+  static void set(flexible_type& dest, const FlexContainer& src) {
+    dest = flex_list(src.begin(), src.end()); 
+  }
+};
+
+
+/** flex_string
+ */
+template <> struct ft_converter<11> : public ft_base_resolver {
+  
+  template <typename T> static constexpr bool matches() {
+    return is_string<T>::value;
+  }
+
+  template <typename String>
+  static void get(String& dest, const flexible_type& src) {
+    if(src.get_type() == flex_type_enum::STRING) {
+      const flex_string& s = src.get<flex_string>();
+      dest.assign(s.begin(), s.end());
+    } else {
+      flex_string s = src.to<flex_string>();
+      dest.assign(s.begin(), s.end());
+    }
+  }
+
+  template <typename String>
+  static void set(flexible_type& dest, const String& src) {
+    dest = flex_string(src.begin(), src.end()); 
+  }
+};
+
+namespace flexible_type_tuple_management {
 
 struct _null_function { template <typename... A> void operator ()(A...){} }; 
 
@@ -429,11 +510,11 @@ static void pack_tuple(const std::tuple<Args...>& dest, C& src) {
   typename std::conditional<idx + 1 == sizeof...(Args), _null_function, _recurse>::type(dest, src);
 }
 
-} // flexible_type_converter_impl
+} // flexible_type_tuple_management
 
 
 // std::tuple<...> 
-template <> struct ft_converter<10> : public ft_base_resolver {
+template <> struct ft_converter<12> : public ft_base_resolver {
   
   template <typename... T> static constexpr bool matches() {
     return (is_tuple<T...>::value && all_true<is_flexible_type_convertible, T...>::value);
@@ -452,7 +533,7 @@ template <> struct ft_converter<10> : public ft_base_resolver {
               + std::to_string(d.size());
           throw(errormsg);
         }
-        flexible_type_converter_impl::pack_tuple(dest, d);
+        flexible_type_tuple_management::pack_tuple(dest, d);
         break;
       }
 
@@ -465,7 +546,7 @@ template <> struct ft_converter<10> : public ft_base_resolver {
               + std::to_string(d.size());
           throw(errormsg);
         }
-        flexible_type_converter_impl::pack_tuple(dest, d);
+        flexible_type_tuple_management::pack_tuple(dest, d);
         break;
       }
       default: { 
@@ -484,11 +565,11 @@ template <> struct ft_converter<10> : public ft_base_resolver {
 
     if(is_numeric) {
       flex_vec v(sizeof...(Args));
-      flexible_type_converter_impl::unpack_tuple(v, src);
+      flexible_type_tuple_management::unpack_tuple(v, src);
       dest = std::move(v);
     } else {
       flex_list v(sizeof...(Args));
-      flexible_type_converter_impl::unpack_tuple(v, src);
+      flexible_type_tuple_management::unpack_tuple(v, src);
       dest = std::move(v);
     }
   }
@@ -496,7 +577,7 @@ template <> struct ft_converter<10> : public ft_base_resolver {
 
 /**  Enum converter.
  */
-template <> struct ft_converter<11> : public ft_base_resolver {
+template <> struct ft_converter<13> : public ft_base_resolver {
   
   template <typename T> static constexpr bool matches() {
     return std::is_enum<T>::value;
@@ -505,7 +586,7 @@ template <> struct ft_converter<11> : public ft_base_resolver {
   template <typename Enum> 
   static void get(Enum& dest, const flexible_type& src) {
     if(src.get_type() == flex_type_enum::INTEGER) {
-      dest = static_cast<Enum>(src);
+      dest = static_cast<Enum>(src.get<flex_int>());
     } else {
       throw_type_conversion_error(src, "integer / enum.");
     }
@@ -517,7 +598,7 @@ template <> struct ft_converter<11> : public ft_base_resolver {
   }
 };
 
-static constexpr int last_converter_number = 11;
+static constexpr int last_converter_number = 13;
 
 
 ////////////////////////////////////////////////////////////////////////////////

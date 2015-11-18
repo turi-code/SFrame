@@ -48,10 +48,18 @@ template<typename... T> struct is_deque : public std::false_type {};
 template<typename... A> struct is_deque<std::deque<A...> > : public std::true_type {};
 
 ////////////////////////////////////////////////////////////////////////////////
-// Is it any sort of ?
+// Is it any sort of list?
 
 template<typename... T> struct is_list : public std::false_type {};
 template<typename... A> struct is_list<std::list<A...> > : public std::true_type {};
+
+////////////////////////////////////////////////////////////////////////////////
+// Is it any of the above sequence operators?
+
+template<typename... A> struct is_sequence_container {
+  static constexpr bool value =
+      (is_vector<A...>::value || is_deque<A...>::value || is_list<A...>::value);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Is it an std::map?
@@ -85,6 +93,27 @@ template<typename... A> struct is_map {
 
 template<class T> struct is_std_pair : public std::false_type {};
 template<typename... A> struct is_std_pair<std::pair<A...> > : public std::true_type {};
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Is it an std::string?
+
+template<class... T> struct is_std_string : public std::false_type {};
+template <> struct is_std_string<std::string> : public std::true_type {};
+
+////////////////////////////////////////////////////////////////////////////////
+// Is it a gl_string?
+
+template<class... T> struct is_gl_string : public std::false_type {};
+template <> struct is_gl_string<gl_string> : public std::true_type {};
+
+////////////////////////////////////////////////////////////////////////////////
+// Is it any sort of string?
+
+template<typename... A> struct is_string {
+  static constexpr bool value = (is_std_string<A...>::value || is_gl_string<A...>::value); 
+}; 
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Extract the first nested type from a template parameterized type
@@ -149,23 +178,23 @@ struct all_true<P, T, Args...> {
 ////////////////////////////////////////////////////////////////////////////////
 // 
 
-template <bool, template <typename...> class Cond, typename... Args> struct test_if
+template <bool, template <typename...> class Cond, typename... Args> struct conditional_test
     : public std::false_type {}; 
 
-struct __test_if_base_value_case {
-  template <template <typename...> class Cond, typename... Args>
-  static constexpr bool _value() { return false; }
-}; 
-
 template <template <typename...> class Cond, typename... Args>
-struct test_if<true, Cond, Args...> : private __test_if_base_value_case {
+struct conditional_test<true, Cond, Args...> {
 
   template <template <typename...> class _Cond, typename... _Args>
   static constexpr bool _value(typename std::enable_if<_Cond<_Args...>::value, int>::type = 0) {
     return true;
   }
+
+  template <template <typename...> class _Cond, typename... _Args>
+  static constexpr bool _value(typename std::enable_if<!_Cond<_Args...>::value, int>::type = 0) {
+    return false;
+  }
   
-  static constexpr bool value = _value;
+  static constexpr bool value = _value<Cond, Args...>();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
