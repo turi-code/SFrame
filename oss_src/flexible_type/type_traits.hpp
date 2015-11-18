@@ -20,18 +20,38 @@ namespace graphlab {
 template <typename T> class gl_vector;
 
 struct invalid_type {};
+struct _invalid_type_base { typedef invalid_type type; }; 
 
 ////////////////////////////////////////////////////////////////////////////////
 // Is it an std::vector?
 
-template<class T> struct is_std_vector : public std::false_type {};
+template<class... T> struct is_std_vector : public std::false_type {};
 template<typename... A> struct is_std_vector<std::vector<A...> > : public std::true_type {};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Is it a gl_vector?
 
-template<class T> struct is_gl_vector : public std::false_type {};
+template<class... T> struct is_gl_vector : public std::false_type {};
 template<typename... A> struct is_gl_vector<gl_vector<A...> > : public std::true_type {};
+
+////////////////////////////////////////////////////////////////////////////////
+// Is it any sort of vector?
+
+template<typename... A> struct is_vector {
+  static constexpr bool value = (is_std_vector<A...>::value || is_gl_vector<A...>::value); 
+}; 
+
+////////////////////////////////////////////////////////////////////////////////
+// Is it any sort of deque?
+
+template<typename... T> struct is_deque : public std::false_type {};
+template<typename... A> struct is_deque<std::deque<A...> > : public std::true_type {};
+
+////////////////////////////////////////////////////////////////////////////////
+// Is it any sort of ?
+
+template<typename... T> struct is_list : public std::false_type {};
+template<typename... A> struct is_list<std::list<A...> > : public std::true_type {};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Is it an std::map?
@@ -44,6 +64,21 @@ template<typename... A> struct is_std_map<std::map<A...> > : public std::true_ty
 
 template<class T> struct is_std_unordered_map : public std::false_type {};
 template<typename... A> struct is_std_unordered_map<std::unordered_map<A...> > : public std::true_type {};
+
+////////////////////////////////////////////////////////////////////////////////
+// Is it an boost::unordered_map?
+
+template<class T> struct is_boost_unordered_map : public std::false_type {};
+template<typename... A> struct is_boost_unordered_map<boost::unordered_map<A...> > : public std::true_type {};
+
+////////////////////////////////////////////////////////////////////////////////
+// Is it any type of map?
+
+template<typename... A> struct is_map {
+  static constexpr bool value = (is_std_map<A...>::value
+                                 || is_std_unordered_map<A...>::value
+                                 || is_boost_unordered_map<A...>::value);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Is it an std::pair?
@@ -91,6 +126,7 @@ struct second_nested_type<C<T, U> > {
   typedef U type;
 };
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // All true
 
@@ -108,14 +144,43 @@ struct all_true<P, T, Args...> {
   static constexpr bool value = (P<T>::value && all_true<P, Args...>::value);
 };
 
+
+
+////////////////////////////////////////////////////////////////////////////////
+// 
+
+template <bool, template <typename...> class Cond, typename... Args> struct test_if
+    : public std::false_type {}; 
+
+struct __test_if_base_value_case {
+  template <template <typename...> class Cond, typename... Args>
+  static constexpr bool _value() { return false; }
+}; 
+
+template <template <typename...> class Cond, typename... Args>
+struct test_if<true, Cond, Args...> : private __test_if_base_value_case {
+
+  template <template <typename...> class _Cond, typename... _Args>
+  static constexpr bool _value(typename std::enable_if<_Cond<_Args...>::value, int>::type = 0) {
+    return true;
+  }
+  
+  static constexpr bool value = _value;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 // Is tuple
 
 template<class T> struct is_tuple : public std::false_type {};
 template<typename... A> struct is_tuple<std::tuple<A...> > : public std::true_type {};
 
-}
+////////////////////////////////////////////////////////////////////////////////
+// or, and; with 
+ 
 
 template<typename T> struct swallow_to_false : std::false_type {};
+
+
+}
 
 #endif /* GRAPHLAB_TYPE_TRAITS_H_ */

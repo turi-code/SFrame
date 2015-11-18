@@ -445,63 +445,70 @@ class new_flexible_type_test : public CxxTest::TestSuite {
     }
 
     void test_flexible_type_converters() {
-      // we try to enumerate all cases... in flexible_type/flexible_type_converter.hpp
-      // Case 1:
-      converter_test<flex_string>("hello world");
-      converter_test<flex_vec>({1,2,3});
-      converter_test<flex_list>({1.0,"hello world",2});
-      converter_test<flex_dict>({{1.0,"hello world"},{2, "pika"}});
-
-      // case 2
+      // case 1: flexible types
       converter_test<flexible_type>(flexible_type(1.0));
+      converter_test<flexible_type>(flexible_type("hello"));
+      converter_test<flexible_type>(flexible_type(flex_vec{1,2.3}));
 
-      // case 3
+      // case 2: numerical type
+      static_assert(flexible_type_internals::ft_converter<3>::matches<flex_int>(), "matcheroo");
+      static_assert(std::is_integral<flex_int>::value, "bleh");
       converter_test<flex_int>(1);
       converter_test<flex_float>(2.0);
       converter_test<int>(3);
       converter_test<float>(4.0);
       converter_test<bool>(true);
       converter_test<uint32_t>(5);
+      
+      
+      // // we try to enumerate all cases... in flexible_type/flexible_type_converter.hpp
+      // // Case 1:
+      // converter_test<flex_string>("hello world");
+      // converter_test<flex_vec>({1,2,3});
+      // converter_test<flex_list>({1.0,"hello world",2});
+      // converter_test<flex_dict>({{1.0,"hello world"},{2, "pika"}});
 
-      // case 4
-      converter_test<std::vector<int>>({-4,3,-2,1,0});
-      converter_test<std::vector<float>>({-4.0,3.0,-2.0,1.0,0.0});
-      converter_test<std::vector<double>>({-4.0,3.0,-2.0,1.0,0.0});
-      converter_test<std::vector<bool>>({true, false, true});
-      converter_test<std::vector<bool>>({true, false, true});
-      // case 5:
-      converter_test<std::vector<std::string>>({"hello", "world"});
-      converter_test<std::vector<flexible_type>>({flexible_type("hello"), flexible_type("world")});
-      converter_test<std::vector<std::vector<std::string>>>({{"hello"},{"world"}});
 
-      // case 6:
-      converter_test<std::map<std::string, std::string>>({{"hello","world"}, {"pika","chu"}});
-      converter_test<std::map<std::string, std::vector<std::string>>>({{"hello",{"world"}}, {"pika",{"chu"}}});
-      converter_test<std::map<std::string, bool>>({{"hello",true}, {"pika",false}});
 
-      // case 7:
-      converter_test<std::unordered_map<std::string, std::string>>({{"hello","world"}, {"pika","chu"}});
-      converter_test<std::unordered_map<std::string, std::vector<std::string>>>({{"hello",{"world"}}, {"pika",{"chu"}}});
-      converter_test<std::unordered_map<std::string, bool>>({{"hello",true}, {"pika",false}});
+      // // case 4
+      // converter_test<std::vector<int>>({-4,3,-2,1,0});
+      // converter_test<std::vector<float>>({-4.0,3.0,-2.0,1.0,0.0});
+      // converter_test<std::vector<double>>({-4.0,3.0,-2.0,1.0,0.0});
+      // converter_test<std::vector<bool>>({true, false, true});
+      // converter_test<std::vector<bool>>({true, false, true});
+      // // case 5:
+      // converter_test<std::vector<std::string>>({"hello", "world"});
+      // converter_test<std::vector<flexible_type>>({flexible_type("hello"), flexible_type("world")});
+      // converter_test<std::vector<std::vector<std::string>>>({{"hello"},{"world"}});
 
-      // case 8:
-      converter_test<std::pair<std::string, std::string>>({"hello","world"});
-      converter_test<std::pair<std::string, std::vector<std::string>>>({"hello",{"world"}});
-      converter_test<std::pair<std::string, bool>>({"hello",true});
+      // // case 6:
+      // converter_test<std::map<std::string, std::string>>({{"hello","world"}, {"pika","chu"}});
+      // converter_test<std::map<std::string, std::vector<std::string>>>({{"hello",{"world"}}, {"pika",{"chu"}}});
+      // converter_test<std::map<std::string, bool>>({{"hello",true}, {"pika",false}});
 
-      // case 9:
-      converter_test<std::pair<size_t, int>>({1, -1});
-      converter_test<std::pair<double, int>>({1.0, 1});
+      // // case 7:
+      // converter_test<std::unordered_map<std::string, std::string>>({{"hello","world"}, {"pika","chu"}});
+      // converter_test<std::unordered_map<std::string, std::vector<std::string>>>({{"hello",{"world"}}, {"pika",{"chu"}}});
+      // converter_test<std::unordered_map<std::string, bool>>({{"hello",true}, {"pika",false}});
 
-      // case 10:
-      converter_test<std::tuple<std::string, std::string, std::vector<std::string>>>(
-          std::tuple<std::string, std::string, std::vector<std::string>>
-            {"hello","world",std::vector<std::string>{"pika"}});
-      converter_test<std::tuple<size_t, std::vector<bool>>>(
-          std::tuple<size_t, std::vector<bool>>{1,std::vector<bool>{true, false}});
+      // // case 8:
+      // converter_test<std::pair<std::string, std::string>>({"hello","world"});
+      // converter_test<std::pair<std::string, std::vector<std::string>>>({"hello",{"world"}});
+      // converter_test<std::pair<std::string, bool>>({"hello",true});
 
-      // case 11:
-      converter_test<std::tuple<size_t, int, double>>(std::tuple<size_t, int, double>{1, -1, 3.0});
-      converter_test<std::tuple<double, int, int>>(std::tuple<double,int,int>{1.0, 1, 2});
+      // // case 9:
+      // converter_test<std::pair<size_t, int>>({1, -1});
+      // converter_test<std::pair<double, int>>({1.0, 1});
+
+      // // case 10:
+      // converter_test<std::tuple<std::string, std::string, std::vector<std::string>>>(
+      //     std::tuple<std::string, std::string, std::vector<std::string>>
+      //       {"hello","world",std::vector<std::string>{"pika"}});
+      // converter_test<std::tuple<size_t, std::vector<bool>>>(
+      //     std::tuple<size_t, std::vector<bool>>{1,std::vector<bool>{true, false}});
+
+      // // case 11:
+      // converter_test<std::tuple<size_t, int, double>>(std::tuple<size_t, int, double>{1, -1, 3.0});
+      // converter_test<std::tuple<double, int, int>>(std::tuple<double,int,int>{1.0, 1, 2});
     }
 };

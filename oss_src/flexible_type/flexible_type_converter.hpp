@@ -74,23 +74,24 @@ static void throw_type_conversion_error(const flexible_type& val, const char* ty
 
 struct ft_base_resolver {
   template <typename T> static constexpr bool matches() { return false; }
-  template <typename T> static void get(T& t, const flexible_type& v) {
-    static_assert(swallow_to_false<T>::value, "get with bad match");
-  } 
+  
+  template <typename T> static inline void get(T& t, const flexible_type& v) {
+    static_assert(swallow_to_false<T>::value, "get with bad match.");
+  }
 
   template <typename T>
-  static void set(flexible_type& t, const T& v) {
-    static_assert(swallow_to_false<T>::value, "set with bad match");
-  } 
+  static inline void set(flexible_type& t, const T& v) { 
+    static_assert(swallow_to_false<T>::value, "set with bad match.");
+  }
 }; 
 
 template <int> struct ft_converter : public ft_base_resolver { };
 
 ////////////////////////////////////////////////////////////////////////////////
-// These are declared in terms of priority.  The resolver will match
-// the first one in this list such that matches() is true.
+// These are declared in terms of priority.  The resolver will use the
+// first one in this list such that matches() is true.
 
-/** flexible_type
+/** flexible_type.   Highest priority. 
  */
 template <> struct ft_converter<1> : public ft_base_resolver {
   
@@ -158,19 +159,25 @@ template <> struct ft_converter<3> : public ft_base_resolver {
 
   template <typename Integer> 
   static void set(Integer& dest, const flexible_type& src) {
-    dest = flex_float(src);
+    dest = Integer(flex_int(src));
   }
 };
 
 /** flex_vec
  */
 template <> struct ft_converter<4> : public ft_base_resolver {
-  
-  template <typename T> static constexpr bool matches() {
-    return std::is_same<T, flex_vec>::value;
-  }
 
-  static void get(flex_vec& dest, const flexible_type& src) {
+  /**  Matches flex_vec or any 
+   *
+   */
+  template <typename V> static constexpr bool matches() {
+    return (std::is_same<V, flex_vec>::value
+            || (std::is_floating_point<typename first_nested_type<V>::type>::value 
+                && (is_gl_vector<V>::value || is_std_vector<V>::value)));
+  }
+  
+  template <typename Vector> 
+  static void get(Vector& dest, const flexible_type& src) {
     if(src.get_type() == flex_type_enum::VECTOR) {
       dest = src.get<flex_vec>();
     } else if(src.get_type() == flex_type_enum::LIST) {
@@ -181,8 +188,9 @@ template <> struct ft_converter<4> : public ft_base_resolver {
     }
   }
   
-  static void set(flexible_type& dest, const flex_vec& src) {
-    dest = src; 
+  template <typename Vector> 
+  static void set(flexible_type& dest, const Vector& src) {
+    dest = flex_vec(src.begin(), src.end());
   }
 };
 
@@ -211,17 +219,37 @@ template <> struct ft_converter<5> : public ft_base_resolver {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-  
-/** flex_dict and variants
+
+/** flex_date_time
  */
 template <> struct ft_converter<6> : public ft_base_resolver {
   
   template <typename T> static constexpr bool matches() {
+    return std::is_same<T, flex_date_time>::value;
+  }
+
+  static void get(flex_date_time& dest, const flexible_type& src) {
+    if(src.get_type() == flex_type_enum::DATETIME) {
+      dest = src.get<flex_date_time>();
+    } else {
+      throw_type_conversion_error(src, "flex_date_time");
+    }
+  }
+
+  static void set(flexible_type& dest, const flex_date_time& src) {
+    dest = src; 
+  }
+};
+
+/** flex_dict and variants
+ */
+template <> struct ft_converter<7> : public ft_base_resolver {
+  
+  template <typename T> static constexpr bool matches() {
     typedef typename first_nested_type<T>::type pair_type;
     
-    return ((is_gl_vector<T>::value || is_std_vector<T>::value)
-            && is_std_pair<pair_type>::value
-            && is_flexible_type_convertible<pair_type>::value);
+    return test_if<is_vector<T>::value && is_std_pair<pair_type>::value,
+                   is_flexible_type_convertible, pair_type>::value;
   }
 
   template <typename T, typename U, template <typename...> class C>
@@ -250,27 +278,6 @@ template <> struct ft_converter<6> : public ft_base_resolver {
     for(size_t i = 0; i < src.size();++i) {
       dest[i] = std::make_pair(convert_to_flexible_type(src.first), convert_to_flexible_type(src.second));
     }
-  }
-};
-
-/** flex_date_time
- */
-template <> struct ft_converter<7> : public ft_base_resolver {
-  
-  template <typename T> static constexpr bool matches() {
-    return std::is_same<T, flex_date_time>::value;
-  }
-
-  static void get(flex_date_time& dest, const flexible_type& src) {
-    if(src.get_type() == flex_type_enum::DATETIME) {
-      dest = src.get<flex_date_time>();
-    } else {
-      throw_type_conversion_error(src, "flex_date_time");
-    }
-  }
-
-  static void set(flexible_type& dest, const flex_date_time& src) {
-    dest = src; 
   }
 };
 
@@ -320,13 +327,17 @@ template <> struct ft_converter<8> : public ft_base_resolver {
 
 // std::map<T, U> or std::unordered_map<T, U>, with T and U convertable to flexible_type.
 template <> struct ft_converter<9> : public ft_base_resolver {
-  
-  template <typename T> static constexpr bool matches() {
-    return ((is_std_map<T>::value || is_std_unordered_map<T>::value)
-            && is_flexible_type_convertible<typename first_nested_type<T>::type>::value
-            && is_flexible_type_convertible<typename second_nested_type<T>::type>::value);
-  }
 
+  template <typename T> static constexpr bool matches() {
+
+    typedef typename first_nested_type<T>::type U1;  
+    typedef typename second_nested_type<T>::type U2;
+
+    return (is_map<T>::value
+            && test_if<is_map<T>::value, is_flexible_type_convertible, U1>::value
+            && test_if<is_map<T>::value, is_flexible_type_convertible, U2>::value);
+  }
+  
   template <typename T>
   static void get(T& dest, const flexible_type& src) {
     std::pair<typename T::key_type, typename T::value_type> p; 
@@ -506,73 +517,67 @@ template <> struct ft_converter<11> : public ft_base_resolver {
   }
 };
 
-static constexpr bool last_converter_number = 11;
+static constexpr int last_converter_number = 11;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 
 template <int idx> struct ft_resolver {
 
-  struct _true { template <typename T> static constexpr bool eval() { return true; } };
-
-  struct _recurse_any_match {
-    template <typename T> static constexpr bool eval() {
-      return ft_resolver<idx - 1>::template any_match<T>();
-    }
-  };
+  ////////////////////////////////////////////////////////////////////////////////
+  // Do any of the converters of this idx or lower match on this one?
   
-  template <typename T> static constexpr bool any_match() {
-    typedef typename std::conditional<
-      ft_converter<idx>::template matches<T>(), _true, _recurse_any_match>::type cond_type;
-    return cond_type::template eval<T>();
+  template <typename T> static constexpr bool any_match(
+      typename std::enable_if<ft_converter<idx>::template matches<T>()>::type* = NULL) {
+    return true; 
+  }
+  
+  template <typename T> static constexpr bool any_match(
+      typename std::enable_if<!ft_converter<idx>::template matches<T>()>::type* = NULL) {
+    return ft_resolver<idx - 1>::template any_match<T>();
   }
 
-  struct _recurse_matches {
-    template <typename T> static constexpr bool eval() {
-      return ft_resolver<idx - 1>::template matches<T>();
-    }
-  };
+  ////////////////////////////////////////////////////////////////////////////////
+  // Does this idx, and none before this one, match?
   
-  template <typename T> static constexpr bool matches() {
-    typedef typename std::conditional<
-      (ft_converter<idx>::template matches<T>()
-       && !(ft_resolver<idx - 1>::template any_match<T>())), _true, _recurse_matches>::type cond_type;
-    return cond_type::template eval<T>();
+  template <typename T> static constexpr bool matches() { 
+      return (ft_converter<idx>::template matches<T>()
+              && !ft_resolver<idx - 1>::template any_match<T>());
   }
 
-  struct _get {
-    template <typename... A> void operator()(A... a) const { ft_converter<idx>::get(a...); }
-  };
-
-  struct _recurse_get {
-    template <typename... A> void operator()(A... a) const { ft_resolver<idx - 1>::get(a...); }
-  };
+  ////////////////////////////////////////////////////////////////////////////////
+  // Does this idx, and none before this one, match?
   
   template <typename T>
-  static void get(T& t, const flexible_type& v) {
-    typename std::conditional<matches<T>(), _get, _recurse_get>::type()(t, v);
+  static void get(T& t, const flexible_type& v,
+                  typename std::enable_if<matches<T>()>::type* = NULL) {
+    ft_converter<idx>::get(t, v);
   }
 
-  struct _set {
-    template <typename... A> void operator()(A... a) const { ft_converter<idx>::set(a...); }
-  };
-
-  struct _recurse_set {
-    template <typename... A> void operator()(A... a) const { ft_resolver<idx - 1>::set(a...); }
-  };
-  
   template <typename T>
-  static void set(flexible_type& t, const T& v) {
-    typename std::conditional<matches<T>(), _set, _recurse_set>::type()(t, v);
+  static void get(T& t, const flexible_type& v,
+                  typename std::enable_if<!matches<T>()>::type* = NULL) {
+    ft_resolver<idx - 1>::get(t, v);
+  }
+
+  template <typename T>
+  static void set(flexible_type& t, const T& v,
+                  typename std::enable_if<matches<T>()>::type* = NULL) {
+    ft_converter<idx>::set(t, v);
+  }
+
+  template <typename T>
+  static void set(flexible_type& t, const T& v,
+                  typename std::enable_if<!matches<T>()>::type* = NULL) {
+    ft_resolver<idx - 1>::set(t, v);
   }
 };
-
 
 template <> struct ft_resolver<0> {
   template <typename T> static constexpr bool any_match() { return false; }
   template <typename T> static constexpr bool matches() { return false; }
-  template <typename T> static void get(T& t, const flexible_type& v) { ASSERT_TRUE(false); }
-  template <typename T> static void set(flexible_type& t, const T& v) { ASSERT_TRUE(false); } 
+  template <typename... T> static void set(T...) {}
+  template <typename... T> static void get(T...) {}
 };
 
 }
