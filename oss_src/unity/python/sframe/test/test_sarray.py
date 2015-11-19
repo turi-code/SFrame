@@ -1674,3 +1674,15 @@ class SArrayTest(unittest.TestCase):
         data.save(tmp_dir)
         shutil.rmtree(tmp_dir)
         print data
+
+    def test_to_numpy(self):
+        X = SArray(range(100))
+        import numpy as np
+        import numpy.testing as nptest
+        Y = np.array(range(100))
+        nptest.assert_array_equal(X.to_numpy(), Y)
+
+        X = X.astype(str)
+        Y = np.array([str(i) for i in range(100)])
+        nptest.assert_array_equal(X.to_numpy(), Y)
+
