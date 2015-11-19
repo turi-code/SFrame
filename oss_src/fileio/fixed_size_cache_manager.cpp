@@ -83,7 +83,7 @@ namespace fileio {
     capacity = std::min(FILEIO_INITIAL_CAPACITY_PER_FILE, maximum_capacity);
     size = 0;
     if (capacity > 0) {
-      data = (char*)malloc(capacity);
+      data = new char[capacity];
       owning_cache_manager->increment_utilization(capacity);
     } else {
       data = NULL;
@@ -92,7 +92,7 @@ namespace fileio {
 
   void cache_block::release_memory() {
     if (data) {
-      free(data);
+      delete[] data;
       owning_cache_manager->decrement_utilization(capacity);
     }
     data = NULL;
@@ -129,9 +129,9 @@ namespace fileio {
 /*************************************************************************/
 
  EXPORT fixed_size_cache_manager& fixed_size_cache_manager::get_instance() {
-    static fixed_size_cache_manager* instance = new fixed_size_cache_manager();
-    return *instance;
-  }
+   static std::unique_ptr<fixed_size_cache_manager> instance(new fixed_size_cache_manager);
+   return *instance;
+ }
 
   fixed_size_cache_manager::fixed_size_cache_manager() { }
 
