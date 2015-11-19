@@ -440,15 +440,63 @@ class gl_sarray_test: public CxxTest::TestSuite {
       std::cout << "\n" << a[{-3,-1}];  // start at end - 3, end at index end - 1
       // ret is the array [8,9]
     }
+   
+    void test_sarray() {
+      gl_sarray sa{1,2,3,4,5,6};
+    
+      auto sa2 = sa.materialize_to_sarray();
+      gl_sarray sa3 = sa2;
+    
+      _assert_sarray_equals(sa, _to_vec(sa3));
+    }
 
-  void test_sarray() {
-    gl_sarray sa{1,2,3,4,5,6};
+    void test_cumulative_sum() {
 
-    auto sa2 = sa.materialize_to_sarray();
-    gl_sarray sa3 = sa2;
+      // Run a single test. 
+      auto single_test = [&](const gl_sarray& in, const gl_sarray& ans) {
+        gl_sarray out = in.cumulative_sum();
+        _assert_sarray_equals(out, _to_vec(ans));
+      }; 
+      
+      single_test(
+          gl_sarray{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, 
+          gl_sarray{0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55} 
+      );
+      single_test(
+          gl_sarray{0.1, 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1}, 
+          gl_sarray{0.1, 1.2, 3.3, 6.4, 10.5, 15.6, 21.7, 28.8}
+      );
+      single_test(
+          gl_sarray{{11.0, 2.0}, {22.0, 1.0}, {3.0, 4.0}, {4.0, 4.0}},
+          gl_sarray{{11.0, 2.0}, {33.0, 3.0}, {36.0, 7.0}, {40.0, 11.0}}
+      );
+      single_test(
+          gl_sarray{FLEX_UNDEFINED, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, 
+          gl_sarray{FLEX_UNDEFINED, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55} 
+      );
+      single_test(
+          gl_sarray{FLEX_UNDEFINED, 1, FLEX_UNDEFINED, 3, FLEX_UNDEFINED, 5}, 
+          gl_sarray{FLEX_UNDEFINED, 1, 1, 4, 4, 9} 
+      );
+      single_test(
+          gl_sarray{FLEX_UNDEFINED, {33.0, 3.0}, {3.0, 4.0}, {4.0, 4.0}},
+          gl_sarray{FLEX_UNDEFINED, {33.0, 3.0}, {36.0, 7.0}, {40.0, 11.0}}
+      );
+      single_test(
+          gl_sarray{FLEX_UNDEFINED, {33.0, 3.0}, FLEX_UNDEFINED, {4.0, 4.0}},
+          gl_sarray{FLEX_UNDEFINED, {33.0, 3.0}, {33.0, 3.0}, {37.0, 7.0}}
+      );
 
-    _assert_sarray_equals(sa, _to_vec(sa3));
-  }
+    }
+
+    void test_sarray() {
+      gl_sarray sa{1,2,3,4,5,6};
+
+      auto sa2 = sa.materialize_to_sarray();
+      gl_sarray sa3 = sa2;
+
+      _assert_sarray_equals(sa, _to_vec(sa3));
+    }
 
   private:
 
@@ -461,7 +509,11 @@ class gl_sarray_test: public CxxTest::TestSuite {
     void _assert_sarray_equals(gl_sarray sa, const std::vector<flexible_type>& vec) {
       TS_ASSERT_EQUALS(sa.size(), vec.size());
       for (size_t i = 0; i < vec.size(); ++i) {
-        TS_ASSERT_EQUALS(sa[i], vec[i]);
+        if (sa[i].get_type() == flex_type_enum::FLOAT) {
+          TS_ASSERT_DELTA(sa[i], vec[i], 1e-12);
+        } else {
+          TS_ASSERT_EQUALS(sa[i], vec[i]);
+        }
       }
     }
 };

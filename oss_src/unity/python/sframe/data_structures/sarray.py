@@ -3039,3 +3039,23 @@ class SArray(object):
         sf = _SFrame()
         sf['a'] = self
         return sf.sort('a', ascending)['a']
+
+    def cumulative_sum(self):
+        """
+        Compute the cumulative sum of the elements.
+
+        Returns
+        -------
+        out : SArray
+
+        Examples
+        --------
+        >>> sa = SArray([3,2,1])
+        >>> sa.cumulative_sum()
+        dtype: int
+        Rows: 3
+        [1, 2, 3]
+        """
+        from .. import extensions
+        _mt._get_metric_tracker().track('sarray.cumulative_sum')
+        return extensions._sarray_cumulative_sum(self)

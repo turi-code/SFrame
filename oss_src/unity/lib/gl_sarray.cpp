@@ -16,6 +16,7 @@
 #include <unity/lib/image_util.hpp>
 #include <sframe_query_engine/planning/planner.hpp>
 #include <unity/extensions/additional_sframe_utilities.hpp>
+#include <unity/extensions/cumulative_aggregates.hpp>
 
 namespace graphlab {
 
@@ -594,6 +595,10 @@ gl_sarray gl_sarray::subslice(flexible_type start,
     log_and_throw("SArray must contain strings, arrays or lists");
   }
   return sarray_subslice(*this, start, stop, step);
+}
+
+gl_sarray gl_sarray::cumulative_sum() {
+  return cumulative_aggregates::_sarray_cumulative_sum(*this);
 }
 
 std::ostream& operator<<(std::ostream& out, const gl_sarray& other) {

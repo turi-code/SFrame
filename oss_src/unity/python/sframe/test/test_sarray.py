@@ -935,7 +935,7 @@ class SArrayTest(unittest.TestCase):
 
     def _slice_equality_test(self, arr, start=None, stop=None, step=1):
         self.assertEqual(
-                list(arr.subslice(start, stop, step)), 
+                list(arr.subslice(start, stop, step)),
                 list(self._my_subslice(arr,start,stop,step)))
 
     def test_subslice(self):
@@ -956,7 +956,7 @@ class SArrayTest(unittest.TestCase):
         self._slice_equality_test(g, -1, -2, -1);
         self._slice_equality_test(g, None, None, -1);
         self._slice_equality_test(g, -100, -1);
-        
+
         #array slicing
         import array
         g=SArray(range(1,10)).apply(lambda x: array.array('d', range(x)))
@@ -1012,14 +1012,14 @@ class SArrayTest(unittest.TestCase):
             sa3 = sa1.append(sa2)
 
     def test_word_count(self):
-        sa = SArray(["This is someurl http://someurl!!", 
-                     "中文 应该也 行", 
+        sa = SArray(["This is someurl http://someurl!!",
+                     "中文 应该也 行",
                      'Сблъсъкът между'])
-        expected = [{"this": 1, "http://someurl!!": 1, "someurl": 1, "is": 1}, 
-                    {"中文": 1, "应该也": 1, "行": 1}, 
+        expected = [{"this": 1, "http://someurl!!": 1, "someurl": 1, "is": 1},
+                    {"中文": 1, "应该也": 1, "行": 1},
                     {"Сблъсъкът": 1, "между": 1}]
-        expected2 = [{"This": 1, "http://someurl!!": 1, "someurl": 1, "is": 1}, 
-                     {"中文": 1, "应该也": 1, "行": 1}, 
+        expected2 = [{"This": 1, "http://someurl!!": 1, "someurl": 1, "is": 1},
+                     {"中文": 1, "应该也": 1, "行": 1},
                      {"Сблъсъкът": 1, "между": 1}]
         sa1 = sa._count_words()
         self.assertEquals(sa1.dtype(), dict)
@@ -1037,9 +1037,9 @@ class SArrayTest(unittest.TestCase):
     def test_word_count2(self):
         sa = SArray(["This is some url http://www.someurl.com!!", "Should we? Yes, we should."])
         #TODO: Get some weird unicode whitespace in the Chinese and Russian tests
-	expected1 = [{"this": 1, "is": 1, "some": 1, "url": 1, "http://www.someurl.com!!": 1}, 
+	expected1 = [{"this": 1, "is": 1, "some": 1, "url": 1, "http://www.someurl.com!!": 1},
                      {"should": 1, "we?": 1, "we": 1, "yes,": 1, "should.": 1}]
-	expected2 = [{"this is some url http://www.someurl.com": 1}, 
+	expected2 = [{"this is some url http://www.someurl.com": 1},
                      {"should we": 1, " yes": 1, " we should.": 1}]
 	word_counts1 = sa._count_words()
         word_counts2 = sa._count_words(delimiters=["?", "!", ","])
@@ -1497,8 +1497,8 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(ret['X.tmweekday'] , [2, 2, None], int)
 
     def test_datetime_lambda(self):
-        data = [dt.datetime(2013, 5, 7, 10, 4, 10, 109321), 
-                dt.datetime(1902, 10, 21, 10, 34, 10, 991111, 
+        data = [dt.datetime(2013, 5, 7, 10, 4, 10, 109321),
+                dt.datetime(1902, 10, 21, 10, 34, 10, 991111,
                     tzinfo=GMT(1))]
         g=SArray(data)
         gstr=g.apply(lambda x:str(x))
@@ -1600,7 +1600,7 @@ class SArrayTest(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             sa.str_to_datetime('%m/%d/%Y %L:%M')
 
-        sa = SArray(['2013-05-07T10:04:10', 
+        sa = SArray(['2013-05-07T10:04:10',
             '1902-10-21T10:34:10UTC+05:45'])
         expected = [dt.datetime(2013, 5, 7, 10, 4, 10),
                 dt.datetime(1902, 10, 21, 10, 34, 10).replace(tzinfo=GMT(5.75))]
@@ -1685,4 +1685,58 @@ class SArrayTest(unittest.TestCase):
         X = X.astype(str)
         Y = np.array([str(i) for i in range(100)])
         nptest.assert_array_equal(X.to_numpy(), Y)
+
+    def test_cumulative_sum(self):
+
+        def single_test(src, ans):
+            out = src.cumulative_sum();
+            self.assertEqual(out.size(), ans.size())
+            for i in range(len(out)):
+                import array
+                if type(out[i]) != array.array:
+                  self.assertAlmostEqual(out[i], ans[i])
+                else:
+                  self.assertEqual(len(out[i]), len(ans[i]))
+                  oi = out[i]
+                  ansi = ans[i]
+                  for j in range(len(oi)):
+                      self.assertAlmostEqual(oi, ansi)
+
+        with self.assertRaises(RuntimeError):
+            sa = SArray(["foo"]).cumulative_sum()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([[1], ["foo"]]).cumulative_sum()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([{"bar": 1}]).cumulative_sum()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([[1], [1, 1]]).cumulative_sum()
+
+        single_test(
+          SArray([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+          SArray([0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55])
+        )
+        single_test(
+            SArray([0.1, 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1]),
+            SArray([0.1, 1.2, 3.3, 6.4, 10.5, 15.6, 21.7, 28.8])
+        )
+        single_test(
+            SArray([[11.0, 2.0], [22.0, 1.0], [3.0, 4.0], [4.0, 4.0]]),
+            SArray([[11.0, 2.0], [33.0, 3.0], [36.0, 7.0], [40.0, 11.0]])
+        )
+        single_test(
+            SArray([None, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+            SArray([None, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55])
+        )
+        single_test(
+            SArray([None, 1, None, 3, None, 5]),
+            SArray([None, 1, 1, 4, 4, 9])
+        )
+        single_test(
+            SArray([None, [33.0, 3.0], [3.0, 4.0], [4.0, 4.0]]),
+            SArray([None, [33.0, 3.0], [36.0, 7.0], [40.0, 11.0]])
+        )
+        single_test(
+            SArray([None, [33.0, 3.0], None, [4.0, 4.0]]),
+            SArray([None, [33.0, 3.0], [33.0, 3.0], [37.0, 7.0]])
+        )
 

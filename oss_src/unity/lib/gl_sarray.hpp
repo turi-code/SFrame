@@ -1719,6 +1719,16 @@ class gl_sarray {
   gl_sarray subslice(flexible_type start = FLEX_UNDEFINED, 
                      flexible_type stop = FLEX_UNDEFINED, 
                      flexible_type step = FLEX_UNDEFINED);
+  
+  /**
+   *
+   *  This returns an SArray where each element is a cumulative sum of 
+   *  all its previous elements. Only works in an SArray of numeric type
+   *  or numeric-array types. 
+   *
+   *  \return an SArray with cumulative sums. 
+   */
+  gl_sarray cumulative_sum();
 
   /**
    * \internal
