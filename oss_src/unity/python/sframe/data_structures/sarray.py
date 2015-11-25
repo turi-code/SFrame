@@ -3039,3 +3039,104 @@ class SArray(object):
         sf = _SFrame()
         sf['a'] = self
         return sf.sort('a', ascending)['a']
+
+    def rolling_mean(self, window_start, window_end, min_observations=0):
+        """
+        Calculate a new SArray of the mean of different subsets over this
+        SArray.
+        
+        Also known as a "moving average" or "running average". The subset that
+        the mean is calculated over is defined as an inclusive range relative
+        to the position to each value in the SArray, using `window_start` and
+        `window_end`. For a better understanding of this, see the examples
+        below.
+
+        Parameters
+        ----------
+        window_start : int
+            The start of the subset to calculate the mean relative to the
+            current value. 
+
+        window_end : int
+            The end of the subset to calculate the mean relative to the current
+            value. Must be greater than `window_start`.
+        
+        min_observations : int 
+            Minimum number of non-missing observations in window required to
+            calculate the mean (otherwise result is None). 0 signifies that the
+            entire window must not include a missing value. A negative number
+            throws an error.
+
+        Returns
+        -------
+        out : SArray
+
+        Examples
+        --------
+        >>> import pandas
+        >>> sa = SArray([1,2,3,4,5]) 
+        >>> series = pandas.Series([1,2,3,4,5])
+
+        A rolling mean with a window including the previous 2 entries including
+        the current:
+        >>> sa.rolling_mean(-2,0)
+        dtype: float
+        Rows: 5
+        [None, None, 2.0, 3.0, 4.0]
+
+        Pandas equivalent:
+        >>> pandas.rolling_mean(series, 3)
+        0   NaN
+        1   NaN
+        2     2
+        3     3
+        4     4
+        dtype: float64
+
+        Same rolling mean operation, but 2 minimum observations:
+        >>> sa.rolling_mean(-2,0,min_observations=2)
+        dtype: float
+        Rows: 5
+        [None, 1.5, 2.0, 3.0, 4.0]
+
+        Pandas equivalent:
+        >>> pandas.rolling_mean(series, 3, min_periods=2)
+        0    NaN
+        1    1.5
+        2    2.0
+        3    3.0
+        4    4.0
+        dtype: float64
+
+        A rolling mean with a size of 3, centered around the current:
+        >>> sa.rolling_mean(-1,1)
+        dtype: float
+        Rows: 5
+        [None, 2.0, 3.0, 4.0, None]
+
+        Pandas equivalent:
+        >>> pandas.rolling_mean(series, 3, center=True)
+        0   NaN
+        1     2
+        2     3
+        3     4
+        4   NaN
+        dtype: float64
+
+        A rolling mean with a window including the current and the 2 entries
+        following:
+        >>> sa.rolling_mean(0,2)
+        dtype: float
+        Rows: 5
+        [2.0, 3.0, 4.0, None, None]
+
+        A rolling mean with a window including the previous 2 entries NOT
+        including the current:
+        >>> sa.rolling_mean(-2,-1)
+        dtype: float
+        Rows: 5
+        [None, None, 1.5, 2.5, 3.5]
+        """
+        if min_observations < 0:
+            raise ValueError("min_observations must be a positive integer")
+        return SArray(_proxy=self.__proxy__.rolling_apply("mean", window_start, window_end, min_observations))

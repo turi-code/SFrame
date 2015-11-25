@@ -790,6 +790,11 @@ class unity_sarray: public unity_sarray_base {
 
 
   void construct_from_unity_sarray(const unity_sarray& other);
+  
+  std::shared_ptr<unity_sarray_base> rolling_apply(const std::string &fn_name,
+                                                   ssize_t before,
+                                                   ssize_t after,
+                                                   size_t min_observations);
 };
 
 } // namespace graphlab
