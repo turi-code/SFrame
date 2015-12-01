@@ -597,7 +597,87 @@ gl_sarray gl_sarray::subslice(flexible_type start,
   return sarray_subslice(*this, start, stop, step);
 }
 
-gl_sarray gl_sarray::cumulative_sum() {
+
+gl_sarray gl_sarray::cumulative_aggregate(
+     std::shared_ptr<group_aggregate_value> aggregator) const { 
+  
+  flex_type_enum input_type = this->dtype();
+  flex_type_enum output_type = aggregator->set_input_types({input_type});
+  if (! aggregator->support_type(input_type)) {
+    std::stringstream ss;
+    ss << "Cannot perform this operation on an SArray of type "
+       << flex_type_enum_to_name(input_type) << "." << std::endl;
+    log_and_throw(ss.str());
+  } 
+
+  // Empty case.  
+  size_t m_size = this->size();
+  if (m_size == 0) {
+    return gl_sarray({}, output_type);
+  }
+
+  // Make a copy of an newly initialize aggregate for each thread.
+  size_t n_threads = thread::cpu_count();
+  std::vector<std::shared_ptr<group_aggregate_value>> aggregators;
+  for (size_t i = 0; i < n_threads; i++) {
+      aggregators.push_back(
+          std::shared_ptr<group_aggregate_value>(aggregator->new_instance()));
+  } 
+
+  gl_sarray_writer writer(output_type, n_threads);
+
+  // If n_threads = 1, then skip Phase 1 and Phase 2.
+  if (n_threads > 1) {
+    
+    // Phase 1: Compute prefix-sums for each block.
+    in_parallel([&](size_t thread_idx, size_t n_threads) {
+      size_t start_row = thread_idx * m_size / n_threads; 
+      size_t end_row = (thread_idx + 1) * m_size / n_threads;
+      for (const auto& v: this->range_iterator(start_row, end_row)) {
+        DASSERT_TRUE(thread_idx < aggregators.size());
+        if (v != FLEX_UNDEFINED) {
+          aggregators[thread_idx]->add_element_simple(v);
+        }
+      }
+    });
+
+    // Phase 2: Combine prefix-sum(s) at the end of each block.
+    for (size_t i = n_threads - 1; i > 0; i--) {
+      for (size_t j = 0; j < i; j++) {
+        DASSERT_TRUE(i < aggregators.size());
+        DASSERT_TRUE(j < aggregators.size());
+        aggregators[i]->combine(*aggregators[j]);
+      }
+    }
+  }
+  
+  // Phase 3: Reaggregate with an re-intialized prefix-sum from previous blocks. 
+  in_parallel([&](size_t thread_idx, size_t n_threads) {
+    flexible_type y = FLEX_UNDEFINED;
+    size_t start_row = thread_idx * m_size / n_threads; 
+    size_t end_row = (thread_idx + 1) * m_size / n_threads;
+    std::shared_ptr<group_aggregate_value> re_aggregator (aggregator->new_instance());
+  
+    // Initialize with the merged value. 
+    if (thread_idx >= 1) {
+      DASSERT_TRUE(thread_idx - 1 < aggregators.size());
+      y = aggregators[thread_idx - 1]->emit();
+      re_aggregator->add_element_simple(y);
+    }
+
+    // Write prefix-sum
+    for (const auto& v: this->range_iterator(start_row, end_row)) {
+      if (v != FLEX_UNDEFINED) {
+        re_aggregator->add_element_simple(v);
+        y = re_aggregator->emit();
+      }
+      writer.write(y, thread_idx);
+    }
+  });
+  return writer.close();
+}
+
+gl_sarray gl_sarray::cumulative_sum() const {
   return cumulative_aggregates::_sarray_cumulative_sum(*this);
 }
 

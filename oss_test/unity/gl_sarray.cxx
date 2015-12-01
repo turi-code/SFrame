@@ -455,6 +455,12 @@ class gl_sarray_test: public CxxTest::TestSuite {
       // Run a single test. 
       auto single_test = [&](const gl_sarray& in, const gl_sarray& ans) {
         gl_sarray out = in.cumulative_sum();
+        //std::cout << "Testing cumulative sum" << std::endl; 
+        //for (size_t i = 0; i < out.size(); i++) {
+        //  std::cout << "in  = " << in[i] << " " 
+        //            << "out = " << out[i] << " " 
+        //            << "ans = " << ans[i] << " " << std::endl;
+        //}
         _assert_sarray_equals(out, _to_vec(ans));
       }; 
       
@@ -479,23 +485,14 @@ class gl_sarray_test: public CxxTest::TestSuite {
           gl_sarray{FLEX_UNDEFINED, 1, 1, 4, 4, 9} 
       );
       single_test(
-          gl_sarray{FLEX_UNDEFINED, {33.0, 3.0}, {3.0, 4.0}, {4.0, 4.0}},
-          gl_sarray{FLEX_UNDEFINED, {33.0, 3.0}, {36.0, 7.0}, {40.0, 11.0}}
+          gl_sarray{{33.0, 3.0}, FLEX_UNDEFINED, {3.0, 4.0}, {4.0, 4.0}},
+          gl_sarray({{33.0, 3.0}, {33.0, 3.0}, {36.0, 7.0}, {40.0, 11.0}}, flex_type_enum::VECTOR)
       );
       single_test(
-          gl_sarray{FLEX_UNDEFINED, {33.0, 3.0}, FLEX_UNDEFINED, {4.0, 4.0}},
-          gl_sarray{FLEX_UNDEFINED, {33.0, 3.0}, {33.0, 3.0}, {37.0, 7.0}}
+          gl_sarray{{33.0, 3.0}, FLEX_UNDEFINED, FLEX_UNDEFINED, {4.0, 4.0}},
+          gl_sarray({{33.0, 3.0}, {33.0, 3.0}, {33.0, 3.0}, {37.0, 7.0}}, flex_type_enum::VECTOR)
       );
 
-    }
-
-    void test_sarray() {
-      gl_sarray sa{1,2,3,4,5,6};
-
-      auto sa2 = sa.materialize_to_sarray();
-      gl_sarray sa3 = sa2;
-
-      _assert_sarray_equals(sa, _to_vec(sa3));
     }
 
   private:

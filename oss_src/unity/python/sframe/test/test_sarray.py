@@ -8,6 +8,7 @@ of the BSD license. See the LICENSE file for details.
 '''
 from ..data_structures.sarray import SArray
 from ..util.timezone import GMT
+from ..toolkits._main import ToolkitError
 
 import pandas as pd
 import numpy as np
@@ -26,6 +27,7 @@ import warnings
 import functools
 import tempfile
 import sys
+from nose.tools import nottest
 
 #######################################################
 # Metrics tracking tests are in test_usage_metrics.py #
@@ -1686,21 +1688,30 @@ class SArrayTest(unittest.TestCase):
         Y = np.array([str(i) for i in range(100)])
         nptest.assert_array_equal(X.to_numpy(), Y)
 
+    @nottest
+    def cumulative_aggregate_comparison(self, out, ans):
+        import array
+        self.assertEqual(out.size(), ans.size())
+        for i in range(len(out)):
+            if out[i] is None:
+                self.assertTrue(ans[i] is None)
+            if ans[i] is None:
+                self.assertTrue(out[i] is None)
+
+            if type(out[i]) != array.array:
+              self.assertAlmostEqual(out[i], ans[i])
+            else:
+              self.assertEqual(len(out[i]), len(ans[i]))
+              oi = out[i]
+              ansi = ans[i]
+              for j in range(len(oi)):
+                  self.assertAlmostEqual(oi, ansi)
+
     def test_cumulative_sum(self):
 
         def single_test(src, ans):
             out = src.cumulative_sum();
-            self.assertEqual(out.size(), ans.size())
-            for i in range(len(out)):
-                import array
-                if type(out[i]) != array.array:
-                  self.assertAlmostEqual(out[i], ans[i])
-                else:
-                  self.assertEqual(len(out[i]), len(ans[i]))
-                  oi = out[i]
-                  ansi = ans[i]
-                  for j in range(len(oi)):
-                      self.assertAlmostEqual(oi, ansi)
+            self.cumulative_aggregate_comparison(out, ans)
 
         with self.assertRaises(RuntimeError):
             sa = SArray(["foo"]).cumulative_sum()
@@ -1708,8 +1719,8 @@ class SArrayTest(unittest.TestCase):
             sa = SArray([[1], ["foo"]]).cumulative_sum()
         with self.assertRaises(RuntimeError):
             sa = SArray([{"bar": 1}]).cumulative_sum()
-        with self.assertRaises(RuntimeError):
-            sa = SArray([[1], [1, 1]]).cumulative_sum()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1,1], [1], [1]]).cumulative_sum()
 
         single_test(
           SArray([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
