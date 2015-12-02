@@ -615,19 +615,18 @@ gl_sarray gl_sarray::cumulative_aggregate(
   if (m_size == 0) {
     return gl_sarray({}, output_type);
   }
-
+  
   // Make a copy of an newly initialize aggregate for each thread.
   size_t n_threads = thread::cpu_count();
+  gl_sarray_writer writer(output_type, n_threads);
   std::vector<std::shared_ptr<group_aggregate_value>> aggregators;
   for (size_t i = 0; i < n_threads; i++) {
       aggregators.push_back(
           std::shared_ptr<group_aggregate_value>(aggregator->new_instance()));
   } 
 
-  gl_sarray_writer writer(output_type, n_threads);
-
-  // If n_threads = 1, then skip Phase 1 and Phase 2.
-  if (n_threads > 1) {
+  // Skip Phases 1,2 when single threaded or more threads than rows.
+  if ((n_threads > 1) && (m_size > n_threads)) {
     
     // Phase 1: Compute prefix-sums for each block.
     in_parallel([&](size_t thread_idx, size_t n_threads) {
@@ -652,11 +651,12 @@ gl_sarray gl_sarray::cumulative_aggregate(
   }
   
   // Phase 3: Reaggregate with an re-intialized prefix-sum from previous blocks. 
-  in_parallel([&](size_t thread_idx, size_t n_threads) {
+  auto reagg_fn = [&](size_t thread_idx, size_t n_threads) {
     flexible_type y = FLEX_UNDEFINED;
     size_t start_row = thread_idx * m_size / n_threads; 
     size_t end_row = (thread_idx + 1) * m_size / n_threads;
-    std::shared_ptr<group_aggregate_value> re_aggregator (aggregator->new_instance());
+    std::shared_ptr<group_aggregate_value> re_aggregator (
+                                              aggregator->new_instance());
   
     // Initialize with the merged value. 
     if (thread_idx >= 1) {
@@ -673,7 +673,14 @@ gl_sarray gl_sarray::cumulative_aggregate(
       }
       writer.write(y, thread_idx);
     }
-  });
+  };
+  
+  // Run single threaded if more threads than rows. 
+  if (m_size > n_threads) {
+    in_parallel(reagg_fn);
+  } else {
+    reagg_fn(0, 1);   
+  }
   return writer.close();
 }
 

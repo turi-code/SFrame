@@ -453,6 +453,12 @@ class gl_sarray_test: public CxxTest::TestSuite {
     void test_cumulative_sum() {
       auto single_test = [&](const gl_sarray& in, const gl_sarray& ans) {
         gl_sarray out = in.cumulative_sum();
+        //for (size_t i = 0; i < out.size(); i++) {
+        //  std::cout << " i   = " << i
+        //            << " in  = " << in[i]
+        //            << " out = " << out[i]
+        //            << " ans = " << ans[i] << std::endl;
+        //}
         _assert_sarray_equals(out, _to_vec(ans));
       }; 
       
