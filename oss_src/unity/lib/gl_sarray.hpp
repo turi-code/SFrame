@@ -1739,13 +1739,18 @@ class gl_sarray {
 
   /**
    *
-   *  This returns an SArray where each element is a cumulative sum of 
-   *  all its previous elements. Only works in an SArray of numeric type
-   *  or numeric-array types. 
+   *  This returns an SArray where each element is a cumulative aggregate of
+   *  all its previous elements. Only works in an SArray of numeric type or
+   *  numeric-array types. 
    *
-   *  \return an SArray with cumulative sums. 
+   *  \return an SArray 
    */
   gl_sarray cumulative_sum() const;
+  gl_sarray cumulative_min() const;
+  gl_sarray cumulative_max() const;
+  gl_sarray cumulative_var() const;
+  gl_sarray cumulative_std() const;
+  gl_sarray cumulative_avg() const;
 
   /**
    * \internal

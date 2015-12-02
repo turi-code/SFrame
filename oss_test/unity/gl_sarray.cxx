@@ -451,16 +451,8 @@ class gl_sarray_test: public CxxTest::TestSuite {
     }
 
     void test_cumulative_sum() {
-
-      // Run a single test. 
       auto single_test = [&](const gl_sarray& in, const gl_sarray& ans) {
         gl_sarray out = in.cumulative_sum();
-        //std::cout << "Testing cumulative sum" << std::endl; 
-        //for (size_t i = 0; i < out.size(); i++) {
-        //  std::cout << "in  = " << in[i] << " " 
-        //            << "out = " << out[i] << " " 
-        //            << "ans = " << ans[i] << " " << std::endl;
-        //}
         _assert_sarray_equals(out, _to_vec(ans));
       }; 
       
@@ -494,7 +486,59 @@ class gl_sarray_test: public CxxTest::TestSuite {
       );
 
     }
-
+    
+    void test_cumulative_avg() {
+      auto single_test = [&](const gl_sarray& in, const gl_sarray& ans) {
+        gl_sarray out = in.cumulative_avg();
+        _assert_sarray_equals(out, _to_vec(ans));
+      }; 
+      
+      single_test(
+          gl_sarray{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, 
+          gl_sarray{0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0} 
+      );
+      single_test(
+          gl_sarray{0.1, 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1}, 
+          gl_sarray{0.1, 0.6, 1.1, 1.6, 2.1, 2.6, 3.1, 3.6}
+      );
+      single_test(
+          gl_sarray{{11.0, 22.0}, {33.0, 66.0}, {4.0,   2.0}, {4.0,  2.0}},
+          gl_sarray{{11.0, 22.0}, {22.0, 44.0}, {16.0, 30.0}, {13.0, 23.0}}
+      );
+    }
+    
+    void test_cumulative_min() {
+      auto single_test = [&](const gl_sarray& in, const gl_sarray& ans) {
+        gl_sarray out = in.cumulative_min();
+        _assert_sarray_equals(out, _to_vec(ans));
+      }; 
+      
+      single_test(
+          gl_sarray{0, 1, 2, 3, 4, 5, -1, 7, 8, -2, 10},
+          gl_sarray{0, 0, 0, 0, 0, 0, -1, -1, -1, -2, -2}
+      );
+      single_test(
+          gl_sarray{7.1, 6.1, 3.1, 3.9, 4.1, 2.1, 2.9, 0.1},
+          gl_sarray{7.1, 6.1, 3.1, 3.1, 3.1, 2.1, 2.1, 0.1}
+      );
+    }
+    
+    void test_cumulative_max() {
+      auto single_test = [&](const gl_sarray& in, const gl_sarray& ans) {
+        gl_sarray out = in.cumulative_max();
+        _assert_sarray_equals(out, _to_vec(ans));
+      }; 
+      
+      single_test(
+          gl_sarray{0, 1, 0, 3, 5, 4, 1, 7, 6, 2, 10},
+          gl_sarray{0, 1, 1, 3, 5, 5, 5, 7, 7, 7, 10}
+      );
+      single_test(
+          gl_sarray{2.1, 6.1, 3.1, 3.9, 2.1, 8.1, 8.9, 10.1},
+          gl_sarray{2.1, 6.1, 6.1, 6.1, 6.1, 8.1, 8.9, 10.1}
+      );
+    }
+    
   private:
 
     std::vector<flexible_type> _to_vec(gl_sarray sa) {

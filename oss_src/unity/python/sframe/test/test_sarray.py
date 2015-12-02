@@ -1691,6 +1691,7 @@ class SArrayTest(unittest.TestCase):
     @nottest
     def cumulative_aggregate_comparison(self, out, ans):
         import array
+        self.assertEqual(out.dtype(), ans.dtype())
         self.assertEqual(out.size(), ans.size())
         for i in range(len(out)):
             if out[i] is None:
@@ -1751,3 +1752,193 @@ class SArrayTest(unittest.TestCase):
             SArray([None, [33.0, 3.0], [33.0, 3.0], [37.0, 7.0]])
         )
 
+    def test_cumulative_mean(self):
+
+        def single_test(src, ans):
+            out = src.cumulative_mean();
+            self.cumulative_aggregate_comparison(out, ans)
+
+        with self.assertRaises(RuntimeError):
+            sa = SArray(["foo"]).cumulative_mean()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([[1], ["foo"]]).cumulative_mean()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([{"bar": 1}]).cumulative_mean()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1,1], [1], [1]]).cumulative_mean()
+
+        single_test(
+          SArray([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+          SArray([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0])
+        )
+        single_test(
+            SArray([0.1, 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1]),
+            SArray([0.1, 0.6, 1.1, 1.6, 2.1, 2.6, 3.1, 3.6])
+        )
+        single_test(
+            SArray([[11.0, 22.0], [33.0, 66.0], [4.0,   2.0],  [4.0,  2.0]]),
+            SArray([[11.0, 22.0], [22.0, 44.0], [16.0, 30.0], [13.0, 23.0]])
+        )
+        single_test(
+            SArray([None, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+            SArray([None, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0])
+        )
+        single_test(
+            SArray([None, 1, None, 3, None, 5]),
+            SArray([None, 1, 1.0, 2.0, 2.0, 3.0])
+        )
+        single_test(
+            SArray([None, [11.0, 22.0], [33.0, 66.0], [4.0,   2.0]]),
+            SArray([None, [11.0, 22.0], [22.0, 44.0], [16.0, 30.0]])
+        )
+        single_test(
+            SArray([None, [11.0, 22.0], None, [33.0, 66.0], [4.0, 2.0]]),
+            SArray([None, [11.0, 22.0], [11.0, 22.0], [22.0, 44.0], [16.0, 30.0]])
+        )
+
+
+    def test_cumulative_min(self):
+
+        def single_test(src, ans):
+            out = src.cumulative_min();
+            self.cumulative_aggregate_comparison(out, ans)
+
+        with self.assertRaises(RuntimeError):
+            sa = SArray(["foo"]).cumulative_min()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([[1], ["foo"]]).cumulative_min()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([{"bar": 1}]).cumulative_min()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1,1], [1], [1]]).cumulative_min()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1], [1], [1]]).cumulative_min()
+
+        single_test(
+          SArray([0, 1, 2, 3, 4, 5, -1, 7, 8, -2, 10]),
+          SArray([0, 0, 0, 0, 0, 0, -1, -1, -1, -2, -2])
+        )
+        single_test(
+            SArray([7.1, 6.1, 3.1, 3.9, 4.1, 2.1, 2.9, 0.1]),
+            SArray([7.1, 6.1, 3.1, 3.1, 3.1, 2.1, 2.1, 0.1])
+        )
+        single_test(
+            SArray([None, 8, 6, 3, 4, None, 6, 2, 8, 9, 1]),
+            SArray([None, 8, 6, 3, 3, 3,    3, 2, 2, 2, 1])
+        )
+        single_test(
+            SArray([None, 5, None, 3, None, 10]),
+            SArray([None, 5, 5, 3, 3, 3])
+        )
+
+    def test_cumulative_max(self):
+
+        def single_test(src, ans):
+            out = src.cumulative_max();
+            self.cumulative_aggregate_comparison(out, ans)
+
+        with self.assertRaises(RuntimeError):
+            sa = SArray(["foo"]).cumulative_max()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([[1], ["foo"]]).cumulative_max()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([{"bar": 1}]).cumulative_max()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1,1], [1], [1]]).cumulative_max()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1], [1], [1]]).cumulative_max()
+
+        single_test(
+          SArray([0, 1, 0, 3, 5, 4, 1, 7, 6, 2, 10]),
+          SArray([0, 1, 1, 3, 5, 5, 5, 7, 7, 7, 10])
+        )
+        single_test(
+            SArray([2.1, 6.1, 3.1, 3.9, 2.1, 8.1, 8.9, 10.1]),
+            SArray([2.1, 6.1, 6.1, 6.1, 6.1, 8.1, 8.9, 10.1])
+        )
+        single_test(
+            SArray([None, 1, 6, 3, 4, None, 4, 2, 8, 9, 1]),
+            SArray([None, 1, 6, 6, 6, 6,    6, 6, 8, 9, 9])
+        )
+        single_test(
+            SArray([None, 2, None, 3, None, 10]),
+            SArray([None, 2, 2, 3, 3, 10])
+        )
+
+    def test_cumulative_std(self):
+
+        def single_test(src, ans):
+            out = src.cumulative_std();
+            self.cumulative_aggregate_comparison(out, ans)
+
+        with self.assertRaises(RuntimeError):
+            sa = SArray(["foo"]).cumulative_std()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([[1], ["foo"]]).cumulative_std()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([{"bar": 1}]).cumulative_std()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1,1], [1], [1]]).cumulative_std()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1], [1], [1]]).cumulative_std()
+
+        single_test(
+          SArray([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+          SArray([0.0, 0.5, 0.816496580927726, 1.118033988749895,
+              1.4142135623730951, 1.707825127659933, 2.0, 2.29128784747792,
+              2.581988897471611, 2.8722813232690143, 3.1622776601683795])
+        )
+        single_test(
+            SArray([0.1, 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1]),
+            SArray([0.0, 0.5, 0.81649658092772603, 1.1180339887498949,
+                1.4142135623730949, 1.707825127659933, 1.9999999999999998,
+                2.2912878474779195])
+        )
+        single_test(
+            SArray([None, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+            SArray([None, 0.0, 0.5, 0.816496580927726, 1.118033988749895,
+                1.4142135623730951, 1.707825127659933, 2.0, 2.29128784747792,
+                2.581988897471611, 2.8722813232690143, 3.1622776601683795])
+        )
+        single_test(
+            SArray([None, 1,   None, 3, None, 5]),
+            SArray([None, 0.0, 0.0, 1.0, 1.0, 1.6329931618554521])
+        )
+
+    def test_cumulative_var(self):
+
+        def single_test(src, ans):
+            out = src.cumulative_var();
+            self.cumulative_aggregate_comparison(out, ans)
+
+        with self.assertRaises(RuntimeError):
+            sa = SArray(["foo"]).cumulative_var()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([[1], ["foo"]]).cumulative_var()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([{"bar": 1}]).cumulative_var()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1,1], [1], [1]]).cumulative_var()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1], [1], [1]]).cumulative_var()
+
+        single_test(
+          SArray([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+          SArray([0.0, 0.25, 0.6666666666666666, 1.25, 2.0, 2.9166666666666665,
+              4.0, 5.25, 6.666666666666667, 8.25, 10.0])
+        )
+        single_test(
+            SArray([0.1, 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1]),
+            SArray( [0.0, 0.25000000000000006, 0.6666666666666666, 1.25,
+                1.9999999999999996, 2.916666666666666, 3.999999999999999,
+                5.249999999999998])
+        )
+        single_test(
+            SArray([None, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+            SArray([None, 0.0, 0.25, 0.6666666666666666, 1.25, 2.0, 2.9166666666666665,
+                4.0, 5.25, 6.666666666666667, 8.25, 10.0])
+        )
+        single_test(
+            SArray([None, 1,   None, 3, None, 5]),
+            SArray([None, 0.0, 0.0, 1.0, 1.0, 2.6666666666666665])
+        )

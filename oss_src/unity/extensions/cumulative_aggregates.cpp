@@ -78,27 +78,51 @@ void check_vector_equal_size(const gl_sarray& in) {
 
 }
 
-gl_sarray _sarray_cumulative_sum(const gl_sarray& in) {
-
+gl_sarray _sarray_cumulative_built_in_aggregate(const gl_sarray& in, 
+                                                const std::string& name) {
   flex_type_enum input_type = in.dtype();
   std::shared_ptr<group_aggregate_value> aggregator;
-  switch(input_type) {
-    case flex_type_enum::VECTOR: 
-    {
-      check_vector_equal_size(in);
-      aggregator = get_builtin_group_aggregator(std::string("__builtin__vector__sum__")); 
-      break;
+
+  // Cumulative sum, and avg support vector types.
+  if (name == "__builtin__cum_sum__") {
+    switch(input_type) {
+      case flex_type_enum::VECTOR: {
+        check_vector_equal_size(in);
+        aggregator = get_builtin_group_aggregator(std::string("__builtin__vector__sum__")); 
+        break;
+      }
+      default:
+        aggregator = get_builtin_group_aggregator(std::string("__builtin__sum__")); 
+        break;
     }
-    default:
-      aggregator = get_builtin_group_aggregator(std::string("__builtin__sum__")); 
-      break;
+  } else if (name == "__builtin__cum_avg__") {
+    switch(input_type) {
+      case flex_type_enum::VECTOR: {
+        check_vector_equal_size(in);
+        aggregator = get_builtin_group_aggregator(std::string("__builtin__vector__avg__")); 
+        break;
+      }
+      default:
+        aggregator = get_builtin_group_aggregator(std::string("__builtin__avg__")); 
+        break;
+    }
+  } else if (name == "__builtin__cum_max__") {
+      aggregator = get_builtin_group_aggregator(std::string("__builtin__max__")); 
+  } else if (name == "__builtin__cum_min__") {
+      aggregator = get_builtin_group_aggregator(std::string("__builtin__min__")); 
+  } else if (name == "__builtin__cum_var__") {
+      aggregator = get_builtin_group_aggregator(std::string("__builtin__var__")); 
+  } else if (name == "__builtin__cum_std__") {
+      aggregator = get_builtin_group_aggregator(std::string("__builtin__stdv__")); 
+  } else {
+    log_and_throw("Internal error. Unknown cumulative aggregator " + name);
   }
   return in.cumulative_aggregate(aggregator);
 }
 
 
 BEGIN_FUNCTION_REGISTRATION
-REGISTER_FUNCTION(_sarray_cumulative_sum, "in");
+REGISTER_FUNCTION(_sarray_cumulative_built_in_aggregate, "in", "name");
 END_FUNCTION_REGISTRATION
 
 }

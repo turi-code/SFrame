@@ -24,7 +24,8 @@ std::vector<toolkit_function_specification>
  *  \param[in] Input SArray
  *  \return SArray of cumulative aggregate of the input SArray.
  */
-gl_sarray _sarray_cumulative_sum(const gl_sarray& in);
+gl_sarray _sarray_cumulative_built_in_aggregate(const gl_sarray& in, 
+                                                const std::string& name);
 
 }
 }

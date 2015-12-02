@@ -662,7 +662,7 @@ gl_sarray gl_sarray::cumulative_aggregate(
     if (thread_idx >= 1) {
       DASSERT_TRUE(thread_idx - 1 < aggregators.size());
       y = aggregators[thread_idx - 1]->emit();
-      re_aggregator->add_element_simple(y);
+      re_aggregator->combine(*aggregators[thread_idx - 1]);
     }
 
     // Write prefix-sum
@@ -678,7 +678,28 @@ gl_sarray gl_sarray::cumulative_aggregate(
 }
 
 gl_sarray gl_sarray::cumulative_sum() const {
-  return cumulative_aggregates::_sarray_cumulative_sum(*this);
+  return cumulative_aggregates::_sarray_cumulative_built_in_aggregate(
+      *this, "__builtin__cum_sum__");
+}
+gl_sarray gl_sarray::cumulative_min() const {
+  return cumulative_aggregates::_sarray_cumulative_built_in_aggregate(
+      *this, "__builtin__cum_min__");
+}
+gl_sarray gl_sarray::cumulative_max() const {
+  return cumulative_aggregates::_sarray_cumulative_built_in_aggregate(
+      *this, "__builtin__cum_max__");
+}
+gl_sarray gl_sarray::cumulative_avg() const {
+  return cumulative_aggregates::_sarray_cumulative_built_in_aggregate(
+      *this, "__builtin__cum_avg__");
+}
+gl_sarray gl_sarray::cumulative_std() const {
+  return cumulative_aggregates::_sarray_cumulative_built_in_aggregate(
+      *this, "__builtin__cum_std__");
+}
+gl_sarray gl_sarray::cumulative_var() const {
+  return cumulative_aggregates::_sarray_cumulative_built_in_aggregate(
+      *this, "__builtin__cum_var__");
 }
 
 std::ostream& operator<<(std::ostream& out, const gl_sarray& other) {
