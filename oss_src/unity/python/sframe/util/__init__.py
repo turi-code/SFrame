@@ -39,7 +39,9 @@ __LOGGER__ = _logging.getLogger(__name__)
 # overuse the same logger so we have one logging config
 root_package_name = __import__(__name__.split('.')[0]).__name__
 logger = logging.getLogger(root_package_name)
-client_log_file = _os.path.join(_tempfile.gettempdir(), (root_package_name + '_client_%d.log' % _time.time()))
+client_log_file = _os.path.join(_tempfile.gettempdir(),
+                                root_package_name +
+                                '_client_%d_%d.log' % (_time.time(), _os.getpid()))
 
 logging.config.dictConfig({
     'version': 1,

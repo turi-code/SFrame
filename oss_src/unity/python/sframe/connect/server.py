@@ -91,9 +91,11 @@ class LocalServer(GraphLabServer):
         assert(bool(public_key) == bool(secret_key))
 
         if not self.server_addr:
-            # by default we use '/tmp/graphlab_server-$pid'
+            # by default we use '/tmp/graphlab_server-$pid-$timestamp'
             # where the pid is the server process id
-            self.server_addr = 'default'
+            # and timestamp is the current timestamp
+            self.server_start_timestamp = int(time.time())
+            self.server_addr = 'default-%d' % self.server_start_timestamp
 
         if not self.server_bin:
             if not default_local_conf.server_bin:
@@ -119,13 +121,12 @@ class LocalServer(GraphLabServer):
 
     def _validate_protocol_and_address(self):
         # check server address
-        if self.server_addr == 'default':
+        if self.server_addr.startswith('default'):
             protocol = 'ipc'
         else:
             protocol = _get_server_addr_protocol(self.server_addr)
         if protocol not in ['ipc', 'tcp']:
             raise ValueError('Invalid server address: \"%s\". Addresses must start with ipc://' % self.server_addr)
-
 
     def start(self, num_tolerable_ping_failures=4294967295):
         _get_metric_tracker().track('engine-started', value=1, send_sys_info=True)
@@ -151,7 +152,7 @@ class LocalServer(GraphLabServer):
         # Start a local server as a child process.
         try:
             FNULL = open(os.devnull, 'w')
-            if sys.platform == 'win32': 
+            if sys.platform == 'win32':
                 self.proc = subprocess.Popen(arglist,
                         env=_sys_util.make_unity_server_env(),
                         stdin=subprocess.PIPE, stdout=FNULL,
@@ -168,8 +169,9 @@ class LocalServer(GraphLabServer):
             raise RuntimeError(e.message)
 
         # update the default server_addr
-        if (self.server_addr == 'default'):
-            self.server_addr = 'ipc:///tmp/graphlab_server-%s' % (self.proc.pid)
+        if (self.server_addr.startswith('default')):
+            self.server_addr = 'ipc:///tmp/graphlab_server-%s-%d' % (self.proc.pid,
+                                                                     self.server_start_timestamp)
 
         self.logger.info('Start server at: ' + self.server_addr + " - "
                          'Server binary: ' + self.server_bin + " - "
