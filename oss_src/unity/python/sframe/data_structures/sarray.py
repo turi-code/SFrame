@@ -3056,6 +3056,8 @@ class SArray(object):
         -----
          - Missing values are ignored while performing the cumulative
            aggregate operation.
+         - For SArray's of type array.array, all entries are expected to
+           be of the same size.
 
         Examples
         --------
@@ -3087,6 +3089,8 @@ class SArray(object):
         -----
          - Missing values are ignored while performing the cumulative
            aggregate operation.
+         - For SArray's of type array.array, all entries are expected to
+           be of the same size.
 
         Examples
         --------
@@ -3111,7 +3115,7 @@ class SArray(object):
 
         Returns
         -------
-        out : SArray[int, float, array.array]
+        out : SArray[int, float]
 
         Notes
         -----
@@ -3141,7 +3145,7 @@ class SArray(object):
 
         Returns
         -------
-        out : SArray[int, float, array.array]
+        out : SArray[int, float]
 
         Notes
         -----
@@ -3171,7 +3175,7 @@ class SArray(object):
 
         Returns
         -------
-        out : SArray[int, float, array.array]
+        out : SArray[int, float]
 
         Notes
         -----
@@ -3201,7 +3205,7 @@ class SArray(object):
 
         Returns
         -------
-        out : SArray[int, float, array.array]
+        out : SArray[int, float]
 
         Notes
         -----
