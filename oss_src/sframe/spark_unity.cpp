@@ -14,7 +14,6 @@
 * You should have received a copy of the GNU Affero General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include <Python.h>
 #include <logger/logger.hpp>
 #include <fileio/general_fstream.hpp>
 #include <fileio/fs_utils.hpp>
@@ -27,7 +26,6 @@
 #include <sframe/sframe_iterators.hpp>
 #include <sframe/csv_writer.hpp>
 #include <sframe/comma_escape_string.hpp>
-#include <lambda/pyflexible_type.hpp>
 #include <boost/iostreams/device/file.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -49,7 +47,6 @@
 #include <climits>
 
 using namespace graphlab;
-namespace python = boost::python;
 namespace bpo = boost::program_options;
 
 

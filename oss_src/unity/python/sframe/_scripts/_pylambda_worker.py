@@ -1,7 +1,7 @@
 import sys
 import os
 import ctypes
-from ctypes import PyDLL, c_char_p, c_int
+from ctypes import PyDLL, c_char_p, c_int, c_void_p
 from os.path import split, abspath, join
 from glob import glob
 from itertools import chain
@@ -45,14 +45,14 @@ if __name__ == "__main__":
     else:
         dry_run = False
 
-    if dry_run or os.environ.get("GRAPHLAB_LAMBDA_WORKER_DRY_RUN") == "1":
+    if dry_run or os.environ.get("GRAPHLAB_LAMBDA_WORKER_DEBUG_MODE") == "1":
         _write_out = sys.stderr
     else:
         _write_out = sys.stdout
 
     _write_out_file_name = os.environ.get("GRAPHLAB_LAMBDA_WORKER_LOG_FILE", "")
     _write_out_file = None
-
+    
     def _write_log(s, error = False):
         s = s + "\n"
 
@@ -84,6 +84,20 @@ if __name__ == "__main__":
     if dry_run:
         print "PyLambda script called with no IPC information; entering diagnostic mode."
 
+    ########################################
+    # Set up the system path. 
+    
+    system_path = os.environ.get("__GL_SYS_PATH__", "")
+
+    del sys.path[:]
+    sys.path.extend(p.strip() for p in system_path.split(os.pathsep) if p.strip())
+
+    for i, p in enumerate(sys.path):
+        _write_log("  sys.path[%d] = %s. " % (i, sys.path[i]))
+
+    ########################################
+    # Now, import thnigs
+
     script_path = abspath(sys.modules[__name__].__file__)
     main_dir = split(split(script_path)[0])[0]
 
@@ -93,7 +107,13 @@ if __name__ == "__main__":
     for s in sys.argv:
         _write_log("Lambda worker args: \n  %s" % ("\n  ".join(sys.argv)))
 
-    # Handle the different library type extensions
+    ########################################
+    # Set the dll load path if we are on windows
+    if sys.platform == 'win32':
+        set_windows_dll_path()
+
+    ########################################
+    # Find the correct main worker library. 
     pylamda_worker_search_string = join(main_dir, "libpylambda_worker.*")
     _write_log("Lambda worker search pattern: %s\n" % pylamda_worker_search_string)
     pylambda_workers = glob(join(main_dir, "libpylambda_worker.*"))
@@ -110,9 +130,20 @@ if __name__ == "__main__":
 
     _write_log("INFO: Loading pylambda worker library: %s." % pylambda_workers[0])
 
-    # Set the dll load path if we are on windows
-    if sys.platform == 'win32':
-        set_windows_dll_path()
+    module_name = os.path.split(main_dir)[1]
+
+    if module_name != "graphlab" and module_name != "sframe":
+        _write_log("Module path not sframe or graphlab.", error = True)
+        sys.exit(200)
+
+    ########################################
+    # Get the pointers to the cython callback functions that can
+    # actually execute the lambda functions.
+        
+    if module_name == "graphlab":
+        from graphlab.cython.cy_pylambda_workers import eval_functions_ctype_pointer
+    else:
+        from sframe.cython.cy_pylambda_workers import eval_functions_ctype_pointer
 
     try:
         pylambda_lib = PyDLL(pylambda_workers[0])
@@ -121,11 +152,22 @@ if __name__ == "__main__":
         sys.exit(203)
 
     try:
+        pylambda_lib.set_pylambda_evaluation_functions.argtypes = [c_void_p]
+        pylambda_lib.set_pylambda_evaluation_functions.restype = None
+    except Exception, e:
+        _write_log("Error accessing set_pylambda_evaluation_functions: %s\n"
+                   % repr(e), error = True)
+        sys.exit(204)
+
+    # Set up the pylambda interface functions. 
+    pylambda_lib.set_pylambda_evaluation_functions(eval_functions_ctype_pointer)
+
+    try:
         pylambda_lib.pylambda_worker_main.argtypes = [c_char_p, c_char_p]
         pylambda_lib.pylambda_worker_main.restype = c_int
     except Exception, e:
         _write_log("Error accessing pylambda_worker_main: %s\n" % repr(e), error = True)
-        sys.exit(204)
+        sys.exit(205)
 
     if not dry_run:
         # This call only returns after the parent process is done.

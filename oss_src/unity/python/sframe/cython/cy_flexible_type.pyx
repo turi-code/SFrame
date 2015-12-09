@@ -997,7 +997,7 @@ cdef inline fill_list(flex_list& retl, _listlike v,
     """
     Fills a list.  If common_type is not NULL, then a common type
     for the list is expected, and the result is stored in common_type[0].
-    If tr_code_buffer is not null, then common types are taken from that
+    If tr_code_buffer is not null, then the translation codes are taken from that.
     """
 
     cdef long i
@@ -1048,25 +1048,16 @@ cdef inline fill_list(flex_list& retl, _listlike v,
 
 
 @cython.boundscheck(False)
-cdef inline fill_typed_list(flex_list& retl, _listlike v,
-                            flex_type_enum common_type,
-                            bint ignore_translation_errors):
-    """
-    Fills a list, casting all elements to the common type.  Anything that
-    cannot be losslessly translated is ignored.
-    """
+cdef inline long _fill_typed_sequence(flexible_type* retl, _listlike v,
+                                 flex_type_enum common_type,
+                                 bint ignore_translation_errors) except -1:
 
-    assert common_type != UNDEFINED
 
     cdef int tr_code = -1
-    cdef size_t seen_types
     cdef flexible_type ft
 
     if len(v) == 0:
-        retl.clear()
-        return
-
-    retl.resize(len(v))
+        return 0
 
     cdef long i
     cdef long write_pos = 0
@@ -1074,15 +1065,15 @@ cdef inline fill_typed_list(flex_list& retl, _listlike v,
     cdef bint error_occured
 
     for i in range(len(v)):
-        ft = _ft_translate(v[i], get_translation_code(type(v[i]), v[i]))
+        retl[write_pos] = _ft_translate(v[i], get_translation_code(type(v[i]), v[i]))
 
-        if ft.get_type() != common_type:
+        if common_type != UNDEFINED and retl[write_pos].get_type() != common_type:
 
             # UNDEFINED gets a free pass.
-            if ft.get_type() == UNDEFINED:
-                retl[write_pos] = FLEX_UNDEFINED
+            if retl[write_pos].get_type() == UNDEFINED:
                 success = True
             else:
+                ft = retl[write_pos]
                 retl[write_pos] = flexible_type(common_type)
 
                 try:
@@ -1099,13 +1090,38 @@ cdef inline fill_typed_list(flex_list& retl, _listlike v,
                         "Type " + flex_type_enum_to_name(ft.get_type())
                          + " cannot be cast to type " + flex_type_enum_to_name(common_type))
 
-        else:
-            retl[write_pos] = ft
-
         write_pos += 1
 
-    if write_pos != len(v):
-        retl.resize(write_pos)
+    return write_pos
+
+
+@cython.boundscheck(False)
+cdef inline fill_typed_list(flex_list& retl, _listlike v,
+                            flex_type_enum common_type,
+                            bint ignore_translation_errors):
+    """
+    Fills a list, casting all elements to the common type.  Anything that
+    cannot be losslessly translated is ignored.
+    """
+
+    cdef size_t out_len = len(v)
+    retl.resize(out_len)
+
+    cdef size_t new_size = _fill_typed_sequence(&(retl[0]), v, common_type, ignore_translation_errors)
+
+    if new_size != out_len:
+        retl.resize(new_size)
+
+
+
+cdef process_common_typed_list(flexible_type* out_ptr, list v, flex_type_enum common_type):
+    """
+    External wrapper to the list filling function.
+
+    If common_type is UNDEFINED, then no processing is done.
+    """
+    _fill_typed_sequence(out_ptr, v, common_type, False);
+
 
 @cython.boundscheck(False)
 cdef inline tr_listlike_to_ft(flexible_type& ret, _listlike v, flex_type_enum* common_type = NULL):

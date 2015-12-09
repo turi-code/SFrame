@@ -7,18 +7,9 @@
  */
 #ifndef GRAPHLAB_LAMBDA_GRAPH_PYLAMBDA_EVALUATOR_HPP
 #define GRAPHLAB_LAMBDA_GRAPH_PYLAMBDA_EVALUATOR_HPP
-#include<lambda/graph_lambda_interface.hpp>
-#include<flexible_type/flexible_type.hpp>
-#include<vector>
-
-// Forward delcaration
-namespace boost {
-  namespace python {
-    namespace api {
-      class object;
-    }
-  }
-}
+#include <lambda/graph_lambda_interface.hpp>
+#include <flexible_type/flexible_type.hpp>
+#include <vector>
 
 namespace graphlab {
 
@@ -156,8 +147,7 @@ class graph_pylambda_evaluator : public graph_lambda_evaluator_interface {
   std::vector<std::string> m_edge_keys;
   size_t m_srcid_column;
   size_t m_dstid_column;
-  boost::python::api::object* m_current_lambda = NULL;
-
+  
   pysgraph_synchronize m_graph_sync;
 };
 

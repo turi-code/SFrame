@@ -5,21 +5,11 @@
  * This software may be modified and distributed under the terms
  * of the BSD license. See the LICENSE file for details.
  */
-#include <lambda/graph_pylambda.hpp>
-#include <lambda/pyflexible_type.hpp>
-#include <lambda/python_api.hpp>
-#include <lambda/python_thread_guard.hpp>
 #include <lambda/lambda_utils.hpp>
-#include <Python.h>
-#include <boost/python.hpp>
+#include <lambda/graph_pylambda.hpp>
 
 namespace graphlab {
 namespace lambda {
-
-namespace python = boost::python;
-
-typedef python::dict py_vertex_object;
-typedef python::dict py_edge_object;
 
 /**************************************************************************/
 /*                                                                        */
@@ -85,13 +75,9 @@ vertex_partition_exchange pysgraph_synchronize::get_vertex_partition_exchange(si
 /*                                                                        */
 /**************************************************************************/
 graph_pylambda_evaluator::graph_pylambda_evaluator() {
-  python_thread_guard guard;
-  m_current_lambda = new python::object;
 }
 
 graph_pylambda_evaluator::~graph_pylambda_evaluator() {
-  python_thread_guard guard;
-  delete m_current_lambda;
 }
 
 void graph_pylambda_evaluator::init(const std::string& lambda,
@@ -117,7 +103,6 @@ void graph_pylambda_evaluator::clear() {
   m_graph_sync.clear();
   m_srcid_column = -1;
   m_dstid_column = -1;
-  *m_current_lambda = python::object();
 }
 
 std::vector<sgraph_edge_data> graph_pylambda_evaluator::eval_triple_apply(
@@ -125,84 +110,74 @@ std::vector<sgraph_edge_data> graph_pylambda_evaluator::eval_triple_apply(
     size_t src_partition, size_t dst_partition,
     const std::vector<size_t>& mutated_edge_field_ids) {
 
-  logstream(LOG_INFO) << "graph_lambda_worker eval triple apply " << src_partition 
-                      << ", " << dst_partition << std::endl;
-  python_thread_guard guard;
-  DASSERT_TRUE(is_loaded(src_partition));
-  DASSERT_TRUE(is_loaded(dst_partition));
+  return std::vector<sgraph_edge_data>();
+  
+  // logstream(LOG_INFO) << "graph_lambda_worker eval triple apply " << src_partition 
+  //                     << ", " << dst_partition << std::endl;
+  // python_thread_guard guard;
+  // DASSERT_TRUE(is_loaded(src_partition));
+  // DASSERT_TRUE(is_loaded(dst_partition));
 
-  py_edge_object edge_object;
-  py_vertex_object source_object;
-  py_vertex_object target_object;
+  // py_edge_object edge_object;
+  // py_vertex_object source_object;
+  // py_vertex_object target_object;
 
-  auto& source_partition = m_graph_sync.get_partition(src_partition);
-  auto& target_partition = m_graph_sync.get_partition(dst_partition);
+  // auto& source_partition = m_graph_sync.get_partition(src_partition);
+  // auto& target_partition = m_graph_sync.get_partition(dst_partition);
 
-  std::vector<std::string> mutated_edge_keys;
-  for (size_t fid: mutated_edge_field_ids) {
-    mutated_edge_keys.push_back(m_edge_keys[fid]);
-  }
+  // std::vector<std::string> mutated_edge_keys;
+  // for (size_t fid: mutated_edge_field_ids) {
+  //   mutated_edge_keys.push_back(m_edge_keys[fid]);
+  // }
 
-  std::vector<sgraph_edge_data> ret(all_edge_data.size());
-  try {
-    size_t cnt = 0;
-    for (const auto& edata: all_edge_data) {
-      PyDict_UpdateFromFlex(edge_object, m_edge_keys, edata);
-      size_t srcid = edata[m_srcid_column];
-      size_t dstid = edata[m_dstid_column];
+  // std::vector<sgraph_edge_data> ret(all_edge_data.size());
+  // try {
+  //   size_t cnt = 0;
+  //   for (const auto& edata: all_edge_data) {
+  //     PyDict_UpdateFromFlex(edge_object, m_edge_keys, edata);
+  //     size_t srcid = edata[m_srcid_column];
+  //     size_t dstid = edata[m_dstid_column];
 
-      auto& source_vertex = source_partition[srcid];
-      auto& target_vertex = target_partition[dstid];
+  //     auto& source_vertex = source_partition[srcid];
+  //     auto& target_vertex = target_partition[dstid];
 
-      PyDict_UpdateFromFlex(source_object, m_vertex_keys, source_vertex);
-      PyDict_UpdateFromFlex(target_object, m_vertex_keys, target_vertex);
+  //     PyDict_UpdateFromFlex(source_object, m_vertex_keys, source_vertex);
+  //     PyDict_UpdateFromFlex(target_object, m_vertex_keys, target_vertex);
 
-      python::object lambda_ret = (*m_current_lambda)(source_object, edge_object, target_object);
-      if (lambda_ret.is_none() || !PyTuple_Check(lambda_ret.ptr()) || python::len(lambda_ret) != 3) {
-        throw(std::string("Lambda must return a tuple of the form (source_data, edge_data, target_data)."));
-      }
+  //     python::object lambda_ret = (*m_current_lambda)(source_object, edge_object, target_object);
+  //     if (lambda_ret.is_none() || !PyTuple_Check(lambda_ret.ptr()) || python::len(lambda_ret) != 3) {
+  //       throw(std::string("Lambda must return a tuple of the form (source_data, edge_data, target_data)."));
+  //     }
 
-      for (size_t i = 0; i < m_vertex_keys.size(); ++i) {
-        source_vertex[i] = PyObject_AsFlex(lambda_ret[0][m_vertex_keys[i]]);
-        target_vertex[i] = PyObject_AsFlex(lambda_ret[2][m_vertex_keys[i]]);
-      }
+  //     for (size_t i = 0; i < m_vertex_keys.size(); ++i) {
+  //       source_vertex[i] = PyObject_AsFlex(lambda_ret[0][m_vertex_keys[i]]);
+  //       target_vertex[i] = PyObject_AsFlex(lambda_ret[2][m_vertex_keys[i]]);
+  //     }
 
-      if (!mutated_edge_field_ids.empty()) {
-        edge_object.update(lambda_ret[1]);
-        for (auto& key: mutated_edge_keys)
-          ret[cnt].push_back(PyObject_AsFlex(edge_object[key]));
-      }
-      ++cnt;
-    }
-  } catch (python::error_already_set const& e) {
-    std::string error_string = parse_python_error();
-    throw(error_string);
-  } catch (std::exception& e) {
-    throw(std::string(e.what()));
-  } catch (const char* e) {
-    throw(e);
-  } catch (std::string& e) {
-    throw(e);
-  } catch (...) {
-    throw("Unknown exception from python lambda evaluation.");
-  }
-  return ret;
+  //     if (!mutated_edge_field_ids.empty()) {
+  //       edge_object.update(lambda_ret[1]);
+  //       for (auto& key: mutated_edge_keys)
+  //         ret[cnt].push_back(PyObject_AsFlex(edge_object[key]));
+  //     }
+  //     ++cnt;
+  //   }
+  // } catch (python::error_already_set const& e) {
+  //   std::string error_string = parse_python_error();
+  //   throw(error_string);
+  // } catch (std::exception& e) {
+  //   throw(std::string(e.what()));
+  // } catch (const char* e) {
+  //   throw(e);
+  // } catch (std::string& e) {
+  //   throw(e);
+  // } catch (...) {
+  //   throw("Unknown exception from python lambda evaluation.");
+  // }
+  // return ret;
 }
 
 void graph_pylambda_evaluator::make_lambda(const std::string& pylambda_str) {
-  python_thread_guard guard;
-  try {
-    python::object pickle = python::import("pickle");
-    PyObject* lambda_bytes = PyByteArray_FromStringAndSize(pylambda_str.c_str(), pylambda_str.size());
-    *m_current_lambda = python::object((pickle.attr("loads")(python::object(python::handle<>(lambda_bytes)))));
-  } catch (python::error_already_set const& e) {
-    std::string error_string = parse_python_error();
-    throw(error_string);
-  } catch (std::exception& e) {
-    throw(std::string(e.what()));
-  } catch (...) {
-    throw("Unknown exception from python lambda evaluation.");
-  }
+  
 }
 
 }

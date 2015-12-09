@@ -12,22 +12,71 @@
 #include <parallel/pthread_tools.hpp>
 #include <string>
 
-// Forward delcaration
-namespace boost {
-  namespace python {
-    namespace api {
-      class object;
-    }
-  }
+namespace graphlab {
+
+namespace shmipc {
+class server;
 }
 
-namespace graphlab {
-namespace shmipc {
-  class server;
-}
 class sframe_rows;
 
 namespace lambda {
+
+struct lambda_exception_info {
+  bool exception_occured = false;
+  std::string exception_pickle;
+  std::string exception_string;
+};
+
+/** The data used in the common call type.
+ */
+struct lambda_call_data {
+  flex_type_enum output_enum_type = flex_type_enum::UNDEFINED;
+  bool skip_undefined = false;
+
+  // It's the responsibility of the calling class to make sure these
+  // are valid.  input_values and output_values must point to storage
+  // of at least n_inputs values.
+  const flexible_type* input_values = nullptr;
+  flexible_type* output_values = nullptr;
+  size_t n_inputs = 0;
+};
+
+/** The data used in the call by dict call type.
+ */
+struct lambda_call_by_dict_data {
+  flex_type_enum output_enum_type = flex_type_enum::UNDEFINED;
+  bool skip_undefined = false;
+
+  // It's the responsibility of the calling class to make sure these
+  // are valid.  output_values must point to storage
+  // of at least input_rows->size() values.
+  const std::vector<std::string>* input_keys = nullptr;
+  const std::vector<std::vector<flexible_type> >* input_rows = nullptr;
+  flexible_type* output_values = nullptr;
+};
+
+/** The data used in the call by sframe rows call type.
+ */
+struct lambda_call_by_sframe_rows_data {
+  flex_type_enum output_enum_type = flex_type_enum::UNDEFINED;
+  bool skip_undefined = false;
+
+  const std::vector<std::string>* input_keys = nullptr;
+  const sframe_rows* input_rows = nullptr;
+  flexible_type* output_values = nullptr;
+};
+
+
+struct pylambda_evaluation_functions {
+  void (*set_random_seed)(size_t seed);
+  size_t (*init_lambda)(const std::string&, lambda_exception_info*);
+  void (*release_lambda)(size_t, lambda_exception_info*);
+  void (*eval_lambda)(size_t, lambda_call_data*, lambda_exception_info*);
+  void (*eval_lambda_by_dict)(size_t, lambda_call_by_dict_data*, lambda_exception_info*);
+  void (*eval_lambda_by_sframe_rows)(size_t, lambda_call_by_sframe_rows_data*, lambda_exception_info*);
+};
+
 /**
  * \ingroup lambda
  *
@@ -54,7 +103,6 @@ class pylambda_evaluator : public lambda_evaluator_interface {
    */
   inline pylambda_evaluator(graphlab::shmipc::server* shared_memory_server = nullptr) { 
     m_shared_memory_server = shared_memory_server;
-    m_current_lambda_hash = (size_t)(-1); 
   };
 
   ~pylambda_evaluator();
@@ -83,16 +131,16 @@ class pylambda_evaluator : public lambda_evaluator_interface {
    * the cppipc interface doesn't support true overload
    */
   std::vector<flexible_type> bulk_eval_rows(size_t lambda_hash,
-      const sframe_rows& values, bool skip_undefined, int seed); 
+                                            const sframe_rows& values, bool skip_undefined, int seed);
 
   /**
    * Evaluate the lambda function on each element separately in the values.
    * The value element is combined with the keys to form a dictionary argument. 
    */
   std::vector<flexible_type> bulk_eval_dict(size_t lambda_hash,
-      const std::vector<std::string>& keys,
-      const std::vector<std::vector<flexible_type>>& values,
-      bool skip_undefined, int seed);
+                                            const std::vector<std::string>& keys,
+                                            const std::vector<std::vector<flexible_type>>& values,
+                                            bool skip_undefined, int seed);
 
   /**
    * \overload
@@ -101,9 +149,9 @@ class pylambda_evaluator : public lambda_evaluator_interface {
    * the cppipc interface doesn't support true overload
    */
   std::vector<flexible_type> bulk_eval_dict_rows(size_t lambda_hash,
-      const std::vector<std::string>& keys,
-      const sframe_rows& values,
-      bool skip_undefined, int seed);
+                                                 const std::vector<std::string>& keys,
+                                                 const sframe_rows& values,
+                                                 bool skip_undefined, int seed);
 
   /**
    * Initializes shared memory communication via SHMIPC.
@@ -135,16 +183,19 @@ class pylambda_evaluator : public lambda_evaluator_interface {
    */
   std::vector<flexible_type> bulk_eval_rows_serialized(const char* ptr, size_t len);
 
-  /**
-   * The unpickled python lambda object.
-   */
-  boost::python::api::object* m_current_lambda = NULL;
-  std::map<size_t, boost::python::api::object*> m_lambda_hash;
-  size_t m_current_lambda_hash;
   graphlab::shmipc::server* m_shared_memory_server;
   graphlab::thread m_shared_memory_listener;
   volatile bool m_shared_memory_thread_terminating = false;
 };
-  } // end of lambda namespace
+} // end of lambda namespace
 } // end of graphlab namespace
+
+
+/** This is called through ctypes to set up the evaluation function interface.
+ */
+extern "C" {
+  void set_pylambda_evaluation_functions(void* eval_function_struct);
+}
+
+
 #endif

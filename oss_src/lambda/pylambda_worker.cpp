@@ -5,18 +5,13 @@
  * This software may be modified and distributed under the terms
  * of the BSD license. See the LICENSE file for details.
  */
-#include <boost/program_options.hpp>
 #include <cppipc/server/comm_server.hpp>
 #include <lambda/pylambda.hpp>
-#include <lambda/python_api.hpp>
 #include <shmipc/shmipc.hpp>
 #include <lambda/graph_pylambda.hpp>
 #include <logger/logger.hpp>
 #include <process/process_util.hpp>
-#include <boost/python.hpp>
 #include <util/try_finally.hpp>
-
-namespace po = boost::program_options;
 
 using namespace graphlab;
 
@@ -93,42 +88,10 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
 
     LOG_DEBUG_WITH_PID("Library function entered successfully.");
 
-    // Whenever this is set, it must be restored upon return to python. 
-    PyThreadState *python_gil_thread_state = nullptr;
-    scoped_finally gil_restorer([&](){
-        if(python_gil_thread_state != nullptr) {
-          LOG_DEBUG_WITH_PID("Restoring GIL thread state.");
-          PyEval_RestoreThread(python_gil_thread_state);
-          LOG_DEBUG_WITH_PID("GIL thread state restored.");
-          python_gil_thread_state = nullptr;
-        }
-      });
-    
-    try {
-
-      LOG_DEBUG_WITH_PID("Attempting to initialize python.");
-      graphlab::lambda::init_python(root_path);
-      LOG_DEBUG_WITH_PID("Python initialized successfully.");
-    
-    } catch (const std::string& error) {
-      logstream(LOG_ERROR) << this_pid << ": "
-                           << "Failed to initialize python (internal exception): " << error << std::endl;
-      return 101;
-    } catch (const std::exception& e) {
-      logstream(LOG_ERROR) << this_pid << ": "
-                           << "Failed to initialize python: " << e.what() << std::endl;
-      return 102;
-    }
-
     if(server_address == "debug") {
       logstream(LOG_INFO) << "Exiting dry run." << std::endl;
       return 1; 
     }
-
-    // Now, release the gil and continue. 
-    python_gil_thread_state = PyEval_SaveThread();
-
-    LOG_DEBUG_WITH_PID("Python GIL released.");
     
     graphlab::shmipc::server shm_comm_server;
     bool has_shm = shm_comm_server.bind();

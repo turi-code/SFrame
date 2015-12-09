@@ -121,6 +121,7 @@ cdef gl_options_map gl_options_map_from_pydict(dict) except *
 cdef flex_list common_typed_flex_list_from_iterable(object, flex_type_enum* common_type) except *
 cdef flex_list flex_list_from_iterable(object) except *
 cdef flex_list flex_list_from_typed_iterable(object, flex_type_enum t, bint ignore_cast_failure) except *
+cdef process_common_typed_list(flexible_type* out_ptr, list v, flex_type_enum common_type)
 
 #/**************************************************************************/
 #/*                                                                        */

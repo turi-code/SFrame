@@ -28,7 +28,7 @@ endforeach()
 
 set(INSTALLATION_BINARY_TARGETS
   unity_server
-  spark_unity
+  ## spark_unity
   pylambda_worker
   minipsutil
 )
