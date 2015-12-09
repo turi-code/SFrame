@@ -243,11 +243,12 @@ class fixed_size_cache_manager {
   }
 
  private:
-
   fixed_size_cache_manager();
 
+ public:
   ~fixed_size_cache_manager();
 
+ private:
   fixed_size_cache_manager(const fixed_size_cache_manager& other) = delete;
 
   fixed_size_cache_manager& operator=(const fixed_size_cache_manager& other) = delete;

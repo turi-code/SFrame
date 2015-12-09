@@ -543,6 +543,23 @@ class SArray(object):
         proxy.load_from_avro(filename)
         return cls(_proxy = proxy)
 
+    def to_numpy(self):
+        """
+        Converts this SArray to a numpy array
+
+        This operation will construct a numpy array in memory. Care must
+        be taken when size of the returned object is big.
+
+        Returns
+        -------
+        out : numpy.ndarray
+            A Numpy Array containing all the values of the SArray
+
+        """
+        assert HAS_NUMPY
+        import numpy
+        return numpy.asarray(self)
+
     def __get_content_identifier__(self):
         """
         Returns the unique identifier of the content that backs the SArray

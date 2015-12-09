@@ -3011,6 +3011,18 @@ class SFrameTest(unittest.TestCase):
         for i in range(0, 4000, 20):
             self.assertEqual(X[i], {'a' : 1000 + i, 'c' : 1000 + i})
             
+    def test_to_numpy(self):
+        X = SFrame({'a' : range(100),
+                    'b' : range(100)})
+        import numpy as np
+        import numpy.testing as nptest
+        Y = np.transpose(np.array([range(100), range(100)]))
+        nptest.assert_array_equal(X.to_numpy(), Y)
+
+        X['b'] = X['b'].astype(str)
+        s = [str(i) for i in range(100)]
+        Y = np.transpose(np.array([s, s]))
+        nptest.assert_array_equal(X.to_numpy(), Y)
 
 if __name__ == "__main__":
 
