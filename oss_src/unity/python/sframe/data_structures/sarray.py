@@ -3139,4 +3139,9 @@ class SArray(object):
         """
         if min_observations < 0:
             raise ValueError("min_observations must be a positive integer")
-        return SArray(_proxy=self.__proxy__.rolling_apply("mean", window_start, window_end, min_observations))
+        agg_op = None
+        if self.dtype() is array.array:
+            agg_op = '__builtin__vector__avg__'
+        else:
+            agg_op = '__builtin__avg__'
+        return SArray(_proxy=self.__proxy__.rolling_apply(agg_op, window_start, window_end, min_observations))

@@ -1815,7 +1815,7 @@ class SArrayTest(unittest.TestCase):
             res = data.rolling_mean(4,2)
 
         ### Non-numeric
-        with self.assertRaisesRegexp(RuntimeError, '.*numeric.*'):
+        with self.assertRaisesRegexp(RuntimeError, '.*Unsupported.*type.*'):
             res = SArray(self.string_data).rolling_mean(0,1)
 
         ### Empty SArray

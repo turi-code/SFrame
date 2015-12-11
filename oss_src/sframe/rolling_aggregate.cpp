@@ -24,7 +24,7 @@ size_t calculate_window_size(ssize_t start, ssize_t end) {
 
 std::shared_ptr<sarray<flexible_type>> rolling_apply(
     const sarray<flexible_type> &input,
-    std::string fn_name,
+    std::shared_ptr<group_aggregate_value> agg_op,
     ssize_t window_start,
     ssize_t window_end,
     size_t min_observations) {
@@ -37,24 +37,12 @@ std::shared_ptr<sarray<flexible_type>> rolling_apply(
   size_t total_window_size = calculate_window_size(window_start, window_end);
   if(total_window_size > uint32_t(-1)) {
     //TODO: Move this to a runtime configurable constant
-    log_and_throw("Excessive window size. Hardcoded limit is: " +
+    log_and_throw("Window size cannot be larger than " +
         std::to_string(uint32_t(-1)));
   }
 
   if(min_observations > total_window_size) {
     min_observations = total_window_size;
-  }
-
-  /// Convert function name to actual function
-  boost::algorithm::to_lower(fn_name);
-  auto fn = agg_string_to_fn<boost::circular_buffer<flexible_type>::iterator>(fn_name);
-
-  // Logic to constrain the right types to each function For now, we'll just
-  // take numeric for all functions, but it can use fn_name to multiplex should
-  // there be an aggregation function that works on non-numeric types
-  if(input.get_type() != flex_type_enum::INTEGER &&
-      input.get_type() != flex_type_enum::FLOAT) {
-    log_and_throw("SArray must be numeric type");
   }
 
   auto num_segments = thread::cpu_count();
@@ -123,7 +111,7 @@ std::shared_ptr<sarray<flexible_type>> rolling_apply(
             window_buf.begin(), window_buf.end())) {
         *out_iter = flex_undefined();
       } else {
-        auto result = fn(window_buf.begin(), window_buf.end());
+        auto result = full_window_aggregate(agg_op, window_buf.begin(), window_buf.end());
         // Record the emitted type from the function. We just take the first
         // one that is non-NULL.
         if(fn_returned_types[segment_id] == flex_type_enum::UNDEFINED && 
@@ -171,6 +159,36 @@ std::shared_ptr<sarray<flexible_type>> rolling_apply(
   ret_sarray->close();
   return ret_sarray;
 }
+
+/**
+ * Given the string name of the aggregation function, returns the corresponding
+ * function.
+ * 
+ * Throws exception if:
+ *  - The name does not correspond to an implemented function.
+ */
+/*
+full_window_fn_type_t agg_string_to_fn(const std::string &fn_name) {
+  if(fn_name == "mean" || fn_name == "average") {
+    return full_window_aggregate<graphlab::groupby_operators::average, circ_buffer_iterator_t>;
+  } else if(fn_name == "sum") {
+    return full_window_aggregate<graphlab::groupby_operators::sum, circ_buffer_iterator_t>;
+  } else if(fn_name == "min") {
+    return full_window_aggregate<graphlab::groupby_operators::min, circ_buffer_iterator_t>;
+  } else if(fn_name == "max") {
+    return full_window_aggregate<graphlab::groupby_operators::max, circ_buffer_iterator_t>;
+  } else if(fn_name == "variance") {
+    return full_window_aggregate<graphlab::groupby_operators::variance, circ_buffer_iterator_t>;
+  } else if(fn_name == "stdv") {
+    return full_window_aggregate<graphlab::groupby_operators::stdv, circ_buffer_iterator_t>;
+  } else {
+    log_and_throw("Invalid function name: " + fn_name);
+  }
+
+  // Should never get here
+  return nullptr;
+}
+*/
 
 } // namespace rolling_aggregate
 } // namespace graphlab

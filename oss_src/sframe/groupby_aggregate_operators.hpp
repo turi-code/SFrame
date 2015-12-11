@@ -618,7 +618,7 @@ class vector_average: public group_aggregate_value {
     }
   }
 
-  /// Emits the count resulpt
+  /// Emits the count result
   flexible_type emit() const {
     if (failure) {
       return flexible_type(flex_type_enum::UNDEFINED);
@@ -691,7 +691,7 @@ class average: public group_aggregate_value {
     }
   }
 
-  /// Emits the count resulpt
+  /// Emits the count result
   flexible_type emit() const {
     if (count == 0) return FLEX_UNDEFINED;
     else return value;

@@ -3,6 +3,7 @@
 
 #include <flexible_type/flexible_type.hpp>
 #include <sframe/sarray.hpp>
+#include <sframe/groupby_aggregate_operators.hpp>
 
 namespace graphlab {
 namespace rolling_aggregate {
@@ -38,9 +39,12 @@ namespace rolling_aggregate {
  *  
  * 
  */
+typedef boost::circular_buffer<flexible_type>::iterator circ_buffer_iterator_t;
+typedef std::function<flexible_type(circ_buffer_iterator_t,circ_buffer_iterator_t)> full_window_fn_type_t;
+
 std::shared_ptr<sarray<flexible_type>> rolling_apply(
     const sarray<flexible_type> &input,
-    std::string fn_name, 
+    std::shared_ptr<group_aggregate_value> agg_op,
     ssize_t window_start,
     ssize_t window_end,
     size_t min_observations=0);
@@ -48,22 +52,21 @@ std::shared_ptr<sarray<flexible_type>> rolling_apply(
 
 /// Aggregate functions
 template<typename Iterator>
-flexible_type mean(Iterator first, Iterator last) {
-  flexible_type f = 0.0f;
-  size_t count = 0;
-  size_t non_null_count = 0;
-  for(; first != last; ++first, ++count) {
-    if(first->get_type() == flex_type_enum::UNDEFINED)
-      continue;
-    f += *first;
-    ++non_null_count;
+flexible_type full_window_aggregate(std::shared_ptr<group_aggregate_value> agg_op,
+    Iterator first, Iterator last) {
+  auto agg = agg_op->new_instance();
+  bool type_checked = false;
+  for(; first != last; ++first) {
+    if(!type_checked && first->get_type() != flex_type_enum::UNDEFINED) {
+      type_checked = true;
+      if(!agg->support_type(first->get_type())) {
+        log_and_throw("Unsupported column type!"); 
+      }
+    }
+    agg->add_element_simple(*first);
   }
 
-  if(!count)
-    return flex_undefined();
-
-  //TODO: Should I divide at end, or each iteration?
-  return f / float(non_null_count);
+  return agg->emit();
 }
 
 
@@ -93,26 +96,6 @@ bool has_min_observations(size_t min_observations,
     return (observations == count);
 
   return false;
-}
-
-/**
- * Given the string name of the aggregation function, returns the corresponding
- * function.
- * 
- * Throws exception if:
- *  - The name does not correspond to an implemented function.
- */
-template <typename Iterator>
-std::function<flexible_type(Iterator,Iterator)> agg_string_to_fn(
-    const std::string &fn_name) {
-  if(fn_name == "mean") {
-    return mean<Iterator>;
-  } else {
-    log_and_throw("Invalid function name: " + fn_name);
-  }
-
-  // Should never get here
-  return nullptr;
 }
 
 } // namespace rolling_aggregate
