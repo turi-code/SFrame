@@ -8,13 +8,14 @@ make_executable(unity_server
                 SOURCES
                   unity_server_init.cpp
                   unity_server.cpp
+                  unity_server_main.cpp
+                  unity_server_options.cpp
+                  lambda_worker_startup.cpp
                 REQUIRES
                   unity
                   perf
                   tcmalloc
-                  crash_handler
                   minipsutil_static)
-
 
 add_dependencies(unity_server pylambda_worker spark_unity ./oss_src/sframe/spark_unity.jar)
 
