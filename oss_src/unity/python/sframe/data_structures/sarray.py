@@ -3145,3 +3145,19 @@ class SArray(object):
         else:
             agg_op = '__builtin__avg__'
         return SArray(_proxy=self.__proxy__.rolling_apply(agg_op, window_start, window_end, min_observations))
+
+    def rolling_sum(self, window_start, window_end, min_observations=0):
+        if min_observations < 0:
+            raise ValueError("min_observations must be a positive integer")
+        agg_op = None
+        if self.dtype() is array.array:
+            agg_op = '__builtin__vector__sum__'
+        else:
+            agg_op = '__builtin__sum__'
+        return SArray(_proxy=self.__proxy__.rolling_apply(agg_op, window_start, window_end, min_observations))
+
+    def rolling_quantile(self, window_start, window_end, quantile, min_observations=0):
+        if min_observations < 0:
+            raise ValueError("min_observations must be a positive integer")
+        agg_op = _aggregate.QUANTILE('blah',quantile)
+        return SArray(_proxy=self.__proxy__.rolling_apply(agg_op, window_start, window_end, min_observations))

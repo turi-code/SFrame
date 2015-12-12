@@ -55,20 +55,12 @@ template<typename Iterator>
 flexible_type full_window_aggregate(std::shared_ptr<group_aggregate_value> agg_op,
     Iterator first, Iterator last) {
   auto agg = agg_op->new_instance();
-  bool type_checked = false;
   for(; first != last; ++first) {
-    if(!type_checked && first->get_type() != flex_type_enum::UNDEFINED) {
-      type_checked = true;
-      if(!agg->support_type(first->get_type())) {
-        log_and_throw("Unsupported column type!"); 
-      }
-    }
     agg->add_element_simple(*first);
   }
 
   return agg->emit();
 }
-
 
 /**
  * Scans the current window to check for the number of non-NULL values.

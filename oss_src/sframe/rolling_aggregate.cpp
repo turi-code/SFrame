@@ -33,6 +33,13 @@ std::shared_ptr<sarray<flexible_type>> rolling_apply(
     log_and_throw("Start of window cannot be >= end of window.");
   }
 
+  // Check type is supported by aggregate operator
+  if(!agg_op->support_type(input.get_type())) {
+    log_and_throw(agg_op->name() + std::string(" does not support input type."));
+  }
+
+  agg_op->set_input_type(input.get_type());
+
   // Get window size given inclusive range
   size_t total_window_size = calculate_window_size(window_start, window_end);
   if(total_window_size > uint32_t(-1)) {
@@ -159,36 +166,6 @@ std::shared_ptr<sarray<flexible_type>> rolling_apply(
   ret_sarray->close();
   return ret_sarray;
 }
-
-/**
- * Given the string name of the aggregation function, returns the corresponding
- * function.
- * 
- * Throws exception if:
- *  - The name does not correspond to an implemented function.
- */
-/*
-full_window_fn_type_t agg_string_to_fn(const std::string &fn_name) {
-  if(fn_name == "mean" || fn_name == "average") {
-    return full_window_aggregate<graphlab::groupby_operators::average, circ_buffer_iterator_t>;
-  } else if(fn_name == "sum") {
-    return full_window_aggregate<graphlab::groupby_operators::sum, circ_buffer_iterator_t>;
-  } else if(fn_name == "min") {
-    return full_window_aggregate<graphlab::groupby_operators::min, circ_buffer_iterator_t>;
-  } else if(fn_name == "max") {
-    return full_window_aggregate<graphlab::groupby_operators::max, circ_buffer_iterator_t>;
-  } else if(fn_name == "variance") {
-    return full_window_aggregate<graphlab::groupby_operators::variance, circ_buffer_iterator_t>;
-  } else if(fn_name == "stdv") {
-    return full_window_aggregate<graphlab::groupby_operators::stdv, circ_buffer_iterator_t>;
-  } else {
-    log_and_throw("Invalid function name: " + fn_name);
-  }
-
-  // Should never get here
-  return nullptr;
-}
-*/
 
 } // namespace rolling_aggregate
 } // namespace graphlab

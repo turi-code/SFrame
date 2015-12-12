@@ -1687,7 +1687,7 @@ class SArrayTest(unittest.TestCase):
         Y = np.array([str(i) for i in range(100)])
         nptest.assert_array_equal(X.to_numpy(), Y)
 
-    def test_rolling_apply(self):
+    def test_rolling_mean(self):
         data = SArray(range(1000))
         neg_data = SArray(range(-100,100,2))
 
@@ -1701,24 +1701,24 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(res,expected,float)
 
         # Test min observations
-        res = data.rolling_mean(-3,0,min_observations=5)
+        res = data.rolling_mean(-3, 0, min_observations=5)
         self.__test_equal(res,expected,float)
 
-        res = data.rolling_mean(-3,0,min_observations=4)
+        res = data.rolling_mean(-3, 0, min_observations=4)
         self.__test_equal(res,expected,float)
 
-        res = data.rolling_mean(-3,0,min_observations=0)
+        res = data.rolling_mean(-3, 0, min_observations=0)
         self.__test_equal(res,expected,float)
 
-        res = data.rolling_mean(-3,0,min_observations=3)
+        res = data.rolling_mean(-3, 0, min_observations=3)
         expected[2] = 1.0
         self.__test_equal(res,expected,float)
 
-        res = data.rolling_mean(-3,0,min_observations=2)
+        res = data.rolling_mean(-3, 0, min_observations=2)
         expected[1] = 0.5
         self.__test_equal(res,expected,float)
 
-        res = data.rolling_mean(-3,0,min_observations=1)
+        res = data.rolling_mean(-3, 0, min_observations=1)
         expected[0] = 0.0
         self.__test_equal(res,expected,float)
 
@@ -1732,6 +1732,11 @@ class SArrayTest(unittest.TestCase):
         # Test float inputs as well
         res = neg_data.astype(float).rolling_mean(-3,0)
         self.__test_equal(res,expected,float)
+
+        # Test vector input
+        res = SArray(self.vec_data).rolling_mean(-3,0)
+        expected = [None for i in range(3)] + [array.array('d',[i+.5, i+1.5]) for i in range(2,9)]
+        self.__test_equal(res,expected,array.array)
 
         ### Small forward window including current
         res = data.rolling_mean(0,4)
@@ -1815,7 +1820,7 @@ class SArrayTest(unittest.TestCase):
             res = data.rolling_mean(4,2)
 
         ### Non-numeric
-        with self.assertRaisesRegexp(RuntimeError, '.*Unsupported.*type.*'):
+        with self.assertRaisesRegexp(RuntimeError, '.*support.*type.*'):
             res = SArray(self.string_data).rolling_mean(0,1)
 
         ### Empty SArray
@@ -1828,3 +1833,148 @@ class SArrayTest(unittest.TestCase):
         res = sa.rolling_mean(0,1)
         self.__test_equal(res, [1.5,2.5,None], float)
 
+    def test_rolling_sum(self):
+        data = SArray(range(1000))
+        neg_data = SArray(range(-100,100,2))
+
+        ### Small backward window including current 
+        res = data.rolling_sum(-3,0)
+        expected = [None for i in range(3)] + [i for i in range(6,3994,4)]
+        self.__test_equal(res,expected,int)
+        
+        # Test float inputs as well
+        res = data.astype(float).rolling_sum(-3,0)
+        self.__test_equal(res,expected,float)
+
+        # Test min observations
+        res = data.rolling_sum(-3, 0, min_observations=5)
+        self.__test_equal(res,expected,int)
+
+        res = data.rolling_sum(-3, 0, min_observations=4)
+        self.__test_equal(res,expected,int)
+
+        res = data.rolling_sum(-3, 0, min_observations=0)
+        self.__test_equal(res,expected,int)
+
+        res = data.rolling_sum(-3, 0, min_observations=3)
+        expected[2] = 3
+        self.__test_equal(res,expected,int)
+
+        res = data.rolling_sum(-3, 0, min_observations=2)
+        expected[1] = 1
+        self.__test_equal(res,expected,int)
+
+        res = data.rolling_sum(-3, 0, min_observations=1)
+        expected[0] = 0
+        self.__test_equal(res,expected,int)
+
+        with self.assertRaises(ValueError):
+            res = data.rolling_sum(-3,0,min_observations=-1)
+
+        res = neg_data.rolling_sum(-3,0)
+        expected = [None for i in range(3)] + [i for i in range(-388,388,8)]
+        self.__test_equal(res,expected,int)
+
+        # Test float inputs as well
+        res = neg_data.astype(float).rolling_sum(-3,0)
+        self.__test_equal(res,expected,float)
+
+        # Test vector input
+        res = SArray(self.vec_data).rolling_sum(-3,0)
+        expected = [None for i in range(3)] + [array.array('d',[i, i+4]) for i in range(10,38,4)]
+        self.__test_equal(res,expected,array.array)
+
+        ### Small forward window including current
+        res = data.rolling_sum(0,4)
+        expected = [float(i) for i in range(10,998)] + [None for i in range(4)]
+        self.__test_equal(res,expected,float)
+
+        res = neg_data.rolling_sum(0,4)
+        expected = [float(i) for i in range(-96,95,2)] + [None for i in range(4)]
+        self.__test_equal(res,expected,float)
+
+        ### Small backward window not including current
+        res = data.rolling_sum(-5,-1)
+        expected = [None for i in range(5)] + [float(i) for i in range(2,997)]
+        self.__test_equal(res,expected,float)
+
+        res = neg_data.rolling_sum(-5,-1)
+        expected = [None for i in range(5)] + [float(i) for i in range(-96,94,2)]
+        self.__test_equal(res,expected,float)
+
+        ### Small forward window not including current
+        res = data.rolling_sum(1,5)
+        expected = [float(i) for i in range(3,998)] + [None for i in range(5)]
+        self.__test_equal(res,expected,float)
+
+        res = neg_data.rolling_sum(1,5)
+        expected = [float(i) for i in range(-94,96,2)] + [None for i in range(5)]
+        self.__test_equal(res,expected,float)
+        
+        ### "Centered" rolling aggregate
+        res = data.rolling_sum(-2,2)
+        expected = [None for i in range(2)] + [float(i) for i in range(2,998)] + [None for i in range(2)]
+        self.__test_equal(res,expected,float)
+
+        res = neg_data.rolling_sum(-2,2)
+        expected = [None for i in range(2)] + [float(i) for i in range(-96,96,2)] + [None for i in range(2)]
+        self.__test_equal(res,expected,float)
+
+        ### Lopsided rolling aggregate
+        res = data.rolling_sum(-2,1)
+        expected = [None for i in range(2)] + [i + .5 for i in range(1,998)] + [None for i in range(1)]
+        self.__test_equal(res,expected,float)
+
+        res = neg_data.rolling_sum(-2,1)
+        expected = [None for i in range(2)] + [float(i) for i in range(-97,97,2)] + [None for i in range(1)]
+        self.__test_equal(res,expected,float)
+
+        ### A very forward window
+        res = data.rolling_sum(500,502)
+        expected = [float(i) for i in range(501,999)] + [None for i in range(502)]
+        self.__test_equal(res,expected,float)
+
+        res = neg_data.rolling_sum(50,52)
+        expected = [float(i) for i in range(2,98,2)] + [None for i in range(52)]
+        self.__test_equal(res,expected,float)
+
+        ### A very backward window
+        res = data.rolling_sum(-502,-500)
+        expected = [None for i in range(502)] + [float(i) for i in range(1,499)]
+        self.__test_equal(res,expected,float)
+
+        res = neg_data.rolling_sum(-52,-50)
+        expected = [None for i in range(52)] + [float(i) for i in range(-98,-2,2)]
+        self.__test_equal(res,expected,float)
+
+        ### A window size much larger than anticipated segment size
+        res = data.rolling_sum(0,749)
+        expected = [i + .5 for i in range(374,625)] + [None for i in range(749)]
+        self.__test_equal(res,expected,float)
+
+        ### A window size larger than the array
+        res = data.rolling_sum(0,1000)
+        expected = [None for i in range(1000)]
+        self.__test_equal(res,expected,type(None))
+
+        ### A window size of 1
+        with self.assertRaises(RuntimeError):
+            res = data.rolling_sum(0,0)
+
+        ### A negative window size
+        with self.assertRaises(RuntimeError):
+            res = data.rolling_sum(4,2)
+
+        ### Non-numeric
+        with self.assertRaisesRegexp(RuntimeError, '.*support.*type.*'):
+            res = SArray(self.string_data).rolling_sum(0,1)
+
+        ### Empty SArray
+        sa = SArray()
+        res = sa.rolling_sum(0,1)
+        self.__test_equal(res, [], type(None))
+
+        ### Small SArray
+        sa = SArray([1,2,3])
+        res = sa.rolling_sum(0,1)
+        self.__test_equal(res, [1.5,2.5,None], float)
