@@ -16,7 +16,6 @@ namespace graphlab {
 
 class flexible_type;
 
-extern std::string GLOBALS_MAIN_PROCESS_BINARY;
 extern std::string GLOBALS_MAIN_PROCESS_PATH;
 extern std::string GLOBALS_PYTHON_EXECUTABLE;
 
@@ -126,10 +125,10 @@ set_global_error_codes set_global(std::string name, flexible_type val);
 
 /**
  * Initialize all registered global variables from environment variables.
- * Also initializes the globals GLOBALS_MAIN_PROCESS_BINARY and 
- * GLOBALS_MAIN_PROCESS_PATH from argv[0] which must be passed in from main()
+ * Also initializes the globals
+ * GLOBALS_MAIN_PROCESS_PATH from root_path which is the root directory of installation
  */
-void initialize_globals_from_environment(std::string argv0);
+void initialize_globals_from_environment(std::string root_path);
 
 } // namespace globals
 } // namespace graphlab

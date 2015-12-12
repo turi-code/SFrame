@@ -15,11 +15,9 @@
 
 namespace graphlab {
 
-EXPORT std::string GLOBALS_MAIN_PROCESS_BINARY;
 EXPORT std::string GLOBALS_MAIN_PROCESS_PATH;
 EXPORT std::string GLOBALS_PYTHON_EXECUTABLE;
 
-REGISTER_GLOBAL(std::string, GLOBALS_MAIN_PROCESS_BINARY, false);
 REGISTER_GLOBAL(std::string, GLOBALS_MAIN_PROCESS_PATH, false);
 REGISTER_GLOBAL(std::string, GLOBALS_PYTHON_EXECUTABLE, true);
 
@@ -271,7 +269,7 @@ set_global_error_codes set_global(std::string name, flexible_type val) {
   return set_global_error_codes::SUCCESS;
 }
 
-void initialize_globals_from_environment(std::string argv0) {
+void initialize_globals_from_environment(std::string root_path) {
   for (auto& i: get_global_registry()) {
     std::string envname = i.name;
     char* envval = getenv(envname.c_str());
@@ -290,12 +288,7 @@ void initialize_globals_from_environment(std::string argv0) {
 
   // these two special variables cannot be environment overidden, 
   // so set them  last
-  boost::filesystem::path argvpath(argv0);
-  argvpath = boost::filesystem::absolute(argvpath);
-
-  GLOBALS_MAIN_PROCESS_BINARY = argvpath.string();
-  GLOBALS_MAIN_PROCESS_PATH = argvpath.parent_path().string();
-//   logstream(LOG_INFO) << "Main process binary: " << GLOBALS_MAIN_PROCESS_BINARY << std::endl;
+  GLOBALS_MAIN_PROCESS_PATH = root_path;
 //   logstream(LOG_INFO) << "Main process path: " << GLOBALS_MAIN_PROCESS_PATH << std::endl;
 }
 

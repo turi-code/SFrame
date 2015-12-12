@@ -219,7 +219,7 @@ void configure_global_environment(std::string argv0) {
     graphlab::fileio::FILEIO_MAXIMUM_CACHE_CAPACITY = total_system_memory / 2;
   }
   graphlab::globals::initialize_globals_from_environment(argv0);
-  
+
 
   // force initialize rng
   graphlab::random::get_source();

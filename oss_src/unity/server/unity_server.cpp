@@ -71,7 +71,7 @@ class unity_server {
       });
 
     server->start();
-    init_extensions(options.root_path);
+    // init_extensions(options.root_path);
     init_pylambda_worker();
 
     logstream(LOG_EMPH) << "Unity server listening on: " <<  options.server_address << std::endl;
@@ -119,6 +119,14 @@ class unity_server {
     delete toolkit_functions;
     delete toolkit_classes;
     global_logger().add_observer(LOG_PROGRESS, NULL);
+  }
+
+  cppipc::comm_server* get_server() {
+    return server;
+  }
+
+  std::string get_address() {
+    return options.server_address;
   }
 
  protected:
@@ -184,6 +192,33 @@ void start_standalone_unity_server(const unity_server_options& server_options) {
   server.start();
   server.wait_on_stdin();
   server.cleanup();
+}
+
+// Global embeded server and client object
+static unity_server* EMBEDED_SERVER;
+static cppipc::comm_client* EMBEDED_CLIENT;
+
+void start_embeded_server(const unity_server_options& server_options) {
+  EMBEDED_SERVER = new unity_server(server_options);
+  EMBEDED_SERVER->start();
+
+  auto zmq_ctx = EMBEDED_SERVER->get_server()->get_zmq_context();
+  // we are going to leak this pointer 
+  EMBEDED_CLIENT = new cppipc::comm_client(EMBEDED_SERVER->get_address(), zmq_ctx);
+  EMBEDED_CLIENT->start();
+}
+
+void* get_embeded_client() {
+  return (void*)EMBEDED_CLIENT;
+}
+
+void stop_embeded_server() {
+  logstream(LOG_EMPH) << "Stopping server" << std::endl;
+  if (EMBEDED_SERVER) {
+    EMBEDED_SERVER->cleanup();
+    delete EMBEDED_SERVER;
+    EMBEDED_SERVER = NULL;
+  }
 }
 
 } // end of graphlab
