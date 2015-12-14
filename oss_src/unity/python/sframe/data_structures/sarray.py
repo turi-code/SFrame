@@ -1044,8 +1044,6 @@ class SArray(object):
             return val_list[other - lb]
 
         elif type(other) is SArray:
-            if len(other) != sa_len:
-                raise IndexError("Cannot perform logical indexing on arrays of different length.")
             with cython_context():
                 return SArray(_proxy = self.__proxy__.logical_filter(other.__proxy__))
 

@@ -43,9 +43,6 @@ class planner {
    *
    * Internally, the materialization hierarchy is:
    *  - \ref planner::materialize Handles the most general materializations
-   *  - \ref planner::partial_materialize Handles the most general materializations 
-   *                                      but performs all materializations except 
-   *                                      for the last stage. A private function.
    *  - \ref planner::execute_node Replicates a plan for parallelization. 
    *                               A private function.
    *  - \ref subplan_executor Executes a restricted plan.
@@ -65,8 +62,7 @@ class planner {
    */
   void materialize(std::shared_ptr<planner_node> tip,
                    write_callback_type callback,
-                   size_t num_segments,
-                   bool partial_materialize = true);
+                   size_t num_segments);
 
   
   /** If this returns true, it is recommended to go ahead and

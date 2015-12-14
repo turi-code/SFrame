@@ -365,23 +365,9 @@ std::shared_ptr<unity_sarray_base> unity_sarray::head(size_t nrows) {
       }
       return false;
     };
-    try {
-      query_eval::planner().materialize(this->get_planner_node(),
-                                        callback, 
-                                        1, /* process in as 1 segment */
-                                        false /* do not partially materialize */ );
-    } catch (...) {
-      // it's ok, let's try it again with partial materialize
-      sa_head = std::make_shared<sarray<flexible_type>>();
-      sa_head->open_for_write(1);
-      sa_head->set_type(dtype());
-      auto out = sa_head->get_output_iterator(0);
-      row_counter = 0;
-      query_eval::planner().materialize(this->get_planner_node(),
-                                        callback,
-                                        1 /* process in as 1 segment */,
-                                        true /* partial materialize */);
-    }
+    query_eval::planner().materialize(this->get_planner_node(),
+                                      callback, 
+                                      1 /* process in as 1 segment */);
   }
   sa_head->close();
   auto ret = std::make_shared<unity_sarray>();
@@ -556,9 +542,17 @@ unity_sarray::logical_filter(std::shared_ptr<unity_sarray_base> index) {
   ASSERT_TRUE(index != nullptr);
   std::shared_ptr<unity_sarray> other_array = 
       std::static_pointer_cast<unity_sarray>(index);
+
   // Checking the size of index array is the same 
-  if (this->size() != other_array->size()) {
-    log_and_throw("Logical filter array must have the same size");
+  if (this->has_size() && other_array->has_size()) {
+    if (this->size() != other_array->size()) {
+      log_and_throw("Logical filter array must have the same size");
+    }
+  } else {
+    logprogress_stream 
+        << "Unable to infer that left and right of logical filter "
+        << "have the same length. We are proceeding anyway. "
+        << "If they do not have the same length, a failure will occur on materialization." << std::endl;
   }
 
   std::shared_ptr<unity_sarray> other_array_binarized = 
@@ -1411,7 +1405,7 @@ std::shared_ptr<unity_sarray_base> unity_sarray::scalar_operator(flexible_type o
       get_binary_operator(left_type, right_type, op);
 
   // quick exit for empty array
-  if (size() == 0) {
+  if (has_size() && size() == 0) {
     std::shared_ptr<unity_sarray> ret(new unity_sarray);
     ret->construct_from_vector(std::vector<flexible_type>(), output_type);
     return ret;
@@ -1470,15 +1464,22 @@ std::shared_ptr<unity_sarray_base> unity_sarray::vector_operator(
 
   flex_type_enum output_type =
       unity_sarray_binary_operations::get_output_type(dtype(), other->dtype(), op);
-  // empty arrays all around. quick exit
-  if (this->size() == 0 && other->size() == 0) {
-    auto ret = std::make_shared<unity_sarray>();
-    ret->construct_from_vector(std::vector<flexible_type>(), output_type);
-    return ret;
-  }
   // array mismatch
-  if (this->size() != other->size()) {
-    log_and_throw(std::string("Array size mismatch"));
+  if (this->has_size() && other->has_size()) {
+    if (this->size() != other->size()) {
+      log_and_throw(std::string("Array size mismatch"));
+    }
+    // empty arrays all around. quick exit
+    if (this->size() == 0 && other->size() == 0) {
+      auto ret = std::make_shared<unity_sarray>();
+      ret->construct_from_vector(std::vector<flexible_type>(), output_type);
+      return ret;
+    }
+  } else {
+    logprogress_stream 
+        << "Unable to infer that left and right of logical filter "
+        << "have the same length. We are proceeding anyway. "
+        << "If they do not have the same length, a failure will occur on materialization." << std::endl;
   }
 
   // we are ready to perform the transform. Build the transform operation

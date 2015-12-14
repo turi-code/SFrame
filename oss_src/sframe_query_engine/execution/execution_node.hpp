@@ -14,11 +14,25 @@
 #include <boost/coroutine/coroutine.hpp>
 #include <flexible_type/flexible_type.hpp>
 #include <sframe_query_engine/operators/operator.hpp>
+#include <sframe_query_engine/util/broadcast_queue.hpp>
 
 namespace graphlab { 
 class sframe_rows;
 
+template <>
+struct broadcast_queue_serializer<std::shared_ptr<sframe_rows>> {
+  void save(oarchive& oarc, const std::shared_ptr<sframe_rows>& t) {
+    oarc << (*t);
+  }
+  void load(iarchive& iarc, std::shared_ptr<sframe_rows>& t) {
+    t = std::make_shared<sframe_rows>();
+    iarc >> (*t);
+  }
+};
+
 namespace query_eval {
+
+
 class query_context;
 /**
  * The execution node provides a wrapper around an operator. It
@@ -101,21 +115,15 @@ class query_context;
  *  consumed for the left logical filter.
  * 
  * A solution to this requires the selector_source to buffer its reads
- * while feeding the left logical_filter. However, that is not tractable since
- * there is no upper limit as to how much has to be buffered.
+ * while feeding the left logical_filter. The solution to this is to either
+ * assume that all connected operators operate at exactly the same rate 
+ * (we can guarantee this with some care as to how the operator graph is 
+ * constructed), or we allow buffering. This buffering has to be somewhat
+ * intelligent because it may require unbounded buffers.
  *
- * (There are arbitrarily complicated alternative solutions though)
- *
- * Therefore, it is required that during execution, all connected operators
- * operate at exactly the same rate. This is a tricky thing to test though.
- * 
- * \subsection execution_node_uniform_rate_control Uniform Rate Assumption
- *
- * This uniform execution rate control assumption allows for one clear
- * additional benefit. i.e. only one output buffer is required for each operator
- * and this output buffer and be arbitrarily reused. Since, the next time
- * any operator is called, it is guaranteed that any previous data it generated
- * has already been consumed.
+ * An earlier version of this execution model used the former procedure 
+ * (assuming uniform rate), now we use the \ref broadcast_queue to provide 
+ * unbounfed buffering.
  *
  * \subsection execution_node_usage execution_node Usage
  *
@@ -240,13 +248,7 @@ class execution_node  : public std::enable_shared_from_this<execution_node> {
   };
   std::vector<input_node> m_inputs;
 
-  /**
-   * every block of output is assigned an ID. The ID of the current
-   * head is the m_head. The queue has a maximum length of 2 since
-   * all consumers must consume in lock step, the gap between the min position
-   * and max position of consumers is at most 1.
-   */
-  std::queue<std::shared_ptr<sframe_rows> > m_output_queue; 
+  std::unique_ptr<broadcast_queue<std::shared_ptr<sframe_rows> > > m_output_queue;
   size_t m_head = 0; 
   bool m_coroutines_started = false;
   bool m_skip_next_block = false;

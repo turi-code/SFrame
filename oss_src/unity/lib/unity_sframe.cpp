@@ -701,22 +701,9 @@ std::shared_ptr<unity_sframe_base> unity_sframe::head(size_t nrows) {
       return false;
     };
 
-    try {
-      query_eval::planner().materialize(this->get_planner_node(),
-                                        callback,
-                                        1 /* process in as 1 segment */,
-                                        false /* do not partial materialize */);
-    } catch (...) {
-      // it's ok, let's try it again with partial materialize
-      sf_head = sframe();
-      sf_head.open_for_write(column_names(), dtype(), "", 1);
-      out = sf_head.get_output_iterator(0);
-      row_counter = 0;
-      query_eval::planner().materialize(this->get_planner_node(),
-                                        callback,
-                                        1 /* process in as 1 segment */,
-                                        true /* partial materialize */);
-    }
+    query_eval::planner().materialize(this->get_planner_node(),
+                                      callback,
+                                      1 /* process in as 1 segment */);
   }
   sf_head.close();
   std::shared_ptr<unity_sframe> ret(new unity_sframe());
@@ -761,8 +748,15 @@ std::shared_ptr<unity_sframe_base> unity_sframe::logical_filter(
   std::shared_ptr<unity_sarray> filter_array = std::static_pointer_cast<unity_sarray>(index);
 
   // Checking the size of index array is the same
-  if (this->size() != filter_array->size()) {
-    log_and_throw("Logical filter array must have the same size");
+  if (this->has_size() && filter_array->has_size()) {
+    if (this->size() != filter_array->size()) {
+      log_and_throw("Logical filter array must have the same size");
+    }
+  } else {
+    logprogress_stream 
+        << "Unable to infer that left and right of logical filter "
+        << "have the same length. We are proceeding anyway. "
+        << "If they do not have the same length, a failure will occur on materialization." << std::endl;
   }
 
   std::shared_ptr<unity_sarray> other_array_binarized =
