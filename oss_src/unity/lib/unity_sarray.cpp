@@ -1477,7 +1477,7 @@ std::shared_ptr<unity_sarray_base> unity_sarray::vector_operator(
     }
   } else {
     logprogress_stream 
-        << "Unable to infer that left and right of logical filter "
+        << "Unable to infer that left and right of operation "
         << "have the same length. We are proceeding anyway. "
         << "If they do not have the same length, a failure will occur on materialization." << std::endl;
   }
