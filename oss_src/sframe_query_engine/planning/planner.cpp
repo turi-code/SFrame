@@ -47,8 +47,9 @@ static sframe execute_node_impl(pnode_ptr input_n, const materialize_options& ex
   }
 }
 
+
 /**
- * Executes a linear query plan, potentially parallelizing it if possible.
+ * Executes a query plan, potentially parallelizing it if possible.
  * Also implements fast paths in the event the input node is a source node.
  */
 static sframe execute_node(pnode_ptr input_n, const materialize_options& exec_params) {
@@ -69,8 +70,7 @@ static sframe execute_node(pnode_ptr input_n, const materialize_options& exec_pa
         sf.save(exec_params.output_index_file);
       }
       return sf;
-    } else {
-    }
+    } 
     // fast path for SARRAY_SOURCE . If I am not streaming into
     // a callback, I can just call save
   } else if (exec_params.write_callback == nullptr &&
@@ -145,6 +145,102 @@ static sframe execute_node(pnode_ptr input_n, const materialize_options& exec_pa
 }
 ////////////////////////////////////////////////////////////////////////////////
 
+/** 
+ * Materializes deeper nodes, leaving with just a single linearly executable 
+ * execution node.
+ *
+ * For instance:
+ * Source  --> Transform  ------| 
+ *                              v 
+ * Source' --> Transform' ---> Reduce --> Transform
+ *
+ * Since, (Source --> Transform) and (Source' --> Transform') are linearly
+ * executable segments, but Reduce is not, This will trigger materialization on 
+ * the append, leaving with just
+ *
+ * Source --> Transform. 
+ *
+ * Since this is now completely linear, this will return.
+ *
+ * For the final round, ends up with a source node that can just be passed to
+ * the executor to run. This node will be parallel slicable.
+ */
+static pnode_ptr partial_materialize_impl(pnode_ptr n, 
+                                          const materialize_options& exec_params,
+                                          std::map<pnode_ptr, pnode_ptr>& memo
+                                         ) {
+  if (memo.count(n)) return memo[n];
+  for(size_t i = 0; i < n->inputs.size(); ++i) {
+    n->inputs[i] = partial_materialize_impl(n->inputs[i], exec_params, memo);
+  }
+
+  // If we are just a source node of some sort, 
+  if(n->inputs.empty()) {
+    DASSERT_TRUE(is_source_node(n));
+    memo[n] = n;
+    return n;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // In some cases we just pass through things. 
+
+  // Make sure that the inputs are all parallel sliceable.
+
+  if(!consumes_inputs_at_same_rates(n)) {
+    // consumes inputs at different rates. 
+    // materialize all inputs into this node
+    for(auto& i: n->inputs) {
+      // logprogress_stream << "Partial Materializing: " << i << std::endl;
+      auto optimized_i = optimization_engine::optimize_planner_graph(i, exec_params);
+      (*i) = (*op_sframe_source::make_planner_node(execute_node(optimized_i, exec_params)));
+    }
+    // logprogress_stream << "Reduced Plan: " << n << std::endl;
+  }
+
+  if(is_linear_transform(n) || is_sublinear_transform(n)) {
+    memo[n] = n;
+    return n;
+  }
+
+  // logprogress_stream << "Partial Materializing: " << n << std::endl;
+  // Otherwise, instantiate this node.
+  auto optimized_n = optimization_engine::optimize_planner_graph(n, exec_params);
+  (*n) = (*op_sframe_source::make_planner_node(execute_node(optimized_n, exec_params)));
+  memo[n] = n;
+  return memo[n];
+}
+
+pnode_ptr naive_partial_materialize(pnode_ptr n, const materialize_options& exec_params) {
+
+  // Recursively call materialize on all parent nodes, replacing them
+  // with source nodes in this graph.  If our node simply joins a
+  // number of source nodes together, then go and execute each one.
+
+  for(size_t i = 0; i < n->inputs.size(); ++i) {
+
+    if(! (planner_node_type_to_attributes(n->inputs[i]->operator_type).attribute_bitfield
+          & query_operator_attributes::SOURCE)) {
+
+      // For now, ignore other possible downstream nodes attached to
+      // this input.
+      pnode_ptr p = naive_partial_materialize(n->inputs[i], exec_params);
+      sframe sf = execute_node(p, exec_params);
+      n->inputs[i] = op_sframe_source::make_planner_node(sf);
+    }
+  }
+  return n;
+}
+
+static pnode_ptr partial_materialize(pnode_ptr ptip, 
+                                     const materialize_options& exec_params) {
+  // Naive mode is for error checking.
+  if(exec_params.naive_mode) {
+    return naive_partial_materialize(ptip, exec_params); 
+  } else { 
+    std::map<pnode_ptr, pnode_ptr> memo;
+    return partial_materialize_impl(ptip, exec_params, memo);
+  }
+}
 sframe planner::materialize(pnode_ptr ptip, 
                             materialize_options exec_params) {
   std::lock_guard<recursive_mutex> GLOBAL_LOCK(global_query_lock);
@@ -167,6 +263,17 @@ sframe planner::materialize(pnode_ptr ptip,
   // Execute stuff.
   pnode_ptr final_node = ptip;
 
+
+  // Partially materialize the graph first
+  // Only a subset of execution paramets matter to the partial materialization calls.
+  if (exec_params.partial_materialize) {
+    materialize_options recursive_exec_params = exec_params;
+    recursive_exec_params.num_segments = thread::cpu_count();
+    recursive_exec_params.output_index_file = ""; // no forced output location
+    recursive_exec_params.write_callback = nullptr;
+    final_node = partial_materialize(ptip, recursive_exec_params);
+  }
+  logstream(LOG_INFO) << "Reduced plan: " << final_node << std::endl;
 
   if (exec_params.write_callback == nullptr) {
     // no write callback

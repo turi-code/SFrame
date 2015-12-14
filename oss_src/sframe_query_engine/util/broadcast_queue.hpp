@@ -120,13 +120,6 @@ struct broadcast_queue_serializer {
  *
  * This thus satisfies the desirable properties of the single consumer queue.
  *
- * Simple optimizations like the following can be used to reduce the number
- * of files further:
- *  -  once we reach 2k, we dump the first k to a file.  but we don't close the
- *  file. After which every new insertion will shift the queue. one element
- *  gets written to disk, as one element gets inserted. Only when the file must
- *  be read by a consumer, then it gets flushed.
- *
  * The architecture is hence:
  * 1. memory queue
  * 1. push file
@@ -153,6 +146,21 @@ struct broadcast_queue_serializer {
  *    file to a pop file.  
  *  - If I am reading from memory queue, advance to the 
  *    next memory queue element
+ *
+ * Optimizations
+ * -------------
+ * More optimizations are needed to minimize the number of files created.
+ * 1. Use a pool of file names which we can reuse rather than create a new one
+ * everytime we need a new file.
+ *
+ * 2. Once we reach 2k, we dump the first k to a file.  but we don't close the
+ *  file. After which every new insertion will shift the queue. one element
+ *  gets written to disk, as one element gets inserted. Only when the file must
+ *  be read by a consumer, then it gets flushed.
+ *
+ * 3. Delay the creation of the "pop file" from the "push file" as late as we 
+ * can. i.e. we only create the pop file when there is a consumer who needs to
+ * read from the data just written to the push file
  */
 template <typename T, typename Serializer = broadcast_queue_serializer<T>>
 class broadcast_queue {
@@ -168,6 +176,7 @@ class broadcast_queue {
     if (m_cache_limit == 0) m_cache_limit = 1;
   }
   void reset() {
+    m_consumers.clear();
     // clear the pop queue, deleting files if necessary
     while(!m_pop_queues.empty()) release_pop_queue_front();
 
@@ -178,7 +187,6 @@ class broadcast_queue {
     }
     m_push_queue.file_name.clear();
 
-    m_consumers.clear();
 
     delete_all_cache_files();
   }
@@ -203,6 +211,14 @@ class broadcast_queue {
     ++m_push_queue.nelements;
     ++nelements_pushed;
 
+    if (m_push_queue.write_handle) {
+      for (auto& c: m_consumers) {
+        if (c.reading_from_push_queue() && c.element_offset == 0) {
+          flip_queues();
+          break;
+        } 
+      }
+    }
     if (!m_push_queue.write_handle) {
       // no output file yet
       // push until 2 * cache limit
@@ -219,6 +235,9 @@ class broadcast_queue {
       oarchive oarc(*m_push_queue.write_handle);
       m_serializer.save(oarc, m_push_queue.element_cache.front());
       m_push_queue.element_cache.pop_front();
+      for (auto& c: m_consumers) {
+        if (c.reading_from_push_queue()) --c.element_offset;
+      }
     }
   }
   /**
@@ -401,6 +420,14 @@ class broadcast_queue {
     }
   } 
 
+  bool has_push_queue_reader() {
+    return std::any_of(m_consumers.begin(), 
+                    m_consumers.end(),
+                    [](const consumer& c) {
+                      return c.reading_from_push_queue();
+                    });
+  }
+
   /**
    * To be called when the size of the in memory cache exceeds 2 *
    * the cache limit.
@@ -414,13 +441,7 @@ class broadcast_queue {
     // completely close the file and shift it to the pull queue.
     // this requires a whole bunch of datastructure updates to be
     // performed by flip_queues
-    bool has_push_queue_reader = 
-        std::any_of(m_consumers.begin(), 
-                    m_consumers.end(),
-                    [](const consumer& c) {
-                      return c.reading_from_push_queue();
-                    });
-    if (has_push_queue_reader) {
+    if (has_push_queue_reader()) {
       m_push_queue.file_name = get_cache_file();
       m_push_queue.write_handle = 
           std::make_shared<general_ofstream>(m_push_queue.file_name);
@@ -438,16 +459,24 @@ class broadcast_queue {
       }
       free(oarc.buf);
 
-      flip_queues();
-
+      bool must_flip_queue = false;
       // now we need to update all the consumers
       // which are reading directly from elements.
+      for (auto& c: m_consumers) {
+        if (c.reading_from_push_queue() && c.element_offset < m_cache_limit) {
+          must_flip_queue = true;
+          break;
+        }
+      }
+      if (must_flip_queue) flip_queues();
+
       for (auto& c: m_consumers) {
         // reading from elements
         if (c.reading_from_push_queue()) {
           if (c.element_offset >= m_cache_limit) {
             c.element_offset -= m_cache_limit;
           } else {
+            DASSERT_EQ(must_flip_queue, true);
             // convert element offset to file_offset
             c.current_pop_queue = m_pop_queues.back();
             c.file_offset = file_offsets[c.element_offset];
@@ -456,8 +485,8 @@ class broadcast_queue {
         }
       }
     } else {
-      m_push_queue.file_name = 
-          fileio::fixed_size_cache_manager::get_instance().get_temp_cache_id("dqueue");
+      // no push queue reader. open a push file and just dump
+      m_push_queue.file_name = get_cache_file();
       m_push_queue.write_handle = 
           std::make_shared<general_ofstream>(m_push_queue.file_name);
       oarchive oarc(*m_push_queue.write_handle);
