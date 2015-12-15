@@ -42,9 +42,6 @@ file_logger& global_logger() {
   return l;
 }
 
-
-
-
 void streambuffdestructor(void* v){
   logger_impl::streambuff_tls_entry* t =
     reinterpret_cast<logger_impl::streambuff_tls_entry*>(v);
@@ -240,29 +237,32 @@ void file_logger::_lograw(int lineloglevel, const char* buf, int len) {
     fout.flush();
   }
   pthread_mutex_unlock(&mut);
-  if (log_to_console) {
+  if (log_to_console || log_to_stderr) {
+    auto& out = log_to_stderr ? stderr : stdout;
+
 #ifdef COLOROUTPUT
+
     pthread_mutex_lock(&mut);
     if (lineloglevel == LOG_FATAL) {
       textcolor(stderr, BRIGHT, RED);
     }
     else if (lineloglevel == LOG_ERROR) {
-      textcolor(stdout, BRIGHT, RED);
+      textcolor(out, BRIGHT, RED);
     }
     else if (lineloglevel == LOG_WARNING) {
-      textcolor(stdout, BRIGHT, MAGENTA);
+      textcolor(out, BRIGHT, MAGENTA);
     }
     else if (lineloglevel == LOG_DEBUG) {
-      textcolor(stdout, BRIGHT, YELLOW);
+      textcolor(out, BRIGHT, YELLOW);
     }
     else if (lineloglevel == LOG_EMPH) {
-      textcolor(stdout, BRIGHT, GREEN);
+      textcolor(out, BRIGHT, GREEN);
     }
 #endif
     if(lineloglevel >= LOG_FATAL) {
       std::cerr.write(buf,len);
     } else {
-      std::cout.write(buf,len);
+      (log_to_stderr ? std::cerr : std::cout).write(buf,len);
     }
 #ifdef COLOROUTPUT
 
@@ -270,7 +270,7 @@ void file_logger::_lograw(int lineloglevel, const char* buf, int len) {
     if (lineloglevel >= LOG_FATAL) {
       reset_color(stderr);
     } else {
-      reset_color(stdout);
+      reset_color(out);
     }
 #endif
   }
