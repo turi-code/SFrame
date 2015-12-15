@@ -91,6 +91,9 @@ class EmbededServer(GraphLabServer):
         if sys.platform == 'win32':
             self.unity_log += ".0"
 
+        server_env = _sys_util.make_unity_server_env()
+        os.environ.update(server_env)
+
         self.dll.start_embeded_server.argtypes = [c_char_p, c_char_p, c_char_p]
         self.dll.start_embeded_server(self.root_path, self.server_addr, self.unity_log)
 
@@ -213,7 +216,7 @@ class LocalServer(GraphLabServer):
                 self.proc = subprocess.Popen(arglist,
                         env=_sys_util.make_unity_server_env(),
                         stdin=subprocess.PIPE, stdout=FNULL,
-                        stderr=None, bufsize=-1) # preexec_fn not supported on windows
+                        stderr=None, bufsize=-1)  # preexec_fn not supported on windows
             else:
                 self.proc = subprocess.Popen(arglist,
                         env=_sys_util.make_unity_server_env(),
