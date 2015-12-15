@@ -9,6 +9,7 @@ import sys
 import os
 import logging
 from distutils.util import get_platform as _get_platform
+import ctypes
 import glob as _glob
 import subprocess as _subprocess
 import _pylambda_worker
@@ -61,8 +62,29 @@ def make_unity_server_env():
 
     # For Windows, add path to DLLs for the pylambda_worker
     if sys.platform == 'win32':
-        env['PATH'] = os.path.dirname(os.path.abspath(_pylambda_worker.__file__)) +\
-                os.path.pathsep + env['PATH']
+        lib_path = os.path.dirname(os.path.abspath(_pylambda_worker.__file__))
+        env['PATH'] = lib_path + os.path.pathsep + env['PATH']
+
+        def errcheck_bool(result, func, args):
+            if not result:
+                last_error = ctypes.get_last_error()
+                if last_error != 0:
+                    raise ctypes.WinError(last_error)
+                else:
+                    raise OSError
+            return args
+
+        # Also need to set the dll loading directory to the main
+        # folder so windows attempts to load all DLLs from this
+        # directory.
+        try:
+            kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+            kernel32.SetDllDirectoryW.errcheck = errcheck_bool
+            kernel32.SetDllDirectoryW.argtypes = (ctypes.wintypes.LPCWSTR,)
+            kernel32.SetDllDirectoryW(lib_path)
+        except Exception, e:
+            logging.getLogger(__name__).warning(
+                "Error setting DLL load orders: %s (things should still work)." % str(e))
     
     #### Remove PYTHONEXECUTABLE ####
     # Anaconda overwrites this environment variable

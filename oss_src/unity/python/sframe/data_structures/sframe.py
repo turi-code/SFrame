@@ -247,7 +247,7 @@ class SFrame(object):
     <https://dato.com/learn/translator>`_, `How-Tos
     <https://dato.com/learn/how-to>`_, and data science `Gallery
     <https://dato.com/learn/gallery>`_.
-    
+
     Parameters
     ----------
     data : array | pandas.DataFrame | string | dict, optional
@@ -1904,11 +1904,11 @@ class SFrame(object):
                 df, tmp_loc, finalSFramePrefix)
         else:
             if encoding == 'utf8':
-                ## TODO: This is a temporary solution. Here we are completely bypassing 
+                ## TODO: This is a temporary solution. Here we are completely bypassing
                 ## toSFrame() codepath when encoding is 'utf8'. This is because of Spark1.5 error
                 ## for closure cleaning issue on deep nested functions.
 
-                def f(iterator): 
+                def f(iterator):
                     for obj in iterator:
                         yield obj.encode("utf-8")
 
@@ -1916,7 +1916,7 @@ class SFrame(object):
                 encoding = "batch"
                 if(rdd._jrdd_deserializer.__class__.__name__ == 'PickleSerializer'):
                     encoding = "pickle"
-                
+
                 #finalSFrameFilename = graphlab_util_ref.toSFrame(
                 #    rdd._jrdd.rdd(),tmp_loc, finalSFramePrefix)
             #else:
@@ -2217,6 +2217,11 @@ class SFrame(object):
             Maximum width of a printed row. Columns beyond this width wrap to a
             new line. `max_row_width` is automatically reset to be the
             larger of itself and `max_column_width`.
+
+        output_file: file, optional
+            The stream or file that receives the output. By default the output
+            goes to sys.stdout, but it can also be redirected to a file or a
+            string (using an object of type StringIO).
 
         See Also
         --------

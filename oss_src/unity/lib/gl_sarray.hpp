@@ -14,6 +14,7 @@
 #include <string>
 #include <iostream>
 #include <sframe/sframe_rows.hpp>
+#include <sframe/group_aggregate_value.hpp>
 #include <flexible_type/flexible_type.hpp>
 
 namespace graphlab {
@@ -1719,6 +1720,37 @@ class gl_sarray {
   gl_sarray subslice(flexible_type start = FLEX_UNDEFINED, 
                      flexible_type stop = FLEX_UNDEFINED, 
                      flexible_type step = FLEX_UNDEFINED);
+  
+/**
+ *
+ *  An abstraction to perform cumulative aggregates.
+ *    y <- x.cumulative_aggregate(f, w_0)
+ *
+ *  The abstraction is as follows:
+ *    y[i+1], w[i+1] = func(x[i], w[i])
+ *
+ *  where w[i] is some arbitary state.
+ *
+ * \param[in] Function to perform the aggregate to keep track of state.
+ * \return SArray 
+ */
+ gl_sarray cumulative_aggregate(
+     std::shared_ptr<group_aggregate_value> aggregator) const; 
+
+  /**
+   *
+   *  This returns an SArray where each element is a cumulative aggregate of
+   *  all its previous elements. Only works in an SArray of numeric type or
+   *  numeric-array types. 
+   *
+   *  \return an SArray 
+   */
+  gl_sarray cumulative_sum() const;
+  gl_sarray cumulative_min() const;
+  gl_sarray cumulative_max() const;
+  gl_sarray cumulative_var() const;
+  gl_sarray cumulative_std() const;
+  gl_sarray cumulative_avg() const;
 
   /**
    * Apply an aggregate function over a moving window.

@@ -17,7 +17,7 @@ char *convert_args(const std::string &cmd,
     const std::vector<std::string> &args) {
   // Convert argument list to a single string
   std::stringstream master_arg_list;
-  master_arg_list << cmd << " ";
+  master_arg_list << "\"" << cmd << "\" ";
   for(auto &i : args) {
     master_arg_list << "\"";
     master_arg_list << i;
