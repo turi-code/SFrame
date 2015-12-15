@@ -25,6 +25,8 @@ from pandas.util.testing import assert_frame_equal
 restricted_place = '/root'
 if sys.platform == 'win32':
     restricted_place = 'C:/Windows/System32/config/RegBack'
+elif sys.platform == 'darwin':
+    restricted_place = '/System'
 
 def _test_save_load_object_helper(testcase, obj, url):
     """

@@ -32,6 +32,7 @@
 #include <sframe_query_engine/algorithm/groupby_aggregate.hpp>
 #include <lambda/pylambda_function.hpp>
 #include <exceptions/error_types.hpp>
+#include <unity/lib/messages.hpp>
 
 namespace graphlab {
 
@@ -753,10 +754,7 @@ std::shared_ptr<unity_sframe_base> unity_sframe::logical_filter(
       log_and_throw("Logical filter array must have the same size");
     }
   } else {
-    logprogress_stream 
-        << "Unable to infer that left and right of logical filter "
-        << "have the same length. We are proceeding anyway. "
-        << "If they do not have the same length, a failure will occur on materialization." << std::endl;
+    logprogress_stream << BINARY_LAZY_EVALUATION_UNKNOWN_LENGTH_MESSAGE << std::endl;
   }
 
   std::shared_ptr<unity_sarray> other_array_binarized =

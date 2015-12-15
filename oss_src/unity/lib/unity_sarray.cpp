@@ -41,6 +41,7 @@
 #include <sframe_query_engine/planning/planner.hpp>
 #include <sframe_query_engine/planning/optimization_engine.hpp>
 #include <sframe_query_engine/util/aggregates.hpp>
+#include <unity/lib/messages.hpp>
 
 namespace graphlab {
 
@@ -549,10 +550,7 @@ unity_sarray::logical_filter(std::shared_ptr<unity_sarray_base> index) {
       log_and_throw("Logical filter array must have the same size");
     }
   } else {
-    logprogress_stream 
-        << "Unable to infer that left and right of logical filter "
-        << "have the same length. We are proceeding anyway. "
-        << "If they do not have the same length, a failure will occur on materialization." << std::endl;
+    logprogress_stream << BINARY_LAZY_EVALUATION_UNKNOWN_LENGTH_MESSAGE << std::endl;
   }
 
   std::shared_ptr<unity_sarray> other_array_binarized = 
@@ -1473,10 +1471,7 @@ std::shared_ptr<unity_sarray_base> unity_sarray::vector_operator(
       return ret;
     }
   } else {
-    logprogress_stream 
-        << "Unable to infer that left and right of operation "
-        << "have the same length. We are proceeding anyway. "
-        << "If they do not have the same length, a failure will occur on materialization." << std::endl;
+    logprogress_stream << BINARY_LAZY_EVALUATION_UNKNOWN_LENGTH_MESSAGE << std::endl;
   }
 
   // we are ready to perform the transform. Build the transform operation
