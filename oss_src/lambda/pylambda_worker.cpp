@@ -44,6 +44,7 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
   } else {
     global_logger().set_log_level(LOG_INFO);
   }
+  global_logger().set_pid(get_my_pid());
 
   LOG_DEBUG_WITH_PID("root_path = '" << root_path << "'");
   LOG_DEBUG_WITH_PID("server_address = '" << server_address << "'");

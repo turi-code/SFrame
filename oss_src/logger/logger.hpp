@@ -358,11 +358,11 @@ struct streambuff_tls_entry {
   do {                                                                  \
     auto __log_funct = [&]() {                                          \
       std::ostringstream ss;                                            \
-      ss << "PID-" << get_my_pid() << ": ";                             \
+      ss << "PID-" << global_logger().get_pid() << ": ";                \
       ss << __VA_ARGS__;                                                \
       logstream(LOG_DEBUG) << ss.str() << std::endl;                    \
     };                                                                  \
-    { __log_funct(); }                                                  \
+    if(LOG_DEBUG >= global_logger().get_log_level()) { __log_funct(); } \
   } while(0)
 
 
@@ -397,6 +397,20 @@ class file_logger{
     log_to_stderr = _log_to_stderr;
   }
 
+  /// If consolelog is true, subsequent logger output will be written
+  /// to stdout / stderr.  If log_to_stderr is true, all output is
+  /// logged to stderr.
+  void set_pid(size_t pid) {
+    reference_pid = pid;
+  }
+
+  /// If consolelog is true, subsequent logger output will be written
+  /// to stdout / stderr.  If log_to_stderr is true, all output is
+  /// logged to stderr.
+  size_t get_pid() const {
+    return reference_pid;
+  }
+  
   /// Returns the current logger file.
   std::string get_log_file(void) {
     return log_file;
@@ -557,6 +571,8 @@ class file_logger{
   bool log_to_console;
   bool log_to_stderr;
   int log_level;
+
+  size_t reference_pid = 0;
 
   // LOG_NONE is the "highest" log level
   std::function<void(int lineloglevel, const char* buf, size_t len)> callback[LOG_NONE];
