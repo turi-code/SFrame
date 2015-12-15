@@ -1762,10 +1762,10 @@ class gl_sarray {
    *  {NULL,NULL,NULL,1.5,2.5,3.5,4.5,5.5,6.5,7.5}
    *  \endcode
    */
-  gl_sarray rolling_apply(const std::string &fn_name,
-                          ssize_t start,
-                          ssize_t end,
-                          size_t min_observations=size_t(-1)) const;
+  gl_sarray builtin_rolling_apply(const std::string &fn_name,
+                                  ssize_t start,
+                                  ssize_t end,
+                                  size_t min_observations=size_t(-1)) const;
 
   /**
    * \internal

@@ -2544,7 +2544,7 @@ create_sequential_sarray(ssize_t size, ssize_t start, bool reverse) {
     return row_num_column;
 }
 
-std::shared_ptr<unity_sarray_base> unity_sarray::rolling_apply(
+std::shared_ptr<unity_sarray_base> unity_sarray::builtin_rolling_apply(
     const std::string &fn_name,
     ssize_t start,
     ssize_t end,

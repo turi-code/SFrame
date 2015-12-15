@@ -722,10 +722,11 @@ class unity_sarray: public unity_sarray_base {
                                                                  float percent,
                                                                  int random_seed);
 
-  std::shared_ptr<unity_sarray_base> rolling_apply(const std::string &fn_name,
-                                                   ssize_t before,
-                                                   ssize_t after,
-                                                   size_t min_observations);
+   std::shared_ptr<unity_sarray_base> builtin_rolling_apply(
+       const std::string &fn_name,
+       ssize_t before,
+       ssize_t after,
+       size_t min_observations);
 
   void save(oarchive& oarc) const;
 
