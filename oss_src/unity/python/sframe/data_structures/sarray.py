@@ -3039,3 +3039,189 @@ class SArray(object):
         sf = _SFrame()
         sf['a'] = self
         return sf.sort('a', ascending)['a']
+
+    def cumulative_sum(self):
+        """
+        Return the cumulative sum of the elements in the SArray.
+
+        Returns an SArray where each element in the output corresponds to the
+        sum of all the elements preceding and including it. The SArray is
+        expected to be of numeric type (int, float), or a numeric vector type.
+
+        Returns
+        -------
+        out : sarray[int, float, array.array]
+
+        Notes
+        -----
+         - Missing values are ignored while performing the cumulative
+           aggregate operation.
+         - For SArray's of type array.array, all entries are expected to
+           be of the same size.
+
+        Examples
+        --------
+        >>> sa = SArray([1, 2, 3, 4, 5])
+        >>> sa.cumulative_sum()
+        dtype: int
+        rows: 3
+        [1, 3, 6, 10, 15]
+        """
+        from .. import extensions
+        _mt._get_metric_tracker().track('sarray.cumulative_sum')
+        return extensions._sarray_cumulative_built_in_aggregate(
+                                          self, "__builtin__cum_sum__")
+
+    def cumulative_mean(self):
+        """
+        Return the cumulative mean of the elements in the SArray.
+
+        Returns an SArray where each element in the output corresponds to the
+        mean value of all the elements preceding and including it. The SArray
+        is expected to be of numeric type (int, float), or a numeric vector
+        type.
+
+        Returns
+        -------
+        out : Sarray[float, array.array]
+
+        Notes
+        -----
+         - Missing values are ignored while performing the cumulative
+           aggregate operation.
+         - For SArray's of type array.array, all entries are expected to
+           be of the same size.
+
+        Examples
+        --------
+        >>> sa = SArray([1, 2, 3, 4, 5])
+        >>> sa.cumulative_mean()
+        dtype: float
+        rows: 3
+        [1, 1.5, 2, 2.5, 3]
+        """
+        from .. import extensions
+        _mt._get_metric_tracker().track('sarray.cumulative_mean')
+        return extensions._sarray_cumulative_built_in_aggregate(
+                                          self, "__builtin__cum_avg__")
+
+    def cumulative_min(self):
+        """
+        Return the cumulative minimum value of the elements in the SArray.
+
+        Returns an SArray where each element in the output corresponds to the
+        minimum value of all the elements preceding and including it. The
+        SArray is expected to be of numeric type (int, float).
+
+        Returns
+        -------
+        out : SArray[int, float]
+
+        Notes
+        -----
+         - Missing values are ignored while performing the cumulative
+           aggregate operation.
+
+        Examples
+        --------
+        >>> sa = SArray([1, 2, 3, 4, 0])
+        >>> sa.cumulative_min()
+        dtype: int
+        rows: 3
+        [1, 1, 1, 1, 0]
+        """
+        from .. import extensions
+        _mt._get_metric_tracker().track('sarray.cumulative_min')
+        return extensions._sarray_cumulative_built_in_aggregate(
+                                          self, "__builtin__cum_min__")
+
+    def cumulative_max(self):
+        """
+        Return the cumulative maximum value of the elements in the SArray.
+
+        Returns an SArray where each element in the output corresponds to the
+        maximum value of all the elements preceding and including it. The
+        SArray is expected to be of numeric type (int, float).
+
+        Returns
+        -------
+        out : SArray[int, float]
+
+        Notes
+        -----
+         - Missing values are ignored while performing the cumulative
+           aggregate operation.
+
+        Examples
+        --------
+        >>> sa = SArray([1, 0, 3, 4, 2])
+        >>> sa.cumulative_max()
+        dtype: int
+        rows: 3
+        [1, 1, 3, 4, 4]
+        """
+        from .. import extensions
+        _mt._get_metric_tracker().track('sarray.cumulative_max')
+        return extensions._sarray_cumulative_built_in_aggregate(
+                                          self, "__builtin__cum_max__")
+
+    def cumulative_std(self):
+        """
+        Return the cumulative standard deviation of the elements in the SArray.
+
+        Returns an SArray where each element in the output corresponds to the
+        standard deviation of all the elements preceding and including it. The
+        SArray is expected to be of numeric type, or a numeric vector type.
+
+        Returns
+        -------
+        out : SArray[int, float]
+
+        Notes
+        -----
+         - Missing values are ignored while performing the cumulative
+           aggregate operation.
+
+        Examples
+        --------
+        >>> sa = SArray([1, 2, 3, 4, 0])
+        >>> sa.cumulative_std()
+        dtype: float
+        rows: 3
+        [0.0, 0.5, 0.816496580927726, 1.118033988749895, 1.4142135623730951]
+        """
+        from .. import extensions
+        _mt._get_metric_tracker().track('sarray.cumulative_std')
+        return extensions._sarray_cumulative_built_in_aggregate(
+                                          self, "__builtin__cum_std__")
+
+    def cumulative_var(self):
+        """
+        Return the cumulative variance of the elements in the SArray.
+
+        Returns an SArray where each element in the output corresponds to the
+        variance of all the elements preceding and including it. The SArray is
+        expected to be of numeric type, or a numeric vector type.
+
+        Returns
+        -------
+        out : SArray[int, float]
+
+        Notes
+        -----
+         - Missing values are ignored while performing the cumulative
+           aggregate operation.
+
+        Examples
+        --------
+        >>> sa = SArray([1, 2, 3, 4, 0])
+        >>> sa.cumulative_var()
+        dtype: float
+        rows: 3
+        [0.0, 0.25, 0.6666666666666666, 1.25, 2.0]
+        """
+        from .. import extensions
+        _mt._get_metric_tracker().track('sarray.cumulative_var')
+        return extensions._sarray_cumulative_built_in_aggregate(
+                                          self, "__builtin__cum_var__")
+
