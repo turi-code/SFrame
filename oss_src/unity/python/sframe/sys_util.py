@@ -27,7 +27,8 @@ def make_unity_server_env():
     The environment has 3 components:
     1. CLASSPATH, contains hadoop class path
     2. __GL_PYTHON_EXECUTABLE__, path to the python executable
-    2. __GL_PYLAMBDA_SCRIPT__, path to the lambda worker executable
+    3. __GL_PYLAMBDA_SCRIPT__, path to the lambda worker executable
+    4. __GL_SYS_PATH__: contains the python sys.path of the interpreter
     """
     env = os.environ.copy()
 
@@ -37,6 +38,9 @@ def make_unity_server_env():
         env["CLASSPATH"] = env['CLASSPATH'] + (os.path.pathsep + classpath if classpath != '' else '')
     else:
         env["CLASSPATH"] = classpath
+
+    # Add python syspath
+    env['__GL_SYS_PATH__'] = (os.path.pathsep).join(sys.path)
 
     # Add the python executable to the runtime config
     env['__GL_PYTHON_EXECUTABLE__'] = os.path.abspath(sys.executable)

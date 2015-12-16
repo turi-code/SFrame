@@ -35,6 +35,8 @@ EXPORT void start_embeded_server(const char* root_path,
                                  const char* log_file) {
   namespace fs = boost::filesystem;
   global_logger().set_log_level(LOG_INFO);
+  // we do not want to show server logs in python console 
+  global_logger().set_log_to_console(false);
   graphlab::unity_server_options server_options;
 
   ASSERT_MSG(boost::starts_with(std::string(server_address), "inproc://"), "Server address must starts with inproc://");
