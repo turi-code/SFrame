@@ -8,6 +8,7 @@ of the BSD license. See the LICENSE file for details.
 '''
 from ..data_structures.sarray import SArray
 from ..util.timezone import GMT
+from ..toolkits._main import ToolkitError
 
 import pandas as pd
 import numpy as np
@@ -26,6 +27,7 @@ import warnings
 import functools
 import tempfile
 import sys
+from nose.tools import nottest
 
 #######################################################
 # Metrics tracking tests are in test_usage_metrics.py #
@@ -48,6 +50,7 @@ class SArrayTest(unittest.TestCase):
 
     def __test_equal(self, _sarray, _data, _type):
         self.assertEqual(_sarray.dtype(), _type)
+        self.assertEqual(len(_sarray), len(_data))
         self.assertSequenceEqual(list(_sarray.head(_sarray.size())), _data)
 
     def __test_creation(self, data, dtype, expected):
@@ -943,7 +946,7 @@ class SArrayTest(unittest.TestCase):
 
     def _slice_equality_test(self, arr, start=None, stop=None, step=1):
         self.assertEqual(
-                list(arr.subslice(start, stop, step)), 
+                list(arr.subslice(start, stop, step)),
                 list(self._my_subslice(arr,start,stop,step)))
 
     def test_subslice(self):
@@ -964,7 +967,7 @@ class SArrayTest(unittest.TestCase):
         self._slice_equality_test(g, -1, -2, -1);
         self._slice_equality_test(g, None, None, -1);
         self._slice_equality_test(g, -100, -1);
-        
+
         #array slicing
         import array
         g=SArray(range(1,10)).apply(lambda x: array.array('d', range(x)))
@@ -1020,14 +1023,14 @@ class SArrayTest(unittest.TestCase):
             sa3 = sa1.append(sa2)
 
     def test_word_count(self):
-        sa = SArray(["This is someurl http://someurl!!", 
-                     "中文 应该也 行", 
+        sa = SArray(["This is someurl http://someurl!!",
+                     "中文 应该也 行",
                      'Сблъсъкът между'])
-        expected = [{"this": 1, "http://someurl!!": 1, "someurl": 1, "is": 1}, 
-                    {"中文": 1, "应该也": 1, "行": 1}, 
+        expected = [{"this": 1, "http://someurl!!": 1, "someurl": 1, "is": 1},
+                    {"中文": 1, "应该也": 1, "行": 1},
                     {"Сблъсъкът": 1, "между": 1}]
-        expected2 = [{"This": 1, "http://someurl!!": 1, "someurl": 1, "is": 1}, 
-                     {"中文": 1, "应该也": 1, "行": 1}, 
+        expected2 = [{"This": 1, "http://someurl!!": 1, "someurl": 1, "is": 1},
+                     {"中文": 1, "应该也": 1, "行": 1},
                      {"Сблъсъкът": 1, "между": 1}]
         sa1 = sa._count_words()
         self.assertEquals(sa1.dtype(), dict)
@@ -1045,9 +1048,9 @@ class SArrayTest(unittest.TestCase):
     def test_word_count2(self):
         sa = SArray(["This is some url http://www.someurl.com!!", "Should we? Yes, we should."])
         #TODO: Get some weird unicode whitespace in the Chinese and Russian tests
-	expected1 = [{"this": 1, "is": 1, "some": 1, "url": 1, "http://www.someurl.com!!": 1}, 
+	expected1 = [{"this": 1, "is": 1, "some": 1, "url": 1, "http://www.someurl.com!!": 1},
                      {"should": 1, "we?": 1, "we": 1, "yes,": 1, "should.": 1}]
-	expected2 = [{"this is some url http://www.someurl.com": 1}, 
+	expected2 = [{"this is some url http://www.someurl.com": 1},
                      {"should we": 1, " yes": 1, " we should.": 1}]
 	word_counts1 = sa._count_words()
         word_counts2 = sa._count_words(delimiters=["?", "!", ","])
@@ -1505,8 +1508,8 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(ret['X.tmweekday'] , [2, 2, None], int)
 
     def test_datetime_lambda(self):
-        data = [dt.datetime(2013, 5, 7, 10, 4, 10, 109321), 
-                dt.datetime(1902, 10, 21, 10, 34, 10, 991111, 
+        data = [dt.datetime(2013, 5, 7, 10, 4, 10, 109321),
+                dt.datetime(1902, 10, 21, 10, 34, 10, 991111,
                     tzinfo=GMT(1))]
         g=SArray(data)
         gstr=g.apply(lambda x:str(x))
@@ -1608,7 +1611,7 @@ class SArrayTest(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             sa.str_to_datetime('%m/%d/%Y %L:%M')
 
-        sa = SArray(['2013-05-07T10:04:10', 
+        sa = SArray(['2013-05-07T10:04:10',
             '1902-10-21T10:34:10UTC+05:45'])
         expected = [dt.datetime(2013, 5, 7, 10, 4, 10),
                 dt.datetime(1902, 10, 21, 10, 34, 10).replace(tzinfo=GMT(5.75))]
@@ -1694,3 +1697,866 @@ class SArrayTest(unittest.TestCase):
         Y = np.array([str(i) for i in range(100)])
         nptest.assert_array_equal(X.to_numpy(), Y)
 
+    def test_rolling_mean(self):
+        data = SArray(range(1000))
+        neg_data = SArray(range(-100,100,2))
+
+        ### Small backward window including current 
+        res = data.rolling_mean(-3,0)
+        expected = [None for i in range(3)] + [i + .5 for i in range(1,998)]
+        self.__test_equal(res,expected,float)
+        
+        # Test float inputs as well
+        res = data.astype(float).rolling_mean(-3,0)
+        self.__test_equal(res,expected,float)
+
+        # Test min observations
+        res = data.rolling_mean(-3, 0, min_observations=5)
+        self.__test_equal(res,expected,float)
+
+        res = data.rolling_mean(-3, 0, min_observations=4)
+        self.__test_equal(res,expected,float)
+
+        res = data.rolling_mean(-3, 0, min_observations=3)
+        expected[2] = 1.0
+        self.__test_equal(res,expected,float)
+
+        res = data.rolling_mean(-3, 0, min_observations=2)
+        expected[1] = 0.5
+        self.__test_equal(res,expected,float)
+
+        res = data.rolling_mean(-3, 0, min_observations=1)
+        expected[0] = 0.0
+        self.__test_equal(res,expected,float)
+
+        res = data.rolling_mean(-3, 0, min_observations=0)
+        self.__test_equal(res,expected,float)
+
+        with self.assertRaises(ValueError):
+            res = data.rolling_mean(-3,0,min_observations=-1)
+
+        res = neg_data.rolling_mean(-3,0)
+        expected = [None for i in range(3)] + [float(i) for i in range(-97,96,2)]
+        self.__test_equal(res,expected,float)
+
+        # Test float inputs as well
+        res = neg_data.astype(float).rolling_mean(-3,0)
+        self.__test_equal(res,expected,float)
+
+        # Test vector input
+        res = SArray(self.vec_data).rolling_mean(-3,0)
+        expected = [None for i in range(3)] + [array.array('d',[i+.5, i+1.5]) for i in range(2,9)]
+        self.__test_equal(res,expected,array.array)
+
+        ### Small forward window including current
+        res = data.rolling_mean(0,4)
+        expected = [float(i) for i in range(2,998)] + [None for i in range(4)]
+        self.__test_equal(res,expected,float)
+
+        res = neg_data.rolling_mean(0,4)
+        expected = [float(i) for i in range(-96,95,2)] + [None for i in range(4)]
+        self.__test_equal(res,expected,float)
+
+        ### Small backward window not including current
+        res = data.rolling_mean(-5,-1)
+        expected = [None for i in range(5)] + [float(i) for i in range(2,997)]
+        self.__test_equal(res,expected,float)
+
+        res = neg_data.rolling_mean(-5,-1)
+        expected = [None for i in range(5)] + [float(i) for i in range(-96,94,2)]
+        self.__test_equal(res,expected,float)
+
+        ### Small forward window not including current
+        res = data.rolling_mean(1,5)
+        expected = [float(i) for i in range(3,998)] + [None for i in range(5)]
+        self.__test_equal(res,expected,float)
+
+        res = neg_data.rolling_mean(1,5)
+        expected = [float(i) for i in range(-94,96,2)] + [None for i in range(5)]
+        self.__test_equal(res,expected,float)
+        
+        ### "Centered" rolling aggregate
+        res = data.rolling_mean(-2,2)
+        expected = [None for i in range(2)] + [float(i) for i in range(2,998)] + [None for i in range(2)]
+        self.__test_equal(res,expected,float)
+
+        res = neg_data.rolling_mean(-2,2)
+        expected = [None for i in range(2)] + [float(i) for i in range(-96,96,2)] + [None for i in range(2)]
+        self.__test_equal(res,expected,float)
+
+        ### Lopsided rolling aggregate
+        res = data.rolling_mean(-2,1)
+        expected = [None for i in range(2)] + [i + .5 for i in range(1,998)] + [None for i in range(1)]
+        self.__test_equal(res,expected,float)
+
+        res = neg_data.rolling_mean(-2,1)
+        expected = [None for i in range(2)] + [float(i) for i in range(-97,97,2)] + [None for i in range(1)]
+        self.__test_equal(res,expected,float)
+
+        ### A very forward window
+        res = data.rolling_mean(500,502)
+        expected = [float(i) for i in range(501,999)] + [None for i in range(502)]
+        self.__test_equal(res,expected,float)
+
+        res = neg_data.rolling_mean(50,52)
+        expected = [float(i) for i in range(2,98,2)] + [None for i in range(52)]
+        self.__test_equal(res,expected,float)
+
+        ### A very backward window
+        res = data.rolling_mean(-502,-500)
+        expected = [None for i in range(502)] + [float(i) for i in range(1,499)]
+        self.__test_equal(res,expected,float)
+
+        res = neg_data.rolling_mean(-52,-50)
+        expected = [None for i in range(52)] + [float(i) for i in range(-98,-2,2)]
+        self.__test_equal(res,expected,float)
+
+        ### A window size much larger than anticipated segment size
+        res = data.rolling_mean(0,749)
+        expected = [i + .5 for i in range(374,625)] + [None for i in range(749)]
+        self.__test_equal(res,expected,float)
+
+        ### A window size larger than the array
+        res = data.rolling_mean(0,1000)
+        expected = [None for i in range(1000)]
+        self.__test_equal(res,expected,type(None))
+
+        ### A window size of 1
+        res = data.rolling_mean(0,0)
+        self.__test_equal(res, list(data), float)
+
+        res = data.rolling_mean(-2,-2)
+        expected = [None for i in range(2)] + list(data[0:998])
+        self.__test_equal(res, expected, float)
+
+        res = data.rolling_mean(3,3)
+        expected = list(data[3:1000]) + [None for i in range(3)]
+        self.__test_equal(res, expected, float)
+
+        ### A negative window size
+        with self.assertRaises(RuntimeError):
+            res = data.rolling_mean(4,2)
+
+        ### Non-numeric
+        with self.assertRaisesRegexp(RuntimeError, '.*support.*type.*'):
+            res = SArray(self.string_data).rolling_mean(0,1)
+
+        ### Empty SArray
+        sa = SArray()
+        res = sa.rolling_mean(0,1)
+        self.__test_equal(res, [], type(None))
+
+        ### Small SArray
+        sa = SArray([1,2,3])
+        res = sa.rolling_mean(0,1)
+        self.__test_equal(res, [1.5,2.5,None], float)
+
+    def test_rolling_sum(self):
+        data = SArray(range(1000))
+        neg_data = SArray(range(-100,100,2))
+
+        ### Small backward window including current 
+        res = data.rolling_sum(-3,0)
+        expected = [None for i in range(3)] + [i for i in range(6,3994,4)]
+        self.__test_equal(res,expected,int)
+        
+        # Test float inputs as well
+        res = data.astype(float).rolling_sum(-3,0)
+        self.__test_equal(res,expected,float)
+
+        # Test min observations
+        res = data.rolling_sum(-3, 0, min_observations=5)
+        self.__test_equal(res,expected,int)
+
+        res = data.rolling_sum(-3, 0, min_observations=4)
+        self.__test_equal(res,expected,int)
+
+        res = data.rolling_sum(-3, 0, min_observations=3)
+        expected[2] = 3
+        self.__test_equal(res,expected,int)
+
+        res = data.rolling_sum(-3, 0, min_observations=2)
+        expected[1] = 1
+        self.__test_equal(res,expected,int)
+
+        res = data.rolling_sum(-3, 0, min_observations=1)
+        expected[0] = 0
+        self.__test_equal(res,expected,int)
+
+        res = data.rolling_sum(-3, 0, min_observations=0)
+        self.__test_equal(res,expected,int)
+
+        with self.assertRaises(ValueError):
+            res = data.rolling_sum(-3,0,min_observations=-1)
+
+        res = neg_data.rolling_sum(-3,0)
+        expected = [None for i in range(3)] + [i for i in range(-388,388,8)]
+        self.__test_equal(res,expected,int)
+
+        # Test float inputs as well
+        res = neg_data.astype(float).rolling_sum(-3,0)
+        self.__test_equal(res,expected,float)
+
+        # Test vector input
+        res = SArray(self.vec_data).rolling_sum(-3,0)
+        expected = [None for i in range(3)] + [array.array('d',[i, i+4]) for i in range(10,38,4)]
+        self.__test_equal(res,expected,array.array)
+
+        ### Small forward window including current
+        res = data.rolling_sum(0,4)
+        expected = [i for i in range(10,4990,5)] + [None for i in range(4)]
+        self.__test_equal(res,expected,int)
+
+        res = neg_data.rolling_sum(0,4)
+        expected = [i for i in range(-480,480,10)] + [None for i in range(4)]
+        self.__test_equal(res,expected,int)
+
+        ### Small backward window not including current
+        res = data.rolling_sum(-5,-1)
+        expected = [None for i in range(5)] + [i for i in range(10,4985,5)]
+        self.__test_equal(res,expected,int)
+
+        res = neg_data.rolling_sum(-5,-1)
+        expected = [None for i in range(5)] + [i for i in range(-480,470,10)]
+        self.__test_equal(res,expected,int)
+
+        ### Small forward window not including current
+        res = data.rolling_sum(1,5)
+        expected = [i for i in range(15,4990,5)] + [None for i in range(5)]
+        self.__test_equal(res,expected,int)
+
+        res = neg_data.rolling_sum(1,5)
+        expected = [i for i in range(-470,480,10)] + [None for i in range(5)]
+        self.__test_equal(res,expected,int)
+        
+        ### "Centered" rolling aggregate
+        res = data.rolling_sum(-2,2)
+        expected = [None for i in range(2)] + [i for i in range(10,4990,5)] + [None for i in range(2)]
+        self.__test_equal(res,expected,int)
+
+        res = neg_data.rolling_sum(-2,2)
+        expected = [None for i in range(2)] + [i for i in range(-480,480,10)] + [None for i in range(2)]
+        self.__test_equal(res,expected,int)
+
+        ### Lopsided rolling aggregate
+        res = data.rolling_sum(-2,1)
+        expected = [None for i in range(2)] + [i for i in range(6,3994,4)] + [None for i in range(1)]
+        self.__test_equal(res,expected,int)
+
+        res = neg_data.rolling_sum(-2,1)
+        expected = [None for i in range(2)] + [i for i in range(-388,388,8)] + [None for i in range(1)]
+        self.__test_equal(res,expected,int)
+
+        ### A very forward window
+        res = data.rolling_sum(500,502)
+        expected = [i for i in range(1503,2997,3)] + [None for i in range(502)]
+        self.__test_equal(res,expected,int)
+
+        res = neg_data.rolling_sum(50,52)
+        expected = [i for i in range(6,294,6)] + [None for i in range(52)]
+        self.__test_equal(res,expected,int)
+
+        ### A very backward window
+        res = data.rolling_sum(-502,-500)
+        expected = [None for i in range(502)] + [i for i in range(3,1497,3)]
+        self.__test_equal(res,expected,int)
+
+        res = neg_data.rolling_sum(-52,-50)
+        expected = [None for i in range(52)] + [i for i in range(-294,-6,6)]
+        self.__test_equal(res,expected,int)
+
+        ### A window size much larger than anticipated segment size
+        res = data.rolling_sum(0,749)
+        expected = [i for i in range(280875,469125,750)] + [None for i in range(749)]
+        self.__test_equal(res,expected,int)
+
+        ### A window size larger than the array
+        res = data.rolling_sum(0,1000)
+        expected = [None for i in range(1000)]
+        self.__test_equal(res,expected,type(None))
+
+        ### A window size of 1
+        res = data.rolling_sum(0,0)
+        self.__test_equal(res, list(data), int)
+
+        res = data.rolling_sum(-2,-2)
+        expected = [None for i in range(2)] + list(data[0:998])
+        self.__test_equal(res, expected, int)
+
+        res = data.rolling_sum(3,3)
+        expected = list(data[3:1000]) + [None for i in range(3)]
+        self.__test_equal(res, expected, int)
+
+        ### A negative window size
+        with self.assertRaises(RuntimeError):
+            res = data.rolling_sum(4,2)
+
+        ### Non-numeric
+        with self.assertRaisesRegexp(RuntimeError, '.*support.*type.*'):
+            res = SArray(self.string_data).rolling_sum(0,1)
+
+        ### Empty SArray
+        sa = SArray()
+        res = sa.rolling_sum(0,1)
+        self.__test_equal(res, [], type(None))
+
+        ### Small SArray
+        sa = SArray([1,2,3])
+        res = sa.rolling_sum(0,1)
+        self.__test_equal(res, [3,5,None], int)
+
+    def test_rolling_max(self):
+        data = SArray(range(1000))
+
+        ### Small backward window including current
+        res = data.rolling_max(-3,0)
+        expected = [None for i in range(3)] + [i for i in range(3,1000)]
+        self.__test_equal(res,expected,int)
+
+        # Test float inputs as well
+        res = data.astype(float).rolling_max(-3,0)
+        self.__test_equal(res,expected,float)
+
+        # Test min observations
+        res = data.rolling_max(-3, 0, min_observations=5)
+        self.__test_equal(res,expected,int)
+
+        res = data.rolling_max(-3, 0, min_observations=4)
+        self.__test_equal(res,expected,int)
+
+        res = data.rolling_max(-3, 0, min_observations=3)
+        expected[2] = 2
+        self.__test_equal(res,expected,int)
+
+        with self.assertRaises(ValueError):
+            res = data.rolling_max(-3,0,min_observations=-1)
+
+        # Test vector input
+        with self.assertRaisesRegexp(RuntimeError, '.*support.*type.*'):
+            res = SArray(self.vec_data).rolling_max(-3,0)
+
+        ### Small forward window including current
+        res = data.rolling_max(0,4)
+        expected = [float(i) for i in range(4,1000)] + [None for i in range(4)]
+        self.__test_equal(res,expected,int)
+
+        ### A window size of 1
+        res = data.rolling_max(0,0)
+        self.__test_equal(res, list(data), int)
+
+        res = data.rolling_max(-2,-2)
+        expected = [None for i in range(2)] + list(data[0:998])
+        self.__test_equal(res, expected, int)
+
+        res = data.rolling_max(3,3)
+        expected = list(data[3:1000]) + [None for i in range(3)]
+        self.__test_equal(res, expected, int)
+
+        ### A negative window size
+        with self.assertRaises(RuntimeError):
+            res = data.rolling_max(4,2)
+
+        ### Non-numeric
+        with self.assertRaisesRegexp(RuntimeError, '.*support.*type.*'):
+            res = SArray(self.string_data).rolling_max(0,1)
+
+        ### Empty SArray
+        sa = SArray()
+        res = sa.rolling_max(0,1)
+        self.__test_equal(res, [], type(None))
+
+        ### Small SArray
+        sa = SArray([1,2,3])
+        res = sa.rolling_max(0,1)
+        self.__test_equal(res, [2,3,None], int)
+
+    def test_rolling_min(self):
+        data = SArray(range(1000))
+
+        ### Small backward window including current
+        res = data.rolling_min(-3,0)
+        expected = [None for i in range(3)] + [i for i in range(0,997)]
+        self.__test_equal(res,expected,int)
+
+        # Test float inputs as well
+        res = data.astype(float).rolling_min(-3,0)
+        self.__test_equal(res,expected,float)
+
+        # Test min observations
+        res = data.rolling_min(-3, 0, min_observations=5)
+        self.__test_equal(res,expected,int)
+
+        res = data.rolling_min(-3, 0, min_observations=4)
+        self.__test_equal(res,expected,int)
+
+        res = data.rolling_min(-3, 0, min_observations=3)
+        expected[2] = 0
+        self.__test_equal(res,expected,int)
+
+        with self.assertRaises(ValueError):
+            res = data.rolling_min(-3,0,min_observations=-1)
+
+        # Test vector input
+        with self.assertRaisesRegexp(RuntimeError, '.*support.*type.*'):
+            res = SArray(self.vec_data).rolling_min(-3,0)
+
+        ### Small forward window including current
+        res = data.rolling_min(0,4)
+        expected = [float(i) for i in range(0,996)] + [None for i in range(4)]
+        self.__test_equal(res,expected,int)
+
+        ### A window size of 1
+        res = data.rolling_min(0,0)
+        self.__test_equal(res, list(data), int)
+
+        res = data.rolling_min(-2,-2)
+        expected = [None for i in range(2)] + list(data[0:998])
+        self.__test_equal(res, expected, int)
+
+        res = data.rolling_min(3,3)
+        expected = list(data[3:1000]) + [None for i in range(3)]
+        self.__test_equal(res, expected, int)
+
+        ### A negative window size
+        with self.assertRaises(RuntimeError):
+            res = data.rolling_min(4,2)
+
+        ### Non-numeric
+        with self.assertRaisesRegexp(RuntimeError, '.*support.*type.*'):
+            res = SArray(self.string_data).rolling_min(0,1)
+
+        ### Empty SArray
+        sa = SArray()
+        res = sa.rolling_min(0,1)
+        self.__test_equal(res, [], type(None))
+
+        ### Small SArray
+        sa = SArray([1,2,3])
+        res = sa.rolling_min(0,1)
+        self.__test_equal(res, [1,2,None], int)
+
+    def test_rolling_var(self):
+        data = SArray(range(1000))
+
+        ### Small backward window including current
+        res = data.rolling_var(-3,0)
+        expected = [None for i in range(3)] + [1.25 for i in range(997)]
+        self.__test_equal(res,expected,float)
+
+        # Test float inputs as well
+        res = data.astype(float).rolling_var(-3,0)
+        self.__test_equal(res,expected,float)
+
+        # Test min observations
+        res = data.rolling_var(-3, 0, min_observations=5)
+        self.__test_equal(res,expected,float)
+
+        res = data.rolling_var(-3, 0, min_observations=4)
+        self.__test_equal(res,expected,float)
+
+        res = data.rolling_var(-3, 0, min_observations=3)
+        expected[2] = (2.0/3.0)
+        self.__test_equal(res,expected,float)
+
+        with self.assertRaises(ValueError):
+            res = data.rolling_var(-3,0,min_observations=-1)
+
+        # Test vector input
+        with self.assertRaisesRegexp(RuntimeError, '.*support.*type.*'):
+            res = SArray(self.vec_data).rolling_var(-3,0)
+
+        ### Small forward window including current
+        res = data.rolling_var(0,4)
+        expected = [2 for i in range(996)] + [None for i in range(4)]
+        self.__test_equal(res,expected,float)
+
+        ### A window size of 1
+        res = data.rolling_var(0,0)
+        self.__test_equal(res, [0 for i in range(1000)], float)
+
+        res = data.rolling_var(-2,-2)
+        self.__test_equal(res, [None,None] + [0 for i in range(998)], float)
+
+        ### A negative window size
+        with self.assertRaises(RuntimeError):
+            res = data.rolling_var(4,2)
+
+        ### Non-numeric
+        with self.assertRaisesRegexp(RuntimeError, '.*support.*type.*'):
+            res = SArray(self.string_data).rolling_var(0,1)
+
+        ### Empty SArray
+        sa = SArray()
+        res = sa.rolling_var(0,1)
+        self.__test_equal(res, [], type(None))
+
+        ### Small SArray
+        sa = SArray([1,2,3])
+        res = sa.rolling_var(0,1)
+        self.__test_equal(res, [.25,.25,None], float)
+
+    def test_rolling_stdv(self):
+        data = SArray(range(1000))
+
+        ### Small backward window including current
+        res = data.rolling_stdv(-3,0)
+        expected = [None for i in range(3)] + [1.118033988749895 for i in range(997)]
+        self.__test_equal(res,expected,float)
+
+        # Test float inputs as well
+        res = data.astype(float).rolling_stdv(-3,0)
+        self.__test_equal(res,expected,float)
+
+        # Test min observations
+        res = data.rolling_stdv(-3, 0, min_observations=5)
+        self.__test_equal(res,expected,float)
+
+        res = data.rolling_stdv(-3, 0, min_observations=4)
+        self.__test_equal(res,expected,float)
+
+        res = data.rolling_stdv(-3, 0, min_observations=3)
+        expected[2] = math.sqrt(2.0/3.0)
+        self.__test_equal(res,expected,float)
+
+        with self.assertRaises(ValueError):
+            res = data.rolling_stdv(-3,0,min_observations=-1)
+
+        # Test vector input
+        with self.assertRaisesRegexp(RuntimeError, '.*support.*type.*'):
+            res = SArray(self.vec_data).rolling_stdv(-3,0)
+
+        ### Small forward window including current
+        res = data.rolling_stdv(0,4)
+        expected = [math.sqrt(2) for i in range(996)] + [None for i in range(4)]
+        self.__test_equal(res,expected,float)
+
+        ### A window size of 1
+        res = data.rolling_stdv(0,0)
+        self.__test_equal(res, [0 for i in range(1000)], float)
+
+        res = data.rolling_stdv(-2,-2)
+        self.__test_equal(res, [None,None] + [0 for i in range(998)], float)
+
+        ### A negative window size
+        with self.assertRaises(RuntimeError):
+            res = data.rolling_stdv(4,2)
+
+        ### Non-numeric
+        with self.assertRaisesRegexp(RuntimeError, '.*support.*type.*'):
+            res = SArray(self.string_data).rolling_stdv(0,1)
+
+        ### Empty SArray
+        sa = SArray()
+        res = sa.rolling_stdv(0,1)
+        self.__test_equal(res, [], type(None))
+
+        ### Small SArray
+        sa = SArray([1,2,3])
+        res = sa.rolling_stdv(0,1)
+        self.__test_equal(res, [.5,.5,None], float)
+
+    def test_rolling_count(self):
+        data = SArray(range(100))
+
+        ### Small backward window including current
+        res = data.rolling_count(-3,0)
+        expected = [1,2,3] + [4 for i in range(97)]
+        self.__test_equal(res,expected,int)
+
+        # Test float inputs
+        res = data.astype(float).rolling_count(-3,0)
+        self.__test_equal(res,expected,int)
+
+        # Test vector input
+        res = SArray(self.vec_data).rolling_count(-3,0)
+        expected = [1,2,3] + [4 for i in range(7)]
+        self.__test_equal(res,expected,int)
+
+        ### Test string input 
+        res = SArray(self.string_data).rolling_count(-3,0)
+        self.__test_equal(res,expected[0:8],int)
+
+        ### Small forward window including current
+        res = data.rolling_count(0,4)
+        expected = [5 for i in range(0,96)] + [4,3,2,1]
+        self.__test_equal(res,expected,int)
+
+        ### A window size of 1
+        res = data.rolling_count(0,0)
+        self.__test_equal(res, [1 for i in range(100)], int)
+
+        res = data.rolling_count(-2,-2)
+        self.__test_equal(res, [0,0] + [1 for i in range(98)], int)
+
+        ### A negative window size
+        with self.assertRaises(RuntimeError):
+            res = data.rolling_count(4,2)
+
+        ### Empty SArray
+        sa = SArray()
+        res = sa.rolling_count(0,1)
+        self.__test_equal(res, [], type(None))
+
+        ### Small SArray
+        sa = SArray([1,2,3])
+        res = sa.rolling_count(0,1)
+        self.__test_equal(res, [2,2,1], int)
+
+        sa = SArray([1,2,None])
+        res = sa.rolling_count(0,1)
+        self.__test_equal(res, [2,1,0], int)
+
+    @nottest
+    def cumulative_aggregate_comparison(self, out, ans):
+        import array
+        self.assertEqual(out.dtype(), ans.dtype())
+        self.assertEqual(out.size(), ans.size())
+        for i in range(len(out)):
+            if out[i] is None:
+                self.assertTrue(ans[i] is None)
+            if ans[i] is None:
+                self.assertTrue(out[i] is None)
+
+            if type(out[i]) != array.array:
+              self.assertAlmostEqual(out[i], ans[i])
+            else:
+              self.assertEqual(len(out[i]), len(ans[i]))
+              oi = out[i]
+              ansi = ans[i]
+              for j in range(len(oi)):
+                  self.assertAlmostEqual(oi, ansi)
+
+    def test_cumulative_sum(self):
+
+        def single_test(src, ans):
+            out = src.cumulative_sum();
+            self.cumulative_aggregate_comparison(out, ans)
+
+        with self.assertRaises(RuntimeError):
+            sa = SArray(["foo"]).cumulative_sum()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([[1], ["foo"]]).cumulative_sum()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([{"bar": 1}]).cumulative_sum()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1,1], [1], [1]]).cumulative_sum()
+
+        single_test(
+          SArray([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+          SArray([0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55])
+        )
+        single_test(
+            SArray([0.1, 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1]),
+            SArray([0.1, 1.2, 3.3, 6.4, 10.5, 15.6, 21.7, 28.8])
+        )
+        single_test(
+            SArray([[11.0, 2.0], [22.0, 1.0], [3.0, 4.0], [4.0, 4.0]]),
+            SArray([[11.0, 2.0], [33.0, 3.0], [36.0, 7.0], [40.0, 11.0]])
+        )
+        single_test(
+            SArray([None, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+            SArray([None, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55])
+        )
+        single_test(
+            SArray([None, 1, None, 3, None, 5]),
+            SArray([None, 1, 1, 4, 4, 9])
+        )
+        single_test(
+            SArray([None, [33.0, 3.0], [3.0, 4.0], [4.0, 4.0]]),
+            SArray([None, [33.0, 3.0], [36.0, 7.0], [40.0, 11.0]])
+        )
+        single_test(
+            SArray([None, [33.0, 3.0], None, [4.0, 4.0]]),
+            SArray([None, [33.0, 3.0], [33.0, 3.0], [37.0, 7.0]])
+        )
+
+    def test_cumulative_mean(self):
+
+        def single_test(src, ans):
+            out = src.cumulative_mean();
+            self.cumulative_aggregate_comparison(out, ans)
+
+        with self.assertRaises(RuntimeError):
+            sa = SArray(["foo"]).cumulative_mean()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([[1], ["foo"]]).cumulative_mean()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([{"bar": 1}]).cumulative_mean()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1,1], [1], [1]]).cumulative_mean()
+
+        single_test(
+          SArray([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+          SArray([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0])
+        )
+        single_test(
+            SArray([0.1, 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1]),
+            SArray([0.1, 0.6, 1.1, 1.6, 2.1, 2.6, 3.1, 3.6])
+        )
+        single_test(
+            SArray([[11.0, 22.0], [33.0, 66.0], [4.0,   2.0],  [4.0,  2.0]]),
+            SArray([[11.0, 22.0], [22.0, 44.0], [16.0, 30.0], [13.0, 23.0]])
+        )
+        single_test(
+            SArray([None, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+            SArray([None, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0])
+        )
+        single_test(
+            SArray([None, 1, None, 3, None, 5]),
+            SArray([None, 1, 1.0, 2.0, 2.0, 3.0])
+        )
+        single_test(
+            SArray([None, [11.0, 22.0], [33.0, 66.0], [4.0,   2.0]]),
+            SArray([None, [11.0, 22.0], [22.0, 44.0], [16.0, 30.0]])
+        )
+        single_test(
+            SArray([None, [11.0, 22.0], None, [33.0, 66.0], [4.0, 2.0]]),
+            SArray([None, [11.0, 22.0], [11.0, 22.0], [22.0, 44.0], [16.0, 30.0]])
+        )
+
+
+    def test_cumulative_min(self):
+
+        def single_test(src, ans):
+            out = src.cumulative_min();
+            self.cumulative_aggregate_comparison(out, ans)
+
+        with self.assertRaises(RuntimeError):
+            sa = SArray(["foo"]).cumulative_min()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([[1], ["foo"]]).cumulative_min()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([{"bar": 1}]).cumulative_min()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1,1], [1], [1]]).cumulative_min()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1], [1], [1]]).cumulative_min()
+
+        single_test(
+          SArray([0, 1, 2, 3, 4, 5, -1, 7, 8, -2, 10]),
+          SArray([0, 0, 0, 0, 0, 0, -1, -1, -1, -2, -2])
+        )
+        single_test(
+            SArray([7.1, 6.1, 3.1, 3.9, 4.1, 2.1, 2.9, 0.1]),
+            SArray([7.1, 6.1, 3.1, 3.1, 3.1, 2.1, 2.1, 0.1])
+        )
+        single_test(
+            SArray([None, 8, 6, 3, 4, None, 6, 2, 8, 9, 1]),
+            SArray([None, 8, 6, 3, 3, 3,    3, 2, 2, 2, 1])
+        )
+        single_test(
+            SArray([None, 5, None, 3, None, 10]),
+            SArray([None, 5, 5, 3, 3, 3])
+        )
+
+    def test_cumulative_max(self):
+
+        def single_test(src, ans):
+            out = src.cumulative_max();
+            self.cumulative_aggregate_comparison(out, ans)
+
+        with self.assertRaises(RuntimeError):
+            sa = SArray(["foo"]).cumulative_max()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([[1], ["foo"]]).cumulative_max()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([{"bar": 1}]).cumulative_max()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1,1], [1], [1]]).cumulative_max()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1], [1], [1]]).cumulative_max()
+
+        single_test(
+          SArray([0, 1, 0, 3, 5, 4, 1, 7, 6, 2, 10]),
+          SArray([0, 1, 1, 3, 5, 5, 5, 7, 7, 7, 10])
+        )
+        single_test(
+            SArray([2.1, 6.1, 3.1, 3.9, 2.1, 8.1, 8.9, 10.1]),
+            SArray([2.1, 6.1, 6.1, 6.1, 6.1, 8.1, 8.9, 10.1])
+        )
+        single_test(
+            SArray([None, 1, 6, 3, 4, None, 4, 2, 8, 9, 1]),
+            SArray([None, 1, 6, 6, 6, 6,    6, 6, 8, 9, 9])
+        )
+        single_test(
+            SArray([None, 2, None, 3, None, 10]),
+            SArray([None, 2, 2, 3, 3, 10])
+        )
+
+    def test_cumulative_std(self):
+
+        def single_test(src, ans):
+            out = src.cumulative_std();
+            self.cumulative_aggregate_comparison(out, ans)
+
+        with self.assertRaises(RuntimeError):
+            sa = SArray(["foo"]).cumulative_std()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([[1], ["foo"]]).cumulative_std()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([{"bar": 1}]).cumulative_std()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1,1], [1], [1]]).cumulative_std()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1], [1], [1]]).cumulative_std()
+
+        single_test(
+          SArray([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+          SArray([0.0, 0.5, 0.816496580927726, 1.118033988749895,
+              1.4142135623730951, 1.707825127659933, 2.0, 2.29128784747792,
+              2.581988897471611, 2.8722813232690143, 3.1622776601683795])
+        )
+        single_test(
+            SArray([0.1, 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1]),
+            SArray([0.0, 0.5, 0.81649658092772603, 1.1180339887498949,
+                1.4142135623730949, 1.707825127659933, 1.9999999999999998,
+                2.2912878474779195])
+        )
+        single_test(
+            SArray([None, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+            SArray([None, 0.0, 0.5, 0.816496580927726, 1.118033988749895,
+                1.4142135623730951, 1.707825127659933, 2.0, 2.29128784747792,
+                2.581988897471611, 2.8722813232690143, 3.1622776601683795])
+        )
+        single_test(
+            SArray([None, 1,   None, 3, None, 5]),
+            SArray([None, 0.0, 0.0, 1.0, 1.0, 1.6329931618554521])
+        )
+
+    def test_cumulative_var(self):
+
+        def single_test(src, ans):
+            out = src.cumulative_var();
+            self.cumulative_aggregate_comparison(out, ans)
+
+        with self.assertRaises(RuntimeError):
+            sa = SArray(["foo"]).cumulative_var()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([[1], ["foo"]]).cumulative_var()
+        with self.assertRaises(RuntimeError):
+            sa = SArray([{"bar": 1}]).cumulative_var()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1,1], [1], [1]]).cumulative_var()
+        with self.assertRaises(ToolkitError):
+            sa = SArray([[1], [1], [1], [1]]).cumulative_var()
+
+        single_test(
+          SArray([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+          SArray([0.0, 0.25, 0.6666666666666666, 1.25, 2.0, 2.9166666666666665,
+              4.0, 5.25, 6.666666666666667, 8.25, 10.0])
+        )
+        single_test(
+            SArray([0.1, 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1]),
+            SArray( [0.0, 0.25000000000000006, 0.6666666666666666, 1.25,
+                1.9999999999999996, 2.916666666666666, 3.999999999999999,
+                5.249999999999998])
+        )
+        single_test(
+            SArray([None, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+            SArray([None, 0.0, 0.25, 0.6666666666666666, 1.25, 2.0, 2.9166666666666665,
+                4.0, 5.25, 6.666666666666667, 8.25, 10.0])
+        )
+        single_test(
+            SArray([None, 1,   None, 3, None, 5]),
+            SArray([None, 0.0, 0.0, 1.0, 1.0, 2.6666666666666665])
+        )

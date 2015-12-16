@@ -72,7 +72,7 @@
 #include <logger/fail_method.hpp>
 #include <logger/backtrace.hpp>
 #include <util/code_optimization.hpp> 
-
+#include <process/process_util.hpp>
 
 /**
  * \def LOG_FATAL
@@ -354,6 +354,17 @@ struct streambuff_tls_entry {
 };
 }
 
+#define LOG_DEBUG_WITH_PID(...)                                         \
+  do {                                                                  \
+    auto __log_funct = [&]() {                                          \
+      std::ostringstream ss;                                            \
+      ss << "PID-" << get_my_pid() << ": ";                             \
+      ss << __VA_ARGS__;                                                \
+      logstream(LOG_DEBUG) << ss.str() << std::endl;                    \
+    };                                                                  \
+    { __log_funct(); }                                                  \
+  } while(0)
+
 
 extern void __print_back_trace();
 
@@ -378,9 +389,12 @@ class file_logger{
   */
   bool set_log_file(std::string file);
 
-  /// If consolelog is true, subsequent logger output will be written to stderr
-  void set_log_to_console(bool consolelog) {
+  /// If consolelog is true, subsequent logger output will be written
+  /// to stdout / stderr.  If log_to_stderr is true, all output is
+  /// logged to stderr.
+  void set_log_to_console(bool consolelog, bool _log_to_stderr = false) {
     log_to_console = consolelog;
+    log_to_stderr = _log_to_stderr;
   }
 
   /// Returns the current logger file.
@@ -541,6 +555,7 @@ class file_logger{
   pthread_mutex_t mut;
 
   bool log_to_console;
+  bool log_to_stderr;
   int log_level;
 
   // LOG_NONE is the "highest" log level

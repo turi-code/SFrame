@@ -16,5 +16,6 @@ make_library(logger
     boost
     timer
     parallel
+    process
     EXTERNAL_VISIBILITY
   )

@@ -72,8 +72,10 @@ comm_server::comm_server(std::vector<std::string> zkhosts,
     zmq_ctx(zmq_ctx_new()), 
     keyval(zkhosts.empty() ?  // make a keyval only if zkhosts is not empty
                NULL :         // null otherwise
-               new graphlab::zookeeper_util::key_value(zkhosts, "cppipc", name))
+           new graphlab::zookeeper_util::key_value(zkhosts, "cppipc", name)),
+    comm_server_debug_mode(std::getenv("GRAPHLAB_COMM_SERVER_DEBUG_MODE") != NULL)
     {
+
 
   object_socket = new libfault::async_reply_socket(zmq_ctx, keyval,
           boost::bind(&comm_server::callback, this, _1, _2),
@@ -228,7 +230,7 @@ void comm_server::stop() {
     started = false;
   }
 
-  // Attempt to cancel any currently running command                                                                                                                                                                                        
+  // Attempt to cancel any currently running command
   get_srv_running_command().store((unsigned long long)uint64_t(-1));  
 }
 
@@ -301,7 +303,10 @@ bool comm_server::callback(libfault::zmq_msg_vector& recv,
   std::string message = "Calling object " + std::to_string(call.objectid) 
                         + " function: " + trimmed_function_name;
 
-  logstream(LOG_DEBUG) << message << "\n";
+  if(comm_server_debug_mode) {
+    logstream(LOG_DEBUG) << message << std::endl;
+  }
+
   /*
    * if (trimmed_function_name == "object_factory_base::ping" || call.objectid == 0) {
    *   logstream(LOG_DEBUG) << message << "\n";

@@ -567,6 +567,66 @@ class count: public group_aggregate_value {
 };
 
 /**
+ * Implements a count non-null aggregator
+ */
+class non_null_count: public group_aggregate_value {
+ public:
+  /// Returns a new empty instance of count
+  group_aggregate_value* new_instance() const {
+    non_null_count* ret = new non_null_count;
+    return ret;
+  }
+
+  void add_element_simple(const flexible_type& flex) {
+    if(flex.get_type() != flex_type_enum::UNDEFINED)
+      ++value;
+  }
+
+  /// combines two partial counts
+  void combine(const group_aggregate_value& other) {
+    value += dynamic_cast<const non_null_count&>(other).value;
+  }
+
+  /// Emits the count result
+  flexible_type emit() const {
+    return flexible_type(value);
+  }
+
+  /// The types supported by the count. (everything)
+  bool support_type(flex_type_enum type) const {
+    return true;
+  }
+
+  /// The input type
+  flex_type_enum set_input_types(const std::vector<flex_type_enum>& types) {
+    DASSERT_TRUE(types.size() == 0);
+    return flex_type_enum::INTEGER;
+  }
+
+  flex_type_enum set_input_type(flex_type_enum type) {
+    return flex_type_enum::INTEGER;
+  }
+
+  /// Name of the class
+  std::string name() const {
+    return "Count";
+  }
+
+  /// Serializer
+  void save(oarchive& oarc) const {
+    oarc << value;
+  }
+
+  /// Deserializer
+  void load(iarchive& iarc) {
+    iarc >> value;
+  }
+
+ private:
+  size_t value = 0;
+};
+
+/**
  * Implements a vector average aggregator
  */
 class vector_average: public group_aggregate_value {
@@ -618,7 +678,7 @@ class vector_average: public group_aggregate_value {
     }
   }
 
-  /// Emits the count resulpt
+  /// Emits the count result
   flexible_type emit() const {
     if (failure) {
       return flexible_type(flex_type_enum::UNDEFINED);
@@ -691,7 +751,7 @@ class average: public group_aggregate_value {
     }
   }
 
-  /// Emits the count resulpt
+  /// Emits the count result
   flexible_type emit() const {
     if (count == 0) return FLEX_UNDEFINED;
     else return value;
@@ -754,10 +814,18 @@ class variance : public group_aggregate_value {
   /// combines two partial counts
   void combine(const group_aggregate_value& other) {
     const variance& _other = dynamic_cast<const variance&>(other);
-    double delta = _other.mean - mean;
-    mean = ((mean * count) + (_other.mean * _other.count)) / (count + _other.count);
-    M2 += _other.M2 + delta * delta * _other.count * count / (count + _other.count);
-    count += _other.count;
+    if (_other.count == 0) {
+      return;
+    } else if (count == 0) {
+      mean = _other.mean;
+      count = _other.count;
+      M2 = _other.M2;
+    } else {
+      double delta = _other.mean - mean;
+      mean = ((mean * count) + (_other.mean * _other.count)) / (count + _other.count);
+      M2 += _other.M2 + delta * delta * _other.count * count / (count + _other.count);
+      count += _other.count;
+    }
   }
 
   /// Emits the count result
@@ -765,7 +833,7 @@ class variance : public group_aggregate_value {
     return count <= 1 ? flexible_type(0.0) : flexible_type(M2 / (count));
   }
 
-  /// The types supported by the count. (everything)
+  /// The types supported by the count.
   bool support_type(flex_type_enum type) const {
     return (type == flex_type_enum::INTEGER ||
             type == flex_type_enum::FLOAT);
@@ -791,11 +859,21 @@ class variance : public group_aggregate_value {
     iarc >> count >> mean >> M2;
   }
 
+  virtual void print(std::ostream& os) const {
+    os << this->name() << "(" 
+       << "value = " << this->emit() << ", " 
+       << "count = " << this->count << ", " 
+       << "mean = "  << this->mean << ", " 
+       << "M2 = "    << this->M2
+       << ")";
+  }
+
  protected:
   size_t count = 0;
   double mean = 0;
   double M2 = 0;
 };
+  
 
 class stdv : public variance {
  public:

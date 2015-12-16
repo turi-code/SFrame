@@ -14,6 +14,7 @@
 #include <string>
 #include <iostream>
 #include <sframe/sframe_rows.hpp>
+#include <sframe/group_aggregate_value.hpp>
 #include <flexible_type/flexible_type.hpp>
 
 namespace graphlab {
@@ -1719,6 +1720,84 @@ class gl_sarray {
   gl_sarray subslice(flexible_type start = FLEX_UNDEFINED, 
                      flexible_type stop = FLEX_UNDEFINED, 
                      flexible_type step = FLEX_UNDEFINED);
+  
+/**
+ *
+ *  An abstraction to perform cumulative aggregates.
+ *    y <- x.cumulative_aggregate(f, w_0)
+ *
+ *  The abstraction is as follows:
+ *    y[i+1], w[i+1] = func(x[i], w[i])
+ *
+ *  where w[i] is some arbitary state.
+ *
+ * \param[in] Function to perform the aggregate to keep track of state.
+ * \return SArray 
+ */
+ gl_sarray cumulative_aggregate(
+     std::shared_ptr<group_aggregate_value> aggregator) const; 
+
+  /**
+   *
+   *  This returns an SArray where each element is a cumulative aggregate of
+   *  all its previous elements. Only works in an SArray of numeric type or
+   *  numeric-array types. 
+   *
+   *  \return an SArray 
+   */
+  gl_sarray cumulative_sum() const;
+  gl_sarray cumulative_min() const;
+  gl_sarray cumulative_max() const;
+  gl_sarray cumulative_var() const;
+  gl_sarray cumulative_std() const;
+  gl_sarray cumulative_avg() const;
+
+  /**
+   * Apply an aggregate function over a moving window.
+   * 
+   * \param input The input SArray (expects to be materialized)
+   * \param fn_name string representation of the aggregation function to use.
+   * The mapping is the same string mapping used by the groupby aggregate
+   * function.
+   * \param window_start The start of the moving window relative to the current
+   * value being calculated, inclusive. For example, 2 values behind the current
+   * would be -2, and 0 indicates that the start of the window is the current
+   * value.
+   * \param window_end The end of the moving window relative to the current value
+   * being calculated, inclusive. Must be greater than `window_start`. For
+   * example, 0 would indicate that the current value is the end of the window,
+   * and 2 would indicate that the window ends at 2 data values after the
+   * current.
+   * \param min_observations The minimum allowed number of non-NULL values in the
+   * moving window for the emitted value to be non-NULL. size_t(-1) indicates
+   * that all values must be non-NULL.
+   *
+   * Returns an SArray of the same length as the input, with a type that matches
+   * the type output by the aggregation function.
+   * 
+   * Throws an exception if:
+   *  - window_end < window_start
+   *  - The window size is excessively large (currently hardcoded to UINT_MAX).
+   *  - The given function name corresponds to a function that will not operate
+   *  on the data type of the input SArray.
+   *  - The aggregation function returns more than one non-NULL types.
+   *  
+   *  Example:
+   *  \code
+   *  gl_sarray a{0,1,2,3,4,5,6,7,8,9};
+   *  // Moving window encompasses 3 values behind current and current value.
+   *  auto result = a.rolling_apply(std::string("__builtin__avg__"), -3, 0);
+   *  \endcode
+   *
+   *  Produces an SArray with these values: 
+   *  \code
+   *  {NULL,NULL,NULL,1.5,2.5,3.5,4.5,5.5,6.5,7.5}
+   *  \endcode
+   */
+  gl_sarray builtin_rolling_apply(const std::string &fn_name,
+                                  ssize_t start,
+                                  ssize_t end,
+                                  size_t min_observations=size_t(-1)) const;
 
   /**
    * \internal
