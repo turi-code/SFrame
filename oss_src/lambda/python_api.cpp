@@ -28,12 +28,13 @@ void init_python(const std::string& root_path) {
   
   Py_Initialize();
 
-  logstream(LOG_INFO) << "Python initialized." << std::endl;
+  LOG_DEBUG_WITH_PID("Python initialized.");
 
   /**
    * Enforce the sys path to be the same as the GLC client's sys path.
    */
   try {
+    LOG_DEBUG_WITH_PID("Importing system modules.");
     python::object sys_path = python::import("sys").attr("path");
     python::object os_environ = python::import("os").attr("environ");
     python::object sys_path_str = os_environ.attr("get")("__GL_SYS_PATH__");
@@ -42,7 +43,7 @@ void init_python(const std::string& root_path) {
     // regular sys.path.
     
     if(sys_path_str != python::object() ) {
-      logstream(LOG_INFO) << "Setting path from __GL_SYS_PATH__." << std::endl;
+      LOG_DEBUG_WITH_PID("__GL_SYS_PATH__ used: " << python::extract<const char*>(sys_path_str));
           
       // Simply doing "sys_path = sys_path_str.attr("split")(":");"
       // does not work as expected.
@@ -60,7 +61,7 @@ void init_python(const std::string& root_path) {
       // Log the path.
       for(int i = 0; i < len(sys_path); ++i) {
         const char* sp = python::extract<const char*>(python::str(sys_path.attr("__getitem__")(i)));
-        logstream(LOG_INFO) << "  sys.path[" << i << "]: " << sp << std::endl; 
+        LOG_DEBUG_WITH_PID("  path[" << i << "]: " << sp);
       }
     }
   } catch (python::error_already_set const& e) {
@@ -78,7 +79,7 @@ void init_python(const std::string& root_path) {
     throw std::current_exception();
   }
 
-  logstream(LOG_INFO) << "Path information set." << std::endl;
+  LOG_DEBUG_WITH_PID("Path information set.");
   
   std::string module_name;
   try {
@@ -88,9 +89,10 @@ void init_python(const std::string& root_path) {
     // we expect to be located in sframe/pylambda_worker or
     // graphlab/pylambda_worker
     curpath = fs::canonical(curpath);
+    LOG_DEBUG_WITH_PID("current path = " << curpath.string());
     module_name = curpath.filename().string();
 
-    logstream(LOG_INFO) << "Module Name is " << module_name << std::endl;
+    LOG_DEBUG_WITH_PID("module_name = " << module_name);
     
     if (module_name != "graphlab" && module_name != "sframe") {
       logstream(LOG_ERROR) << "Module name is " << module_name << std::endl;

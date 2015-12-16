@@ -190,6 +190,8 @@ class EXPORT comm_server {
    */
   size_t lcg_seed;
 
+  bool comm_server_debug_mode = false;
+
   /**
    * A series of authentication methods to apply to the messages.
    */
