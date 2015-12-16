@@ -9,7 +9,7 @@
 #ifndef _WIN32
 #include <pwd.h>
 #else
-#include <windows.h>
+#include <process/gl_windows.hpp>
 #include <Lmcons.h>
 #endif
 

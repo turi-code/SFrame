@@ -47,7 +47,7 @@
 #define GRAHPLAB_WIN_PTHREADS
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include <process/gl_windows.hpp>
 #undef WIN32_LEAN_AND_MEAN
 #include <errno.h>
 #include <ctime>

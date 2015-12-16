@@ -55,7 +55,7 @@
 #include <stdio.h>
 
 #if defined(_WIN32) && !defined(__SYMBIAN32__) // Windows specific
-#include <windows.h>
+#include <process/gl_windows.hpp>
 
 #ifndef PATH_MAX
 #define PATH_MAX MAX_PATH
@@ -66,7 +66,6 @@
 #include <direct.h>
 #include <io.h>
 #else // _WIN32_WCE
-#include <winsock2.h>
 #define NO_CGI // WinCE has no pipes
 
 typedef long off_t;

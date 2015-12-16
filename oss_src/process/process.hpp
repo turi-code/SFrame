@@ -23,7 +23,7 @@
 #include <util/syserr_reporting.hpp>
 
 #ifdef _WIN32
-#include <windows.h>
+#include <process/gl_windows.hpp>
 #endif
 #ifdef __APPLE__
 #include <sys/types.h>
@@ -122,6 +122,9 @@ class process {
 
   // Handle needed for child to write to parent
   HANDLE m_write_handle = NULL;
+
+  // Duplicate of handle so child can pipe stderr to console.
+  HANDLE m_stderr_handle = NULL;
 
   DWORD m_pid = DWORD(-1);
 

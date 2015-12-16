@@ -32,26 +32,47 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
   std::string root_path = _root_path;
 
   size_t debug_mode = (server_address == "debug");
-  char* debug_mode_str = getenv("GRAPHLAB_LAMBDA_WORKER_DEBUG_MODE");
+  const char* debug_mode_str = getenv("GRAPHLAB_LAMBDA_WORKER_DEBUG_MODE");
 
   if(debug_mode_str != NULL) {
     debug_mode = true;
   }
 
+  const char* debug_mode_file_str = getenv("GRAPHLAB_LAMBDA_WORKER_LOG_FILE");
+  std::string log_file_string((debug_mode_file_str == NULL) ? "" : debug_mode_file_str);
+
+  size_t this_pid = get_my_pid();
+  global_logger().set_pid(this_pid);
+
   if(debug_mode) {
     global_logger().set_log_level(LOG_DEBUG);
-    global_logger().set_log_to_console(true, true);
+    if(!log_file_string.empty()) {
+      global_logger().set_log_to_console(true, true);
+      global_logger().set_log_file(log_file_string);
+      LOG_DEBUG_WITH_PID("Logging lambda worker logs to " << log_file_string);
+      global_logger().set_log_to_console(false);
+    } else {
+      global_logger().set_log_to_console(true, true);
+    }
   } else {
     global_logger().set_log_level(LOG_INFO);
+    if(!log_file_string.empty()) {
+      // Log errors to console
+      global_logger().set_log_to_console(true, true);
+      global_logger().set_log_file(log_file_string);
+      LOG_DEBUG_WITH_PID("Logging lambda worker logs to " << log_file_string);
+      global_logger().set_log_to_console(false);
+    } else {
+      // Log errors to console
+      global_logger().set_log_to_console(true, false);
+    }
   }
   global_logger().set_pid(get_my_pid());
 
+  size_t parent_pid = get_parent_pid();
+
   LOG_DEBUG_WITH_PID("root_path = '" << root_path << "'");
   LOG_DEBUG_WITH_PID("server_address = '" << server_address << "'");
-
-  size_t parent_pid = get_parent_pid();
-  size_t this_pid = get_my_pid();
-
   LOG_DEBUG_WITH_PID("parend pid = " << parent_pid);
 
   try {

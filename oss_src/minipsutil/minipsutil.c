@@ -35,7 +35,7 @@ int32_t kill_process(int32_t pid);
 /*                                Windows                                 */
 /*                                                                        */
 /**************************************************************************/
-#include <windows.h>
+#include <process/gl_windows.hpp>
 #include <Psapi.h>
 
 typedef BOOL (WINAPI *LPFN_GLPI)(

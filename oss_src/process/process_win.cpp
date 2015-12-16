@@ -39,32 +39,50 @@ bool process::launch(const std::string &cmd,
   STARTUPINFO startup_info;
   ZeroMemory(&proc_info, sizeof(PROCESS_INFORMATION));
   ZeroMemory(&startup_info, sizeof(STARTUPINFO));
+  startup_info.cb = sizeof(startup_info);
 
   char *c_arglist = convert_args(cmd, args);
 
+  logstream(LOG_INFO) << "Launching process using command: >>> " << c_arglist << " <<< " << std::endl;
+
+  // Set up the proper handlers.
+  startup_info.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+  startup_info.dwFlags |= STARTF_USESTDHANDLES;
+
   BOOL ret;
-  // For Windows, we include the cmd with the arguments so that a search path
-  // is used for any executable without a full path
-  ret = CreateProcess(NULL,
-      c_arglist,
-      NULL,
-      NULL,
-      FALSE,
-      CREATE_NO_WINDOW,
-      NULL,
-      NULL,
-      &startup_info,
-      &proc_info);
+
+  ret = DuplicateHandle( GetCurrentProcess(), GetStdHandle(STD_ERROR_HANDLE),
+                         GetCurrentProcess(), &m_stderr_handle, 0, TRUE, DUPLICATE_SAME_ACCESS);
 
   if(!ret) {
     auto err = GetLastError();
-    logstream(LOG_ERROR) << "Failed to launch process: " <<
-      get_last_err_str(err) << std::endl;
+    logstream(LOG_WARNING) << "Failed to create duplicate stderr file handle: " << get_last_err_str(err) << std::endl;
+    logstream(LOG_WARNING) << "  Attempting to continue with : " << get_last_err_str(err) << std::endl;
+    m_stderr_handle = GetStdHandle(STD_ERROR_HANDLE);
+  }
+
+  // For Windows, we include the cmd with the arguments so that a search path
+  // is used for any executable without a full path
+  ret = CreateProcess(NULL,
+      c_arglist, // command line
+      NULL,      // process security attributes
+      NULL,      // primary thread security attributes
+      TRUE,      // handles are inherited
+      0,         // creation flags
+      NULL,      // use parent's environment
+      NULL,      // use parent's current directory
+      &startup_info, // use parent's current directory
+      &proc_info); // use parent's current directory
+
+  if(!ret) {
+    auto err = GetLastError();
+    logstream(LOG_ERROR) << "Failed to launch process: " << get_last_err_str(err) << std::endl;
     delete[] c_arglist;
     return false;
   } else {
+
     // Don't need to have a thread handle. We'll just cancel the process if
-    // need be
+    // need be.
     CloseHandle(proc_info.hThread);
     m_launched = true;
   }
@@ -74,6 +92,34 @@ bool process::launch(const std::string &cmd,
   m_pid = proc_info.dwProcessId;
 
   logstream(LOG_INFO) << "Launched process with pid: " << m_pid << std::endl;
+
+  // Wait up to 100 milliseconds before querying the process for it's status.
+  DWORD dwMillisec = 100;
+  DWORD dwWaitStatus = WaitForSingleObject(m_proc_handle, dwMillisec );
+
+  if(dwWaitStatus == WAIT_FAILED) {
+    auto err = GetLastError();
+    logstream(LOG_WARNING) << "Error in WaitForSingleObject after CreateProcess: "
+                           << get_last_err_str(err) << std::endl;
+  }
+
+  // Query the status of the process.  Will return STILL_ACTIVE if all
+  // is good.
+  DWORD potential_exit_code;
+  ret = GetExitCodeProcess(m_proc_handle, &potential_exit_code);
+
+  if(!ret) {
+    auto err = GetLastError();
+    logstream(LOG_WARNING) << "Error querying process status code: " << get_last_err_str(err) << std::endl;
+  }
+
+  logstream(LOG_INFO) << "Process status of " << m_pid << " = " << potential_exit_code << std::endl;
+
+  if(potential_exit_code != STILL_ACTIVE) {
+    logstream(LOG_ERROR) << "Launched process " << m_pid
+                         << " exited immediately with error code " << potential_exit_code << std::endl;
+    return false;
+  }
 
   return true;
 }
@@ -151,6 +197,7 @@ bool process::popen(const std::string &cmd,
       get_last_err_str(err) << std::endl;
     delete[] c_arglist;
     return false;
+
   } else {
     // Don't need to have a thread handle. We'll just cancel the process if
     // need be
@@ -273,6 +320,10 @@ process::~process() {
 
   if(m_write_handle != NULL) {
     CloseHandle(m_write_handle);
+  }
+
+  if(m_stderr_handle != NULL) {
+    CloseHandle(m_stderr_handle);
   }
 }
 
