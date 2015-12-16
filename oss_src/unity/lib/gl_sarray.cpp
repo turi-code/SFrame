@@ -597,6 +597,12 @@ gl_sarray gl_sarray::subslice(flexible_type start,
   return sarray_subslice(*this, start, stop, step);
 }
 
+gl_sarray gl_sarray::builtin_rolling_apply(const std::string &fn_name,
+                                           ssize_t start,
+                                           ssize_t end,
+                                           size_t min_observations) const {
+  return get_proxy()->builtin_rolling_apply(fn_name, start, end, min_observations);
+}
 
 gl_sarray gl_sarray::cumulative_aggregate(
      std::shared_ptr<group_aggregate_value> aggregator) const { 
@@ -741,6 +747,7 @@ void gl_sarray::ensure_has_sarray_reader() const {
     }
   }
 }
+
 /**************************************************************************/
 /*                                                                        */
 /*                            gl_sarray_range                             */

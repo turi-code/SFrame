@@ -3040,6 +3040,701 @@ class SArray(object):
         sf['a'] = self
         return sf.sort('a', ascending)['a']
 
+    def __check_min_observations(self, min_observations):
+        if min_observations is None:
+            min_observations = (1 << 64) - 1
+        if min_observations < 0:
+            raise ValueError("min_observations must be a positive integer")
+        return min_observations
+
+    def rolling_mean(self, window_start, window_end, min_observations=None):
+        """
+        Calculate a new SArray of the mean of different subsets over this
+        SArray.
+        
+        Also known as a "moving average" or "running average". The subset that
+        the mean is calculated over is defined as an inclusive range relative
+        to the position to each value in the SArray, using `window_start` and
+        `window_end`. For a better understanding of this, see the examples
+        below.
+
+        Parameters
+        ----------
+        window_start : int
+            The start of the subset to calculate the mean relative to the
+            current value. 
+
+        window_end : int
+            The end of the subset to calculate the mean relative to the current
+            value. Must be greater than `window_start`.
+        
+        min_observations : int 
+            Minimum number of non-missing observations in window required to
+            calculate the mean (otherwise result is None). None signifies that
+            the entire window must not include a missing value. A negative
+            number throws an error.
+
+        Returns
+        -------
+        out : SArray
+
+        Examples
+        --------
+        >>> import pandas
+        >>> sa = SArray([1,2,3,4,5]) 
+        >>> series = pandas.Series([1,2,3,4,5])
+
+        A rolling mean with a window including the previous 2 entries including
+        the current:
+        >>> sa.rolling_mean(-2,0)
+        dtype: float
+        Rows: 5
+        [None, None, 2.0, 3.0, 4.0]
+
+        Pandas equivalent:
+        >>> pandas.rolling_mean(series, 3)
+        0   NaN
+        1   NaN
+        2     2
+        3     3
+        4     4
+        dtype: float64
+
+        Same rolling mean operation, but 2 minimum observations:
+        >>> sa.rolling_mean(-2,0,min_observations=2)
+        dtype: float
+        Rows: 5
+        [None, 1.5, 2.0, 3.0, 4.0]
+
+        Pandas equivalent:
+        >>> pandas.rolling_mean(series, 3, min_periods=2)
+        0    NaN
+        1    1.5
+        2    2.0
+        3    3.0
+        4    4.0
+        dtype: float64
+
+        A rolling mean with a size of 3, centered around the current:
+        >>> sa.rolling_mean(-1,1)
+        dtype: float
+        Rows: 5
+        [None, 2.0, 3.0, 4.0, None]
+
+        Pandas equivalent:
+        >>> pandas.rolling_mean(series, 3, center=True)
+        0   NaN
+        1     2
+        2     3
+        3     4
+        4   NaN
+        dtype: float64
+
+        A rolling mean with a window including the current and the 2 entries
+        following:
+        >>> sa.rolling_mean(0,2)
+        dtype: float
+        Rows: 5
+        [2.0, 3.0, 4.0, None, None]
+
+        A rolling mean with a window including the previous 2 entries NOT
+        including the current:
+        >>> sa.rolling_mean(-2,-1)
+        dtype: float
+        Rows: 5
+        [None, None, 1.5, 2.5, 3.5]
+        """
+        min_observations = self.__check_min_observations(min_observations)
+        agg_op = None
+        if self.dtype() is array.array:
+            agg_op = '__builtin__vector__avg__'
+        else:
+            agg_op = '__builtin__avg__'
+        return SArray(_proxy=self.__proxy__.builtin_rolling_apply(agg_op, window_start, window_end, min_observations))
+
+    def rolling_sum(self, window_start, window_end, min_observations=None):
+        """
+        Calculate a new SArray of the sum of different subsets over this
+        SArray.
+
+        Also known as a "moving sum" or "running sum". The subset that
+        the sum is calculated over is defined as an inclusive range relative
+        to the position to each value in the SArray, using `window_start` and
+        `window_end`. For a better understanding of this, see the examples
+        below.
+
+        Parameters
+        ----------
+        window_start : int
+            The start of the subset to calculate the sum relative to the
+            current value.
+
+        window_end : int
+            The end of the subset to calculate the sum relative to the current
+            value. Must be greater than `window_start`.
+        
+        min_observations : int 
+            Minimum number of non-missing observations in window required to
+            calculate the sum (otherwise result is None). None signifies that
+            the entire window must not include a missing value. A negative
+            number throws an error.
+
+        Returns
+        -------
+        out : SArray
+
+        Examples
+        --------
+        >>> import pandas
+        >>> sa = SArray([1,2,3,4,5]) 
+        >>> series = pandas.Series([1,2,3,4,5])
+
+        A rolling sum with a window including the previous 2 entries including
+        the current:
+        >>> sa.rolling_sum(-2,0)
+        dtype: int 
+        Rows: 5
+        [None, None, 6, 9, 12]
+
+        Pandas equivalent:
+        >>> pandas.rolling_sum(series, 3)
+        0   NaN
+        1   NaN
+        2     6
+        3     9
+        4    12
+        dtype: float64
+
+        Same rolling sum operation, but 2 minimum observations:
+        >>> sa.rolling_sum(-2,0,min_observations=2)
+        dtype: int 
+        Rows: 5
+        [None, 3, 6, 9, 12]
+
+        Pandas equivalent:
+        >>> pandas.rolling_sum(series, 3, min_periods=2)
+        0    NaN
+        1      3 
+        2      6
+        3      9
+        4     12
+        dtype: float64
+
+        A rolling sum with a size of 3, centered around the current:
+        >>> sa.rolling_sum(-1,1)
+        dtype: int 
+        Rows: 5
+        [None, 6, 9, 12, None]
+
+        Pandas equivalent:
+        >>> pandas.rolling_sum(series, 3, center=True)
+        0   NaN
+        1     6
+        2     9
+        3    12
+        4   NaN
+        dtype: float64
+
+        A rolling sum with a window including the current and the 2 entries
+        following:
+        >>> sa.rolling_sum(0,2)
+        dtype: int
+        Rows: 5
+        [6, 9, 12, None, None]
+
+        A rolling sum with a window including the previous 2 entries NOT
+        including the current:
+        >>> sa.rolling_sum(-2,-1)
+        dtype: int 
+        Rows: 5
+        [None, None, 3, 5, 7]
+        """
+        min_observations = self.__check_min_observations(min_observations)
+        agg_op = None
+        if self.dtype() is array.array:
+            agg_op = '__builtin__vector__sum__'
+        else:
+            agg_op = '__builtin__sum__'
+        return SArray(_proxy=self.__proxy__.builtin_rolling_apply(agg_op, window_start, window_end, min_observations))
+
+    def rolling_max(self, window_start, window_end, min_observations=None):
+        """
+        Calculate a new SArray of the maximum value of different subsets over
+        this SArray.
+
+        The subset that the maximum is calculated over is defined as an
+        inclusive range relative to the position to each value in the SArray,
+        using `window_start` and `window_end`. For a better understanding of
+        this, see the examples below.
+
+        Parameters
+        ----------
+        window_start : int
+            The start of the subset to calculate the maximum relative to the
+            current value.
+
+        window_end : int
+            The end of the subset to calculate the maximum relative to the current
+            value. Must be greater than `window_start`.
+        
+        min_observations : int 
+            Minimum number of non-missing observations in window required to
+            calculate the maximum (otherwise result is None). None signifies that
+            the entire window must not include a missing value. A negative
+            number throws an error.
+
+        Returns
+        -------
+        out : SArray
+
+        Examples
+        --------
+        >>> import pandas
+        >>> sa = SArray([1,2,3,4,5]) 
+        >>> series = pandas.Series([1,2,3,4,5])
+
+        A rolling max with a window including the previous 2 entries including
+        the current:
+        >>> sa.rolling_max(-2,0)
+        dtype: int 
+        Rows: 5
+        [None, None, 3, 4, 5]
+
+        Pandas equivalent:
+        >>> pandas.rolling_max(series, 3)
+        0   NaN
+        1   NaN
+        2     3
+        3     4
+        4     5
+        dtype: float64
+
+        Same rolling max operation, but 2 minimum observations:
+        >>> sa.rolling_max(-2,0,min_observations=2)
+        dtype: int 
+        Rows: 5
+        [None, 2, 3, 4, 5]
+
+        Pandas equivalent:
+        >>> pandas.rolling_max(series, 3, min_periods=2)
+        0    NaN
+        1      2
+        2      3
+        3      4
+        4      5
+        dtype: float64
+
+        A rolling max with a size of 3, centered around the current:
+        >>> sa.rolling_max(-1,1)
+        dtype: int 
+        Rows: 5
+        [None, 3, 4, 5, None]
+
+        Pandas equivalent:
+        >>> pandas.rolling_max(series, 3, center=True)
+        0   NaN
+        1     3
+        2     4
+        3     5
+        4   NaN
+        dtype: float64
+
+        A rolling max with a window including the current and the 2 entries
+        following:
+        >>> sa.rolling_max(0,2)
+        dtype: int
+        Rows: 5
+        [3, 4, 5, None, None]
+
+        A rolling max with a window including the previous 2 entries NOT
+        including the current:
+        >>> sa.rolling_max(-2,-1)
+        dtype: int 
+        Rows: 5
+        [None, None, 2, 3, 4]
+        """
+        min_observations = self.__check_min_observations(min_observations)
+        agg_op = '__builtin__max__'
+        return SArray(_proxy=self.__proxy__.builtin_rolling_apply(agg_op, window_start, window_end, min_observations))
+
+    def rolling_min(self, window_start, window_end, min_observations=None):
+        """
+        Calculate a new SArray of the minimum value of different subsets over
+        this SArray.
+
+        The subset that the minimum is calculated over is defined as an
+        inclusive range relative to the position to each value in the SArray,
+        using `window_start` and `window_end`. For a better understanding of
+        this, see the examples below.
+
+        Parameters
+        ----------
+        window_start : int
+            The start of the subset to calculate the minimum relative to the
+            current value.
+
+        window_end : int
+            The end of the subset to calculate the minimum relative to the current
+            value. Must be greater than `window_start`.
+        
+        min_observations : int 
+            Minimum number of non-missing observations in window required to
+            calculate the minimum (otherwise result is None). None signifies that
+            the entire window must not include a missing value. A negative
+            number throws an error.
+
+        Returns
+        -------
+        out : SArray
+
+        Examples
+        --------
+        >>> import pandas
+        >>> sa = SArray([1,2,3,4,5]) 
+        >>> series = pandas.Series([1,2,3,4,5])
+
+        A rolling min with a window including the previous 2 entries including
+        the current:
+        >>> sa.rolling_min(-2,0)
+        dtype: int 
+        Rows: 5
+        [None, None, 1, 2, 3]
+
+        Pandas equivalent:
+        >>> pandas.rolling_min(series, 3)
+        0   NaN
+        1   NaN
+        2     1
+        3     2
+        4     3
+        dtype: float64
+
+        Same rolling min operation, but 2 minimum observations:
+        >>> sa.rolling_min(-2,0,min_observations=2)
+        dtype: int 
+        Rows: 5
+        [None, 1, 1, 2, 3]
+
+        Pandas equivalent:
+        >>> pandas.rolling_min(series, 3, min_periods=2)
+        0    NaN
+        1      1
+        2      1
+        3      2
+        4      3
+        dtype: float64
+
+        A rolling min with a size of 3, centered around the current:
+        >>> sa.rolling_min(-1,1)
+        dtype: int 
+        Rows: 5
+        [None, 1, 2, 3, None]
+
+        Pandas equivalent:
+        >>> pandas.rolling_min(series, 3, center=True)
+        0   NaN
+        1     1
+        2     2
+        3     3
+        4   NaN
+        dtype: float64
+
+        A rolling min with a window including the current and the 2 entries
+        following:
+        >>> sa.rolling_min(0,2)
+        dtype: int
+        Rows: 5
+        [1, 2, 3, None, None]
+
+        A rolling min with a window including the previous 2 entries NOT
+        including the current:
+        >>> sa.rolling_min(-2,-1)
+        dtype: int 
+        Rows: 5
+        [None, None, 1, 2, 3]
+        """
+        min_observations = self.__check_min_observations(min_observations)
+        agg_op = '__builtin__min__'
+        return SArray(_proxy=self.__proxy__.builtin_rolling_apply(agg_op, window_start, window_end, min_observations))
+
+    def rolling_var(self, window_start, window_end, min_observations=None):
+        """
+        Calculate a new SArray of the variance of different subsets over this
+        SArray.
+        
+        The subset that the variance is calculated over is defined as an inclusive
+        range relative to the position to each value in the SArray, using
+        `window_start` and `window_end`. For a better understanding of this,
+        see the examples below.
+
+        Parameters
+        ----------
+        window_start : int
+            The start of the subset to calculate the variance relative to the
+            current value. 
+
+        window_end : int
+            The end of the subset to calculate the variance relative to the current
+            value. Must be greater than `window_start`.
+        
+        min_observations : int 
+            Minimum number of non-missing observations in window required to
+            calculate the variance (otherwise result is None). None signifies that
+            the entire window must not include a missing value. A negative
+            number throws an error.
+
+        Returns
+        -------
+        out : SArray
+
+        Examples
+        --------
+        >>> import pandas
+        >>> sa = SArray([1,2,3,4,5]) 
+        >>> series = pandas.Series([1,2,3,4,5])
+
+        A rolling variance with a window including the previous 2 entries
+        including the current:
+        >>> sa.rolling_var(-2,0)
+        dtype: float
+        Rows: 5
+        [None, None, 0.6666666666666666, 0.6666666666666666, 0.6666666666666666] 
+
+        Pandas equivalent:
+        >>> pandas.rolling_var(series, 3, ddof=0)
+        0         NaN
+        1         NaN
+        2    0.666667
+        3    0.666667
+        4    0.666667
+        dtype: float64
+
+        Same rolling variance operation, but 2 minimum observations:
+        >>> sa.rolling_var(-2,0,min_observations=2)
+        dtype: float
+        Rows: 5
+        [None, 0.25, 0.6666666666666666, 0.6666666666666666, 0.6666666666666666] 
+
+        Pandas equivalent:
+        >>> pandas.rolling_var(series, 3, ddof=0, min_periods=2)
+        0         NaN
+        1    0.250000
+        2    0.666667
+        3    0.666667
+        4    0.666667
+        dtype: float64
+
+        A rolling variance with a size of 3, centered around the current:
+        >>> sa.rolling_var(-1,1)
+        dtype: float
+        Rows: 5
+        [None, 0.6666666666666666, 0.6666666666666666, 0.6666666666666666, None] 
+
+        Pandas equivalent:
+        >>> pandas.rolling_var(series, 3, center=True)
+        0         NaN
+        1    0.666667
+        2    0.666667
+        3    0.666667
+        4         NaN
+        dtype: float64
+
+        A rolling variance with a window including the current and the 2 entries
+        following:
+        >>> sa.rolling_var(0,2)
+        dtype: float
+        Rows: 5
+        [0.6666666666666666, 0.6666666666666666, 0.6666666666666666, None, None]
+
+        A rolling variance with a window including the previous 2 entries NOT
+        including the current:
+        >>> sa.rolling_var(-2,-1)
+        dtype: float
+        Rows: 5
+        [None, None, 0.25, 0.25, 0.25]
+        """
+        min_observations = self.__check_min_observations(min_observations)
+        agg_op = '__builtin__var__'
+        return SArray(_proxy=self.__proxy__.builtin_rolling_apply(agg_op, window_start, window_end, min_observations))
+
+    def rolling_stdv(self, window_start, window_end, min_observations=None):
+        """
+        Calculate a new SArray of the standard deviation of different subsets
+        over this SArray.
+        
+        The subset that the standard deviation is calculated over is defined as
+        an inclusive range relative to the position to each value in the
+        SArray, using `window_start` and `window_end`. For a better
+        understanding of this, see the examples below.
+
+        Parameters
+        ----------
+        window_start : int
+            The start of the subset to calculate the standard deviation
+            relative to the current value. 
+
+        window_end : int
+            The end of the subset to calculate the standard deviation relative
+            to the current value. Must be greater than `window_start`.
+        
+        min_observations : int 
+            Minimum number of non-missing observations in window required to
+            calculate the standard deviation (otherwise result is None). None
+            signifies that the entire window must not include a missing value.
+            A negative number throws an error.
+
+        Returns
+        -------
+        out : SArray
+
+        Examples
+        --------
+        >>> import pandas
+        >>> sa = SArray([1,2,3,4,5]) 
+        >>> series = pandas.Series([1,2,3,4,5])
+
+        A rolling standard deviation with a window including the previous 2
+        entries including the current:
+        >>> sa.rolling_stdv(-2,0)
+        dtype: float
+        Rows: 5
+        [None, None, 0.816496580927726, 0.816496580927726, 0.816496580927726]
+
+        Pandas equivalent:
+        >>> pandas.rolling_std(series, 3, ddof=0)
+        0         NaN
+        1         NaN
+        2    0.816497
+        3    0.816497
+        4    0.816497
+        dtype: float64
+
+        Same rolling standard deviation operation, but 2 minimum observations:
+        >>> sa.rolling_stdv(-2,0,min_observations=2)
+        dtype: float
+        Rows: 5
+        [None, 0.5, 0.816496580927726, 0.816496580927726, 0.816496580927726]
+
+        Pandas equivalent:
+        >>> pandas.rolling_std(series, 3, ddof=0, min_periods=2)
+        0         NaN
+        1    0.500000
+        2    0.816497
+        3    0.816497
+        4    0.816497
+        dtype: float64
+
+        A rolling standard deviation with a size of 3, centered around the
+        current:
+        >>> sa.rolling_stdv(-1,1)
+        dtype: float
+        Rows: 5
+        [None, 0.816496580927726, 0.816496580927726, 0.816496580927726, None]
+
+        Pandas equivalent:
+        >>> pandas.rolling_std(series, 3, center=True, ddof=0)
+        0         NaN
+        1    0.816497
+        2    0.816497
+        3    0.816497
+        4         NaN
+        dtype: float64
+
+        A rolling standard deviation with a window including the current and
+        the 2 entries following:
+        >>> sa.rolling_stdv(0,2)
+        dtype: float
+        Rows: 5
+        [0.816496580927726, 0.816496580927726, 0.816496580927726, None, None]
+
+        A rolling standard deviation with a window including the previous 2
+        entries NOT including the current:
+        >>> sa.rolling_stdv(-2,-1)
+        dtype: float
+        Rows: 5
+        [None, None, 0.5, 0.5, 0.5]
+        """
+        min_observations = self.__check_min_observations(min_observations)
+        agg_op = '__builtin__stdv__'
+        return SArray(_proxy=self.__proxy__.builtin_rolling_apply(agg_op, window_start, window_end, min_observations))
+
+    def rolling_count(self, window_start, window_end):
+        """
+        Count the number of non-NULL values of different subsets over this
+        SArray.
+        
+        The subset that the count is excecuted on is defined as an inclusive
+        range relative to the position to each value in the SArray, using
+        `window_start` and `window_end`. For a better understanding of this,
+        see the examples below.
+
+        Parameters
+        ----------
+        window_start : int
+            The start of the subset to count relative to the current value. 
+
+        window_end : int
+            The end of the subset to count relative to the current value. Must
+            be greater than `window_start`.
+        
+        Returns
+        -------
+        out : SArray
+
+        Examples
+        --------
+        >>> import pandas
+        >>> sa = SArray([1,2,3,None,5]) 
+        >>> series = pandas.Series([1,2,3,None,5])
+
+        A rolling count with a window including the previous 2 entries including
+        the current:
+        >>> sa.rolling_count(-2,0)
+        dtype: int 
+        Rows: 5
+        [1, 2, 3, 2, 2]
+
+        Pandas equivalent:
+        >>> pandas.rolling_count(series, 3)
+        0     1
+        1     2
+        2     3
+        3     2
+        4     2
+        dtype: float64
+
+        A rolling count with a size of 3, centered around the current:
+        >>> sa.rolling_count(-1,1)
+        dtype: int 
+        Rows: 5
+        [2, 3, 2, 2, 1]
+
+        Pandas equivalent:
+        >>> pandas.rolling_count(series, 3, center=True)
+        0    2
+        1    3
+        2    2
+        3    2
+        4    1
+        dtype: float64
+
+        A rolling count with a window including the current and the 2 entries
+        following:
+        >>> sa.rolling_count(0,2)
+        dtype: int
+        Rows: 5
+        [3, 2, 2, 1, 1]
+
+        A rolling count with a window including the previous 2 entries NOT
+        including the current:
+        >>> sa.rolling_count(-2,-1)
+        dtype: int 
+        Rows: 5
+        [0, 1, 2, 2, 1]
+        """
+        agg_op = '__builtin__nonnull__count__'
+        return SArray(_proxy=self.__proxy__.builtin_rolling_apply(agg_op, window_start, window_end, 0))
+
     def cumulative_sum(self):
         """
         Return the cumulative sum of the elements in the SArray.
@@ -3224,4 +3919,3 @@ class SArray(object):
         _mt._get_metric_tracker().track('sarray.cumulative_var')
         return extensions._sarray_cumulative_built_in_aggregate(
                                           self, "__builtin__cum_var__")
-

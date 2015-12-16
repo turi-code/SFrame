@@ -130,8 +130,6 @@ class group_aggregate_value {
     os << this->name() << "(value = " << this->emit() << ")";
   }
 
-
-protected:
   virtual flex_type_enum set_input_type(flex_type_enum type) {
     return type;
   }
