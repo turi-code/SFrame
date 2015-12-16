@@ -33,13 +33,19 @@ extern "C" {
 EXPORT void start_embeded_server(const char* root_path,
                                  const char* server_address,
                                  const char* log_file) {
+
+  ASSERT_MSG(boost::starts_with(std::string(server_address), "inproc://"), "Server address must starts with inproc://");
+
   namespace fs = boost::filesystem;
   global_logger().set_log_level(LOG_INFO);
   // we do not want to show server logs in python console 
   global_logger().set_log_to_console(false);
-  graphlab::unity_server_options server_options;
+  // we do not want to show lambda worker logs in python console 
+  fs::path lambda_log_prefix = fs::path(log_file).parent_path() / fs::path("lambda-worker");
+  std::string lambda_log_prefix_str = lambda_log_prefix.string();
+  setenv("GRAPHLAB_LAMBDA_WORKER_LOG_PREFIX", lambda_log_prefix_str.c_str(), 0 /* do not overwrite */);
 
-  ASSERT_MSG(boost::starts_with(std::string(server_address), "inproc://"), "Server address must starts with inproc://");
+  graphlab::unity_server_options server_options;
   // Example: "inproc://graphlab_server";
   server_options.server_address = server_address;
   // Example: "/tmp/sframe.log";

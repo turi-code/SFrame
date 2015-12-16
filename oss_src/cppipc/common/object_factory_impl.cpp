@@ -7,16 +7,17 @@
  */
 #include <cppipc/common/object_factory_impl.hpp>
 #include <cppipc/server/cancel_ops.hpp>
+#include <logger/logger.hpp>
 
 namespace cppipc {
 size_t object_factory_impl::make_object(std::string object_type_name) {
-  std::cout << "Creating object of type : "<< object_type_name << "\n";
+  logstream(LOG_DEBUG) << "Creating object of type : "<< object_type_name << "\n";
   std::shared_ptr<void> ptr;
   if (constructors.count(object_type_name)) ptr = constructors[object_type_name]();
   if (ptr) {
     // register in the server
     size_t id = srv.register_object(ptr);
-    std::cout << "New object with id " << id << " registered\n";
+    logstream(LOG_DEBUG) << "New object with id " << id << " registered\n";
     return id;
   } else {
     return (size_t)(-1);
@@ -43,7 +44,7 @@ std::string object_factory_impl::ping(std::string pingval) {
 }
 
 void object_factory_impl::delete_object(size_t object_id) {
-  std::cout << "Deleting Object : " << object_id << "\n";
+  logstream(LOG_DEBUG) << "Deleting Object : " << object_id << "\n";
   srv.delete_object(object_id);
 }
 

@@ -5,6 +5,7 @@ from ctypes import PyDLL, c_char_p, c_int
 from os.path import split, abspath, join
 from glob import glob
 from itertools import chain
+import os
 
 if __name__ == "__main__":
 
@@ -16,7 +17,7 @@ if __name__ == "__main__":
     if debug_mode or os.environ.get("GRAPHLAB_LAMBDA_WORKER_DEBUG_MODE") == "1":
         write_out = sys.stderr
     else:
-        write_out = sys.stdout
+        write_out = open(os.devnull, 'w')
 
     if debug_mode:
         print "PyLambda script called with no IPC information; entering diagnostic mode."
@@ -44,7 +45,7 @@ if __name__ == "__main__":
     if len(pylambda_workers) > 1:
         write_out.write("WARNING: multiple pylambda worker libraries.\n")
         write_out.flush()
-        
+
     if len(pylambda_workers) == 0:
         sys.stderr.write("ERROR: Cannot find pylambda_worker extension library.\n")
         sys.stderr.flush()
@@ -67,12 +68,12 @@ if __name__ == "__main__":
         sys.stderr.write("Error accessing pylambda_worker_main: %s\n" % repr(e))
         sys.stderr.flush()
         sys.exit(204)
-    
+
     if not debug_mode:
         # This call only returns after the parent process is done.
         result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir), c_char_p(sys.argv[1]))
     else:
-        # This version will print out a bunch of diagnostic information and then exit. 
+        # This version will print out a bunch of diagnostic information and then exit.
         result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir), c_char_p("debug"))
 
     write_out.write("Lambda process exited with code %d.\n" % result)

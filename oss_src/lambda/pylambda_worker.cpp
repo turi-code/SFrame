@@ -38,20 +38,26 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
     debug_mode = true;
   }
 
+  size_t parent_pid = get_parent_pid();
+  size_t this_pid = get_my_pid();
+
   if(debug_mode) {
     global_logger().set_log_level(LOG_DEBUG);
-    global_logger().set_log_to_console(true, true);
+    global_logger().set_log_to_console(true, true /* stderr */);
   } else {
     global_logger().set_log_level(LOG_INFO);
+    char* log_file_prefix = getenv("GRAPHLAB_LAMBDA_WORKER_LOG_PREFIX");
+    if (log_file_prefix != NULL) {
+      // Write logs to file ands disable console log
+      std::string log_file = std::string(log_file_prefix) + "-" + std::to_string(this_pid) + ".log";
+      global_logger().set_log_file(log_file);
+      global_logger().set_log_to_console(false);
+    }
   }
   global_logger().set_pid(get_my_pid());
 
   LOG_DEBUG_WITH_PID("root_path = '" << root_path << "'");
   LOG_DEBUG_WITH_PID("server_address = '" << server_address << "'");
-
-  size_t parent_pid = get_parent_pid();
-  size_t this_pid = get_my_pid();
-
   LOG_DEBUG_WITH_PID("parend pid = " << parent_pid);
 
   try {

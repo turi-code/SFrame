@@ -62,7 +62,7 @@ reply_socket::reply_socket(void* zmq_ctx,
       }*/
     }
   }
-  std::cout << "Bound to " << local_address << "\n";
+  // std::cout << "Bound to " << local_address << "\n";
 }
 
 void reply_socket::close() {

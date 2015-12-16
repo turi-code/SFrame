@@ -84,7 +84,7 @@ comm_server::comm_server(std::vector<std::string> zkhosts,
   if(alternate_bind_address.size() == 0) {
     alternate_bind_address = object_socket->get_bound_address();
   }
-  std::cout << "my alt bind address: " << alternate_bind_address << std::endl;
+  logstream(LOG_INFO) << "my alt bind address: " << alternate_bind_address << std::endl;
   control_socket = new libfault::async_reply_socket(zmq_ctx, keyval,
         boost::bind(&comm_server::callback, this, _1, _2), 1,
         (keyval==NULL && alternate_control_address.length()==0) ?
