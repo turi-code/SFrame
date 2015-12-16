@@ -71,7 +71,7 @@ class unity_server {
       });
 
     server->start();
-    // init_extensions(options.root_path);
+    init_extensions(options.root_path);
     init_pylambda_worker();
 
     logstream(LOG_EMPH) << "Unity server listening on: " <<  options.server_address << std::endl;

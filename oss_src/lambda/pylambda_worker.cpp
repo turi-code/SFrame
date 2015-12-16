@@ -49,7 +49,8 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
     char* log_file_prefix = getenv("GRAPHLAB_LAMBDA_WORKER_LOG_PREFIX");
     if (log_file_prefix != NULL) {
       // Write logs to file ands disable console log
-      std::string log_file = std::string(log_file_prefix) + "-" + std::to_string(this_pid) + ".log";
+      std::string log_file = std::string(log_file_prefix) + "-" + std::to_string(parent_pid)
+                                                          + "-" + std::to_string(this_pid) + ".log";
       global_logger().set_log_file(log_file);
       global_logger().set_log_to_console(false);
     }

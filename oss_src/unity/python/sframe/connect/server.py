@@ -97,8 +97,7 @@ class EmbededServer(GraphLabServer):
         self.dll.start_embeded_server.argtypes = [c_char_p, c_char_p, c_char_p]
         self.dll.start_embeded_server(self.root_path, self.server_addr, self.unity_log)
 
-        self.logger.info('Start server at: ' + self.server_addr + " - "
-                         'Server log: ' + self.unity_log)
+        self.logger.info('Server started. ' + 'Server log: ' + self.unity_log)
 
     def get_client_ptr(self):
         """
@@ -117,6 +116,8 @@ class EmbededServer(GraphLabServer):
 
 class LocalServer(GraphLabServer):
     """
+    Deprecated.
+
     Local GraphLab Server wraps the graphlab
     unity_server process and implements the GraphLabServer interface.
     """
@@ -150,7 +151,7 @@ class LocalServer(GraphLabServer):
         # Either both or neither encryption keys must be set.
         assert(bool(public_key) == bool(secret_key))
 
-        if not self.server_addr:
+        if self.server_addr is None:
             # by default we use '/tmp/graphlab_server-$pid-$timestamp'
             # where the pid is the server process id
             # and timestamp is the current timestamp
@@ -321,6 +322,8 @@ class LocalServer(GraphLabServer):
 
 class RemoteServer(GraphLabServer):
     """
+    Deprecated.
+
     The class which manages the connection to a remote unity_server.
     """
     def __init__(self, server_addr, auth_token=None, public_key=''):

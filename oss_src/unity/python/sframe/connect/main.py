@@ -61,8 +61,8 @@ def __catch_and_log__(func, *args, **kargs):
 
 
 @__catch_and_log__
-def launch(server_addr=None, server_bin=None, server_log=None, auth_token=None,
-           server_public_key=''):
+def launch(server_addr=None, server_bin=None,
+           server_log=None, auth_token=None, server_public_key=''):
     """
     Launch a connection to the graphlab server. The connection can be stopped by
     the `stop` function.
@@ -95,6 +95,9 @@ def launch(server_addr=None, server_bin=None, server_log=None, auth_token=None,
             " Please stop the connection first by running 'graphlab.stop()' and try again.")
         return
 
+    if server_addr is None:
+        server_addr = 'inproc://sframe_server'
+
     try:
         server_type = _get_server_type(server_addr)
         __LOGGER__.debug("Server type: %s" % server_type)
@@ -104,20 +107,21 @@ def launch(server_addr=None, server_bin=None, server_log=None, auth_token=None,
         return
 
     # Check that the unity_server binary exists
-    if not hasattr(_DEFAULT_CONFIG, 'server_bin') and server_bin is None:
-        __LOGGER__.error("Could not find a unity_server binary. Please try reinstalling.")
-        raise AssertionError
-
-    # Test that the unity_server binary works
-    _verify_engine_binary(_DEFAULT_CONFIG.server_bin if server_bin is None else server_bin)
+    if server_type == LOCAL_SERVER_TYPE:
+        if not hasattr(_DEFAULT_CONFIG, 'server_bin') and server_bin is None:
+            __LOGGER__.error("Could not find a unity_server binary. Please try reinstalling.")
+            raise AssertionError
+        # Test that the unity_server binary works
+        _verify_engine_binary(_DEFAULT_CONFIG.server_bin if server_bin is None else server_bin)
 
     # construct a server instance based on the server_type
-    if (server_type == LOCAL_SERVER_TYPE):
+    if (server_type == EMBEDED_SERVER_TYPE):
+        server = EmbededServer(server_addr, server_log)
+    # the following server mode is deprecated
+    elif (server_type == LOCAL_SERVER_TYPE):
         server = LocalServer(server_addr, server_bin, server_log)
     elif (server_type == REMOTE_SERVER_TYPE):
         server = RemoteServer(server_addr, auth_token, public_key=server_public_key)
-    elif (server_type == EMBEDED_SERVER_TYPE):
-        server = EmbededServer(server_addr, server_log)
     else:
         raise ValueError('Invalid server type: %s' % server_type)
 
@@ -173,7 +177,7 @@ def _get_server_type(server_addr):
     Returns
     --------
     out : server_type
-        {'local', 'remote'}
+        {'local', 'remote', 'embeded'}
 
     Raises
     -------
@@ -183,9 +187,7 @@ def _get_server_type(server_addr):
     # construct the server object
     # Depending on what are the parameters provided, decide to either
     # start a remote server or a local server
-    if server_addr is None:
-        server_type = LOCAL_SERVER_TYPE
-    elif server_addr.startswith('inproc'):
+    if server_addr.startswith('inproc'):
         server_type = EMBEDED_SERVER_TYPE
     elif server_addr.startswith('tcp'):
         server_type = REMOTE_SERVER_TYPE

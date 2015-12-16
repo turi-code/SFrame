@@ -7,7 +7,6 @@ of the BSD license. See the LICENSE file for details.
 '''
 # 1st set up logging
 import logging
-from logging.handlers import TimedRotatingFileHandler
 import logging.config
 import time as _time
 import tempfile as _tempfile
@@ -16,7 +15,6 @@ from Queue import Queue as queue
 from queue_channel import QueueHandler, MutableQueueListener
 
 import urllib as _urllib
-import os as _os
 import re as _re
 from zipfile import ZipFile as _ZipFile
 import bz2 as _bz2
@@ -25,9 +23,9 @@ import ConfigParser as _ConfigParser
 import itertools as _itertools
 import uuid as _uuid
 import datetime as _datetime
-import time as _time
 import logging as _logging
 import sys as _sys
+
 
 def _i_am_a_lambda_worker():
     if _re.match(".*lambda_worker.*", _sys.argv[0]) is not None:
@@ -141,6 +139,7 @@ def _get_aws_credentials():
         raise KeyError('No secret key found. Please set the environment variable AWS_SECRET_ACCESS_KEY, or using graphlab.aws.set_credentials()')
     return (_os.environ['AWS_ACCESS_KEY_ID'], _os.environ['AWS_SECRET_ACCESS_KEY'])
 
+
 def _try_inject_s3_credentials(url):
     """
     Inject aws credentials into s3 url as s3://[aws_id]:[aws_key]:[bucket/][objectkey]
@@ -162,21 +161,19 @@ def _try_inject_s3_credentials(url):
     (k, v) = _get_aws_credentials()
     return 's3://' + k + ':' + v + ':' + path
 
+
 def _make_internal_url(url):
     """
-    Takes a user input url string and translates into url relative to the server process.
-    - URL to a local location begins with "local://" or has no "*://" modifier.
-      If the server is local, returns the absolute path of the url.
-      For example: "local:///tmp/foo" -> "/tmp/foo" and "./foo" -> os.path.abspath("./foo").
-      If the server is not local, raise NotImplementedError.
-    - URL to a server location begins with "remote://".
-      Returns the absolute path after the "remote://" modifier.
-      For example: "remote:///tmp/foo" -> "/tmp/foo".
-    - URL to a s3 location begins with "s3://":
+    Process user input url string with proper normalization
+    For all urls:
+      Expands ~ to $HOME
+    For S3 urls:
       Returns the s3 URL with credentials filled in using graphlab.aws.get_aws_credential().
       For example: "s3://mybucket/foo" -> "s3://$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY:mybucket/foo".
-    - URL to other remote locations, e.g. http://, will remain as is.
-    - Expands ~ to $HOME
+    For hdfs urls:
+      Error if hadoop classpath is not set
+    For local file urls:
+      conver slashes for windows sanity
 
     Parameters
     ----------
@@ -191,58 +188,30 @@ def _make_internal_url(url):
     if not url:
         raise ValueError('Invalid url: %s' % url)
 
+    from .. import sys_util
+    from . import file_util
+
     # Convert Windows paths to Unix-style slashes
     url = _convert_slashes(url)
 
-    # The final file path on server.
-    path_on_server = None
-
     # Try to split the url into (protocol, path).
-    urlsplit = url.split("://")
-    from ..connect import main as _glconnect
-    from ..connect import server as _server
-    from .. import sys_util as _sys_util
-    if len(urlsplit) == 2:
-        protocol, path = urlsplit
-        if not path:
-            raise ValueError('Invalid url: %s' % url)
-        if protocol in ['http', 'https']:
-            # protocol is a remote url not on server, just return
-            return url
-        elif protocol == 'hdfs':
-            if isinstance(_glconnect.get_server(), _server.LocalServer) and not _sys_util.get_hadoop_class_path():
-                raise ValueError("HDFS URL is not supported because Hadoop not found. Please make hadoop available from PATH or set the environment variable HADOOP_HOME and try again.")
-            else:
-                return url
-        elif protocol == 's3':
-            return _try_inject_s3_credentials(url)
-        elif protocol == 'remote':
-        # url for files on the server
-            path_on_server = path
-        elif protocol == 'local':
-        # url for files on local client, check if we are connecting to local server
-            if (isinstance(_glconnect.get_server(), _server.LocalServer)):
-                path_on_server = path
-            else:
-                raise ValueError('Cannot use local URL when connecting to a remote server.')
-        else:
-            raise ValueError('Invalid url protocol %s. Supported url protocols are: remote://, local://, s3://, https:// and hdfs://' % protocol)
-    elif len(urlsplit) == 1:
-        # expand ~ to $HOME
-        url = _os.path.expanduser(url)
-        # url for files on local client, check if we are connecting to local server
-        if (isinstance(_glconnect.get_server(), _server.LocalServer)):
-            path_on_server = url
-        else:
-            raise ValueError('Cannot use local URL when connecting to a remote server.')
+    protocol = file_util.get_protocol(url)
+    is_local = False
+    if protocol in ['http', 'https']:
+        pass
+    elif protocol == 'hdfs' and not sys_util.get_hadoop_class_path():
+        raise ValueError("HDFS URL is not supported because Hadoop not found. Please make hadoop available from PATH or set the environment variable HADOOP_HOME and try again.")
+    elif protocol == 's3':
+        return _try_inject_s3_credentials(url)
+    elif protocol == '' or (protocol == 'local' or protocol == 'remote'):
+        # local and remote are legacy protocol for seperate server process
+        is_local = True
     else:
-        raise ValueError('Invalid url: %s' % url)
+        raise ValueError('Invalid url protocol %s. Supported url protocols are: local, s3://, https:// and hdfs://' % protocol)
 
-    if path_on_server:
-        out_path = _os.path.abspath(_os.path.expanduser(path_on_server))
-        return out_path
-    else:
-        raise ValueError('Invalid url: %s' % url)
+    if is_local:
+        url = _os.path.abspath(_os.path.expanduser(url))
+    return url
 
 
 def _download_dataset(url_str, extract=True, force=False, output_dir="."):
@@ -736,6 +705,7 @@ class _UTC(_datetime.tzinfo):
 
 _utc = _UTC()
 
+
 def _dt_to_utc_timestamp(t):
     if t.tzname() == 'UTC':
         return (t - _datetime.datetime(1970, 1, 1, tzinfo=_utc)).total_seconds()
@@ -769,7 +739,8 @@ def _pickle_to_temp_location_or_memory(obj):
         pickler.close()
         return filename
 
-def _raise_error_if_not_of_type(arg, expected_type, arg_name = None):
+
+def _raise_error_if_not_of_type(arg, expected_type, arg_name=None):
     """
     Check if the input is of expected type.
 
@@ -797,7 +768,8 @@ def _raise_error_if_not_of_type(arg, expected_type, arg_name = None):
                         ' or '.join([x.__name__ for x in lst_expected_type]))
     err_msg += "(not %s)." % type(arg).__name__
     if not any(map(lambda x: isinstance(arg, x), lst_expected_type)):
-      raise TypeError, err_msg
+        raise TypeError(err_msg)
+
 
 def _raise_error_if_not_function(arg, arg_name=None):
     """
@@ -815,12 +787,11 @@ def _raise_error_if_not_function(arg, arg_name=None):
     _raise_error_if_not_function(func, 'func')
 
     """
-
-
     display_name = '%s ' % arg_name if arg_name is not None else ""
     err_msg = "Argument %smust be a function." % display_name
     if not hasattr(arg, '__call__'):
-      raise TypeError, err_msg
+        raise TypeError(err_msg)
+
 
 def get_log_location():
     from ..connect import main as _glconnect
@@ -830,8 +801,10 @@ def get_log_location():
     else:
         return None
 
+
 def get_client_log_location():
     return client_log_file
+
 
 def get_server_log_location():
     return get_log_location()
