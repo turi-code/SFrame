@@ -119,10 +119,26 @@ class group_aggregate_value {
    */
   virtual inline ~group_aggregate_value() { }
 
+  /**
+   * Override this function for allowing the operator to be easily printed.
+   *
+   * \code
+   *   std::cout << aggregator <<s std::endl; 
+   * \endcode
+   */
+  virtual void print(std::ostream& os) const {
+    os << this->name() << "(value = " << this->emit() << ")";
+  }
+
   virtual flex_type_enum set_input_type(flex_type_enum type) {
     return type;
   }
 };
+  
+inline std::ostream& operator<<(std::ostream& os, const group_aggregate_value& dt) {
+  dt.print(os);
+  return os;
+}
 
 
 /**

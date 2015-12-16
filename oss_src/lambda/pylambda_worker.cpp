@@ -30,78 +30,96 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
   // Options
   std::string server_address = _server_address;
   std::string root_path = _root_path;
-  
-  size_t debug_mode = (server_address == "debug");
 
-  global_logger().set_log_level(LOG_INFO);
+  size_t debug_mode = (server_address == "debug");
+  char* debug_mode_str = getenv("GRAPHLAB_LAMBDA_WORKER_DEBUG_MODE");
+
+  if(debug_mode_str != NULL) {
+    debug_mode = true;
+  }
+
+  if(debug_mode) {
+    global_logger().set_log_level(LOG_DEBUG);
+    global_logger().set_log_to_console(true, true);
+  } else {
+    global_logger().set_log_level(LOG_INFO);
+  }
+
+  LOG_DEBUG_WITH_PID("root_path = '" << root_path << "'");
+  LOG_DEBUG_WITH_PID("server_address = '" << server_address << "'");
+
+  size_t parent_pid = get_parent_pid();
+  size_t this_pid = get_my_pid();
+
+  LOG_DEBUG_WITH_PID("parend pid = " << parent_pid);
 
   try {
-    
-    size_t parent_pid = get_parent_pid();
 
-    if(debug_mode) {
-      logstream(LOG_INFO) << "Library function entered successfully." << std::endl;
-    }
+    LOG_DEBUG_WITH_PID("Library function entered successfully.");
 
     // Whenever this is set, it must be restored upon return to python. 
     PyThreadState *python_gil_thread_state = nullptr;
     scoped_finally gil_restorer([&](){
         if(python_gil_thread_state != nullptr) {
+          LOG_DEBUG_WITH_PID("Restoring GIL thread state.");
           PyEval_RestoreThread(python_gil_thread_state);
+          LOG_DEBUG_WITH_PID("GIL thread state restored.");
           python_gil_thread_state = nullptr;
         }
       });
     
     try {
-      if(debug_mode) {
-        logstream(LOG_INFO) << "Attempting to initialize python." << std::endl;
-      }
-    
+
+      LOG_DEBUG_WITH_PID("Attempting to initialize python.");
       graphlab::lambda::init_python(root_path);
-    
-      if(debug_mode) {
-        logstream(LOG_INFO) << "Python initialized successfully." << std::endl;
-      }
+      LOG_DEBUG_WITH_PID("Python initialized successfully.");
     
     } catch (const std::string& error) {
-      logstream(LOG_ERROR) << "Failed to initialize python (internal exception): " << error << std::endl;
+      logstream(LOG_ERROR) << this_pid << ": "
+                           << "Failed to initialize python (internal exception): " << error << std::endl;
       return 101;
     } catch (const std::exception& e) {
-      logstream(LOG_ERROR) << "Failed to initialize python: " << e.what() << std::endl;
+      logstream(LOG_ERROR) << this_pid << ": "
+                           << "Failed to initialize python: " << e.what() << std::endl;
       return 102;
     }
 
-    if(debug_mode) {
-      logstream(LOG_INFO) << "No valid server address, exiting. \n"
-                          << "   Example: ipc:///tmp/pylambda_worker\n"
-                          << "   Example: tcp://127.0.0.1:10020\n"
-                          << "   Example: tcp://*:10020\n"
-                          << "   Example: tcp://127.0.0.1:10020 tcp://127.0.0.1:10021\n"
-                          << "   Example: ipc:///tmp/unity_test_server --auth_token=secretkey\n"
-                          << "   Example: ipc:///tmp/unity_test_server ipc:///tmp/unity_status secretkey\n"
-                          << std::endl;
+    if(server_address == "debug") {
+      logstream(LOG_INFO) << "Exiting simulation mode ." << std::endl;
       return 1; 
     }
 
     // Now, release the gil and continue. 
     python_gil_thread_state = PyEval_SaveThread();
+
+    LOG_DEBUG_WITH_PID("Python GIL released.");
     
     graphlab::shmipc::server shm_comm_server;
     bool has_shm = shm_comm_server.bind();
+
+    LOG_DEBUG_WITH_PID("shm_comm_server bind: has_shm=" << has_shm);
+
     // construct the server
     cppipc::comm_server server(std::vector<std::string>(), "", server_address);
 
     server.register_type<graphlab::lambda::lambda_evaluator_interface>([&](){
         if (has_shm) {
-          return new graphlab::lambda::pylambda_evaluator(&shm_comm_server);
+          auto n = new graphlab::lambda::pylambda_evaluator(&shm_comm_server);
+          LOG_DEBUG_WITH_PID("creation of pylambda_evaluator with SHM complete.");
+          return n;
         } else {
-          return new graphlab::lambda::pylambda_evaluator();
+          auto n = new graphlab::lambda::pylambda_evaluator();
+          LOG_DEBUG_WITH_PID("creation of pylambda_evaluator without SHM complete.");
+          return n;
         }
       });
-    server.register_type<graphlab::lambda::graph_lambda_evaluator_interface>([](){
-        return new graphlab::lambda::graph_pylambda_evaluator();
+    server.register_type<graphlab::lambda::graph_lambda_evaluator_interface>([&](){
+        auto n = new graphlab::lambda::graph_pylambda_evaluator();
+        LOG_DEBUG_WITH_PID("creation of graph_pylambda_evaluator complete.");
+        return n;
       });
 
+    LOG_DEBUG_WITH_PID("Starting server.");
     server.start();
 
     wait_for_parent_exit(parent_pid);

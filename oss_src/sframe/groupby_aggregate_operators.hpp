@@ -814,10 +814,18 @@ class variance : public group_aggregate_value {
   /// combines two partial counts
   void combine(const group_aggregate_value& other) {
     const variance& _other = dynamic_cast<const variance&>(other);
-    double delta = _other.mean - mean;
-    mean = ((mean * count) + (_other.mean * _other.count)) / (count + _other.count);
-    M2 += _other.M2 + delta * delta * _other.count * count / (count + _other.count);
-    count += _other.count;
+    if (_other.count == 0) {
+      return;
+    } else if (count == 0) {
+      mean = _other.mean;
+      count = _other.count;
+      M2 = _other.M2;
+    } else {
+      double delta = _other.mean - mean;
+      mean = ((mean * count) + (_other.mean * _other.count)) / (count + _other.count);
+      M2 += _other.M2 + delta * delta * _other.count * count / (count + _other.count);
+      count += _other.count;
+    }
   }
 
   /// Emits the count result
@@ -851,11 +859,21 @@ class variance : public group_aggregate_value {
     iarc >> count >> mean >> M2;
   }
 
+  virtual void print(std::ostream& os) const {
+    os << this->name() << "(" 
+       << "value = " << this->emit() << ", " 
+       << "count = " << this->count << ", " 
+       << "mean = "  << this->mean << ", " 
+       << "M2 = "    << this->M2
+       << ")";
+  }
+
  protected:
   size_t count = 0;
   double mean = 0;
   double M2 = 0;
 };
+  
 
 class stdv : public variance {
  public:

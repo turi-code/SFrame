@@ -13,6 +13,7 @@ import ctypes
 import glob as _glob
 import subprocess as _subprocess
 import _pylambda_worker
+from copy import copy
 
 def make_unity_server_env():
     """
@@ -116,15 +117,53 @@ def test_pylambda_worker():
     in case there is an error.
     """
 
-    import subprocess
-
     print "\nLaunch pylambda_worker process with simulated unity_server environment."
 
+    import subprocess
+
+    env=make_unity_server_env()
+    env["GRAPHLAB_LAMBDA_WORKER_DEBUG_MODE"] = "1"
     proc = subprocess.Popen(
-        [sys.executable, os.path.abspath(_pylambda_worker.__file__)],
-        env=make_unity_server_env())
+            [sys.executable, os.path.abspath(_pylambda_worker.__file__)],
+            env = env)
 
     proc.wait()
+
+def dump_directory_structure():
+    """
+    Dumps a detailed report of the graphlab/sframe directory structure
+    and files, along with the output of os.lstat for each.  This is useful
+    for debugging purposes.
+    """
+
+    "Dumping Installation Directory Structure for Debugging: "
+
+    import sys, os
+    from os.path import split, abspath, join
+    from itertools import chain
+    main_dir = split(abspath(sys.modules[__name__].__file__))[0]
+
+    visited_files = []
+
+    def on_error(err):
+        visited_files.append( ("  ERROR", str(err)) )
+
+    for path, dirs, files in os.walk(main_dir, onerror = on_error):
+        for fn in chain(files, dirs):
+            name = join(path, fn)
+            try:
+                visited_files.append( (name, repr(os.lstat(name))) )
+            except:
+                visited_files.append( (name, "ERROR calling os.lstat.") )
+
+    def strip_name(n):
+        if n[:len(main_dir)] == main_dir:
+            return "<root>/" + n[len(main_dir):]
+        else:
+            return n
+
+    print "\n".join( ("  %s: %s" % (strip_name(name), stats))
+                     for name, stats in sorted(visited_files))
 
 def get_libpython_path():
     """
