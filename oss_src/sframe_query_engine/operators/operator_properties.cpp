@@ -276,7 +276,9 @@ static size_t _propagate_parallel_slicing(
     return 1;
   }
   
-  if(is_linear_transform(n)) {
+  bool linear = is_linear_transform(n);
+  bool sublinear = is_sublinear_transform(n);
+  if(linear || sublinear) {
     ASSERT_FALSE(n->inputs.empty());
     
     size_t input_consumption = _propagate_parallel_slicing(n->inputs.front(), visited, counter);
@@ -290,15 +292,16 @@ static size_t _propagate_parallel_slicing(
       }
     }
 
-    return input_consumption; 
+    if(sublinear) {
+      // A new value, as this does not preserve the ability to do parallel slicing.
+      ++counter;
+      visited[n] = counter;
+      return counter;
+    } else {
+      return input_consumption;
+    }
   }
 
-  if(is_sublinear_transform(n)) {
-    // A new value, as this does not preserve the ability to do parallel slicing. 
-    ++counter;
-    visited[n] = counter;
-    return counter;
-  }
 
   // This node isn't something we know about. 
   return size_t(-1); 
