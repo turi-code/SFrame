@@ -316,4 +316,22 @@ std::shared_ptr<planner_node>  planner::materialize_as_planner_node(
   return op_sframe_source::make_planner_node(res);
 }
 
+bool planner::test_equal_length(std::shared_ptr<planner_node> a,
+                                std::shared_ptr<planner_node> b) {
+  // Checking the size of index array is the same
+  auto prove_equal = prove_equal_length(a, b);
+
+  if (!prove_equal.first && infer_planner_node_length(b) == -1) {
+    logstream(LOG_INFO) << "Unable to prove equi-length. Materializing RHS" << std::endl;
+    materialize(b);
+    prove_equal = prove_equal_length(a, b);
+  }
+  if (!prove_equal.first && infer_planner_node_length(a) == -1) {
+    logstream(LOG_INFO) << "Still unable to prove equi-length. Materializing LHS" << std::endl;
+    materialize(a);
+    prove_equal = prove_equal_length(a, b);
+  }
+  DASSERT_TRUE(prove_equal.first);
+  return prove_equal.second;
+}
 }}

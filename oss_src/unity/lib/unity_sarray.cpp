@@ -41,7 +41,6 @@
 #include <sframe_query_engine/planning/planner.hpp>
 #include <sframe_query_engine/planning/optimization_engine.hpp>
 #include <sframe_query_engine/util/aggregates.hpp>
-#include <unity/lib/messages.hpp>
 
 namespace graphlab {
 
@@ -544,13 +543,11 @@ unity_sarray::logical_filter(std::shared_ptr<unity_sarray_base> index) {
   std::shared_ptr<unity_sarray> other_array = 
       std::static_pointer_cast<unity_sarray>(index);
 
-  // Checking the size of index array is the same 
-  if (this->has_size() && other_array->has_size()) {
-    if (this->size() != other_array->size()) {
-      log_and_throw("Logical filter array must have the same size");
-    }
-  } else {
-    logprogress_stream << BINARY_LAZY_EVALUATION_UNKNOWN_LENGTH_MESSAGE << std::endl;
+  auto equal_length = query_eval::planner().test_equal_length(this->get_planner_node(),
+                                                              other_array->get_planner_node());
+
+  if (!equal_length) {
+    log_and_throw("Logical filter array must have the same size");
   }
 
   std::shared_ptr<unity_sarray> other_array_binarized = 
@@ -1459,19 +1456,14 @@ std::shared_ptr<unity_sarray_base> unity_sarray::vector_operator(
 
   flex_type_enum output_type =
       unity_sarray_binary_operations::get_output_type(dtype(), other->dtype(), op);
-  // array mismatch
-  if (this->has_size() && other->has_size()) {
-    if (this->size() != other->size()) {
-      log_and_throw(std::string("Array size mismatch"));
-    }
-    // empty arrays all around. quick exit
-    if (this->size() == 0 && other->size() == 0) {
-      auto ret = std::make_shared<unity_sarray>();
-      ret->construct_from_vector(std::vector<flexible_type>(), output_type);
-      return ret;
-    }
-  } else {
-    logprogress_stream << BINARY_LAZY_EVALUATION_UNKNOWN_LENGTH_MESSAGE << std::endl;
+
+  std::shared_ptr<unity_sarray> other_unity_sarray =
+      std::static_pointer_cast<unity_sarray>(other);
+  auto equal_length = query_eval::planner().test_equal_length(this->get_planner_node(),
+                                                              other_unity_sarray->get_planner_node());
+
+  if (!equal_length) {
+    log_and_throw(std::string("Array size mismatch"));
   }
 
   // we are ready to perform the transform. Build the transform operation
@@ -1501,8 +1493,6 @@ std::shared_ptr<unity_sarray_base> unity_sarray::vector_operator(
         else return transformfn(f, g);
       };
   auto ret = std::make_shared<unity_sarray>();
-  std::shared_ptr<unity_sarray> other_unity_sarray =
-      std::static_pointer_cast<unity_sarray>(other);
   ret->construct_from_planner_node(
       op_binary_transform::make_planner_node(m_planner_node,
                                              other_unity_sarray->m_planner_node,

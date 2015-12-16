@@ -30,9 +30,9 @@
 #include <sframe_query_engine/operators/operator_properties.hpp>
 #include <sframe_query_engine/algorithm/sort.hpp>
 #include <sframe_query_engine/algorithm/groupby_aggregate.hpp>
+#include <sframe_query_engine/operators/operator_properties.hpp>
 #include <lambda/pylambda_function.hpp>
 #include <exceptions/error_types.hpp>
-#include <unity/lib/messages.hpp>
 
 namespace graphlab {
 
@@ -748,21 +748,21 @@ std::shared_ptr<unity_sframe_base> unity_sframe::logical_filter(
 
   std::shared_ptr<unity_sarray> filter_array = std::static_pointer_cast<unity_sarray>(index);
 
-  // Checking the size of index array is the same
-  if (this->has_size() && filter_array->has_size()) {
-    if (this->size() != filter_array->size()) {
-      log_and_throw("Logical filter array must have the same size");
-    }
-  } else {
-    logprogress_stream << BINARY_LAZY_EVALUATION_UNKNOWN_LENGTH_MESSAGE << std::endl;
-  }
-
   std::shared_ptr<unity_sarray> other_array_binarized =
       std::static_pointer_cast<unity_sarray>(
       filter_array->transform_lambda(
             [](const flexible_type& f)->flexible_type {
               return (flex_int)(!f.is_zero());
             }, flex_type_enum::INTEGER, true, 0));
+
+
+  auto equal_length = query_eval::planner().test_equal_length(this->get_planner_node(),
+                                                              other_array_binarized->get_planner_node());
+
+  if (!equal_length) {
+    log_and_throw("Logical filter array must have the same size");
+  }
+
 
   auto new_planner_node = op_logical_filter::make_planner_node(this->get_planner_node(),
                                                                other_array_binarized->get_planner_node());

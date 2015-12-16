@@ -329,6 +329,53 @@ std::vector<size_t> get_parallel_slicable_codes(const pnode_ptr& n) {
   return codes; 
 }
 
+/**************************************************************************/
+/*                                                                        */
+/*                           prove_equal_length                           */
+/*                                                                        */
+/**************************************************************************/
+
+struct length_info {
+  int64_t source_length; // -1 if unkown
+  void* source_node; // if length is unknown this contains a unique descriptor
+                     // of the length
+};
+static length_info propagate_length(
+    const pnode_ptr& n, std::map<pnode_ptr, length_info>& visited) {
+  auto it = visited.find(n);
+  if(it != visited.end()) return it->second;
+
+  auto inferred_length = infer_planner_node_length(n);
+  if (inferred_length >= 0) {
+    length_info li{inferred_length, nullptr};
+    visited[n] = li;
+    return li;
+  }
+
+  if(is_linear_transform(n)) {
+    ASSERT_FALSE(n->inputs.empty());
+    auto li = propagate_length(n->inputs.front(), visited);
+    visited[n] = li;
+    return li;
+  } else {
+    return length_info{-1, n.get()};
+  }
+}
+
+std::pair<bool, bool> prove_equal_length(const std::shared_ptr<planner_node>& a,
+                                         const std::shared_ptr<planner_node>& b) {
+  std::map<pnode_ptr, length_info> visited;
+  auto la = propagate_length(a, visited);
+  auto lb = propagate_length(b, visited);
+  if (la.source_length != -1 &&  lb.source_length != -1) {
+    return {true, la.source_length == lb.source_length};
+  } else if (la.source_length == -1 && lb.source_length == -1) {
+    return {true, la.source_node == lb.source_node};
+  } else {
+    return {false, false};
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Stuff to deal with naming things.
 

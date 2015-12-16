@@ -79,6 +79,12 @@ class planner {
       materialize_options exec_params = materialize_options());
   
   
+  /**
+   * Try to test that both a and b have equal length and to materialize
+   * them if necessary to prove that this is the case.
+   */
+  bool test_equal_length(std::shared_ptr<planner_node> a,
+                         std::shared_ptr<planner_node> b);
 };
 
 
