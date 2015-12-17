@@ -71,6 +71,8 @@ fi
 
 if [[ -z "${NUM_PROCS}" ]]; then
   NUM_PROCS=4
+else
+  export OMP_NUM_THREADS=$NUM_PROCS
 fi
 
 TARGET_DIR=${WORKSPACE}/target
