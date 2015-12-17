@@ -16,7 +16,6 @@
 #include <unity/lib/image_util.hpp>
 #include <sframe_query_engine/planning/planner.hpp>
 #include <unity/extensions/additional_sframe_utilities.hpp>
-#include <unity/extensions/cumulative_aggregates.hpp>
 
 namespace graphlab {
 
@@ -51,6 +50,67 @@ flex_type_enum infer_type_of_list(const std::vector<flexible_type>& vec) {
     }
   }
   throw std::string("Cannot infer Array type. Not all elements of array are the same type.");
+}
+
+/**
+ * Utility function to throw an error if a vector is of unequal length.
+ * \param[in] gl_sarray of type vector 
+ */
+void check_vector_equal_size(const gl_sarray& in) {
+  // Initialize. 
+  DASSERT_TRUE(in.dtype() == flex_type_enum::VECTOR); 
+  size_t n_threads = thread::cpu_count();
+  n_threads = std::max(n_threads, size_t(1));
+  size_t m_size = in.size();
+          
+  // Throw the following error. 
+  auto throw_error = [] (size_t row_number, size_t expected, size_t current) {
+    std::stringstream ss;
+    ss << "Vectors must be of the same size. Row " << row_number 
+       << " contains a vector of size " << current << ". Expected a vector of"
+       << " size " << expected << "." << std::endl;
+    log_and_throw(ss.str());
+  };
+  
+  // Within each block of the SArray, check that the vectors have the same size.
+  std::vector<size_t> expected_sizes (n_threads, size_t(-1));
+  in_parallel([&](size_t thread_idx, size_t n_threads) {
+    size_t start_row = thread_idx * m_size / n_threads; 
+    size_t end_row = (thread_idx + 1) * m_size / n_threads;
+    size_t expected_size = size_t(-1);
+    size_t row_number = start_row;
+    for (const auto& v: in.range_iterator(start_row, end_row)) {
+      if (v != FLEX_UNDEFINED) {
+        if (expected_size == size_t(-1)) {
+          expected_size = v.size();
+          expected_sizes[thread_idx] = expected_size; 
+        } else {
+          DASSERT_TRUE(v.get_type() == flex_type_enum::VECTOR);
+          if (expected_size != v.size()) {
+            throw_error(row_number, expected_size, v.size());
+          }
+        }
+      }
+      row_number++;
+    }
+  });
+
+  // Make sure sizes accross blocks are also the same. 
+  size_t vector_size = size_t(-1);
+  for (size_t thread_idx = 0; thread_idx < n_threads; thread_idx++) {
+    // If this block contains all None values, skip it.
+    if (expected_sizes[thread_idx] != size_t(-1)) {
+
+      if (vector_size == size_t(-1)) {
+          vector_size = expected_sizes[thread_idx]; 
+      } else {
+         if (expected_sizes[thread_idx] != vector_size) {
+           throw_error(thread_idx * m_size / n_threads, 
+                              vector_size, expected_sizes[thread_idx]);
+         } 
+      }
+    }
+  }
 }
 
 /**************************************************************************/
@@ -594,7 +654,7 @@ gl_sarray gl_sarray::subslice(flexible_type start,
       dt != flex_type_enum::LIST) {
     log_and_throw("SArray must contain strings, arrays or lists");
   }
-  return sarray_subslice(*this, start, stop, step);
+  return sframe_utils::sarray_subslice(*this, start, stop, step);
 }
 
 gl_sarray gl_sarray::builtin_rolling_apply(const std::string &fn_name,
@@ -603,6 +663,7 @@ gl_sarray gl_sarray::builtin_rolling_apply(const std::string &fn_name,
                                            size_t min_observations) const {
   return get_proxy()->builtin_rolling_apply(fn_name, start, end, min_observations);
 }
+
 
 gl_sarray gl_sarray::cumulative_aggregate(
      std::shared_ptr<group_aggregate_value> aggregator) const { 
@@ -690,29 +751,64 @@ gl_sarray gl_sarray::cumulative_aggregate(
   return writer.close();
 }
 
+gl_sarray gl_sarray::cumulative_built_in_aggregate(const std::string& name) const {
+  flex_type_enum input_type = this->dtype();
+  std::shared_ptr<group_aggregate_value> aggregator;
+
+  // Cumulative sum, and avg support vector types.
+  if (name == "__builtin__cum_sum__") {
+    switch(input_type) {
+      case flex_type_enum::VECTOR: {
+        check_vector_equal_size(*this);
+        aggregator = get_builtin_group_aggregator(std::string("__builtin__vector__sum__")); 
+        break;
+      }
+      default:
+        aggregator = get_builtin_group_aggregator(std::string("__builtin__sum__")); 
+        break;
+    }
+  } else if (name == "__builtin__cum_avg__") {
+    switch(input_type) {
+      case flex_type_enum::VECTOR: {
+        check_vector_equal_size(*this);
+        aggregator = get_builtin_group_aggregator(std::string("__builtin__vector__avg__")); 
+        break;
+      }
+      default:
+        aggregator = get_builtin_group_aggregator(std::string("__builtin__avg__")); 
+        break;
+    }
+  } else if (name == "__builtin__cum_max__") {
+      aggregator = get_builtin_group_aggregator(std::string("__builtin__max__")); 
+  } else if (name == "__builtin__cum_min__") {
+      aggregator = get_builtin_group_aggregator(std::string("__builtin__min__")); 
+  } else if (name == "__builtin__cum_var__") {
+      aggregator = get_builtin_group_aggregator(std::string("__builtin__var__")); 
+  } else if (name == "__builtin__cum_std__") {
+      aggregator = get_builtin_group_aggregator(std::string("__builtin__stdv__")); 
+  } else {
+    log_and_throw("Internal error. Unknown cumulative aggregator " + name);
+  }
+  return this->cumulative_aggregate(aggregator);
+}
+
 gl_sarray gl_sarray::cumulative_sum() const {
-  return cumulative_aggregates::_sarray_cumulative_built_in_aggregate(
-      *this, "__builtin__cum_sum__");
+  return cumulative_built_in_aggregate("__builtin__cum_sum__");
 }
 gl_sarray gl_sarray::cumulative_min() const {
-  return cumulative_aggregates::_sarray_cumulative_built_in_aggregate(
-      *this, "__builtin__cum_min__");
+  return cumulative_built_in_aggregate("__builtin__cum_min__");
 }
 gl_sarray gl_sarray::cumulative_max() const {
-  return cumulative_aggregates::_sarray_cumulative_built_in_aggregate(
-      *this, "__builtin__cum_max__");
+  return cumulative_built_in_aggregate("__builtin__cum_max__");
 }
 gl_sarray gl_sarray::cumulative_avg() const {
-  return cumulative_aggregates::_sarray_cumulative_built_in_aggregate(
-      *this, "__builtin__cum_avg__");
+  return cumulative_built_in_aggregate("__builtin__cum_avg__");
 }
 gl_sarray gl_sarray::cumulative_std() const {
-  return cumulative_aggregates::_sarray_cumulative_built_in_aggregate(
-      *this, "__builtin__cum_std__");
+  return cumulative_built_in_aggregate("__builtin__cum_std__");
 }
 gl_sarray gl_sarray::cumulative_var() const {
-  return cumulative_aggregates::_sarray_cumulative_built_in_aggregate(
-      *this, "__builtin__cum_var__");
+  return cumulative_built_in_aggregate("__builtin__cum_var__");
 }
 
 std::ostream& operator<<(std::ostream& out, const gl_sarray& other) {

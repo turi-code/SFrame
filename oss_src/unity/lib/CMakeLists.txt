@@ -27,7 +27,6 @@ make_library(unity_core
     unity_odbc_connection.cpp
     image_util.cpp
     ../extensions/additional_sframe_utilities.cpp
-    ../extensions/cumulative_aggregates.cpp
   REQUIRES
     flexible_type
     pylambda table_printer

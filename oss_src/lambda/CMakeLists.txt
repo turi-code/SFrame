@@ -29,7 +29,7 @@ make_library(pylambda_worker
   SOURCES
   pylambda_worker.cpp
   REQUIRES
-    logger process pylambda_worker_lib python_header_only
+    tcmalloc logger process pylambda_worker_lib python_header_only
   SHARED
 )
 
