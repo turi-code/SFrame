@@ -1693,11 +1693,11 @@ class SArrayTest(unittest.TestCase):
         data = SArray(range(1000))
         neg_data = SArray(range(-100,100,2))
 
-        ### Small backward window including current 
+        ### Small backward window including current
         res = data.rolling_mean(-3,0)
         expected = [None for i in range(3)] + [i + .5 for i in range(1,998)]
         self.__test_equal(res,expected,float)
-        
+
         # Test float inputs as well
         res = data.astype(float).rolling_mean(-3,0)
         self.__test_equal(res,expected,float)
@@ -1766,7 +1766,7 @@ class SArrayTest(unittest.TestCase):
         res = neg_data.rolling_mean(1,5)
         expected = [float(i) for i in range(-94,96,2)] + [None for i in range(5)]
         self.__test_equal(res,expected,float)
-        
+
         ### "Centered" rolling aggregate
         res = data.rolling_mean(-2,2)
         expected = [None for i in range(2)] + [float(i) for i in range(2,998)] + [None for i in range(2)]
@@ -1847,11 +1847,11 @@ class SArrayTest(unittest.TestCase):
         data = SArray(range(1000))
         neg_data = SArray(range(-100,100,2))
 
-        ### Small backward window including current 
+        ### Small backward window including current
         res = data.rolling_sum(-3,0)
         expected = [None for i in range(3)] + [i for i in range(6,3994,4)]
         self.__test_equal(res,expected,int)
-        
+
         # Test float inputs as well
         res = data.astype(float).rolling_sum(-3,0)
         self.__test_equal(res,expected,float)
@@ -1920,7 +1920,7 @@ class SArrayTest(unittest.TestCase):
         res = neg_data.rolling_sum(1,5)
         expected = [i for i in range(-470,480,10)] + [None for i in range(5)]
         self.__test_equal(res,expected,int)
-        
+
         ### "Centered" rolling aggregate
         res = data.rolling_sum(-2,2)
         expected = [None for i in range(2)] + [i for i in range(10,4990,5)] + [None for i in range(2)]
@@ -2264,7 +2264,7 @@ class SArrayTest(unittest.TestCase):
         expected = [1,2,3] + [4 for i in range(7)]
         self.__test_equal(res,expected,int)
 
-        ### Test string input 
+        ### Test string input
         res = SArray(self.string_data).rolling_count(-3,0)
         self.__test_equal(res,expected[0:8],int)
 
@@ -2330,7 +2330,7 @@ class SArrayTest(unittest.TestCase):
             sa = SArray([[1], ["foo"]]).cumulative_sum()
         with self.assertRaises(RuntimeError):
             sa = SArray([{"bar": 1}]).cumulative_sum()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1,1], [1], [1]]).cumulative_sum()
 
         single_test(
@@ -2374,7 +2374,7 @@ class SArrayTest(unittest.TestCase):
             sa = SArray([[1], ["foo"]]).cumulative_mean()
         with self.assertRaises(RuntimeError):
             sa = SArray([{"bar": 1}]).cumulative_mean()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1,1], [1], [1]]).cumulative_mean()
 
         single_test(
@@ -2419,9 +2419,9 @@ class SArrayTest(unittest.TestCase):
             sa = SArray([[1], ["foo"]]).cumulative_min()
         with self.assertRaises(RuntimeError):
             sa = SArray([{"bar": 1}]).cumulative_min()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1,1], [1], [1]]).cumulative_min()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1], [1], [1]]).cumulative_min()
 
         single_test(
@@ -2453,9 +2453,9 @@ class SArrayTest(unittest.TestCase):
             sa = SArray([[1], ["foo"]]).cumulative_max()
         with self.assertRaises(RuntimeError):
             sa = SArray([{"bar": 1}]).cumulative_max()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1,1], [1], [1]]).cumulative_max()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1], [1], [1]]).cumulative_max()
 
         single_test(
@@ -2487,9 +2487,9 @@ class SArrayTest(unittest.TestCase):
             sa = SArray([[1], ["foo"]]).cumulative_std()
         with self.assertRaises(RuntimeError):
             sa = SArray([{"bar": 1}]).cumulative_std()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1,1], [1], [1]]).cumulative_std()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1], [1], [1]]).cumulative_std()
 
         single_test(
@@ -2527,9 +2527,9 @@ class SArrayTest(unittest.TestCase):
             sa = SArray([[1], ["foo"]]).cumulative_var()
         with self.assertRaises(RuntimeError):
             sa = SArray([{"bar": 1}]).cumulative_var()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1,1], [1], [1]]).cumulative_var()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1], [1], [1]]).cumulative_var()
 
         single_test(
