@@ -751,7 +751,7 @@ gl_sarray gl_sarray::cumulative_aggregate(
   return writer.close();
 }
 
-gl_sarray gl_sarray::cumulative_built_in_aggregate(const std::string& name) const {
+gl_sarray gl_sarray::builtin_cumulative_aggregate(const std::string& name) const {
   flex_type_enum input_type = this->dtype();
   std::shared_ptr<group_aggregate_value> aggregator;
 
@@ -793,22 +793,22 @@ gl_sarray gl_sarray::cumulative_built_in_aggregate(const std::string& name) cons
 }
 
 gl_sarray gl_sarray::cumulative_sum() const {
-  return cumulative_built_in_aggregate("__builtin__cum_sum__");
+  return builtin_cumulative_aggregate("__builtin__cum_sum__");
 }
 gl_sarray gl_sarray::cumulative_min() const {
-  return cumulative_built_in_aggregate("__builtin__cum_min__");
+  return builtin_cumulative_aggregate("__builtin__cum_min__");
 }
 gl_sarray gl_sarray::cumulative_max() const {
-  return cumulative_built_in_aggregate("__builtin__cum_max__");
+  return builtin_cumulative_aggregate("__builtin__cum_max__");
 }
 gl_sarray gl_sarray::cumulative_avg() const {
-  return cumulative_built_in_aggregate("__builtin__cum_avg__");
+  return builtin_cumulative_aggregate("__builtin__cum_avg__");
 }
 gl_sarray gl_sarray::cumulative_std() const {
-  return cumulative_built_in_aggregate("__builtin__cum_std__");
+  return builtin_cumulative_aggregate("__builtin__cum_std__");
 }
 gl_sarray gl_sarray::cumulative_var() const {
-  return cumulative_built_in_aggregate("__builtin__cum_var__");
+  return builtin_cumulative_aggregate("__builtin__cum_var__");
 }
 
 std::ostream& operator<<(std::ostream& out, const gl_sarray& other) {

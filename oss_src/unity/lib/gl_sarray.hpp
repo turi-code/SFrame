@@ -1747,6 +1747,7 @@ class gl_sarray {
  */
  gl_sarray cumulative_aggregate(
      std::shared_ptr<group_aggregate_value> aggregator) const; 
+ gl_sarray builtin_cumulative_aggregate(const std::string& name) const;
 
   /**
    *
@@ -1829,7 +1830,6 @@ class gl_sarray {
 
  private:
   void instantiate_new();
-  gl_sarray cumulative_built_in_aggregate(const std::string& name) const;
 
   void ensure_has_sarray_reader() const;
 
