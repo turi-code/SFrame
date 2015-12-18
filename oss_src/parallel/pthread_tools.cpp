@@ -33,7 +33,7 @@
 #include <graphlab/macros_def.hpp>
 #include <util/any.hpp>
 #ifdef _WIN32
-#include <process/gl_windows.hpp>
+#include <cross_platform/windows_wrapper.hpp>
 #endif
 
 namespace graphlab { 

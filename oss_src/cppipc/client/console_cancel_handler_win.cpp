@@ -8,7 +8,7 @@
 #include <cppipc/client/console_cancel_handler_win.hpp>
 #include <cppipc/client/comm_client.hpp>
 #include <export.hpp>
-#include <process/gl_windows.hpp>
+#include <cross_platform/windows_wrapper.hpp>
 
 namespace cppipc {
 

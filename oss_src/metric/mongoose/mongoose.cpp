@@ -55,7 +55,7 @@
 #include <stdio.h>
 
 #if defined(_WIN32) && !defined(__SYMBIAN32__) // Windows specific
-#include <process/gl_windows.hpp>
+#include <cross_platform/windows_wrapper.hpp>
 
 #ifndef PATH_MAX
 #define PATH_MAX MAX_PATH

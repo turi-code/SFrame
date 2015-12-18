@@ -43,7 +43,7 @@
 #include <random/random.hpp>
 
 #ifdef _WIN32
-#include <process/gl_windows.hpp>
+#include <cross_platform/windows_wrapper.hpp>
 #include <Wincrypt.h>
 #endif
 

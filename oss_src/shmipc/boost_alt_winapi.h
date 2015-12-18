@@ -32,7 +32,7 @@
 #include <vector>
 
 #ifdef BOOST_USE_WINDOWS_H
-#include <process/gl_windows.hpp>
+#include <cross_platform/windows_wrapper.hpp>
 #include <Wbemidl.h>
 #include <Objbase.h>
 #include <Shlobj.h>

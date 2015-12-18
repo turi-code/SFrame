@@ -5,7 +5,7 @@
  * This software may be modified and distributed under the terms
  * of the BSD license. See the LICENSE file for details.
  */
-#include <process/gl_windows.hpp>
+#include <cross_platform/windows_wrapper.hpp>
 #include <tlhelp32.h>
 #include <process/process_util.hpp>
 

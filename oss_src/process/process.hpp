@@ -23,7 +23,7 @@
 #include <util/syserr_reporting.hpp>
 
 #ifdef _WIN32
-#include <process/gl_windows.hpp>
+#include <cross_platform/windows_wrapper.hpp>
 #endif
 #ifdef __APPLE__
 #include <sys/types.h>

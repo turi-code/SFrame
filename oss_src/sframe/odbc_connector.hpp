@@ -9,7 +9,7 @@
 #define GRAPHLAB_ODBC_CONNECTOR_HPP
 
 #ifdef _WIN32
-#include <process/gl_windows.hpp>
+#include <cross_platform/windows_wrapper.hpp>
 #endif
 
 #include <sql.h>

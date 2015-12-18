@@ -10,7 +10,7 @@
 #ifndef _WIN32
 #include <dlfcn.h>
 #else
-#include <process/gl_windows.hpp>
+#include <cross_platform/windows_wrapper.hpp>
 #include <util/syserr_reporting.hpp>
 #endif
 #include <cstring>
