@@ -45,21 +45,38 @@ bool process::launch(const std::string &cmd,
 
   logstream(LOG_INFO) << "Launching process using command: >>> " << c_arglist << " <<< " << std::endl;
 
-  // Set up the proper handlers.
-  startup_info.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+  // Set up the proper handlers.  We are duplicating the handlers as
+  // the given handles may or may not be inheritable.  DuplicateHandle
+  // is (supposedly) the safest way to do this.
   startup_info.dwFlags |= STARTF_USESTDHANDLES;
 
   BOOL ret;
 
+  // First, set up redirection for stdout.
+  ret = DuplicateHandle( GetCurrentProcess(), GetStdHandle(STD_OUTPUT_HANDLE),
+                         GetCurrentProcess(), &m_stdout_handle, 0, TRUE, DUPLICATE_SAME_ACCESS);
+
+  if(!ret) {
+    auto err = GetLastError();
+    logstream(LOG_WARNING) << "Failed to duplicate stdout file handle: " << get_last_err_str(err)
+                           << "; continuing with default handle." << std::endl;
+    m_stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+  }
+
+  startup_info.hStdOutput = m_stdout_handle;
+
+  // Second, set up redirection for stderr.
   ret = DuplicateHandle( GetCurrentProcess(), GetStdHandle(STD_ERROR_HANDLE),
                          GetCurrentProcess(), &m_stderr_handle, 0, TRUE, DUPLICATE_SAME_ACCESS);
 
   if(!ret) {
     auto err = GetLastError();
-    logstream(LOG_WARNING) << "Failed to create duplicate stderr file handle: " << get_last_err_str(err) << std::endl;
-    logstream(LOG_WARNING) << "  Attempting to continue with : " << get_last_err_str(err) << std::endl;
+    logstream(LOG_WARNING) << "Failed to duplicate stderr file handle: " << get_last_err_str(err)
+                           << "; continuing with default handle." << std::endl;
     m_stderr_handle = GetStdHandle(STD_ERROR_HANDLE);
   }
+
+  startup_info.hStdError = m_stderr_handle;
 
   // For Windows, we include the cmd with the arguments so that a search path
   // is used for any executable without a full path
@@ -324,6 +341,10 @@ process::~process() {
 
   if(m_stderr_handle != NULL) {
     CloseHandle(m_stderr_handle);
+  }
+
+  if(m_stdout_handle != NULL) {
+    CloseHandle(m_stdout_handle);
   }
 }
 

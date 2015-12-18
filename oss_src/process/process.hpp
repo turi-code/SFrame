@@ -123,8 +123,9 @@ class process {
   // Handle needed for child to write to parent
   HANDLE m_write_handle = NULL;
 
-  // Duplicate of handle so child can pipe stderr to console.
+  // Duplicate of handle so child can pipe stderr and stdout to console.
   HANDLE m_stderr_handle = NULL;
+  HANDLE m_stdout_handle = NULL;
 
   DWORD m_pid = DWORD(-1);
 
