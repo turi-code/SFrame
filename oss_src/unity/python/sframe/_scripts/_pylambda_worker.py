@@ -39,11 +39,11 @@ def set_windows_dll_path():
 if __name__ == "__main__":
 
     if len(sys.argv) == 1:
-        debug_mode = True
+        dry_run = True
     else:
-        debug_mode = False
+        dry_run = False
 
-    if debug_mode or os.environ.get("GRAPHLAB_LAMBDA_WORKER_DEBUG_MODE") == "1":
+    if dry_run or os.environ.get("GRAPHLAB_LAMBDA_WORKER_DRY_RUN") == "1":
         _write_out = sys.stderr
     else:
         _write_out = sys.stdout
@@ -79,7 +79,7 @@ if __name__ == "__main__":
             _write_log("Error opening '%s' for write: %s" % (_write_out_file_name, repr(e)))
             _write_out_file = None
 
-    if debug_mode:
+    if dry_run:
         print "PyLambda script called with no IPC information; entering diagnostic mode."
 
     script_path = abspath(sys.modules[__name__].__file__)
@@ -125,7 +125,7 @@ if __name__ == "__main__":
         _write_log("Error accessing pylambda_worker_main: %s\n" % repr(e), error = True)
         sys.exit(204)
 
-    if not debug_mode:
+    if not dry_run:
         # This call only returns after the parent process is done.
         result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir), c_char_p(sys.argv[1]))
     else:
