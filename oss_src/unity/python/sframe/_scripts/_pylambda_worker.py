@@ -11,7 +11,9 @@ def set_windows_dll_path():
     Sets the dll load path so that things are resolved correctly.
     """
 
-    lib_path = os.path.dirname(os.path.abspath(__file__))
+    # Back up to the directory, then to the base directory as this is
+    # in ./_scripts.
+    lib_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     def errcheck_bool(result, func, args):
         if not result:
