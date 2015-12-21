@@ -275,7 +275,7 @@ def _assign_server_and_client(server, client):
     __SERVER__ = server
     __CLIENT__ = client
     __UNITY_GLOBAL_PROXY__ = UnityGlobalProxy(__CLIENT__)
-    server.get_logger().info('GraphLab Server Version: %s' %
+    server.get_logger().info('SFrame Version: %s' %
                              UnityGlobalProxy(client).get_version())
 
     from ..extensions import _publish

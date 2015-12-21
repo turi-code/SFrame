@@ -97,7 +97,7 @@ class EmbededServer(GraphLabServer):
         self.dll.start_embeded_server.argtypes = [c_char_p, c_char_p, c_char_p]
         self.dll.start_embeded_server(self.root_path, self.server_addr, self.unity_log)
 
-        self.logger.info('Server started. ' + 'Server log: ' + self.unity_log)
+        self.logger.info('SFrame logging: ' + self.unity_log)
 
     def get_client_ptr(self):
         """
