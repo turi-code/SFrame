@@ -5,7 +5,6 @@
  * This software may be modified and distributed under the terms
  * of the BSD license. See the LICENSE file for details.
  */
-#include <unity/extensions/cumulative_aggregates.hpp>
 #include <boost/filesystem.hpp>
 #include <unity/lib/unity_sframe.hpp>
 #include <unity/lib/unity_sgraph.hpp>
@@ -25,7 +24,6 @@ namespace graphlab {
 toolkit_function_registry* init_toolkits() {
   toolkit_function_registry* g_toolkit_functions = new toolkit_function_registry();
   g_toolkit_functions->register_toolkit_function(image_util::get_toolkit_function_registration());
-  g_toolkit_functions->register_toolkit_function(graphlab::cumulative_aggregates::get_toolkit_function_registration());
   return g_toolkit_functions;
 }
 
