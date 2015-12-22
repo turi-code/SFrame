@@ -27,8 +27,8 @@ endforeach()
 
 ## Copy sdk examples, and patch the source code include path
 file(COPY sdk/sdk_example DESTINATION "${CMAKE_ARGV3}/sdk" )
-execute_process(COMMAND find ./graphlab \( -name "*.cpp" -or -name "*.hpp" \) -exec ${CMAKE_ARGV3}/../../../oss_local_scripts/patch_sdk.py {} \; WORKING_DIRECTORY ${CMAKE_ARGV3}/sdk)
-execute_process(COMMAND find ./sdk_example \( -name "*.cpp" -or -name "*.hpp" \) -exec ${CMAKE_ARGV3}/../../../oss_local_scripts/patch_sdk.py {} \; WORKING_DIRECTORY ${CMAKE_ARGV3}/sdk)
+execute_process(COMMAND find ./graphlab \( -name "*.cpp" -or -name "*.hpp" \) -exec ${CMAKE_ARGV4}/oss_local_scripts/patch_sdk.py {} \; WORKING_DIRECTORY ${CMAKE_ARGV3}/sdk)
+execute_process(COMMAND find ./sdk_example \( -name "*.cpp" -or -name "*.hpp" \) -exec ${CMAKE_ARGV4}/oss_local_scripts/patch_sdk.py {} \; WORKING_DIRECTORY ${CMAKE_ARGV3}/sdk)
 
 ## Copy makefile and license
 file(COPY sdk/LICENSE DESTINATION "${CMAKE_ARGV3}/sdk" )

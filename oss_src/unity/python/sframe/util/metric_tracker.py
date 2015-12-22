@@ -10,7 +10,6 @@ from metric_mock import MetricMock
 
 # metrics libraries
 import mixpanel
-import librato
 
 import Queue
 import logging
@@ -23,7 +22,7 @@ import copy as _copy
 import requests as _requests
 import sys
 import urllib as _urllib
-
+from ..version_info import *
 __ALL__ = [ 'MetricTracker' ]
 
 try:
@@ -46,12 +45,14 @@ class _MetricsWorkerThread(threading.Thread):
 
   def __init__(self, mode, source):
     threading.Thread.__init__(self, name='metrics-worker')
+    # version and is_gpu from version_info
+    self._version = version
 
-    if CONFIG.version.endswith('.gpu'):
-        self._version = CONFIG.version.split('.gpu')[0]
+    if build_number.endswith('.gpu'):
+        self._build_number= build_number.split('.gpu')[0]
         self._isgpu = True
     else:
-        self._version = CONFIG.version
+        self._build_number= build_number
         self._isgpu = False
 
     self._mode = mode
@@ -67,7 +68,6 @@ class _MetricsWorkerThread(threading.Thread):
     root_package_name = __import__(__name__.split('.')[0]).__name__
     self.logger = logging.getLogger(root_package_name + '.metrics')
 
-    self._tracker = None # librato metrics tracker
     self._mixpanel = None # Mixpanel metrics tracker
 
     buffer_size = 5
@@ -81,11 +81,8 @@ class _MetricsWorkerThread(threading.Thread):
       self._requests = _requests # support mocking out requests library in unit-tests
 
       if self._mode != 'PROD':
-        self.logger.info("Using MetricMock instead of real metrics, mode is: %s" % self._mode)
-        self._tracker = MetricMock()
         self._mixpanel = MetricMock()
       else:
-        self._tracker = librato.connect(CONFIG.librato_user, CONFIG.librato_token)
         self._mixpanel = mixpanel.Mixpanel(CONFIG.mixpanel_user)
     except Exception, e:
       self.logger.warning("Unexpected exception connecting to Metrics service, disabling metrics, exception %s" % e)
@@ -279,12 +276,6 @@ class _MetricsWorkerThread(threading.Thread):
 
     the_properties.update(properties)
 
-    try:
-      # librato
-      self._tracker.submit(name=event_name, value=value, type="gauge", source=self._source, attributes=the_properties)
-    except Exception as e:
-      pass
-
     self._send_mixpanel(event_name=event_name, value=value, properties=the_properties, meta=meta)
 
     try:
@@ -299,6 +290,7 @@ class _MetricsWorkerThread(threading.Thread):
         cloudfront_props['distinct_id'] = self._distinct_id
         cloudfront_props['version'] = self._version
         cloudfront_props['isgpu'] = self._isgpu
+        cloudfront_props['build_number'] = self._build_number
         cloudfront_props['properties'] = _urllib.quote_plus(str(props))
 
         # if product key is not set, then try to get it now when submitting
@@ -330,7 +322,7 @@ class MetricTracker:
 
     self._queue = METRICS_QUEUE
 
-    self._source = ("%s-%s" % (self._mode, CONFIG.version))
+    self._source = ("%s-%s" % (self._mode, version))
     self.logger.debug("Running with metric source: %s" % self._source)
 
     # background thread for metrics

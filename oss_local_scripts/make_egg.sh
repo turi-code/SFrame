@@ -17,7 +17,9 @@ print_help() {
   echo
   echo "Usage: ./make_egg.sh --version=[version] [remaining options]"
   echo
-  echo "  --version=[version]      The version of the egg, e.g. 1.3.1"
+  echo "  --build_number=[version] The build number of the egg, e.g. 123. Or 123.gpu"
+  echo
+  echo "  --version=[version]      Synonym to build_number. Maintained for legacy reasons"
   echo
   echo "  --skip_test              Skip unit test and doc generation."
   echo
@@ -42,7 +44,8 @@ print_help() {
 # Parse command line configure flags ------------------------------------------
 while [ $# -gt 0 ]
   do case $1 in
-    --version=*)            VERSION_NUMBER=${1##--version=} ;;
+    --version=*)            BUILD_NUMBER=${1##--version=} ;;
+    --build_number=*)       BUILD_NUMBER=${1##--build_number=} ;;
     --toolchain=*)          toolchain=${1##--toolchain=} ;;
     --num_procs=*)          NUM_PROCS=${1##--num_procs=} ;;
     --skip_test)            SKIP_TEST=1;;
@@ -58,8 +61,8 @@ done
 
 set -x
 
-if [[ -z "${VERSION_NUMBER}" ]]; then
-  VERSION_NUMBER="0.1.internal"
+if [[ -z "${BUILD_NUMBER}" ]]; then
+  BUILD_NUMBER="0"
 fi
 
 
@@ -92,19 +95,9 @@ if [[ $OSTYPE == msys ]]; then
 fi
 
 
-set_version() {
-  # set the engine version string
-  echo "#define __UNITY_VERSION__ \"${VERSION_NUMBER}\"" > ${WORKSPACE}/oss_src/unity/lib/version_number.hpp
-}
-
-unset_version() {
-  # set the engine version string
-  git checkout ${WORKSPACE}/oss_src/unity/lib/version_number.hpp
-}
-
 ### Build the source with version number ###
 build_source() {
-  echo -e "\n\n\n================= Build Release: VERSION ${VERSION_NUMBER} ================\n\n\n"
+  echo -e "\n\n\n================= Build ${BUILD_NUMBER} ================\n\n\n"
   # Configure
   cd ${WORKSPACE}
   ./configure ${toolchain}
@@ -193,10 +186,6 @@ package_egg() {
       cp conf/qa.py sframe/util/graphlab_env.py
   fi
 
-  # # set version number
-  cd ${WORKSPACE}/${build_type}/oss_src/unity/python/
-  sed -i -e "s/{{VERSION_STRING}}/${VERSION_NUMBER}/g" sframe/util/graphlab_env.py doc/source/conf.py sframe/__init__.py sframe/version_info.py setup.py
-
   # strip binaries
   if [[ ! $OSTYPE == darwin* ]]; then
     cd ${WORKSPACE}/${build_type}/oss_src/unity/python/sframe
@@ -214,6 +203,7 @@ package_egg() {
   if [[ $OSTYPE == darwin* ]] || [[ $OSTYPE == msys ]]; then
     dist_type="bdist_wheel"
   fi
+  VERSION_NUMBER=`python -c "import sframe; print sframe.version"`
   ${PYTHON_EXECUTABLE} setup.py ${dist_type} # This produced an egg/wheel starting with SFrame-${VERSION_NUMBER} under dist/
   
   cd ${WORKSPACE}
@@ -256,11 +246,18 @@ generate_docs() {
   tar -czvf ${TARGET_DIR}/sframe_python_sphinx_docs.${archive_file_ext} *
 }
 
+set_build_number() {
+  # set the build number 
+  cd ${WORKSPACE}/${BUILD_TYPE}/oss_src/unity/python/
+  sed -i -e "s/'.*'#{{BUILD_NUMBER}}/'${BUILD_NUMBER}'#{{BUILD_NUMBER}}/g" sframe/version_info.py
+}
+
 # Here is the main function()
 if [[ -z $SKIP_BUILD ]]; then
-  set_version
   build_source
 fi
+
+set_build_number
 
 if [[ -z $SKIP_TEST ]]; then
   unit_test
@@ -273,4 +270,3 @@ if [[ -z $SKIP_DOC ]]; then
 fi
 
 
-#unset_version
