@@ -23,6 +23,8 @@ print_help() {
   echo
   echo "  --skip_test              Skip unit test and doc generation."
   echo
+  echo "  --skip_cpp_test          Skip C++ tests"
+  echo
   echo "  --skip_build             Skip the build process"
   echo
   echo "  --skip_doc               Skip the doc generation"
@@ -49,6 +51,7 @@ while [ $# -gt 0 ]
     --toolchain=*)          toolchain=${1##--toolchain=} ;;
     --num_procs=*)          NUM_PROCS=${1##--num_procs=} ;;
     --skip_test)            SKIP_TEST=1;;
+    --skip_cpp_test)        SKIP_CPP_TEST=1;;
     --skip_build)           SKIP_BUILD=1;;
     --skip_doc)             SKIP_DOC=1;;
     --debug)                build_type="debug";;
@@ -111,6 +114,13 @@ build_source() {
   cd ${WORKSPACE}/${build_type}/oss_test
   make -j${NUM_PROCS}
   echo -e "\n\n================= Done Build Source ================\n\n"
+}
+
+# Run all unit test
+cpp_test() {
+  echo -e "\n\n\n================= Running Unit Test ================\n\n\n"
+  cd ${WORKSPACE}/${BUILD_TYPE}
+  ${WORKSPACE}/oss_local_scripts/run_cpp_tests.py -j 1
 }
 
 # Run all unit test
@@ -263,6 +273,10 @@ if [[ -z $SKIP_BUILD ]]; then
 fi
 
 set_build_number
+
+if [[ -z $SKIP_CPP_TEST ]]; then
+  cpp_test 
+fi
 
 if [[ -z $SKIP_TEST ]]; then
   unit_test
