@@ -8,7 +8,7 @@
 #include <util/syserr_reporting.hpp>
 #include <iostream>
 #ifdef _WIN32
-#include <windows.h>
+#include <cross_platform/windows_wrapper.hpp>
 #else
 #include <errno.h>
 #include <string.h>

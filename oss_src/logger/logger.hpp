@@ -572,7 +572,7 @@ class file_logger{
   bool log_to_stderr;
   int log_level;
 
-  size_t reference_pid = 0;
+  size_t reference_pid = size_t(-1);
 
   // LOG_NONE is the "highest" log level
   std::function<void(int lineloglevel, const char* buf, size_t len)> callback[LOG_NONE];
