@@ -3,7 +3,6 @@
 import os
 import time
 import pickle
-import random
 import fnmatch
 import hashlib
 import argparse
