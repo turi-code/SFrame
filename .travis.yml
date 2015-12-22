@@ -15,4 +15,4 @@ cache:
   directories:
     - $HOME/.ccache
 
-script: oss_local_scripts/make_egg.sh --debug --num_procs=2
+script: oss_local_scripts/make_egg.sh --debug --num_procs=2 --skip_cpp_test

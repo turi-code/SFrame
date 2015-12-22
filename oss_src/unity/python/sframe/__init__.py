@@ -23,6 +23,7 @@ of the BSD license. See the LICENSE file for details.
 import util
 from .util import set_runtime_config
 from .util import get_runtime_config
+from .version_info import __VERSION__, version, build_number
 
 from .connect import _get_metric_tracker
 import visualization
@@ -51,9 +52,6 @@ from .connect.main import launch as _launch
 from .connect.main import stop as _stop
 from .connect import main as glconnect
 
-# python egg version
-__VERSION__ = '{{VERSION_STRING}}'
-version = '{{VERSION_STRING}}'
 
 from .util import get_environment_config
 from .util import get_graphlab_object_type
