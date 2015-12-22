@@ -111,8 +111,10 @@ build_source() {
   # Make
   make -j${NUM_PROCS}
 
-  cd ${WORKSPACE}/${build_type}/oss_test
-  make -j${NUM_PROCS}
+  if [[ -z $SKIP_CPP_TEST ]]; then
+      cd ${WORKSPACE}/${build_type}/oss_test
+      make -j${NUM_PROCS}
+  fi
   echo -e "\n\n================= Done Build Source ================\n\n"
 }
 
@@ -126,9 +128,6 @@ cpp_test() {
 # Run all unit test
 unit_test() {
   echo -e "\n\n\n================= Running Unit Test ================\n\n\n"
-  cd ${WORKSPACE}/${BUILD_TYPE}
-  ${WORKSPACE}/oss_local_scripts/run_cpp_tests.py -j 1
-
   cd ${WORKSPACE}
   python -c 'import sframe; sframe.sys_util.test_pylambda_worker()'
   oss_local_scripts/run_python_test.sh ${build_type}
