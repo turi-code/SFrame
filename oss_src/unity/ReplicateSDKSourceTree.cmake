@@ -39,11 +39,11 @@ file(RENAME "${CMAKE_ARGV3}/sdk/makefile_deploy" "${CMAKE_ARGV3}/sdk/Makefile")
 ## Copy boost
 set (boostfiles "")
 # find all direct included boost headers
-execute_process(COMMAND ${CMAKE_ARGV3}/../../../oss_local_scripts/find_boost_include.sh ${sdkfiles} OUTPUT_VARIABLE boostfiles)
+execute_process(COMMAND ${CMAKE_ARGV4}/oss_local_scripts/find_boost_include.sh ${sdkfiles} OUTPUT_VARIABLE boostfiles)
 string(REPLACE "\n" ";" boostfiles ${boostfiles})
 # use bcp to recursively copy all dependent headers
-set (bcp ${CMAKE_ARGV3}/../../../deps/local/bin/bcp)
-execute_process(COMMAND ${bcp} --boost=${CMAKE_ARGV3}/../../../deps/local/include ${boostfiles} ${CMAKE_ARGV3}/sdk)
+set (bcp ${CMAKE_ARGV4}/deps/local/bin/bcp)
+execute_process(COMMAND ${bcp} --boost=${CMAKE_ARGV4}/deps/local/include ${boostfiles} ${CMAKE_ARGV3}/sdk)
 
 ## Copy doxygen files
 file(COPY sdk/doxygen DESTINATION "${CMAKE_ARGV3}/sdk")
