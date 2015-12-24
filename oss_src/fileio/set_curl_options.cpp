@@ -7,7 +7,7 @@ extern "C" {
 namespace graphlab {
 namespace fileio {
 
-void set_ssl_certificate_options(void* ecurl) {
+void set_curl_options(void* ecurl) {
   using graphlab::fileio::get_alternative_ssl_cert_dir;
   using graphlab::fileio::get_alternative_ssl_cert_file;
   using graphlab::fileio::insecure_ssl_cert_checks;
@@ -21,6 +21,8 @@ void set_ssl_certificate_options(void* ecurl) {
     ASSERT_EQ(curl_easy_setopt((CURL*)ecurl, CURLOPT_SSL_VERIFYPEER, 0l), CURLE_OK);
     ASSERT_EQ(curl_easy_setopt((CURL*)ecurl, CURLOPT_SSL_VERIFYHOST, 0l), CURLE_OK);
   }
+  ASSERT_EQ(curl_easy_setopt((CURL*)ecurl, CURLOPT_LOW_SPEED_LIMIT, 1l), CURLE_OK);
+  ASSERT_EQ(curl_easy_setopt((CURL*)ecurl, CURLOPT_LOW_SPEED_TIME, 60l), CURLE_OK);
 }
 
 } // fileio
