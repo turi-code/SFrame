@@ -9,7 +9,9 @@ import unittest
 from ..data_structures.sarray import SArray
 from ..data_structures.sframe import SFrame
 
-
+import sys
+if sys.version_info.major > 2:
+    long = int
 
 class VariantCheckTest(unittest.TestCase):
 
@@ -23,7 +25,7 @@ class VariantCheckTest(unittest.TestCase):
             for i in range(len(reference)):
                 self.identical(reference[i], b[i])
         if isinstance(reference, dict):
-            self.assertEqual(sorted(reference.iterkeys()), sorted(b.iterkeys()))
+            self.assertEqual(sorted(reference.keys()), sorted(b.keys()))
             for i in reference:
                 self.identical(reference[i], b[i])
         if isinstance(reference, SArray):

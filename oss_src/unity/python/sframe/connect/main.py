@@ -10,6 +10,7 @@ This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
 
+from ..cython import _encode
 from ..cython.cy_unity import UnityGlobalProxy
 from ..cython.cy_ipc import PyCommClient as Client
 from ..cython.cy_ipc import get_public_secret_key_pair
@@ -53,10 +54,10 @@ def _verify_engine_binary(server_bin):
 # Decorator which catch the exception and output to log error.
 @decorator.decorator
 def __catch_and_log__(func, *args, **kargs):
-        try:
-            return func(*args, **kargs)
-        except Exception, error:
-            logging.getLogger(__name__).error(error)
+    try:
+        return func(*args, **kargs)
+    except Exception as error:
+        logging.getLogger(__name__).error(error)
 
 
 @__catch_and_log__
@@ -119,26 +120,29 @@ def launch(server_addr=None, server_bin=None, server_log=None, auth_token=None,
         raise ValueError('Invalid server type: %s' % server_type)
 
     # start the server
-    try:
-        server.start()
+    #try:
+    server.start()
+    '''
     except Exception as e:
         __LOGGER__.error('Cannot start server: %s' % e)
         server.try_stop()
         return
+    '''
 
     # start the client
     (public_key, secret_key) = ('', '')
+    client = None
     if server_public_key != '':
        (public_key, secret_key) = get_public_secret_key_pair()
     try:
         num_tolerable_ping_failures = 4294967295
-        client = Client([], server.get_server_addr(), num_tolerable_ping_failures,
-                        public_key=public_key, secret_key=secret_key,
-                        server_public_key=server_public_key)
+        client = Client([], server.get_server_addr().encode(), num_tolerable_ping_failures,
+                        public_key=public_key.encode(), secret_key=secret_key.encode(),
+                        server_public_key=server_public_key.encode())
         if hasattr(server, 'proc') and hasattr(server.proc, 'pid'):
             client.set_server_alive_watch_pid(server.proc.pid)
         if(auth_token is not None):
-            client.add_auth_method_token(auth_token)
+            client.add_auth_method_token(_encode(auth_token))
         client.start()
     except Exception as e:
         __LOGGER__.error("Cannot start client: %s" % e)

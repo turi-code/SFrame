@@ -16,17 +16,19 @@ of the BSD license. See the LICENSE file for details.
 
 from .. import connect as _mt
 from ..connect import main as glconnect
+from ..cython import _decode, _encode
 from ..cython.cy_flexible_type import pytype_from_dtype, pytype_from_array_typecode
 from ..cython.cy_flexible_type import infer_type_of_list, infer_type_of_sequence
 from ..cython.cy_sarray import UnitySArrayProxy
 from ..cython.context import debug_trace as cython_context
-from ..util import _make_internal_url
+from ..util import _is_non_string_iterable, _make_internal_url
 from .image import Image as _Image
 from .. import aggregate as _aggregate
 from ..deps import numpy, HAS_NUMPY
 from ..deps import pandas, HAS_PANDAS
 
 import time
+import sys
 import array
 import collections
 import datetime
@@ -34,6 +36,9 @@ import warnings
 import numbers
 
 __all__ = ['SArray']
+
+if sys.version_info.major > 2:
+    long = int
 
 def _create_sequential_sarray(size, start=0, reverse=False):
     if type(size) is not int:
@@ -356,7 +361,8 @@ class SArray(object):
                     elif len(data.shape) > 2:
                         raise TypeError("Cannot convert Numpy arrays of greater than 2 dimensions")
 
-                elif (isinstance(data, str) or isinstance(data, unicode)):
+                elif (isinstance(data, str) or
+                      (sys.version_info.major < 3 and isinstance(data, unicode))):
                     # if it is a file, we default to string
                     dtype = str
                 elif isinstance(data, array.array):
@@ -371,10 +377,10 @@ class SArray(object):
             if HAS_PANDAS and isinstance(data, pandas.Series):
                 with cython_context():
                     self.__proxy__.load_from_iterable(data.values, dtype, ignore_cast_failure)
-            elif (isinstance(data, str) or isinstance(data, unicode)):
+            elif (isinstance(data, str) or (sys.version_info.major <= 2 and isinstance(data, unicode))):
                 internal_url = _make_internal_url(data)
                 with cython_context():
-                    self.__proxy__.load_autodetect(internal_url, dtype)
+                    self.__proxy__.load_autodetect(_encode(internal_url), dtype)
             elif ((HAS_NUMPY and isinstance(data, numpy.ndarray))
                   or isinstance(data, array.array)
                   or isinstance(data, collections.Sequence)):
@@ -540,7 +546,7 @@ class SArray(object):
         """
         _mt._get_metric_tracker().track('sarray.from_avro')
         proxy = UnitySArrayProxy(glconnect.get_client())
-        proxy.load_from_avro(filename)
+        proxy.load_from_avro(_encode(filename))
         return cls(_proxy = proxy)
 
     def to_numpy(self):
@@ -603,16 +609,13 @@ class SArray(object):
                 format = 'binary'
         if format == 'binary':
             with cython_context():
-                self.__proxy__.save(_make_internal_url(filename))
+                self.__proxy__.save(_encode(_make_internal_url(filename)))
         elif format == 'text' or format == 'csv':
             sf = _SFrame({'X1':self})
             with cython_context():
-                sf.__proxy__.save_as_csv(_make_internal_url(filename), {'header':False})
+                sf.__proxy__.save_as_csv(_encode(_make_internal_url(filename)), _encode({'header':False}))
         else:
             raise ValueError("Unsupported format: {}".format(format))
-
-    def _escape_space(self,s):
-            return "".join([ch.encode('string_escape') if ch.isspace() else ch for ch in s])
 
     def __repr__(self):
         """
@@ -636,8 +639,11 @@ class SArray(object):
         if self.dtype() == _Image:
             headln = str(list(self.astype(str).head(100)))
         else:
-            headln = self._escape_space(str(list(self.head(100))))
-            headln = unicode(headln.decode('string_escape'),'utf-8',errors='replace').encode('utf-8')
+            if sys.version_info.major < 3:
+                headln = str(list(self.head(100)))
+                headln = unicode(headln.decode('string_escape'),'utf-8',errors='replace').encode('utf-8')
+            else:
+                headln = str(_decode(list(self.head(100))))
         if (self.__proxy__.has_size() == False or self.size() > 100):
             # cut the last close bracket
             # and replace it with ...
@@ -666,7 +672,7 @@ class SArray(object):
             ret = self.__proxy__.iterator_get_next(elems_at_a_time)
             while(True):
                 for j in ret:
-                    yield j
+                    yield _decode(j)
 
                 if len(ret) == elems_at_a_time:
                     ret = self.__proxy__.iterator_get_next(elems_at_a_time)
@@ -717,8 +723,9 @@ class SArray(object):
         Rows: 3
         [1, 0, 0]
         """
-        return SArray(_proxy = self.__proxy__.left_scalar_operator(item, 'in'))
+        return SArray(_proxy = self.__proxy__.left_scalar_operator(item, _encode('in')))
 
+    # XXX: all of these functions are highly repetitive
     def __add__(self, other):
         """
         If other is a scalar value, adds it to the current array, returning
@@ -727,9 +734,9 @@ class SArray(object):
         """
         with cython_context():
             if type(other) is SArray:
-                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '+'))
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, _encode('+')))
             else:
-                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '+'))
+                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, _encode('+')))
 
     def __sub__(self, other):
         """
@@ -739,9 +746,9 @@ class SArray(object):
         """
         with cython_context():
             if type(other) is SArray:
-                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '-'))
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, _encode('-')))
             else:
-                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '-'))
+                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, _encode('-')))
 
     def __mul__(self, other):
         """
@@ -751,9 +758,9 @@ class SArray(object):
         """
         with cython_context():
             if type(other) is SArray:
-                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '*'))
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, _encode('*')))
             else:
-                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '*'))
+                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, _encode('*')))
 
     def __div__(self, other):
         """
@@ -763,9 +770,9 @@ class SArray(object):
         """
         with cython_context():
             if type(other) is SArray:
-                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '/'))
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, _encode('/')))
             else:
-                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '/'))
+                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, _encode('/')))
 
     def __truediv__(self, other):
         """
@@ -775,9 +782,9 @@ class SArray(object):
         """
         with cython_context():
             if type(other) is SArray:
-                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '/'))
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, _encode('/')))
             else:
-                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '/'))
+                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, _encode('/')))
 
 
     def __floordiv__(self, other):
@@ -788,9 +795,9 @@ class SArray(object):
         """
         with cython_context():
             if type(other) is SArray:
-                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '/')).astype(int)
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, _encode('/'))).astype(int)
             else:
-                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '/')).astype(int)
+                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, _encode('/'))).astype(int)
 
     def __pow__(self, other):
         """
@@ -801,16 +808,16 @@ class SArray(object):
         """
         with cython_context():
             if type(other) is SArray:
-                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '**'))
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, _encode('**')))
             else:
-                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '**'))
+                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, _encode('**')))
 
     def __neg__(self):
         """
         Returns the negative of each element.
         """
         with cython_context():
-            return SArray(_proxy = self.__proxy__.right_scalar_operator(0, '-'))
+            return SArray(_proxy = self.__proxy__.right_scalar_operator(0, _encode('-')))
 
     def __pos__(self):
         if self.dtype() not in [int, long, float, array.array]:
@@ -825,7 +832,7 @@ class SArray(object):
         Returns the absolute value of each element.
         """
         with cython_context():
-            return SArray(_proxy = self.__proxy__.left_scalar_operator(0, 'left_abs'))
+            return SArray(_proxy = self.__proxy__.left_scalar_operator(0, _encode('left_abs')))
 
     def __mod__(self, other):
         """
@@ -833,9 +840,9 @@ class SArray(object):
         """
         with cython_context():
             if type(other) is SArray:
-                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '%'))
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, _encode('%')))
             else:
-                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '%'))
+                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, _encode('%')))
 
 
     def __lt__(self, other):
@@ -846,9 +853,9 @@ class SArray(object):
         """
         with cython_context():
             if type(other) is SArray:
-                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '<'))
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, _encode('<')))
             else:
-                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '<'))
+                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, _encode('<')))
 
     def __gt__(self, other):
         """
@@ -858,9 +865,9 @@ class SArray(object):
         """
         with cython_context():
             if type(other) is SArray:
-                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '>'))
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, _encode('>')))
             else:
-                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '>'))
+                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, _encode('>')))
 
 
     def __le__(self, other):
@@ -871,9 +878,9 @@ class SArray(object):
         """
         with cython_context():
             if type(other) is SArray:
-                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '<='))
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, _encode('<=')))
             else:
-                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '<='))
+                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, _encode('<=')))
 
 
     def __ge__(self, other):
@@ -884,9 +891,9 @@ class SArray(object):
         """
         with cython_context():
             if type(other) is SArray:
-                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '>='))
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, _encode('>=')))
             else:
-                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '>='))
+                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, _encode('>=')))
 
 
     def __radd__(self, other):
@@ -895,7 +902,7 @@ class SArray(object):
         Returned array has the same type as the array on the right hand side
         """
         with cython_context():
-            return SArray(_proxy = self.__proxy__.right_scalar_operator(other, '+'))
+            return SArray(_proxy = self.__proxy__.right_scalar_operator(other, _encode('+')))
 
 
     def __rsub__(self, other):
@@ -904,7 +911,7 @@ class SArray(object):
         Returned array has the same type as the array on the right hand side
         """
         with cython_context():
-            return SArray(_proxy = self.__proxy__.right_scalar_operator(other, '-'))
+            return SArray(_proxy = self.__proxy__.right_scalar_operator(other, _encode('-')))
 
 
     def __rmul__(self, other):
@@ -913,7 +920,7 @@ class SArray(object):
         Returned array has the same type as the array on the right hand side
         """
         with cython_context():
-            return SArray(_proxy = self.__proxy__.right_scalar_operator(other, '*'))
+            return SArray(_proxy = self.__proxy__.right_scalar_operator(other, _encode('*')))
 
 
     def __rdiv__(self, other):
@@ -922,7 +929,7 @@ class SArray(object):
         Returned array has the same type as the array on the right hand side
         """
         with cython_context():
-            return SArray(_proxy = self.__proxy__.right_scalar_operator(other, '/'))
+            return SArray(_proxy = self.__proxy__.right_scalar_operator(other, _encode('/')))
 
     def __rtruediv__(self, other):
         """
@@ -930,7 +937,7 @@ class SArray(object):
         Returned array has the same type as the array on the right hand side
         """
         with cython_context():
-            return SArray(_proxy = self.__proxy__.right_scalar_operator(other, '/'))
+            return SArray(_proxy = self.__proxy__.right_scalar_operator(other, _encode('/')))
 
     def __rfloordiv__(self, other):
         """
@@ -939,7 +946,7 @@ class SArray(object):
         right hand side
         """
         with cython_context():
-            return SArray(_proxy = self.__proxy__.right_scalar_operator(other, '/')).astype(int)
+            return SArray(_proxy = self.__proxy__.right_scalar_operator(other, _encode('/'))).astype(int)
 
 
     def __rmod__(self, other):
@@ -949,7 +956,7 @@ class SArray(object):
         right hand side
         """
         with cython_context():
-            return SArray(_proxy = self.__proxy__.right_scalar_operator(other, '%'))
+            return SArray(_proxy = self.__proxy__.right_scalar_operator(other, _encode('%')))
 
     def __rpow__(self, other):
         """
@@ -957,7 +964,7 @@ class SArray(object):
         value, returning floor of the result.
         """
         with cython_context():
-            return SArray(_proxy = self.__proxy__.right_scalar_operator(other, '**'))
+            return SArray(_proxy = self.__proxy__.right_scalar_operator(other, _encode('**')))
 
     def __eq__(self, other):
         """
@@ -967,9 +974,9 @@ class SArray(object):
         """
         with cython_context():
             if type(other) is SArray:
-                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '=='))
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, _encode('==')))
             else:
-                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '=='))
+                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, _encode('==')))
 
 
     def __ne__(self, other):
@@ -980,9 +987,9 @@ class SArray(object):
         """
         with cython_context():
             if type(other) is SArray:
-                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '!='))
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, _encode('!=')))
             else:
-                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '!='))
+                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, _encode('!=')))
 
 
     def __and__(self, other):
@@ -991,7 +998,7 @@ class SArray(object):
         """
         if type(other) is SArray:
             with cython_context():
-                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '&'))
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, _encode('&')))
         else:
             raise TypeError("SArray can only perform logical and against another SArray")
 
@@ -1002,7 +1009,7 @@ class SArray(object):
         """
         if type(other) is SArray:
             with cython_context():
-                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '|'))
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, _encode('|')))
         else:
             raise TypeError("SArray can only perform logical or against another SArray")
 
@@ -1318,10 +1325,10 @@ class SArray(object):
         options = dict()
         options["to_lower"] = to_lower == True
         # defaults to std::isspace whitespace delimiters if no others passed in
-    	options["delimiters"] = delimiters
+        options["delimiters"] = delimiters
 
         with cython_context():
-            return SArray(_proxy=self.__proxy__.count_bag_of_words(options))
+            return SArray(_proxy=self.__proxy__.count_bag_of_words(_encode(options)))
 
     def _count_ngrams(self, n=2, method="word", to_lower=True, ignore_space=True):
         """
@@ -1353,10 +1360,10 @@ class SArray(object):
 
         if method == "word":
             with cython_context():
-                return SArray(_proxy=self.__proxy__.count_ngrams(n, options ))
+                return SArray(_proxy=self.__proxy__.count_ngrams(n, _encode(options)))
         elif method == "character" :
             with cython_context():
-                return SArray(_proxy=self.__proxy__.count_character_ngrams(n, options ))
+                return SArray(_proxy=self.__proxy__.count_character_ngrams(n, _encode(options)))
         else:
             raise ValueError("Invalid 'method' input  value. Please input either 'word' or 'character' ")
 
@@ -1394,7 +1401,7 @@ class SArray(object):
         Rows: 2
         [{'dog': 2}, {'cat': 1}]
         """
-        if isinstance(keys, str) or (not hasattr(keys, "__iter__")):
+        if not _is_non_string_iterable(keys):
             keys = [keys]
 
         _mt._get_metric_tracker().track('sarray.dict_trim_by_keys')
@@ -1542,9 +1549,9 @@ class SArray(object):
         >>> sa.dict_has_any_keys(["is", "this", "are"])
         dtype: int
         Rows: 3
-        [1, 1, 0]
+        [1, 0, 1]
         """
-        if isinstance(keys, str) or (not hasattr(keys, "__iter__")):
+        if not _is_non_string_iterable(keys):
             keys = [keys]
 
         _mt._get_metric_tracker().track('sarray.dict_has_any_keys')
@@ -1583,7 +1590,7 @@ class SArray(object):
         Rows: 2
         [1, 0]
         """
-        if isinstance(keys, str) or (not hasattr(keys, "__iter__")):
+        if not _is_non_string_iterable(keys):
             keys = [keys]
 
         _mt._get_metric_tracker().track('sarray.dict_has_all_keys')
@@ -1686,6 +1693,7 @@ class SArray(object):
 
         if nativefn is not None:
             # this is a toolkit lambda. We can do something about it
+            nativefn.native_fn_name = nativefn.native_fn_name.encode()
             with cython_context():
                 return SArray(_proxy=self.__proxy__.transform_native(nativefn, dtype, skip_undefined, seed))
 
@@ -2112,7 +2120,7 @@ class SArray(object):
 
         _mt._get_metric_tracker().track('sarray.datetime_to_str')
         with cython_context():
-            return SArray(_proxy=self.__proxy__.datetime_to_str(str_format))
+            return SArray(_proxy=self.__proxy__.datetime_to_str(_encode(str_format)))
 
     def str_to_datetime(self,str_format="%Y-%m-%dT%H:%M:%S%ZP"):
         """
@@ -2151,7 +2159,7 @@ class SArray(object):
 
         _mt._get_metric_tracker().track('sarray.str_to_datetime')
         with cython_context():
-            return SArray(_proxy=self.__proxy__.str_to_datetime(str_format))
+            return SArray(_proxy=self.__proxy__.str_to_datetime(_encode(str_format)))
 
     def pixel_array_to_image(self, width, height, channels, undefined_on_failure=True, allow_rounding=False):
         """
@@ -2504,7 +2512,7 @@ class SArray(object):
         if (sub_sketch_keys != None):
             if (self.dtype() != dict and self.dtype() != array.array):
                 raise TypeError("sub_sketch_keys is only supported for SArray of dictionary or array type")
-            if not hasattr(sub_sketch_keys, "__iter__"):
+            if not _is_non_string_iterable(sub_sketch_keys):
                 sub_sketch_keys = [sub_sketch_keys]
             value_types = set([type(i) for i in sub_sketch_keys])
             if (len(value_types) != 1):
@@ -2778,7 +2786,7 @@ class SArray(object):
 
         # convert limit to column_keys
         if limit != None:
-            if (not hasattr(limit, '__iter__')):
+            if not _is_non_string_iterable(limit):
                 raise TypeError("'limit' must be a list");
 
             name_types = set([type(i) for i in limit])
@@ -2805,7 +2813,7 @@ class SArray(object):
         _mt._get_metric_tracker().track('sarray.split_datetime')
 
         with cython_context():
-           return _SFrame(_proxy=self.__proxy__.expand(column_name_prefix, limit, column_types))
+           return _SFrame(_proxy=self.__proxy__.expand(_encode(column_name_prefix), limit, column_types))
 
     def unpack(self, column_name_prefix = "X", column_types=None, na_value=None, limit=None):
         """
@@ -2945,7 +2953,7 @@ class SArray(object):
 
         # validdate 'limit'
         if limit != None:
-            if (not hasattr(limit, '__iter__')):
+            if (not _is_non_string_iterable(limit)):
                 raise TypeError("'limit' must be a list");
 
             name_types = set([type(i) for i in limit])
@@ -2960,7 +2968,7 @@ class SArray(object):
                 raise ValueError("'limit' contains duplicate values")
 
         if (column_types != None):
-            if not hasattr(column_types, '__iter__'):
+            if not _is_non_string_iterable(column_types):
                 raise TypeError("column_types must be a list");
 
             for column_type in column_types:
@@ -3003,9 +3011,9 @@ class SArray(object):
         with cython_context():
             if (self.dtype() == dict and column_types == None):
                 limit = limit if limit != None else []
-                return _SFrame(_proxy=self.__proxy__.unpack_dict(column_name_prefix, limit, na_value))
+                return _SFrame(_proxy=self.__proxy__.unpack_dict(column_name_prefix.encode(), limit, na_value))
             else:
-                return _SFrame(_proxy=self.__proxy__.unpack(column_name_prefix, limit, column_types, na_value))
+                return _SFrame(_proxy=self.__proxy__.unpack(column_name_prefix.encode(), limit, column_types, na_value))
 
     def sort(self, ascending=True):
         """

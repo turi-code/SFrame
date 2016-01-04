@@ -96,7 +96,7 @@ function unknown_option {
 function run_cleanup {
   #!/bin/bash
   echo "cleaning up";
-  rm -rf release debug deps cmake patches description.json
+  rm -rf release debug deps cmake patches description.json deps_version dummy.cpp miniconda.sh
   rm -f *.tar.gz 
 } 
 
@@ -213,7 +213,8 @@ if [[ $run_toolchain_install == 1 ]]; then
                         if [[ $no_cuda == 1 ]]; then
                           toolchain="http://s3-us-west-2.amazonaws.com/dato-deps/$DEFAULT_DATO_DEPS_VERSION/dato_deps_linux_no_cuda.tar.gz"
                         else
-                          toolchain="http://s3-us-west-2.amazonaws.com/dato-deps/$DEFAULT_DATO_DEPS_VERSION/dato_deps_linux_default.tar.gz"
+                          #toolchain="http://s3-us-west-2.amazonaws.com/dato-deps/$DEFAULT_DATO_DEPS_VERSION/dato_deps_linux_default.tar.gz"
+                          toolchain="http://s3-us-west-2.amazonaws.com/dato-deps/$DEFAULT_DATO_DEPS_VERSION/dato_deps_linux_gcc_4.9.2.python_3.4m.tar.gz"
                         fi
                 elif [[ $OSTYPE == msys ]]; then
                         toolchain="http://s3-us-west-2.amazonaws.com/dato-deps/$DEFAULT_DATO_DEPS_VERSION/dato_deps_win_default.tar.gz"
@@ -252,12 +253,13 @@ if [[ $OSTYPE == msys ]]; then
 fi
 CMAKE=$PWD/deps/local/bin/cmake
 LINKER=""
+# XXX: support python 2
 if [ -e $PWD/deps/local/bin/ld.gold ]; then
-        LINKER="-DCMAKE_LINKER=$PWD/deps/local/bin/ld.gold"
+        LINKER="-DCMAKE_LINKER=$PWD/deps/local/bin/ld.gold -lboost_python3 -lpython3.4mu"
 elif [ -e $PWD/deps/local/bin/ld ]; then
-        LINKER="-DCMAKE_LINKER=$PWD/deps/local/bin/ld"
+        LINKER="-DCMAKE_LINKER=$PWD/deps/local/bin/ld -lboost_python3 -lpython3.4mu"
 else
-        LINKER=""
+        LINKER="-lboost_python3 -lpython3.4mu"
 fi
 
 mkdir -p doc

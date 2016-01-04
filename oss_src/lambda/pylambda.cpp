@@ -37,7 +37,12 @@ namespace lambda {
       try {
         // Does python::object(python::handle<>(lambda_filename)) decref this?
         PyObject* lambda_filename = 
-            PyString_FromStringAndSize(pylambda_str.c_str(), pylambda_str.size());
+#if PY_MAJOR_VERSION < 3
+          PyString_FromStringAndSize(pylambda_str.c_str(), pylambda_str.size());
+#else
+          PyBytes_FromStringAndSize(pylambda_str.c_str(), pylambda_str.size());
+#endif
+
         size_t hash_key = hash64(pylambda_str.c_str(), pylambda_str.size());
         auto unpickler = py_gl_pickle.attr("GLUnpickler")(python::object(python::handle<>(lambda_filename)));
         m_lambda_hash[hash_key] = new python::object(unpickler.attr("load")());

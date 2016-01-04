@@ -80,7 +80,12 @@ python::object PyObject_FromFlex(const flexible_type& flex_value);
 struct PyObjectVisitor {
 
   inline python::object operator()(const flex_int& i) const {
+
+#if PY_MAJOR_VERSION < 3
     return python::object(python::handle<>(PyInt_FromSsize_t(i)));
+#else
+    return python::object(python::handle<>(PyLong_FromSsize_t(i)));
+#endif
   }
 
   inline python::object operator()(const flex_float& i) const {
@@ -88,19 +93,37 @@ struct PyObjectVisitor {
   }
 
   inline python::object operator()(const flex_string& i) const {
+#if PY_MAJOR_VERSION < 3
     return python::object(python::handle<>(PyString_FromString(i.c_str())));
+#else
+    return python::object(python::handle<>(PyBytes_FromString(i.c_str())));
+#endif
   }
   inline python::object operator()(const flex_date_time& i) const {
     boost::python::dict epoch_kwargs;
     boost::python::list emptyList;
+
+#if PY_MAJOR_VERSION < 3
     epoch_kwargs["year"] = python::object(python::handle<>(PyInt_FromSsize_t((ssize_t)1970)));
     epoch_kwargs["month"] = python::object(python::handle<>(PyInt_FromSsize_t((ssize_t)1)));
     epoch_kwargs["day"] = python::object(python::handle<>(PyInt_FromSsize_t((ssize_t)1)));
+#else
+    epoch_kwargs["year"] = python::object(python::handle<>(PyLong_FromSsize_t((ssize_t)1970)));
+    epoch_kwargs["month"] = python::object(python::handle<>(PyLong_FromSsize_t((ssize_t)1)));
+    epoch_kwargs["day"] = python::object(python::handle<>(PyLong_FromSsize_t((ssize_t)1)));
+#endif
+
     python::object utc = py_datetime(*python::tuple(emptyList), **epoch_kwargs);
 
     boost::python::dict delta_kwargs;
+#if PY_MAJOR_VERSION < 3
     delta_kwargs["seconds"] = python::object(python::handle<>(PyInt_FromSsize_t(i.posix_timestamp())));
     delta_kwargs["microseconds"] = python::object(python::handle<>(PyInt_FromSsize_t(i.microsecond())));
+#else
+    delta_kwargs["seconds"] = python::object(python::handle<>(PyLong_FromSsize_t(i.posix_timestamp())));
+    delta_kwargs["microseconds"] = python::object(python::handle<>(PyLong_FromSsize_t(i.microsecond())));
+#endif
+
     utc += py_datetime_module.attr("timedelta")(*python::tuple(emptyList), **delta_kwargs);
 
     if (i.time_zone_offset() != flex_date_time::EMPTY_TIMEZONE) {
@@ -254,8 +277,14 @@ inline bool Simple_PyObject_AsFlex(PyObject* objectptr,
   bool success = false;
 
   // Int, Long, Bool -> flex_int 
+#if PY_MAJOR_VERSION < 3
   if (PyInt_Check(objectptr)) {
     out = PyInt_AsLong(objectptr);
+#else
+  if (PyLong_Check(objectptr)) {
+    out = PyLong_AsLong(objectptr);
+#endif
+
     success = true;
   } else if (PyLong_Check(objectptr)) {
     out = PyLong_AsLong(objectptr);
@@ -265,9 +294,18 @@ inline bool Simple_PyObject_AsFlex(PyObject* objectptr,
     out = PyFloat_AsDouble(objectptr);
     success = true;
   // String -> flex_string
-  } else if (ob_type == &PyString_Type) {
+  } 
+
+#if PY_MAJOR_VERSION < 3
+  else if (ob_type == &PyString_Type) {
     char* c; Py_ssize_t len;
     PyString_AsStringAndSize(objectptr, &c, &len);
+#else
+    else if (ob_type == &PyBytes_Type) {
+      char* c; Py_ssize_t len;
+      PyBytes_AsStringAndSize(objectptr, &c, &len);
+#endif
+
     if (out.get_type() != flex_type_enum::STRING)
       out = flexible_type(flex_type_enum::STRING);
     out.mutable_get<flex_string>() = std::string(c, len);

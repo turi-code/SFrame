@@ -11,6 +11,7 @@ of the BSD license. See the LICENSE file for details.
 '''
 from .. import connect as _mt
 from ..connect import main as glconnect
+from ..cython import _encode
 from ..data_structures.sframe import SFrame as _SFrame
 from ..toolkits._internal_utils import _map_unity_proxy_to_object, \
                                         _toolkit_serialize_summary_struct, \
@@ -47,7 +48,7 @@ def load_model(location):
 
     _internal_url = _make_internal_url(location)
     try:
-        return glconnect.get_unity().load_model(_internal_url)
+        return glconnect.get_unity().load_model(_encode(_internal_url))
     except IOError as e:
         unpickler = _gl_pickle.GLUnpickler(_internal_url)
 
@@ -366,7 +367,7 @@ class CustomModel(object):
                                             *self._get_summary_struct() )
         _mt._get_metric_tracker().track(self.__class__.__module__ + '.summary')
         try:
-            print self.__repr__()
+            print(self.__repr__())
         except:
             return self.__class__.__name__
 

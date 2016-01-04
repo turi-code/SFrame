@@ -12,7 +12,7 @@ import shutil
 
 from .. import util as glutil
 from .. import SFrame, SArray, SGraph, get_graphlab_object_type, get_runtime_config, set_runtime_config
-import util
+from . import util
 
 
 class UtilTests(unittest.TestCase):

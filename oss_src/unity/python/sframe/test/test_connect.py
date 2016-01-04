@@ -11,7 +11,7 @@ import tempfile
 import unittest
 
 from ..connect import main as glconnect
-from util import SubstringMatcher
+from .util import SubstringMatcher
 root_package_name = __import__(__name__.split('.')[0]).__name__
 class ConnectLocalTests(unittest.TestCase):
     def test_launch(self):

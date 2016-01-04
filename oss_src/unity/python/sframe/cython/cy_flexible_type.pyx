@@ -139,6 +139,19 @@ import datetime
 import calendar
 import collections
 import types
+import sys
+
+if sys.version_info.major == 3:
+   types.BooleanType = bool
+   types.DictType = dict
+   types.FloatType = float
+   types.IntType = int
+   types.ListType = list
+   types.NoneType = type(None)
+   types.StringType = bytes
+   types.TupleType = tuple
+   types.XRangeType = range
+   types.UnicodeType = str
 
 from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t
 
@@ -205,13 +218,12 @@ cdef map[object_ptr, int] _code_by_type_lookup = map[object_ptr, int]()
 
 # Ids in this case are known to be unique
 _code_by_type_lookup[<object_ptr>(types.DictType)]          = FT_DICT_TYPE
-_code_by_type_lookup[<object_ptr>(types.DictProxyType)]     = FT_DICT_TYPE + FT_SAFE
+
 _code_by_type_lookup[<object_ptr>(types.FloatType)]         = FT_FLOAT_TYPE
 _code_by_type_lookup[<object_ptr>(types.GeneratorType)]     = FT_LIST_TYPE + FT_SAFE
 _code_by_type_lookup[<object_ptr>(types.IntType)]           = FT_INT_TYPE
 _code_by_type_lookup[<object_ptr>(types.BooleanType)]       = FT_INT_TYPE  + FT_SAFE
 _code_by_type_lookup[<object_ptr>(types.ListType)]          = FT_LIST_TYPE
-_code_by_type_lookup[<object_ptr>(types.LongType)]          = FT_INT_TYPE  + FT_SAFE
 _code_by_type_lookup[<object_ptr>(types.NoneType)]          = FT_NONE_TYPE
 _code_by_type_lookup[<object_ptr>(types.StringType)]        = FT_STR_TYPE
 _code_by_type_lookup[<object_ptr>(types.TupleType)]         = FT_TUPLE_TYPE
@@ -225,7 +237,6 @@ _code_by_type_lookup[<object_ptr>(_image_type)]             = FT_IMAGE_TYPE
 cdef map[object_ptr, int] _code_by_map_force = map[object_ptr, int]()
 
 _code_by_map_force[<object_ptr>(types.IntType)]    = FT_INT_TYPE       + FT_SAFE
-_code_by_map_force[<object_ptr>(types.LongType)]   = FT_INT_TYPE       + FT_SAFE
 _code_by_map_force[<object_ptr>(types.FloatType)]  = FT_FLOAT_TYPE     + FT_SAFE
 _code_by_map_force[<object_ptr>(types.StringType)] = FT_STR_TYPE       + FT_SAFE
 _code_by_map_force[<object_ptr>(array_type)]       = FT_ARRAY_TYPE     + FT_SAFE
@@ -235,9 +246,17 @@ _code_by_map_force[<object_ptr>(datetime_type)]    = FT_DATETIME_TYPE  + FT_SAFE
 _code_by_map_force[<object_ptr>(types.NoneType)]   = FT_NONE_TYPE
 _code_by_map_force[<object_ptr>(_image_type)]      = FT_IMAGE_TYPE     + FT_SAFE
 
+if sys.version_info.major == 2:
+   _code_by_type_lookup[<object_ptr>(types.DictProxyType)] = FT_DICT_TYPE + FT_SAFE
+   _code_by_type_lookup[<object_ptr>(types.LongType)]      = FT_INT_TYPE  + FT_SAFE
+   _code_by_map_force[<object_ptr>(types.LongType)]        = FT_INT_TYPE  + FT_SAFE
+
 cdef dict _code_by_name_lookup = {
+    'str_'     : FT_STR_TYPE     + FT_SAFE,
     'string'   : FT_STR_TYPE     + FT_SAFE,
     'string_'  : FT_STR_TYPE     + FT_SAFE,
+    'bytes'    : FT_STR_TYPE     + FT_SAFE,
+    'bytes_'   : FT_STR_TYPE     + FT_SAFE,
     'unicode'  : FT_UNICODE_TYPE,
     'unicode_' : FT_UNICODE_TYPE,
     'int'      : FT_INT_TYPE     + FT_SAFE,
@@ -343,7 +362,7 @@ _code_by_forced_type[<object_ptr>(str)]            = FT_STR_TYPE      + FT_SAFE
 cdef list _type_lookup_by_type_enum = [None] * (_NUM_FLEX_TYPES)
 _type_lookup_by_type_enum[<int>INTEGER]   = types.IntType
 _type_lookup_by_type_enum[<int>FLOAT]     = types.FloatType
-_type_lookup_by_type_enum[<int>STRING]    = types.StringType
+_type_lookup_by_type_enum[<int>STRING]    = str
 _type_lookup_by_type_enum[<int>VECTOR]    = array_type
 _type_lookup_by_type_enum[<int>LIST]      = types.ListType
 _type_lookup_by_type_enum[<int>DICT]      = types.DictType
@@ -1295,7 +1314,8 @@ cdef flexible_type _ft_translate(object v, int tr_code) except *:
         if type(v) is str:
             ret.set_string(<str>v)
         else:
-            ret.set_string(str(v))
+            #XXX Python2: str(v)
+            ret.set_string(v)
         return ret
     elif tr_code == (FT_UNICODE_TYPE + FT_SAFE):
         if type(v) is unicode:
@@ -1475,7 +1495,15 @@ cdef dict pydict_from_gl_options_map(const gl_options_map& m):
     cdef options_map_iter it = <options_map_iter>m.begin()
 
     while it != <options_map_iter>m.end():
-        ret[deref(it).first] = pyobject_from_flexible_type(deref(it).second)
+        key = deref(it).first
+
+        if(type(key) == types.StringType):
+            key = key.decode()
+        value = pyobject_from_flexible_type(deref(it).second)
+        if(type(value) == types.StringType):
+            value = value.decode()
+
+        ret[key] = value
         inc(it)
 
     return ret
@@ -1488,7 +1516,9 @@ cdef gl_options_map gl_options_map_from_pydict(dict d) except *:
     cdef gl_options_map ret
 
     for k,v in d.iteritems():
-        ret[str(k)] = flexible_type_from_pyobject(v)
+        if sys.version_info.major <= 2:
+            k = str(k)
+        ret[k] = flexible_type_from_pyobject(v)
 
     return ret
 

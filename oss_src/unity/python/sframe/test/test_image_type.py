@@ -14,7 +14,6 @@ from ..data_structures import image
 from .. import SArray
 from ..toolkits.image_analysis import image_analysis
 
-from itertools import izip
 from ..deps import numpy as _np, HAS_NUMPY
 
 current_file_dir = os.path.dirname(os.path.realpath(__file__))
@@ -59,7 +58,7 @@ class ImageClassTest(unittest.TestCase):
         # Size data equal
         self.assertEqual(glimage_decoded._image_data_size, len(pil_data))
         self.assertEqual(len(glimage_decoded._image_data), len(pil_data))
-        pixel_diff = [abs(x - y) for (x, y) in izip(glimage_decoded._image_data, pil_data)]
+        pixel_diff = [abs(x - y) for (x, y) in zip(glimage_decoded._image_data, pil_data)]
 
         self.assertLess(sum(pixel_diff) / float(len(pil_data)), 2)
 

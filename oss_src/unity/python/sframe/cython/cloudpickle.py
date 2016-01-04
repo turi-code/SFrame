@@ -375,7 +375,7 @@ class CloudPickler(pickle.Pickler):
         f_globals = {}
         for var in func_global_refs:
             #Some names, such as class functions are not global - we don't need them
-            if func.func_globals.has_key(var):
+            if var in func.func_globals
                 f_globals[var] = func.func_globals[var]
 
         # defaults requires no processing

@@ -73,9 +73,9 @@ mark_as_advanced( CYTHON_ANNOTATE CYTHON_NO_DOCSTRINGS CYTHON_FLAGS )
 
 find_package( Cython REQUIRED )
 set(PYTHON_INCLUDE_DIR
-  ${CMAKE_SOURCE_DIR}/deps/local/include/python2.7)
+  ${CMAKE_SOURCE_DIR}/deps/local/include/python3.4m)
 set(PYTHON_LIBRARIES 
-  ${CMAKE_SOURCE_DIR}/deps/local/lib/${CMAKE_SHARED_LIBRARY_PREFIX}python2.7${CMAKE_SHARED_LIBRARY_SUFFIX})
+  ${CMAKE_SOURCE_DIR}/deps/local/lib/${CMAKE_SHARED_LIBRARY_PREFIX}python3.4m${CMAKE_SHARED_LIBRARY_SUFFIX})
 find_package( PythonLibs REQUIRED )
 
 
@@ -230,7 +230,7 @@ function( compile_pyx _name generated_file )
     COMMAND ${CYTHON_EXECUTABLE}
     ARGS ${cxx_arg} ${include_directory_arg}
     ${annotate_arg} ${no_docstrings_arg} ${cython_debug_arg} ${CYTHON_FLAGS} ${cython_traceback}
-    --output-file  ${_generated_target_file} ${pyx_locations} 
+    -3 --output-file  ${_generated_target_file} ${pyx_locations}
     DEPENDS ${pyx_locations} ${pxd_dependencies}
     IMPLICIT_DEPENDS ${pyx_lang} ${c_header_dependencies}
     COMMENT ${comment}

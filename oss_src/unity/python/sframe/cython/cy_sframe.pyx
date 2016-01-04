@@ -21,7 +21,6 @@ from .cy_flexible_type cimport pylist_from_flex_list
 from .cy_flexible_type cimport pydict_from_gl_options_map
 
 #### dataframe utils ####
-from .cy_dataframe cimport gl_dataframe_from_pd
 from .cy_dataframe cimport gl_dataframe_from_dict_of_arrays
 from .cy_dataframe cimport pd_from_gl_dataframe
 from .cy_dataframe cimport is_pandas_dataframe
@@ -66,11 +65,7 @@ cdef class UnitySFrameProxy:
             self._base_ptr.reset(<unity_sframe_base*>(self.thisptr))
 
     cpdef load_from_dataframe(self, dataframe):
-        cdef gl_dataframe gldf
-        if is_pandas_dataframe(dataframe):
-            gldf = gl_dataframe_from_pd(dataframe)
-        else:
-            gldf = gl_dataframe_from_dict_of_arrays(dataframe)
+        cdef gl_dataframe gldf = gl_dataframe_from_dict_of_arrays(dataframe)
         with nogil:
             self.thisptr.construct_from_dataframe(gldf)
 
@@ -107,7 +102,7 @@ cdef class UnitySFrameProxy:
         return [pytype_from_flex_type_enum(t) for t in self.thisptr.dtype()]
 
     cpdef column_names(self):
-        return self.thisptr.column_names()
+        return [i.decode() for i in self.thisptr.column_names()]
 
     cpdef head(self, size_t n):
         cdef unity_sframe_base_ptr proxy

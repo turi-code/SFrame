@@ -45,7 +45,7 @@ project(sframe)
 make_copy_target(_local_sys_util_
         FILES ${CMAKE_CURRENT_SOURCE_DIR}/../unity/python/sframe/sys_util.py)
 
- make_executable(spark_unity
+make_executable(spark_unity
                 SOURCES
                   spark_unity.cpp
                 REQUIRES
@@ -54,7 +54,7 @@ make_copy_target(_local_sys_util_
                   cppipc
                   sframe
                   pylambda_worker_lib
- )
+)
 add_dependencies(spark_unity _local_sys_util_)
 
 file(DOWNLOAD http://s3-us-west-2.amazonaws.com/glbin-engine/spark_unity_0.4.jar ${CMAKE_CURRENT_BINARY_DIR}/spark_unity.jar

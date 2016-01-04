@@ -192,13 +192,28 @@ bool PyUnicode_AsFlex(const python::object& object, flexible_type& out) {;
 bool _Old_PyObject_AsFlex(const python::object& object, flexible_type& out) {
   PyDateTime_IMPORT; //we need to import this macro for PyDateTime_Check()
   PyObject* objectptr = object.ptr();
+
+#if PY_MAJOR_VERSION < 3
   if (PyInt_Check(objectptr) || PyLong_Check(objectptr)) {
     out = (flex_int)(python::extract<flex_int>(object));
-  } else if (PyFloat_Check(objectptr)) {
+  } 
+#else
+  if (PyLong_Check(objectptr)) {
+    out = (flex_int)(python::extract<flex_int>(object));
+  } 
+#endif
+
+  else if (PyFloat_Check(objectptr)) {
     out = (flex_float)(python::extract<flex_float>(object));
-  } else if (PyString_Check(objectptr)) {
+  } 
+
+#if PY_MAJOR_VERSION < 3
+  else if (PyString_Check(objectptr)) {
     out = python::extract<flex_string>(object);
-  } else if (PyUnicode_Check(objectptr)) {
+  } 
+#endif
+
+else if (PyUnicode_Check(objectptr)) {
     out = python::extract<flex_string>(object.attr("encode")("utf-8"));
   } else if (PyDateTime_Check(objectptr)) { 
     if(PyDateTime_GET_YEAR(objectptr) < 1400 or PyDateTime_GET_YEAR(objectptr) > 10000) { 

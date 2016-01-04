@@ -131,7 +131,11 @@ flexible_type read_flex_obj(const std::vector<char> & buffer,
                             const python::object & pickle) {
   // Make a python string corresponding to the first object
   python::object python_string = 
+#if PY_MAJOR_VERSION < 3  
     python::object(python::handle<>(PyString_FromStringAndSize(&buffer[0],buffer.size())));
+#else
+  python::object(python::handle<>(PyBytes_FromStringAndSize(&buffer[0],buffer.size())));
+#endif
   // Unpickle the first object
   python::object unpickle_obj = python::object(pickle.attr("loads")(python_string));
   // get the flexible type corresponding to the python object

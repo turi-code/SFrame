@@ -8,15 +8,19 @@ of the BSD license. See the LICENSE file for details.
 # from nose import with_setup
 from ..data_structures.sgraph import SGraph, Vertex, Edge, load_graph
 from ..data_structures.sframe import SFrame
+from . import util
+
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
 import numpy as np
 import unittest
 import tempfile
-import util
 import json
 import os
 
+import sys
+if sys.version_info.major > 2:
+    unittest.TestCase.assertItemsEqual = unittest.TestCase.assertCountEqual
 
 class GraphTests(unittest.TestCase):
     def setUp(self):
@@ -205,7 +209,7 @@ class GraphTests(unittest.TestCase):
                         3,2"""
 
         temp_fnames = []
-        with tempfile.NamedTemporaryFile(delete=False) as fsnap, tempfile.NamedTemporaryFile(delete=False) as ftsv, tempfile.NamedTemporaryFile(delete=False) as fcsv:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as fsnap, tempfile.NamedTemporaryFile(mode="w", delete=False) as ftsv, tempfile.NamedTemporaryFile(mode="w", delete=False) as fcsv:
             fsnap.write(toy_graph_snap)
             fsnap.file.flush()
             ftsv.write(toy_graph_tsv)

@@ -5,13 +5,12 @@ All rights reserved.
 This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
-from config import DEFAULT_CONFIG as CONFIG
-from metric_mock import MetricMock
+from .config import DEFAULT_CONFIG as CONFIG
+from .metric_mock import MetricMock
 
 # metrics libraries
 import mixpanel
 
-import Queue
 import logging
 import os
 import platform
@@ -23,6 +22,12 @@ import requests as _requests
 import sys
 import urllib as _urllib
 from ..version_info import *
+
+try:
+    import queue as Queue
+except ImportError:
+    import Queue
+
 __ALL__ = [ 'MetricTracker' ]
 
 try:
@@ -61,7 +66,7 @@ class _MetricsWorkerThread(threading.Thread):
       # product key
       from .. import product_key
       self._product_key = product_key.get_product_key()
-    except Exception, e:
+    except Exception as e:
       self._product_key = None
 
     self.queue = METRICS_QUEUE
@@ -84,7 +89,7 @@ class _MetricsWorkerThread(threading.Thread):
         self._mixpanel = MetricMock()
       else:
         self._mixpanel = mixpanel.Mixpanel(CONFIG.mixpanel_user)
-    except Exception, e:
+    except Exception as e:
       self.logger.warning("Unexpected exception connecting to Metrics service, disabling metrics, exception %s" % e)
     else:
       self._usable = True
@@ -181,7 +186,7 @@ class _MetricsWorkerThread(threading.Thread):
         'duration.ms': [ 10, 100, 1000, 10000, 100000 ]
     }
 
-    for (event_suffix, buckets) in bucket_events.iteritems():
+    for (event_suffix, buckets) in bucket_events.items():
         if event_name.endswith(event_suffix):
             # if the suffix matches one we expect, bucketize using the buckets defined above
             return '%s.%s' % (event_name, _MetricsWorkerThread._get_bucket_name_suffix(buckets, value))
@@ -299,7 +304,7 @@ class _MetricsWorkerThread(threading.Thread):
             # product key
             from .. import product_key
             self._product_key = product_key.get_product_key()
-          except Exception, e:
+          except Exception as e:
             self._product_key = 'Unknown'
             pass
 
