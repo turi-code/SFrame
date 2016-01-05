@@ -435,3 +435,9 @@ cdef class UnitySArrayProxy:
         with nogil:
             proxy = (self.thisptr.builtin_rolling_apply(fn_name, before, after, min_observations))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
+
+    cpdef builtin_cumulative_aggregate(self, string fn_name):
+        cdef unity_sarray_base_ptr proxy
+        with nogil:
+            proxy = (self.thisptr.builtin_cumulative_aggregate(fn_name))
+        return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)

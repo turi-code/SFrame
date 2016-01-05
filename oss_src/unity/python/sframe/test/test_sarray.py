@@ -1701,11 +1701,11 @@ class SArrayTest(unittest.TestCase):
         data = SArray(range(1000))
         neg_data = SArray(range(-100,100,2))
 
-        ### Small backward window including current 
+        ### Small backward window including current
         res = data.rolling_mean(-3,0)
         expected = [None for i in range(3)] + [i + .5 for i in range(1,998)]
         self.__test_equal(res,expected,float)
-        
+
         # Test float inputs as well
         res = data.astype(float).rolling_mean(-3,0)
         self.__test_equal(res,expected,float)
@@ -1774,7 +1774,7 @@ class SArrayTest(unittest.TestCase):
         res = neg_data.rolling_mean(1,5)
         expected = [float(i) for i in range(-94,96,2)] + [None for i in range(5)]
         self.__test_equal(res,expected,float)
-        
+
         ### "Centered" rolling aggregate
         res = data.rolling_mean(-2,2)
         expected = [None for i in range(2)] + [float(i) for i in range(2,998)] + [None for i in range(2)]
@@ -1855,11 +1855,11 @@ class SArrayTest(unittest.TestCase):
         data = SArray(range(1000))
         neg_data = SArray(range(-100,100,2))
 
-        ### Small backward window including current 
+        ### Small backward window including current
         res = data.rolling_sum(-3,0)
         expected = [None for i in range(3)] + [i for i in range(6,3994,4)]
         self.__test_equal(res,expected,int)
-        
+
         # Test float inputs as well
         res = data.astype(float).rolling_sum(-3,0)
         self.__test_equal(res,expected,float)
@@ -1928,7 +1928,7 @@ class SArrayTest(unittest.TestCase):
         res = neg_data.rolling_sum(1,5)
         expected = [i for i in range(-470,480,10)] + [None for i in range(5)]
         self.__test_equal(res,expected,int)
-        
+
         ### "Centered" rolling aggregate
         res = data.rolling_sum(-2,2)
         expected = [None for i in range(2)] + [i for i in range(10,4990,5)] + [None for i in range(2)]
@@ -2272,7 +2272,7 @@ class SArrayTest(unittest.TestCase):
         expected = [1,2,3] + [4 for i in range(7)]
         self.__test_equal(res,expected,int)
 
-        ### Test string input 
+        ### Test string input
         res = SArray(self.string_data).rolling_count(-3,0)
         self.__test_equal(res,expected[0:8],int)
 
@@ -2338,7 +2338,7 @@ class SArrayTest(unittest.TestCase):
             sa = SArray([[1], ["foo"]]).cumulative_sum()
         with self.assertRaises(RuntimeError):
             sa = SArray([{"bar": 1}]).cumulative_sum()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1,1], [1], [1]]).cumulative_sum()
 
         single_test(
@@ -2382,7 +2382,7 @@ class SArrayTest(unittest.TestCase):
             sa = SArray([[1], ["foo"]]).cumulative_mean()
         with self.assertRaises(RuntimeError):
             sa = SArray([{"bar": 1}]).cumulative_mean()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1,1], [1], [1]]).cumulative_mean()
 
         single_test(
@@ -2427,9 +2427,9 @@ class SArrayTest(unittest.TestCase):
             sa = SArray([[1], ["foo"]]).cumulative_min()
         with self.assertRaises(RuntimeError):
             sa = SArray([{"bar": 1}]).cumulative_min()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1,1], [1], [1]]).cumulative_min()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1], [1], [1]]).cumulative_min()
 
         single_test(
@@ -2461,9 +2461,9 @@ class SArrayTest(unittest.TestCase):
             sa = SArray([[1], ["foo"]]).cumulative_max()
         with self.assertRaises(RuntimeError):
             sa = SArray([{"bar": 1}]).cumulative_max()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1,1], [1], [1]]).cumulative_max()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1], [1], [1]]).cumulative_max()
 
         single_test(
@@ -2495,9 +2495,9 @@ class SArrayTest(unittest.TestCase):
             sa = SArray([[1], ["foo"]]).cumulative_std()
         with self.assertRaises(RuntimeError):
             sa = SArray([{"bar": 1}]).cumulative_std()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1,1], [1], [1]]).cumulative_std()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1], [1], [1]]).cumulative_std()
 
         single_test(
@@ -2535,9 +2535,9 @@ class SArrayTest(unittest.TestCase):
             sa = SArray([[1], ["foo"]]).cumulative_var()
         with self.assertRaises(RuntimeError):
             sa = SArray([{"bar": 1}]).cumulative_var()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1,1], [1], [1]]).cumulative_var()
-        with self.assertRaises(ToolkitError):
+        with self.assertRaises(RuntimeError):
             sa = SArray([[1], [1], [1], [1]]).cumulative_var()
 
         single_test(
@@ -2560,3 +2560,70 @@ class SArrayTest(unittest.TestCase):
             SArray([None, 1,   None, 3, None, 5]),
             SArray([None, 0.0, 0.0, 1.0, 1.0, 2.6666666666666665])
         )
+
+    def test_numpy_datetime64(self):
+        # Make all datetimes naive
+        expected = [i.replace(tzinfo=GMT(0.0)) \
+                if i is not None and i.tzinfo is None else i for i in self.datetime_data]
+
+        # A regular list
+        iso_str_list = [np.datetime64('2013-05-07T10:04:10Z'),
+                        np.datetime64('1902-10-21T10:34:10Z'),
+                        None]
+        sa = SArray(iso_str_list)
+        self.__test_equal(sa,expected,dt.datetime)
+
+        # A numpy array
+        np_ary = np.array(iso_str_list)
+        sa = SArray(np_ary)
+        self.__test_equal(sa,expected,dt.datetime)
+
+        ### Every possible type of datetime64
+        test_str = '1969-12-31T23:59:56Z'
+        available_time_units = ['h','m','s','ms','us','ns','ps','fs','as']
+        expected = [dt.datetime(1969,12,31,23,59,56,tzinfo=GMT(0.0)) for i in range(7)]
+        expected.insert(0,dt.datetime(1969,12,31,23,59,0,tzinfo=GMT(0.0)))
+        expected.insert(0,dt.datetime(1969,12,31,23,0,0,tzinfo=GMT(0.0)))
+        for i in range(len(available_time_units)):
+            sa = SArray([np.datetime64(test_str,available_time_units[i])])
+            self.__test_equal(sa,[expected[i]],dt.datetime)
+
+        test_str = '1908-06-01'
+        available_date_units = ['Y','M','W','D']
+        expected = [dt.datetime(1908,6,1,0,0,0,tzinfo=GMT(0.0)) for i in range(4)]
+        expected[2] = dt.datetime(1908,5,28,0,0,0,tzinfo=GMT(0.0)) # weeks start on Thursday?
+        expected[0] = dt.datetime(1908,1,1,0,0,0,tzinfo=GMT(0.0))
+        for i in range(len(available_date_units)):
+            sa = SArray([np.datetime64(test_str,available_date_units[i])])
+            self.__test_equal(sa,[expected[i]],dt.datetime)
+
+        # Daylight savings time (Just to be safe. datetime64 deals in UTC, and
+        # we store times in UTC by default, so this shouldn't affect anything)
+        sa = SArray([np.datetime64('2015-03-08T02:38:00-08')])
+        expected = [dt.datetime(2015,3,8,10,38,tzinfo=GMT(0.0))]
+        self.__test_equal(sa, expected, dt.datetime)
+
+        # timezone considerations
+        sa = SArray([np.datetime64('2016-01-01T05:45:00+0545')])
+        expected = [dt.datetime(2016,1,1,0,0,0,tzinfo=GMT(0.0))]
+        self.__test_equal(sa, expected, dt.datetime)
+
+        ### Out of our datetime range
+        with self.assertRaises(TypeError):
+            sa = SArray([np.datetime64('1066-10-14T09:00:00Z')])
+
+    def test_pandas_timestamp(self):
+        iso_str_list = [pd.Timestamp('2013-05-07T10:04:10'),
+                        pd.Timestamp('1902-10-21T10:34:10Z'),
+                        None]
+        sa = SArray(iso_str_list)
+        self.__test_equal(sa,self.datetime_data,dt.datetime)
+
+        sa = SArray([pd.Timestamp('2015-03-08T02:38:00-08')])
+        expected = [dt.datetime(2015,3,8,2,38,tzinfo=GMT(-8.0))]
+        self.__test_equal(sa, expected, dt.datetime)
+
+        sa = SArray([pd.Timestamp('2016-01-01 05:45:00', tz=GMT(5.75))])
+        expected =  [dt.datetime(2016,1,1,5,45,0,tzinfo=GMT(5.75))]
+        self.__test_equal(sa, expected, dt.datetime)
+

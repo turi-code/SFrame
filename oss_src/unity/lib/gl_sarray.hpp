@@ -1728,14 +1728,26 @@ class gl_sarray {
  *
  *  The abstraction is as follows:
  *    y[i+1], w[i+1] = func(x[i], w[i])
- *
  *  where w[i] is some arbitary state.
  *
- * \param[in] Function to perform the aggregate to keep track of state.
+ * \param[in] Built in aggregate to use (e.g, sum, min, max etc.)
  * \return SArray 
+ *
+ * \code
+ *   sa = SArray([1, 2, 3, 4, 5])
+ *   sa.cumulative_aggregate(std::make_shared<groupby_operators::sum>());
+ * \endcode
+ *
+ * produces an SArray that looks like the following:
+ *  dtype: int
+ *  [1, 3, 6, 10, 15]
+ * \endcode
+ * \endcode
+ *
  */
  gl_sarray cumulative_aggregate(
      std::shared_ptr<group_aggregate_value> aggregator) const; 
+ gl_sarray builtin_cumulative_aggregate(const std::string& name) const;
 
   /**
    *
@@ -1743,7 +1755,18 @@ class gl_sarray {
    *  all its previous elements. Only works in an SArray of numeric type or
    *  numeric-array types. 
    *
-   *  \return an SArray 
+   * \return an SArray 
+   *
+   * \code
+   *   sa = SArray([1, 2, 3, 4, 5])
+   *   sa.cumulative_sum()
+   * \endcode
+   *
+   * produces an SArray that looks like the following:
+   *  dtype: int
+   *  [1, 3, 6, 10, 15]
+   * \endcode
+   *
    */
   gl_sarray cumulative_sum() const;
   gl_sarray cumulative_min() const;

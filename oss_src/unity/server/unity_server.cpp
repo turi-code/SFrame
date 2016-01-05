@@ -9,6 +9,7 @@
 #include <memory>
 #include <cstdlib>
 #include <unistd.h>
+#include <time.h>
 #include <globals/globals.hpp>
 #include <fileio/temp_files.hpp>
 #include <fileio/s3_api.hpp>
@@ -288,17 +289,26 @@ int main(int argc, char** argv) {
     exit(-1);
   }
 
-  // Use process_id to construct a default server address
-  if (server_address == "default") {
+  // Form default server address using process_id and client's timestamp:
+  // ipc://graphlab_server-$pid-$timestamp
+  if (boost::starts_with(server_address, "default")) {
     std::string path = "/tmp/graphlab_server-" + std::to_string(getpid());
+
+    { // parse server address: "default-$timestamp"
+      // append timestamp to the address
+      std::vector<std::string> _tmp;
+      boost::split(_tmp, server_address, boost::is_any_of("-"));
+      if (_tmp.size() == 2)
+        path += "-" + _tmp[1];
+    }
+    server_address = "ipc://" + path;
     if (fs::exists(fs::path(path))) {
       // It could be a leftover of a previous crashed process, try to delete the file
       if (remove(path.c_str()) != 0) {
-        logstream(LOG_FATAL) << "Cannot start unity server at " << server_address<< ". File already exists, and cannot be deleted." << "\n";
+        logstream(LOG_FATAL) << "Cannot start unity server at " << server_address << ". File already exists, and cannot be deleted." << "\n";
         exit(-1);
       }
     }
-    server_address = "ipc://" + path;
   }
 
   // construct the server

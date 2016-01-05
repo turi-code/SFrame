@@ -42,6 +42,7 @@
 #include <sframe_query_engine/planning/optimization_engine.hpp>
 #include <sframe_query_engine/util/aggregates.hpp>
 #include <sframe/rolling_aggregate.hpp>
+#include <unity/lib/gl_sarray.hpp>
 
 namespace graphlab {
 
@@ -2546,5 +2547,13 @@ std::shared_ptr<unity_sarray_base> unity_sarray::builtin_rolling_apply(
   ret->construct_from_sarray(windowed_array);
   return ret;
 }
+
+std::shared_ptr<unity_sarray_base> unity_sarray::builtin_cumulative_aggregate(
+    const std::string& name) {
+  log_func_entry();
+  gl_sarray in(std::make_shared<unity_sarray>(*this));
+  return in.builtin_cumulative_aggregate(name).get_proxy();
+}
+
 
 } // namespace graphlab

@@ -17,9 +17,13 @@ print_help() {
   echo
   echo "Usage: ./make_egg.sh --version=[version] [remaining options]"
   echo
-  echo "  --version=[version]      The version of the egg, e.g. 1.3.1"
+  echo "  --build_number=[version] The build number of the egg, e.g. 123. Or 123.gpu"
+  echo
+  echo "  --version=[version]      Synonym to build_number. Maintained for legacy reasons"
   echo
   echo "  --skip_test              Skip unit test and doc generation."
+  echo
+  echo "  --skip_cpp_test          Skip C++ tests"
   echo
   echo "  --skip_build             Skip the build process"
   echo
@@ -42,10 +46,12 @@ print_help() {
 # Parse command line configure flags ------------------------------------------
 while [ $# -gt 0 ]
   do case $1 in
-    --version=*)            VERSION_NUMBER=${1##--version=} ;;
+    --version=*)            BUILD_NUMBER=${1##--version=} ;;
+    --build_number=*)       BUILD_NUMBER=${1##--build_number=} ;;
     --toolchain=*)          toolchain=${1##--toolchain=} ;;
     --num_procs=*)          NUM_PROCS=${1##--num_procs=} ;;
     --skip_test)            SKIP_TEST=1;;
+    --skip_cpp_test)        SKIP_CPP_TEST=1;;
     --skip_build)           SKIP_BUILD=1;;
     --skip_doc)             SKIP_DOC=1;;
     --debug)                build_type="debug";;
@@ -58,8 +64,8 @@ done
 
 set -x
 
-if [[ -z "${VERSION_NUMBER}" ]]; then
-  VERSION_NUMBER="0.1.internal"
+if [[ -z "${BUILD_NUMBER}" ]]; then
+  BUILD_NUMBER="0"
 fi
 
 
@@ -71,6 +77,8 @@ fi
 
 if [[ -z "${NUM_PROCS}" ]]; then
   NUM_PROCS=4
+else
+  export OMP_NUM_THREADS=$NUM_PROCS
 fi
 
 TARGET_DIR=${WORKSPACE}/target
@@ -90,19 +98,9 @@ if [[ $OSTYPE == msys ]]; then
 fi
 
 
-set_version() {
-  # set the engine version string
-  echo "#define __UNITY_VERSION__ \"${VERSION_NUMBER}\"" > ${WORKSPACE}/oss_src/unity/lib/version_number.hpp
-}
-
-unset_version() {
-  # set the engine version string
-  git checkout ${WORKSPACE}/oss_src/unity/lib/version_number.hpp
-}
-
 ### Build the source with version number ###
 build_source() {
-  echo -e "\n\n\n================= Build Release: VERSION ${VERSION_NUMBER} ================\n\n\n"
+  echo -e "\n\n\n================= Build ${BUILD_NUMBER} ================\n\n\n"
   # Configure
   cd ${WORKSPACE}
   ./configure ${toolchain}
@@ -112,13 +110,24 @@ build_source() {
   cd ${WORKSPACE}/${build_type}/oss_src/unity
   # Make
   make -j${NUM_PROCS}
+
+  if [[ -z $SKIP_CPP_TEST ]]; then
+      cd ${WORKSPACE}/${build_type}/oss_test
+      make -j${NUM_PROCS}
+  fi
   echo -e "\n\n================= Done Build Source ================\n\n"
+}
+
+# Run all unit test
+cpp_test() {
+  echo -e "\n\n\n================= Running Unit Test ================\n\n\n"
+  cd ${WORKSPACE}/${BUILD_TYPE}
+  ${WORKSPACE}/oss_local_scripts/run_cpp_tests.py -j 1
 }
 
 # Run all unit test
 unit_test() {
   echo -e "\n\n\n================= Running Unit Test ================\n\n\n"
-
   cd ${WORKSPACE}
   python -c 'import sframe; sframe.sys_util.test_pylambda_worker()'
   oss_local_scripts/run_python_test.sh ${build_type}
@@ -191,10 +200,6 @@ package_egg() {
       cp conf/qa.py sframe/util/graphlab_env.py
   fi
 
-  # # set version number
-  cd ${WORKSPACE}/${build_type}/oss_src/unity/python/
-  sed -i -e "s/{{VERSION_STRING}}/${VERSION_NUMBER}/g" sframe/util/graphlab_env.py doc/source/conf.py sframe/__init__.py sframe/version_info.py setup.py
-
   # strip binaries
   if [[ ! $OSTYPE == darwin* ]]; then
     cd ${WORKSPACE}/${build_type}/oss_src/unity/python/sframe
@@ -212,6 +217,7 @@ package_egg() {
   if [[ $OSTYPE == darwin* ]] || [[ $OSTYPE == msys ]]; then
     dist_type="bdist_wheel"
   fi
+  VERSION_NUMBER=`python -c "import sframe; print sframe.version"`
   ${PYTHON_EXECUTABLE} setup.py ${dist_type} # This produced an egg/wheel starting with SFrame-${VERSION_NUMBER} under dist/
   
   cd ${WORKSPACE}
@@ -254,10 +260,21 @@ generate_docs() {
   tar -czvf ${TARGET_DIR}/sframe_python_sphinx_docs.${archive_file_ext} *
 }
 
+set_build_number() {
+  # set the build number 
+  cd ${WORKSPACE}/${BUILD_TYPE}/oss_src/unity/python/
+  sed -i -e "s/'.*'#{{BUILD_NUMBER}}/'${BUILD_NUMBER}'#{{BUILD_NUMBER}}/g" sframe/version_info.py
+}
+
 # Here is the main function()
 if [[ -z $SKIP_BUILD ]]; then
-  set_version
   build_source
+fi
+
+set_build_number
+
+if [[ -z $SKIP_CPP_TEST ]]; then
+  cpp_test 
 fi
 
 if [[ -z $SKIP_TEST ]]; then
@@ -271,4 +288,3 @@ if [[ -z $SKIP_DOC ]]; then
 fi
 
 
-#unset_version

@@ -29,8 +29,8 @@ __LOGGER__ = logging.getLogger(__name__)
 LOCAL_SERVER_TYPE = 'local'
 REMOTE_SERVER_TYPE = 'remote'
 
-ENGINE_START_ERROR_MESSAGE = 'Cannot connect to GraphLab Create engine. ' + \
-    'Contact support@dato.com for help.'
+ENGINE_START_ERROR_MESSAGE = 'Cannot connect to SFrame engine. ' + \
+    'If you believe this to be a bug, check https://github.com/dato-code/SFrame/issues for known issues.'
 
 def _verify_engine_binary(server_bin):
     try:

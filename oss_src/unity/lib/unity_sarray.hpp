@@ -728,6 +728,8 @@ class unity_sarray: public unity_sarray_base {
        ssize_t after,
        size_t min_observations);
 
+   std::shared_ptr<unity_sarray_base> builtin_cumulative_aggregate(const std::string& name);
+
   void save(oarchive& oarc) const;
 
   void load(iarchive& iarc);
