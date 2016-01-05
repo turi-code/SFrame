@@ -34,7 +34,7 @@ def set_windows_dll_path():
         kernel32.SetDllDirectoryW.errcheck = errcheck_bool
         kernel32.SetDllDirectoryW.argtypes = (wintypes.LPCWSTR,)
         kernel32.SetDllDirectoryW(lib_path)
-    except Exception, e:
+    except Exception as e:
         sys.stderr.write("Error setting DLL load orders: %s (things may still work).\n" % str(e))
         sys.stderr.flush()
 
@@ -77,12 +77,12 @@ if __name__ == "__main__":
         _write_log("Logging initialization routines to %s." % _write_out_file_name)
         try:
             _write_out_file = open(_write_out_file_name, "w")
-        except Exception, e:
+        except Exception as e:
             _write_log("Error opening '%s' for write: %s" % (_write_out_file_name, repr(e)))
             _write_out_file = None
 
     if dry_run:
-        print "PyLambda script called with no IPC information; entering diagnostic mode."
+        print("PyLambda script called with no IPC information; entering diagnostic mode.")
 
     script_path = abspath(sys.modules[__name__].__file__)
     main_dir = split(split(script_path)[0])[0]
@@ -116,23 +116,23 @@ if __name__ == "__main__":
 
     try:
         pylambda_lib = PyDLL(pylambda_workers[0])
-    except Exception, e:
+    except Exception as e:
         _write_log("Error loading lambda library %s: %s" % (pylambda_workers[0], repr(e)), error = True)
         sys.exit(203)
 
     try:
         pylambda_lib.pylambda_worker_main.argtypes = [c_char_p, c_char_p]
         pylambda_lib.pylambda_worker_main.restype = c_int
-    except Exception, e:
+    except Exception as e:
         _write_log("Error accessing pylambda_worker_main: %s\n" % repr(e), error = True)
         sys.exit(204)
 
     if not dry_run:
         # This call only returns after the parent process is done.
-        result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir), c_char_p(sys.argv[1]))
+        result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir.encode()), c_char_p(sys.argv[1].encode()))
     else:
         # This version will print out a bunch of diagnostic information and then exit.
-        result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir), c_char_p("debug"))
+        result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir.encode()), c_char_p(b"debug"))
 
     _write_log("Lambda process exited with code %d." % result)
     sys.exit(0)

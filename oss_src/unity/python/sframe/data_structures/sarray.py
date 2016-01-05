@@ -3155,9 +3155,9 @@ class SArray(object):
         min_observations = self.__check_min_observations(min_observations)
         agg_op = None
         if self.dtype() is array.array:
-            agg_op = '__builtin__vector__avg__'
+            agg_op = _encode('__builtin__vector__avg__')
         else:
-            agg_op = '__builtin__avg__'
+            agg_op = _encode('__builtin__avg__')
         return SArray(_proxy=self.__proxy__.builtin_rolling_apply(agg_op, window_start, window_end, min_observations))
 
     def rolling_sum(self, window_start, window_end, min_observations=None):
@@ -3260,9 +3260,9 @@ class SArray(object):
         min_observations = self.__check_min_observations(min_observations)
         agg_op = None
         if self.dtype() is array.array:
-            agg_op = '__builtin__vector__sum__'
+            agg_op = _encode('__builtin__vector__sum__')
         else:
-            agg_op = '__builtin__sum__'
+            agg_op = _encode('__builtin__sum__')
         return SArray(_proxy=self.__proxy__.builtin_rolling_apply(agg_op, window_start, window_end, min_observations))
 
     def rolling_max(self, window_start, window_end, min_observations=None):
@@ -3362,7 +3362,7 @@ class SArray(object):
         [None, None, 2, 3, 4]
         """
         min_observations = self.__check_min_observations(min_observations)
-        agg_op = '__builtin__max__'
+        agg_op = _encode('__builtin__max__')
         return SArray(_proxy=self.__proxy__.builtin_rolling_apply(agg_op, window_start, window_end, min_observations))
 
     def rolling_min(self, window_start, window_end, min_observations=None):
@@ -3462,7 +3462,7 @@ class SArray(object):
         [None, None, 1, 2, 3]
         """
         min_observations = self.__check_min_observations(min_observations)
-        agg_op = '__builtin__min__'
+        agg_op = _encode('__builtin__min__')
         return SArray(_proxy=self.__proxy__.builtin_rolling_apply(agg_op, window_start, window_end, min_observations))
 
     def rolling_var(self, window_start, window_end, min_observations=None):
@@ -3562,7 +3562,7 @@ class SArray(object):
         [None, None, 0.25, 0.25, 0.25]
         """
         min_observations = self.__check_min_observations(min_observations)
-        agg_op = '__builtin__var__'
+        agg_op = _encode('__builtin__var__')
         return SArray(_proxy=self.__proxy__.builtin_rolling_apply(agg_op, window_start, window_end, min_observations))
 
     def rolling_stdv(self, window_start, window_end, min_observations=None):
@@ -3663,7 +3663,7 @@ class SArray(object):
         [None, None, 0.5, 0.5, 0.5]
         """
         min_observations = self.__check_min_observations(min_observations)
-        agg_op = '__builtin__stdv__'
+        agg_op = _encode('__builtin__stdv__')
         return SArray(_proxy=self.__proxy__.builtin_rolling_apply(agg_op, window_start, window_end, min_observations))
 
     def rolling_count(self, window_start, window_end):
@@ -3740,7 +3740,7 @@ class SArray(object):
         Rows: 5
         [0, 1, 2, 2, 1]
         """
-        agg_op = '__builtin__nonnull__count__'
+        agg_op = _encode('__builtin__nonnull__count__')
         return SArray(_proxy=self.__proxy__.builtin_rolling_apply(agg_op, window_start, window_end, 0))
 
     def cumulative_sum(self):
@@ -3772,7 +3772,7 @@ class SArray(object):
         """
         from .. import extensions
         _mt._get_metric_tracker().track('sarray.cumulative_sum')
-        agg_op = "__builtin__cum_sum__"
+        agg_op = _encode("__builtin__cum_sum__")
         return SArray(_proxy = self.__proxy__.builtin_cumulative_aggregate(agg_op))
 
     def cumulative_mean(self):
@@ -3805,7 +3805,7 @@ class SArray(object):
         """
         from .. import extensions
         _mt._get_metric_tracker().track('sarray.cumulative_mean')
-        agg_op = "__builtin__cum_avg__"
+        agg_op = _encode("__builtin__cum_avg__")
         return SArray(_proxy = self.__proxy__.builtin_cumulative_aggregate(agg_op))
 
     def cumulative_min(self):
@@ -3835,7 +3835,7 @@ class SArray(object):
         """
         from .. import extensions
         _mt._get_metric_tracker().track('sarray.cumulative_min')
-        agg_op = "__builtin__cum_min__"
+        agg_op = _encode("__builtin__cum_min__")
         return SArray(_proxy = self.__proxy__.builtin_cumulative_aggregate(agg_op))
 
     def cumulative_max(self):
@@ -3865,7 +3865,7 @@ class SArray(object):
         """
         from .. import extensions
         _mt._get_metric_tracker().track('sarray.cumulative_max')
-        agg_op = "__builtin__cum_max__"
+        agg_op = _encode("__builtin__cum_max__")
         return SArray(_proxy = self.__proxy__.builtin_cumulative_aggregate(agg_op))
 
     def cumulative_std(self):
@@ -3895,7 +3895,7 @@ class SArray(object):
         """
         from .. import extensions
         _mt._get_metric_tracker().track('sarray.cumulative_std')
-        agg_op = "__builtin__cum_std__"
+        agg_op = _encode("__builtin__cum_std__")
         return SArray(_proxy = self.__proxy__.builtin_cumulative_aggregate(agg_op))
 
     def cumulative_var(self):
@@ -3925,5 +3925,5 @@ class SArray(object):
         """
         from .. import extensions
         _mt._get_metric_tracker().track('sarray.cumulative_var')
-        agg_op = "__builtin__cum_var__"
+        agg_op = _encode("__builtin__cum_var__")
         return SArray(_proxy = self.__proxy__.builtin_cumulative_aggregate(agg_op))

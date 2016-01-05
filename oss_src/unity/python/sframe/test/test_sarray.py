@@ -8,7 +8,6 @@ of the BSD license. See the LICENSE file for details.
 '''
 from ..data_structures.sarray import SArray
 from ..util.timezone import GMT
-from ..toolkits._main import ToolkitError
 from . import util
 
 import pandas as pd
