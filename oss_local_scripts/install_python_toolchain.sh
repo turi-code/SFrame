@@ -28,9 +28,8 @@ fi
 function windows_patch_python_header {
 if [[ $OSTYPE == msys ]]; then
         echo "#include <math.h>" > tmp
-        # XXX: support python 2
-        cat deps/conda/include/python3.4m/pyconfig.h >> tmp
-        cp tmp deps/conda/include/python3.4m/pyconfig.h
+        cat deps/conda/include/${PYTHON_VERSION}/pyconfig.h >> tmp
+        cp tmp deps/conda/include/${PYTHON_VERSION}/pyconfig.h
         rm tmp
 fi
 }
@@ -74,9 +73,11 @@ if [[ $haspython == 0 ]]; then
                 cp $PWD/deps/conda/bin/*.dll $PWD/deps/conda/lib
         else
                 if [ ! -e miniconda.sh ]; then
-                        # XXX: support python 2
-                        download_file http://repo.continuum.io/miniconda/Miniconda3-3.16.0-Linux-x86_64.sh miniconda.sh
-                        #Miniconda3-latest-Linux-x86_64.sh miniconda.sh
+                         if [[ ${PYTHON_VERSION} == "python3.4m" ]]; then
+                                  download_file http://repo.continuum.io/miniconda/Miniconda3-3.16.0-Linux-x86_64.sh miniconda.sh
+                         else
+                                  download_file http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh miniconda.sh
+                         fi
                 fi
                 bash ./miniconda.sh -p $PWD/deps/conda -b
         fi
@@ -85,9 +86,8 @@ $python_scripts/conda install -y --file oss_local_scripts/conda_requirements.txt
 $python_scripts/pip install -r oss_local_scripts/pip_requirements.txt
 # for windows
 if [ -e deps/conda/bin/include ]; then
-        mkdir -p deps/conda/include/python3.4m
-        # XXX: support python 2
-        cp deps/conda/bin/include/* deps/conda/include/python3.4m
+        mkdir -p deps/conda/include/${PYTHON_VERSION}
+        cp deps/conda/bin/include/* deps/conda/include/${PYTHON_VERSION}
 fi
 
 windows_patch_python_header
@@ -98,4 +98,4 @@ if [ $OSTYPE == "msys" ]; then
 else
   cp deps/conda/lib/libpython* deps/local/lib
 fi
-cp -R deps/conda/include/python3.4m/* deps/local/include
+cp -R deps/conda/include/${PYTHON_VERSION}/* deps/local/include

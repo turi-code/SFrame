@@ -57,6 +57,8 @@ function print_help {
   echo
   echo "  --python_only           Only run python dependency installation."
   echo
+  echo "  --python3               Use Python 3.4, default is Python 2.7."
+  echo
   echo "  --toolchain=[toolchain] Toolchain is either a dato-deps file on disk, "
   echo "                          or a URL to a toolchain. If toolchain is"
   echo "                          \"default\", a default one is selected"
@@ -162,6 +164,7 @@ while [ $# -gt 0 ]
     --yes)                  default_yes=1;;
     --cmake_only)           cmake_only=1;;
     --python_only)          python_only=1;;
+    --python3)              python3=1;;
     --R_integration)        R_integration=1;;
     --help)                 print_help ;;
     -D)                     CFLAGS="$CFLAGS -D $2"; shift ;;
@@ -201,10 +204,17 @@ if [[ $python_only == 1 ]]; then
   run_cmake_configure=0
 fi
 
+if [[ $python3 == 1 ]]; then
+  CFLAGS="$CFLAGS -D PYTHON_VERSION=\"python3.4m\""
+  PYTHON_VERSION="python3.4m"
+else
+  CFLAGS="$CFLAGS -D PYTHON_VERSION=\"python2.7\""
+  PYTHON_VERSION="python2.7"
+fi
 
 if [[ $run_toolchain_install == 1 ]]; then
         run_cleanup
-        ./oss_local_scripts/install_python_toolchain.sh
+        PYTHON_VERSION=${PYTHON_VERSION} ./oss_local_scripts/install_python_toolchain.sh
         REMAINING_OPTIONS=$@
         if [[ $toolchain == default || $toolchain == "" ]]; then
                 if [[ $OSTYPE == darwin* ]]; then
@@ -213,8 +223,11 @@ if [[ $run_toolchain_install == 1 ]]; then
                         if [[ $no_cuda == 1 ]]; then
                           toolchain="http://s3-us-west-2.amazonaws.com/dato-deps/$DEFAULT_DATO_DEPS_VERSION/dato_deps_linux_no_cuda.tar.gz"
                         else
-                          #toolchain="http://s3-us-west-2.amazonaws.com/dato-deps/$DEFAULT_DATO_DEPS_VERSION/dato_deps_linux_default.tar.gz"
-                          toolchain="http://s3-us-west-2.amazonaws.com/dato-deps/$DEFAULT_DATO_DEPS_VERSION/dato_deps_linux_gcc_4.9.2.python_3.4m.tar.gz"
+                          if [[ $python3 == 1 ]]; then
+                              toolchain="http://s3-us-west-2.amazonaws.com/dato-deps/$DEFAULT_DATO_DEPS_VERSION/dato_deps_linux_gcc_4.9.2.python_3.4m.tar.gz"
+                          else
+                              toolchain="http://s3-us-west-2.amazonaws.com/dato-deps/$DEFAULT_DATO_DEPS_VERSION/dato_deps_linux_default.tar.gz"
+                          fi
                         fi
                 elif [[ $OSTYPE == msys ]]; then
                         toolchain="http://s3-us-west-2.amazonaws.com/dato-deps/$DEFAULT_DATO_DEPS_VERSION/dato_deps_win_default.tar.gz"
@@ -252,14 +265,17 @@ if [[ $OSTYPE == msys ]]; then
         CXX=g++.exe
 fi
 CMAKE=$PWD/deps/local/bin/cmake
-LINKER=""
-# XXX: support python 2
-if [ -e $PWD/deps/local/bin/ld.gold ]; then
-        LINKER="-DCMAKE_LINKER=$PWD/deps/local/bin/ld.gold -lboost_python3 -lpython3.4mu"
-elif [ -e $PWD/deps/local/bin/ld ]; then
-        LINKER="-DCMAKE_LINKER=$PWD/deps/local/bin/ld -lboost_python3 -lpython3.4mu"
+
+if [[ $python3 == 1 ]]; then
+    LINKER="-lboost_python3 -lpython3.4mu"
 else
-        LINKER="-lboost_python3 -lpython3.4mu"
+    LINKER=""
+fi
+
+if [ -e $PWD/deps/local/bin/ld.gold ]; then
+        LINKER="-DCMAKE_LINKER=$PWD/deps/local/bin/ld.gold $LINKER"
+elif [ -e $PWD/deps/local/bin/ld ]; then
+        LINKER="-DCMAKE_LINKER=$PWD/deps/local/bin/ld $LINKER"
 fi
 
 mkdir -p doc

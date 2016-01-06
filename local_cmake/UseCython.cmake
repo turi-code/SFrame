@@ -73,9 +73,9 @@ mark_as_advanced( CYTHON_ANNOTATE CYTHON_NO_DOCSTRINGS CYTHON_FLAGS )
 
 find_package( Cython REQUIRED )
 set(PYTHON_INCLUDE_DIR
-  ${CMAKE_SOURCE_DIR}/deps/local/include/python3.4m)
+  ${CMAKE_SOURCE_DIR}/deps/local/include/${PYTHON_VERSION})
 set(PYTHON_LIBRARIES 
-  ${CMAKE_SOURCE_DIR}/deps/local/lib/${CMAKE_SHARED_LIBRARY_PREFIX}python3.4m${CMAKE_SHARED_LIBRARY_SUFFIX})
+  ${CMAKE_SOURCE_DIR}/deps/local/lib/${CMAKE_SHARED_LIBRARY_PREFIX}${PYTHON_VERSION}${CMAKE_SHARED_LIBRARY_SUFFIX})
 find_package( PythonLibs REQUIRED )
 
 
@@ -226,11 +226,16 @@ function( compile_pyx _name generated_file )
   list( REMOVE_DUPLICATES c_header_dependencies )
 
   # Add the command to run the compiler.
+  if (${PYTHON_VERSION} STREQUAL "python3.4m")
+    set( ADDITIONAL_CYTHON_PARAM, "-3")
+  else()
+    set( ADDITIONAL_CYTHON_PARAM, "")
+  endif()
   add_custom_command( OUTPUT ${_generated_file}
     COMMAND ${CYTHON_EXECUTABLE}
     ARGS ${cxx_arg} ${include_directory_arg}
     ${annotate_arg} ${no_docstrings_arg} ${cython_debug_arg} ${CYTHON_FLAGS} ${cython_traceback}
-    -3 --output-file  ${_generated_target_file} ${pyx_locations}
+    ${ADDITIONAL_CYTHON_PARAM} --output-file  ${_generated_target_file} ${pyx_locations}
     DEPENDS ${pyx_locations} ${pxd_dependencies}
     IMPLICIT_DEPENDS ${pyx_lang} ${c_header_dependencies}
     COMMENT ${comment}
@@ -261,7 +266,7 @@ function( cython_add_module _name )
   # add_custom_target(${_name}_headers DEPENDS ${generated_file})
   python_add_module( ${_name} ${generated_file} ${other_module_sources} )
   if(WIN32)
-          target_compile_definitions(${_name} PUBLIC MS_WIN64)
+    target_compile_definitions(${_name} PUBLIC MS_WIN64)
   endif()
   if( APPLE )
     set_target_properties( ${_name} PROPERTIES LINK_FLAGS "-undefined dynamic_lookup" )
