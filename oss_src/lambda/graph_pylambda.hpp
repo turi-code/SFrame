@@ -10,6 +10,8 @@
 #include <lambda/graph_lambda_interface.hpp>
 #include <flexible_type/flexible_type.hpp>
 #include <vector>
+#include <parallel/mutex.hpp>
+#include <atomic>
 
 namespace graphlab {
 
@@ -141,8 +143,10 @@ class graph_pylambda_evaluator : public graph_lambda_evaluator_interface {
                                                   const std::vector<size_t>& mutated_edge_field_ids = {});
 
  private:
-  void make_lambda(const std::string& pylambda_str);
-
+  mutex m_mutex;
+  
+  size_t m_lambda_id = size_t(-1);
+  
   std::vector<std::string> m_vertex_keys;
   std::vector<std::string> m_edge_keys;
   size_t m_srcid_column;

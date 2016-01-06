@@ -7,6 +7,7 @@
  */
 #include <lambda/lambda_utils.hpp>
 #include <lambda/graph_pylambda.hpp>
+#include <lambda/pylambda.hpp>
 
 namespace graphlab {
 namespace lambda {
@@ -78,6 +79,10 @@ graph_pylambda_evaluator::graph_pylambda_evaluator() {
 }
 
 graph_pylambda_evaluator::~graph_pylambda_evaluator() {
+  if(m_lambda_id != size_t(-1)) {
+    std::cerr << "destructor: Clearing lambda " << m_lambda_id << std::endl; 
+    release_lambda(m_lambda_id); 
+  }
 }
 
 void graph_pylambda_evaluator::init(const std::string& lambda,
@@ -89,7 +94,15 @@ void graph_pylambda_evaluator::init(const std::string& lambda,
   clear();
 
   // initialize members
-  make_lambda(lambda);
+  size_t new_lambda_id = make_lambda(lambda);
+
+  // If it has changed, release the old one.
+  if(m_lambda_id != size_t(-1) && new_lambda_id != m_lambda_id) {
+    release_lambda(m_lambda_id);
+  }
+  
+  m_lambda_id = new_lambda_id; 
+  
   m_vertex_keys = vertex_fields;
   m_edge_keys = edge_fields;
   m_srcid_column = src_column_id;
@@ -110,74 +123,43 @@ std::vector<sgraph_edge_data> graph_pylambda_evaluator::eval_triple_apply(
     size_t src_partition, size_t dst_partition,
     const std::vector<size_t>& mutated_edge_field_ids) {
 
-  return std::vector<sgraph_edge_data>();
+  std::lock_guard<mutex> lg(m_mutex);
   
-  // logstream(LOG_INFO) << "graph_lambda_worker eval triple apply " << src_partition 
-  //                     << ", " << dst_partition << std::endl;
-  // python_thread_guard guard;
-  // DASSERT_TRUE(is_loaded(src_partition));
-  // DASSERT_TRUE(is_loaded(dst_partition));
-
-  // py_edge_object edge_object;
-  // py_vertex_object source_object;
-  // py_vertex_object target_object;
-
-  // auto& source_partition = m_graph_sync.get_partition(src_partition);
-  // auto& target_partition = m_graph_sync.get_partition(dst_partition);
-
-  // std::vector<std::string> mutated_edge_keys;
-  // for (size_t fid: mutated_edge_field_ids) {
-  //   mutated_edge_keys.push_back(m_edge_keys[fid]);
-  // }
-
-  // std::vector<sgraph_edge_data> ret(all_edge_data.size());
-  // try {
-  //   size_t cnt = 0;
-  //   for (const auto& edata: all_edge_data) {
-  //     PyDict_UpdateFromFlex(edge_object, m_edge_keys, edata);
-  //     size_t srcid = edata[m_srcid_column];
-  //     size_t dstid = edata[m_dstid_column];
-
-  //     auto& source_vertex = source_partition[srcid];
-  //     auto& target_vertex = target_partition[dstid];
-
-  //     PyDict_UpdateFromFlex(source_object, m_vertex_keys, source_vertex);
-  //     PyDict_UpdateFromFlex(target_object, m_vertex_keys, target_vertex);
-
-  //     python::object lambda_ret = (*m_current_lambda)(source_object, edge_object, target_object);
-  //     if (lambda_ret.is_none() || !PyTuple_Check(lambda_ret.ptr()) || python::len(lambda_ret) != 3) {
-  //       throw(std::string("Lambda must return a tuple of the form (source_data, edge_data, target_data)."));
-  //     }
-
-  //     for (size_t i = 0; i < m_vertex_keys.size(); ++i) {
-  //       source_vertex[i] = PyObject_AsFlex(lambda_ret[0][m_vertex_keys[i]]);
-  //       target_vertex[i] = PyObject_AsFlex(lambda_ret[2][m_vertex_keys[i]]);
-  //     }
-
-  //     if (!mutated_edge_field_ids.empty()) {
-  //       edge_object.update(lambda_ret[1]);
-  //       for (auto& key: mutated_edge_keys)
-  //         ret[cnt].push_back(PyObject_AsFlex(edge_object[key]));
-  //     }
-  //     ++cnt;
-  //   }
-  // } catch (python::error_already_set const& e) {
-  //   std::string error_string = parse_python_error();
-  //   throw(error_string);
-  // } catch (std::exception& e) {
-  //   throw(std::string(e.what()));
-  // } catch (const char* e) {
-  //   throw(e);
-  // } catch (std::string& e) {
-  //   throw(e);
-  // } catch (...) {
-  //   throw("Unknown exception from python lambda evaluation.");
-  // }
-  // return ret;
-}
-
-void graph_pylambda_evaluator::make_lambda(const std::string& pylambda_str) {
+  logstream(LOG_INFO) << "graph_lambda_worker eval triple apply " << src_partition 
+                      << ", " << dst_partition << std::endl;
   
+  DASSERT_TRUE(is_loaded(src_partition));
+  DASSERT_TRUE(is_loaded(dst_partition));
+
+  auto& source_partition = m_graph_sync.get_partition(src_partition);
+  auto& target_partition = m_graph_sync.get_partition(dst_partition);
+
+  std::vector<std::string> mutated_edge_keys;
+  for (size_t fid: mutated_edge_field_ids) {
+    mutated_edge_keys.push_back(m_edge_keys[fid]);
+  }
+
+  std::vector<sgraph_edge_data> ret(all_edge_data.size());
+
+  lambda_graph_triple_apply_data lgt;
+
+  lgt.all_edge_data = &all_edge_data;
+  lgt.out_edge_data = &ret;
+  lgt.source_partition = &source_partition;
+  lgt.target_partition = &target_partition;
+  lgt.vertex_keys = &m_vertex_keys;
+  lgt.edge_keys = &m_edge_keys;
+  lgt.mutated_edge_keys = &mutated_edge_keys;
+  lgt.srcid_column = m_srcid_column;
+  lgt.dstid_column = m_dstid_column;
+
+  lambda_exception_info lei;
+
+  evaluation_functions.eval_graph_triple_apply(m_lambda_id, &lgt, &lei);
+
+  if(lei.exception_occured) { process_exception(lei); }
+  
+  return ret;
 }
 
 }

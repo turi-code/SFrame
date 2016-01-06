@@ -7,7 +7,7 @@ of the BSD license. See the LICENSE file for details.
 '''
 from .. import SGraph, Edge 
 import unittest
-
+import time
 
 def degree_count_fn(source, edge, target, edge_dir, field):
     if field is None:
@@ -38,7 +38,6 @@ def return_pair_fn(source, edge, target):
 class GraphTests(unittest.TestCase):
 
     def test_simple_triple_apply(self):
-
         def identity_fun(src, edge, dst):
             return src, edge, dst
 
@@ -47,6 +46,7 @@ class GraphTests(unittest.TestCase):
         ring_graph.vertices['id'] = ring_graph.vertices['__id']
         ring_graph.edges['src'] = ring_graph.edges['__src_id']
         ring_graph2 = ring_graph.triple_apply(identity_fun, ['id', 'src'])
+        
         self.assertSequenceEqual(list(ring_graph2.vertices['id']), list(ring_graph2.vertices['__id']))
         self.assertSequenceEqual(list(ring_graph2.edges['src']), list(ring_graph2.edges['__src_id']))
         for i in ring_graph.edges['__dst_id']:

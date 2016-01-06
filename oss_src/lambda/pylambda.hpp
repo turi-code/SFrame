@@ -67,6 +67,23 @@ struct lambda_call_by_sframe_rows_data {
   flexible_type* output_values = nullptr;
 };
 
+/** The data used in applying a graph triple apply.
+ */
+struct lambda_graph_triple_apply_data {
+
+  const std::vector<std::vector<flexible_type> >* all_edge_data;
+  std::vector<std::vector<flexible_type> >* out_edge_data;
+
+  std::vector<std::vector<flexible_type> >* source_partition;
+  std::vector<std::vector<flexible_type> >* target_partition; 
+
+        
+  const std::vector<std::string>* vertex_keys;
+  const std::vector<std::string>* edge_keys;
+  const std::vector<std::string>* mutated_edge_keys;
+  size_t srcid_column, dstid_column;
+};
+
 
 struct pylambda_evaluation_functions {
   void (*set_random_seed)(size_t seed);
@@ -75,7 +92,32 @@ struct pylambda_evaluation_functions {
   void (*eval_lambda)(size_t, lambda_call_data*, lambda_exception_info*);
   void (*eval_lambda_by_dict)(size_t, lambda_call_by_dict_data*, lambda_exception_info*);
   void (*eval_lambda_by_sframe_rows)(size_t, lambda_call_by_sframe_rows_data*, lambda_exception_info*);
+  void (*eval_graph_triple_apply)(size_t, lambda_graph_triple_apply_data*, lambda_exception_info*);  
 };
+
+extern pylambda_evaluation_functions evaluation_functions;
+
+/**  Processes exceptions raised by the above functions.  To use, do
+ *
+ *   lambda_exception_info lei;
+ *   // ... Call something with &lei as an argument.
+ *   if(lei.exception_occured) { process_exception(lei); }
+ */
+void process_exception(const lambda_exception_info& lei);
+
+  
+/**
+ * Creates a lambda from a pickled lambda string.
+ *
+ * Throws an exception if the construction failed.
+ */
+size_t make_lambda(const std::string& pylambda_str);
+
+/**
+ * Release the cached lambda object
+ */
+void release_lambda(size_t lambda_hash);
+
 
 /**
  * \ingroup lambda
@@ -107,8 +149,20 @@ class pylambda_evaluator : public lambda_evaluator_interface {
 
   ~pylambda_evaluator();
 
+
   /**
-   * Sets the internal lambda from a pickled lambda string.
+   * Initializes shared memory communication via SHMIPC.
+   * Returns the shared memory address to connect to.
+   */
+  std::string initialize_shared_memory_comm();
+
+ private:
+
+  // Set the lambda object for the next evaluation.
+  void set_lambda(size_t lambda_hash);
+
+  /**
+   * Creates a lambda from a pickled lambda string.
    *
    * Throws an exception if the construction failed.
    */
@@ -119,10 +173,21 @@ class pylambda_evaluator : public lambda_evaluator_interface {
    */
   void release_lambda(size_t lambda_hash);
 
+  
+  /**
+   * Apply as a function: flexible_type -> flexible_type,
+   *
+   * \note: this function does not perform type check and exception could be thrown
+   * when applying of the function. As a subroutine, this function does not
+   * try to acquire GIL and assumes it's already been acquired.
+   */
+  flexible_type eval(size_t lambda_hash, const flexible_type& arg);
+
   /**
    * Evaluate the lambda function on each argument separately in the args list.
    */
-  std::vector<flexible_type> bulk_eval(size_t lambda_hash, const std::vector<flexible_type>& args, bool skip_undefined, int seed);
+  std::vector<flexible_type> bulk_eval(size_t lambda_hash, const std::vector<flexible_type>& args,
+                                       bool skip_undefined, int seed);
 
   /**
    * \overload
@@ -143,8 +208,6 @@ class pylambda_evaluator : public lambda_evaluator_interface {
                                             bool skip_undefined, int seed);
 
   /**
-   * \overload
-   *
    * We have to use different function name because
    * the cppipc interface doesn't support true overload
    */
@@ -153,26 +216,7 @@ class pylambda_evaluator : public lambda_evaluator_interface {
                                                  const sframe_rows& values,
                                                  bool skip_undefined, int seed);
 
-  /**
-   * Initializes shared memory communication via SHMIPC.
-   * Returns the shared memory address to connect to.
-   */
-  std::string initialize_shared_memory_comm();
-
- private:
-
-  // Set the lambda object for the next evaluation.
-  void set_lambda(size_t lambda_hash);
-
-  /**
-   * Apply as a function: flexible_type -> flexible_type,
-   *
-   * \note: this function does not perform type check and exception could be thrown
-   * when applying of the function. As a subroutine, this function does not
-   * try to acquire GIL and assumes it's already been acquired.
-   */
-  flexible_type eval(size_t lambda_hash, const flexible_type& arg);
-
+  
   /**
    * Redirects to either bulk_eval_rows or bulk_eval_dict_rows.
    * First byte in the string is a bulk_eval_serialized_tag byte to denote

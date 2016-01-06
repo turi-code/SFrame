@@ -1,6 +1,6 @@
-#cython: language_level=2, c_string_encoding=utf8
+#cython: language_level=2, c_string_encoding=utf8, boundscheck=False, wraparound=False
 
-from cy_flexible_type cimport flexible_type, flex_type_enum, UNDEFINED
+from cy_flexible_type cimport flexible_type, flex_type_enum, UNDEFINED, flex_int
 from cy_flexible_type cimport flexible_type_from_pyobject
 from cy_flexible_type cimport process_common_typed_list
 from cy_flexible_type cimport pyobject_from_flexible_type
@@ -62,6 +62,21 @@ cdef extern from "<lambda/pylambda.hpp>" namespace "graphlab::lambda":
 
         flexible_type* output_values
         
+    ################################################################################
+    # Graph Pylambda stuff
+    cdef struct lambda_graph_triple_apply_data:
+
+        const vector[vector[flexible_type]]* all_edge_data
+        vector[vector[flexible_type]]* out_edge_data
+
+        vector[vector[flexible_type]]* source_partition
+        vector[vector[flexible_type]]* target_partition
+        
+        const vector[string]* vertex_keys
+        const vector[string]* edge_keys
+        const vector[string]* mutated_edge_keys
+        size_t srcid_column, dstid_column
+    
     cdef struct pylambda_evaluation_functions:
         void (*set_random_seed)(size_t seed)
         size_t (*init_lambda)(const string&, lambda_exception_info*)
@@ -69,20 +84,31 @@ cdef extern from "<lambda/pylambda.hpp>" namespace "graphlab::lambda":
         void (*eval_lambda)(size_t, lambda_call_data*, lambda_exception_info*)
         void (*eval_lambda_by_dict)(size_t, lambda_call_by_dict_data*, lambda_exception_info*)
         void (*eval_lambda_by_sframe_rows)(size_t, lambda_call_by_sframe_rows_data*, lambda_exception_info*)
-        
+        void (*eval_graph_triple_apply)(size_t, lambda_graph_triple_apply_data*, lambda_exception_info*)
 
         
 
 ################################################################################
+# Lambda evaluation class. 
 
 cdef class lambda_evaluator(object):
+    """
+    Main class to handle the actual pylambda evaluations.  It wraps a
+    single lambda function that is meant to be called by one of the
+    eval_* interface methods below.
+    """
+
     cdef object lambda_function
     cdef list output_buffer
+    cdef list keys
+    cdef dict arg_dict_base 
     cdef str lambda_string
 
     def __init__(self, str lambda_string):
 
         self.lambda_string = lambda_string
+        self.keys = None
+        self.arg_dict_base = None
 
         cdef bint is_directory
 
@@ -99,6 +125,20 @@ cdef class lambda_evaluator(object):
 
         self.output_buffer = []
 
+    @cython.boundscheck(False)
+    cdef _set_dict_keys(self, const vector[string]* input_keys):
+        cdef long n_keys = input_keys[0].size()
+        cdef long i
+    
+        if self.keys is None or len(self.keys) != n_keys:
+            self.keys = [input_keys[0][i] for i in range(n_keys)]
+        else:
+            for i in range(n_keys):
+                self.keys[i] = input_keys[0][i]
+
+        # Now, build the base arg_dict_base
+        self.arg_dict_base = {k : None for k in self.keys}
+                
     @cython.boundscheck(False)
     cdef eval_simple(self, lambda_call_data* lcd):
         
@@ -129,7 +169,7 @@ cdef class lambda_evaluator(object):
         cdef long n = lcd.input_rows[0].size()
         cdef long n_keys = lcd.input_keys[0].size()
 
-        cdef list keys = [lcd.input_keys[0][i] for i in range(n_keys)]
+        self._set_dict_keys(lcd.input_keys)
 
         if len(self.output_buffer) != n:
             self.output_buffer = [None]*n
@@ -140,10 +180,10 @@ cdef class lambda_evaluator(object):
                 raise ValueError("Row %d does not have the correct number of rows (%d, should be %d)"
                                  % (lcd.input_keys[0][i].size(), n))
 
-            arg_dict = {}
+            arg_dict = self.arg_dict_base.copy()
             
             for j in range(n_keys):
-                arg_dict[keys[j]] = pyobject_from_flexible_type(lcd.input_rows[0][i][j])
+                arg_dict[self.keys[j]] = pyobject_from_flexible_type(lcd.input_rows[0][i][j])
 
             self.output_buffer[i] = self.lambda_function(arg_dict)
 
@@ -159,21 +199,145 @@ cdef class lambda_evaluator(object):
 
         assert lcd.input_rows[0].num_columns() == n_keys
 
-        cdef list keys = [lcd.input_keys[0][i] for i in range(n_keys)]
+        self._set_dict_keys(lcd.input_keys)
 
         if len(self.output_buffer) != n:
             self.output_buffer = [None]*n
 
         for i in range(n):
-            arg_dict = {}
+            arg_dict = self.arg_dict_base.copy()
 
             for j in range(n_keys):
-                arg_dict[keys[j]] = pyobject_from_flexible_type(lcd.input_rows[0].at(i).at(j))
+                arg_dict[self.keys[j]] = pyobject_from_flexible_type(lcd.input_rows[0].at(i).at(j))
 
             self.output_buffer[i] = self.lambda_function(arg_dict)
 
         process_common_typed_list(lcd.output_values, self.output_buffer, lcd.output_enum_type)
+
+    @cython.boundscheck(False)
+    cdef process_output_dict(self, flexible_type* output_values, list mut_keys, dict ref_dict, dict ret_dict):
+        """
+        Checks to make sure all keys in ret_dict are in ref_dict, and updates
+        ret_dict with values from ref_dict as needed.  Puts the resulting values
+        in ret_dict into the position of output_values corresponding to the
+        location in mut_keys.  Furthermore, if any values are mutated in mut_keys,
+        then they are checked for equality. 
+        """
+
+        cdef long j
+        cdef long src_key_count = 0
+        cdef object src_val
+        cdef list bad_values
+
+        for j, k in enumerate(mut_keys):
+
+            try:
+                src_val = ret_dict[k]
+                src_key_count += 1
+                
+            except KeyError:                
+                src_val = ref_dict[k]
+                 
+            output_values[j] = flexible_type_from_pyobject(src_val)
+
+        if src_key_count != len(ret_dict):
+            # Seems there are extra keys that we don't want
+            bad_values = []
+
+            for k in ret_dict.iterkeys():
+                if k not in ref_dict:
+                    bad_values.append(k)
+
+            if bad_values:
+                raise KeyError("Return dictionary has invalid key(s) '%s'; possible keys are: %s" %
+                               ((", ".join("'%s'" % str(k2) for k2 in bad_values)),
+                                (", ".join("'%s'" % str(k2) for k2 in ref_dict.iterkeys()) )))
+            else:
+                # This means there are things in ref_dict not in
+                # mut_keys, which is not a bad thing.  If we were
+                # really rigorous, then we should check to make sure
+                # that the values have not been changed; for now,
+                # however, assume it just works.
+                pass
+
+
+    @cython.boundscheck(False)
+    cdef eval_graph_triple_apply(self, lambda_graph_triple_apply_data* lcg):
+
+        cdef long i, j
+        cdef long n_edges = lcg.all_edge_data[0].size()
+        cdef long n_edge_keys = lcg.edge_keys[0].size()
+        cdef long n_vertex_keys = lcg.vertex_keys[0].size()
+
+        cdef list edge_keys = [lcg.edge_keys[0][j] for j in range(n_edge_keys)]
+        cdef list vertex_keys = [lcg.vertex_keys[0][j] for j in range(n_vertex_keys)]
+
+        cdef long n_mutated_edges = lcg.mutated_edge_keys[0].size()
+        cdef list mutated_edge_keys = [lcg.mutated_edge_keys[0][j] for j in range(n_mutated_edges)]
+
+        cdef dict edge_object = {}, source_object = {}, target_object = {}
+        cdef dict edge_object_param, source_object_param, target_object_param
         
+        cdef flex_int srcid, dstid
+
+        cdef dict ret_source_dict, ret_edge_dict, ret_target_dict
+
+        cdef tuple ret
+        
+        for i in range(n_edges):
+            
+            srcid = lcg.all_edge_data[0][i][lcg.srcid_column].get_int()
+            dstid = lcg.all_edge_data[0][i][lcg.dstid_column].get_int()
+
+            # Set the edge update object. 
+            for j in range(n_edge_keys):
+                edge_object[edge_keys[j]] = pyobject_from_flexible_type(lcg.all_edge_data[0][i][j]);
+                
+            edge_object_param = edge_object.copy()
+                
+            # Set the vertex data
+            for j in range(n_vertex_keys):
+                source_object[vertex_keys[j]] = pyobject_from_flexible_type(lcg.source_partition[0][srcid][j])
+                target_object[vertex_keys[j]] = pyobject_from_flexible_type(lcg.target_partition[0][dstid][j])
+
+            source_object_param = source_object.copy()
+            target_object_param = target_object.copy()
+                
+            _ret = self.lambda_function(source_object_param, edge_object_param, target_object_param)
+
+            if _ret is None or type(_ret) is not tuple or len(<tuple>_ret) != 3:
+                raise TypeError("Lambda function must return a tuple of 3 dictionaries of the form "
+                                "(source_data, edge_data, target_data).")
+
+            ret = <tuple>_ret
+
+            if ret[0] is not None and type(ret[0]) is not dict:
+                raise TypeError("First return argument of lambda function not a dictionary.")
+
+            if ret[1] is not None and type(ret[1]) is not dict:
+                raise TypeError("Second return argument of lambda function not a dictionary.")
+
+            if ret[2] is not None and type(ret[2]) is not dict:
+                raise TypeError("Third return argument of lambda function not a dictionary.")
+
+            if ret[0] is not None:
+                ret_source_dict = ret[0]
+                self.process_output_dict(lcg.source_partition[0][srcid].data(), vertex_keys,
+                                         source_object, ret_source_dict)
+
+            if n_mutated_edges != 0:
+                lcg.out_edge_data[0][i].resize(n_mutated_edges)
+                ret_edge_dict = <dict>(ret[1]) if ret[1] is not None else edge_object
+                self.process_output_dict(lcg.out_edge_data[0][i].data(), mutated_edge_keys,
+                                         edge_object, ret_edge_dict)
+
+            if ret[2] is not None:
+                ret_target_dict = <dict>(ret[2])
+                self.process_output_dict(lcg.target_partition[0][dstid].data(), vertex_keys,
+                                         target_object, ret_target_dict)
+            
+        # And we're done!
+    
 
 ################################################################################
 # Wrapping functions
@@ -194,7 +358,8 @@ cdef pylambda_evaluation_functions eval_functions
 
 cdef void _process_exception(object e, str traceback_str, lambda_exception_info* lei):
     """
-    Process any possible exception.
+    Process any possible exceptions by adding in information that can
+    aid in the debugging of the lambda functions. 
     """
     lei.exception_occured = True
 
@@ -224,7 +389,6 @@ cdef void _set_random_seed(size_t seed):
 
 eval_functions.set_random_seed = _set_random_seed
 
-
 ########################################
 # Initialization function.
 
@@ -238,7 +402,6 @@ cdef size_t _init_lambda(const string& _lambda_string, lambda_exception_info* le
     cdef object lmfunc_id
 
     try:
-
         lmfunc_id = _lambda_function_string_to_id.get(lambda_string, None)
 
         # If it's been cleared out, then erase it and restart.
@@ -266,7 +429,7 @@ cdef void _release_lambda(size_t lmfunc_id, lambda_exception_info* lei):
 
     try:
         try:
-            del _lambda_function_string_to_id[lmfunc_id]
+            del _lambda_id_to_evaluator[lmfunc_id]
         except KeyError, ke:
             raise ValueError("Attempted to clear lambda id that does not exist (%d)" % lmfunc_id)
 
@@ -308,6 +471,17 @@ cdef void _eval_lambda_by_sframe_rows(size_t lmfunc_id, lambda_call_by_sframe_ro
         _process_exception(e, traceback.format_exc(), lei)
 
 eval_functions.eval_lambda_by_sframe_rows = _eval_lambda_by_sframe_rows
+
+########################################
+# Triple Apply stuff
+
+cdef void _eval_graph_triple_apply(size_t lmfunc_id, lambda_graph_triple_apply_data* lcd, lambda_exception_info* lei):
+    try:
+        _get_lambda_class(lmfunc_id).eval_graph_triple_apply(lcd)
+    except Exception, e:
+        _process_exception(e, traceback.format_exc(), lei)
+
+eval_functions.eval_graph_triple_apply = _eval_graph_triple_apply
 
 
 eval_functions_ctype_pointer = \

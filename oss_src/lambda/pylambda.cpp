@@ -15,7 +15,40 @@
 
 namespace graphlab { namespace lambda {
 
-static pylambda_evaluation_functions evaluation_functions;
+pylambda_evaluation_functions evaluation_functions;
+
+/**  Creates the current lambda interface.
+ *
+ */
+size_t make_lambda(const std::string& pylambda_str) {
+  DASSERT_TRUE(evaluation_functions.init_lambda != NULL);
+  
+  lambda_exception_info lei;
+
+  size_t lambda_id = evaluation_functions.init_lambda(pylambda_str, &lei);
+  
+  if(lei.exception_occured) { process_exception(lei); }
+
+  logstream(LOG_DEBUG) << "Created lambda id=" << lambda_id << std::endl;  
+
+  return lambda_id;
+}
+
+void release_lambda(size_t lambda_id) {
+  
+  logstream(LOG_DEBUG) << "release lambda id=" << lambda_id << std::endl;
+
+  DASSERT_TRUE(evaluation_functions.release_lambda != NULL);
+
+  lambda_exception_info lei;
+  evaluation_functions.release_lambda(lambda_id, &lei);
+  if(lei.exception_occured) { process_exception(lei); }
+}
+
+
+// First, the lower-level functions that wrap each of the cython
+// functions.  These don't do much more than set up the calling
+// argmuments.
 
 pylambda_evaluator::~pylambda_evaluator() {
   if (m_shared_memory_listener.active()) {
@@ -24,38 +57,19 @@ pylambda_evaluator::~pylambda_evaluator() {
   }
 }
 
-static void process_exception(const lambda_exception_info& lei) {
+void process_exception(const lambda_exception_info& lei) {
   DASSERT_TRUE(lei.exception_occured);
 
   // TODO: fill this out.
   throw std::string(lei.exception_string);
 }
 
-/**  Creates the current lambda interface.
- *
- */
 size_t pylambda_evaluator::make_lambda(const std::string& pylambda_str) {
-  DASSERT_TRUE(evaluation_functions.init_lambda != NULL);
-
-  lambda_exception_info lei;
-
-  size_t lambda_id = evaluation_functions.init_lambda(pylambda_str, &lei);
-
-  if(lei.exception_occured) { process_exception(lei); }
-
-  return lambda_id;
+  return lambda::make_lambda(pylambda_str);
 }
-
-void pylambda_evaluator::release_lambda(size_t lambda_id) {
   
-  logstream(LOG_DEBUG) << "release lambda" << lambda_id << std::endl;
-
-  DASSERT_TRUE(evaluation_functions.release_lambda != NULL);
-
-  lambda_exception_info lei;
-  evaluation_functions.release_lambda(lambda_id, &lei);
-
-  if(lei.exception_occured) { process_exception(lei); }
+void pylambda_evaluator::release_lambda(size_t lambda_id) {
+  return lambda::release_lambda(lambda_id);
 }
 
 
