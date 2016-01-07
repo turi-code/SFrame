@@ -22,7 +22,7 @@ if __name__ == '__main__':
   # Get all cxxtests in directory
   matches = []
   for root, dirnames, filenames in os.walk('.'):
-    for filename in fnmatch.filter(filenames, '*.cxxtest'):
+    for filename in fnmatch.filter(filenames, '*.cxxtest*'):
       matches.append(os.path.join(root, filename))
   print 'Found {} tests.'.format(len(matches))
 
