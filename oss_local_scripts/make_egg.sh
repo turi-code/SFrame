@@ -271,7 +271,6 @@ if [[ -z $SKIP_BUILD ]]; then
   build_source
 fi
 
-set_build_number
 
 if [[ -z $SKIP_CPP_TEST ]]; then
   cpp_test 
@@ -280,6 +279,8 @@ fi
 if [[ -z $SKIP_TEST ]]; then
   unit_test
 fi
+
+set_build_number
 
 package_egg
 
