@@ -139,28 +139,19 @@ if __name__ == "__main__":
     ########################################
     # Get the pointers to the cython callback functions that can
     # actually execute the lambda functions.
-        
-    if module_name == "graphlab":
-        from graphlab.cython.cy_pylambda_workers import eval_functions_ctype_pointer
-    else:
-        from sframe.cython.cy_pylambda_workers import eval_functions_ctype_pointer
 
     try:
-        pylambda_lib = PyDLL(pylambda_workers[0])
+        pylambda_lib = PyDLL(pylambda_workers[0], mode=ctypes.RTLD_GLOBAL)
     except Exception, e:
         _write_log("Error loading lambda library %s: %s" % (pylambda_workers[0], repr(e)), error = True)
         sys.exit(203)
 
-    try:
-        pylambda_lib.set_pylambda_evaluation_functions.argtypes = [c_void_p]
-        pylambda_lib.set_pylambda_evaluation_functions.restype = None
-    except Exception, e:
-        _write_log("Error accessing set_pylambda_evaluation_functions: %s\n"
-                   % repr(e), error = True)
-        sys.exit(204)
-
-    # Set up the pylambda interface functions. 
-    pylambda_lib.set_pylambda_evaluation_functions(eval_functions_ctype_pointer)
+    # Load in the cython lambda workers.  On import, this will resolve
+    # the proper symbols.
+    if module_name == "graphlab":
+        import graphlab.cython.cy_pylambda_workers
+    else:
+        import sframe.cython.cy_pylambda_workers
 
     try:
         pylambda_lib.pylambda_worker_main.argtypes = [c_char_p, c_char_p]

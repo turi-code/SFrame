@@ -8,6 +8,7 @@
 #include <lambda/lambda_utils.hpp>
 #include <lambda/graph_pylambda.hpp>
 #include <lambda/pylambda.hpp>
+#include <python_callbacks/python_callbacks.hpp>
 
 namespace graphlab {
 namespace lambda {
@@ -153,11 +154,8 @@ std::vector<sgraph_edge_data> graph_pylambda_evaluator::eval_triple_apply(
   lgt.srcid_column = m_srcid_column;
   lgt.dstid_column = m_dstid_column;
 
-  lambda_exception_info lei;
-
-  evaluation_functions.eval_graph_triple_apply(m_lambda_id, &lgt, &lei);
-
-  if(lei.exception_occured) { process_exception(lei); }
+  evaluation_functions.eval_graph_triple_apply(m_lambda_id, &lgt);
+  python::check_for_python_exception();
   
   return ret;
 }

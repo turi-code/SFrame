@@ -4,6 +4,7 @@ from cy_flexible_type cimport flexible_type, flex_type_enum, UNDEFINED, flex_int
 from cy_flexible_type cimport flexible_type_from_pyobject
 from cy_flexible_type cimport process_common_typed_list
 from cy_flexible_type cimport pyobject_from_flexible_type
+from cy_callback cimport register_exception
 from .._gl_pickle import GLUnpickler
 import cPickle as py_pickle
 from copy import deepcopy
@@ -16,6 +17,9 @@ import sys
 cimport cython
 
 from random import seed as set_random_seed
+
+cdef extern from "<util/cityhash_gl.hpp>" namespace "graphlab":
+    size_t hash64(const string&)
 
 cdef extern from "<sframe/sframe_rows.hpp>" namespace "graphlab":
 
@@ -30,11 +34,6 @@ cdef extern from "<sframe/sframe_rows.hpp>" namespace "graphlab":
 
 
 cdef extern from "<lambda/pylambda.hpp>" namespace "graphlab::lambda":
-
-    cdef struct lambda_exception_info:
-        bint exception_occured
-        string exception_pickle
-        string exception_string
 
     cdef struct lambda_call_data:
         flex_type_enum output_enum_type
@@ -79,14 +78,16 @@ cdef extern from "<lambda/pylambda.hpp>" namespace "graphlab::lambda":
     
     cdef struct pylambda_evaluation_functions:
         void (*set_random_seed)(size_t seed)
-        size_t (*init_lambda)(const string&, lambda_exception_info*)
-        void (*release_lambda)(size_t, lambda_exception_info*)
-        void (*eval_lambda)(size_t, lambda_call_data*, lambda_exception_info*)
-        void (*eval_lambda_by_dict)(size_t, lambda_call_by_dict_data*, lambda_exception_info*)
-        void (*eval_lambda_by_sframe_rows)(size_t, lambda_call_by_sframe_rows_data*, lambda_exception_info*)
-        void (*eval_graph_triple_apply)(size_t, lambda_graph_triple_apply_data*, lambda_exception_info*)
+        size_t (*init_lambda)(const string&)
+        void (*release_lambda)(size_t)
+        void (*eval_lambda)(size_t, lambda_call_data*)
+        void (*eval_lambda_by_dict)(size_t, lambda_call_by_dict_data*)
+        void (*eval_lambda_by_sframe_rows)(size_t, lambda_call_by_sframe_rows_data*)
+        void (*eval_graph_triple_apply)(size_t, lambda_graph_triple_apply_data*)
 
-        
+    # The function to call to set everything up.
+    void set_pylambda_evaluation_functions(pylambda_evaluation_functions* eval_function_struct)
+
 
 ################################################################################
 # Lambda evaluation class. 
@@ -342,7 +343,6 @@ cdef class lambda_evaluator(object):
 ################################################################################
 # Wrapping functions
 
-cdef object _lambda_counter = 1
 cdef dict _lambda_id_to_evaluator = {}
 cdef dict _lambda_function_string_to_id = {}
 
@@ -355,32 +355,6 @@ cdef lambda_evaluator _get_lambda_class(size_t lmfunc_id):
 
 cdef pylambda_evaluation_functions eval_functions
 
-
-cdef void _process_exception(object e, str traceback_str, lambda_exception_info* lei):
-    """
-    Process any possible exceptions by adding in information that can
-    aid in the debugging of the lambda functions. 
-    """
-    lei.exception_occured = True
-
-    cdef str ex_str = "Exception in pylambda function evaluation: \n"
-    
-    try:
-        ex_str += repr(e)
-    except Exception, e:
-        ex_str += "Error expressing exception as string."
-
-    ex_str += ": \n" + traceback_str
-        
-    lei.exception_string = ex_str
-
-    try:
-        lei.exception_pickle = py_pickle.dumps(e, protocol = -1)
-    except Exception, e:
-        lei.exception_pickle = py_pickle.dumps("<Error pickling exception>", protocol = -1)
-
-    
-
 #########################################
 # Random seed
 
@@ -392,9 +366,8 @@ eval_functions.set_random_seed = _set_random_seed
 ########################################
 # Initialization function.
 
-cdef size_t _init_lambda(const string& _lambda_string, lambda_exception_info* lei):
+cdef size_t _init_lambda(const string& _lambda_string):
 
-    global _lambda_counter
     global _lambda_id_to_evaluator
     global _lambda_function_string_to_id
     
@@ -410,22 +383,22 @@ cdef size_t _init_lambda(const string& _lambda_string, lambda_exception_info* le
             lmfunc_id = None
 
         if lmfunc_id is None:
-            _lambda_counter += 1
-            lmfunc_id = _lambda_counter
+            lmfunc_id = hash64(_lambda_string)
             _lambda_id_to_evaluator[lmfunc_id] = lambda_evaluator(lambda_string)
             _lambda_function_string_to_id[lambda_string] = lmfunc_id
 
         return lmfunc_id
 
     except Exception, e:
-        _process_exception(e, traceback.format_exc(), lei)
+        register_exception(e)
+        return 0
 
 eval_functions.init_lambda = _init_lambda
 
 ########################################
 # Release
 
-cdef void _release_lambda(size_t lmfunc_id, lambda_exception_info* lei):
+cdef void _release_lambda(size_t lmfunc_id):
 
     try:
         try:
@@ -434,18 +407,20 @@ cdef void _release_lambda(size_t lmfunc_id, lambda_exception_info* lei):
             raise ValueError("Attempted to clear lambda id that does not exist (%d)" % lmfunc_id)
 
     except Exception, e:
-        _process_exception(e, traceback.format_exc(), lei)
+        register_exception(e)
+        return
 
 eval_functions.release_lambda = _release_lambda
 
 ########################################
 # Single column evaluation
 
-cdef void _eval_lambda(size_t lmfunc_id, lambda_call_data* lcd, lambda_exception_info* lei):
+cdef void _eval_lambda(size_t lmfunc_id, lambda_call_data* lcd):
     try:
         _get_lambda_class(lmfunc_id).eval_simple(lcd)
     except Exception, e:
-        _process_exception(e, traceback.format_exc(), lei)
+        register_exception(e)
+        return
 
 
 eval_functions.eval_lambda = _eval_lambda
@@ -453,36 +428,36 @@ eval_functions.eval_lambda = _eval_lambda
 ########################################
 # Multiple column evaluation
 
-cdef void _eval_lambda_by_dict(size_t lmfunc_id, lambda_call_by_dict_data* lcd, lambda_exception_info* lei):
+cdef void _eval_lambda_by_dict(size_t lmfunc_id, lambda_call_by_dict_data* lcd):
     try:
         _get_lambda_class(lmfunc_id).eval_multiple_rows(lcd)
     except Exception, e:
-        _process_exception(e, traceback.format_exc(), lei)
+        register_exception(e)
 
 eval_functions.eval_lambda_by_dict = _eval_lambda_by_dict
 
 ########################################
 # Multiple column evaluation
 
-cdef void _eval_lambda_by_sframe_rows(size_t lmfunc_id, lambda_call_by_sframe_rows_data* lcd, lambda_exception_info* lei):
+cdef void _eval_lambda_by_sframe_rows(size_t lmfunc_id, lambda_call_by_sframe_rows_data* lcd):
     try:
         _get_lambda_class(lmfunc_id).eval_sframe_rows(lcd)
     except Exception, e:
-        _process_exception(e, traceback.format_exc(), lei)
+        register_exception(e)
 
 eval_functions.eval_lambda_by_sframe_rows = _eval_lambda_by_sframe_rows
 
 ########################################
 # Triple Apply stuff
 
-cdef void _eval_graph_triple_apply(size_t lmfunc_id, lambda_graph_triple_apply_data* lcd, lambda_exception_info* lei):
+cdef void _eval_graph_triple_apply(size_t lmfunc_id, lambda_graph_triple_apply_data* lcd):
     try:
         _get_lambda_class(lmfunc_id).eval_graph_triple_apply(lcd)
     except Exception, e:
-        _process_exception(e, traceback.format_exc(), lei)
+        register_exception(e)
 
 eval_functions.eval_graph_triple_apply = _eval_graph_triple_apply
 
+# Finally, set pylambda evaluation functions in the 
+set_pylambda_evaluation_functions(&eval_functions)
 
-eval_functions_ctype_pointer = \
-  ctypes.c_void_p(<long>(<void*>(&eval_functions)))

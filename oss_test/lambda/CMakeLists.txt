@@ -9,10 +9,3 @@ make_executable(dummy_worker
     cppipc
     process
 )
-
-make_library(pyflexible_type_bench
-  SOURCES
-    pyflexible_type_bench.cpp SHARED EXTERNAL_VISIBILITY
-  REQUIRES 
-    pylambda pylambda_worker_lib
-)

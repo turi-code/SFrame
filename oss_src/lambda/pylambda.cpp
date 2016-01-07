@@ -17,18 +17,21 @@ namespace graphlab { namespace lambda {
 
 pylambda_evaluation_functions evaluation_functions;
 
+/** This is called through ctypes to set up the evaluation function interface.
+ */
+void EXPORT set_pylambda_evaluation_functions(pylambda_evaluation_functions* eval_function_struct) {
+  evaluation_functions = *eval_function_struct;
+}
+
 /**  Creates the current lambda interface.
  *
  */
 size_t make_lambda(const std::string& pylambda_str) {
   DASSERT_TRUE(evaluation_functions.init_lambda != NULL);
   
-  lambda_exception_info lei;
-
-  size_t lambda_id = evaluation_functions.init_lambda(pylambda_str, &lei);
+  size_t lambda_id = evaluation_functions.init_lambda(pylambda_str);
+  python::check_for_python_exception();
   
-  if(lei.exception_occured) { process_exception(lei); }
-
   logstream(LOG_DEBUG) << "Created lambda id=" << lambda_id << std::endl;  
 
   return lambda_id;
@@ -40,9 +43,8 @@ void release_lambda(size_t lambda_id) {
 
   DASSERT_TRUE(evaluation_functions.release_lambda != NULL);
 
-  lambda_exception_info lei;
-  evaluation_functions.release_lambda(lambda_id, &lei);
-  if(lei.exception_occured) { process_exception(lei); }
+  evaluation_functions.release_lambda(lambda_id);
+  python::check_for_python_exception();
 }
 
 
@@ -57,13 +59,6 @@ pylambda_evaluator::~pylambda_evaluator() {
   }
 }
 
-void process_exception(const lambda_exception_info& lei) {
-  DASSERT_TRUE(lei.exception_occured);
-
-  // TODO: fill this out.
-  throw std::string(lei.exception_string);
-}
-
 size_t pylambda_evaluator::make_lambda(const std::string& pylambda_str) {
   return lambda::make_lambda(pylambda_str);
 }
@@ -71,7 +66,6 @@ size_t pylambda_evaluator::make_lambda(const std::string& pylambda_str) {
 void pylambda_evaluator::release_lambda(size_t lambda_id) {
   return lambda::release_lambda(lambda_id);
 }
-
 
 flexible_type pylambda_evaluator::eval(size_t lambda_id, const flexible_type& arg) {
 
@@ -85,10 +79,8 @@ flexible_type pylambda_evaluator::eval(size_t lambda_id, const flexible_type& ar
   lcd.output_values = &ret;
   lcd.n_inputs = 1;
 
-  lambda_exception_info lei;
-  evaluation_functions.eval_lambda(lambda_id, &lcd, &lei);
-
-  if(lei.exception_occured) { process_exception(lei); }
+  evaluation_functions.eval_lambda(lambda_id, &lcd);
+  python::check_for_python_exception();
 
   return ret;
 }
@@ -113,10 +105,8 @@ std::vector<flexible_type> pylambda_evaluator::bulk_eval(
   lcd.output_values = ret.data();
   lcd.n_inputs = args.size();
 
-  lambda_exception_info lei;
-  evaluation_functions.eval_lambda(lambda_id, &lcd, &lei);
-
-  if(lei.exception_occured) { process_exception(lei); }
+  evaluation_functions.eval_lambda(lambda_id, &lcd);
+  python::check_for_python_exception();
 
   return ret;
 }
@@ -164,10 +154,8 @@ std::vector<flexible_type> pylambda_evaluator::bulk_eval_dict(
   lcd.input_rows = &values;
   lcd.output_values = ret.data();
 
-  lambda_exception_info lei;
-  evaluation_functions.eval_lambda_by_dict(lambda_id, &lcd, &lei);
-
-  if(lei.exception_occured) { process_exception(lei); }
+  evaluation_functions.eval_lambda_by_dict(lambda_id, &lcd);
+  python::check_for_python_exception();
 
   return ret;
 }
@@ -190,10 +178,8 @@ std::vector<flexible_type> pylambda_evaluator::bulk_eval_dict_rows(
   lcd.input_rows = &rows;
   lcd.output_values = ret.data();
 
-  lambda_exception_info lei;
-  evaluation_functions.eval_lambda_by_sframe_rows(lambda_id, &lcd, &lei);
-
-  if(lei.exception_occured) { process_exception(lei); }
+  evaluation_functions.eval_lambda_by_sframe_rows(lambda_id, &lcd);
+  python::check_for_python_exception();
 
   return ret;
 }
@@ -279,14 +265,3 @@ std::string pylambda_evaluator::initialize_shared_memory_comm() {
 }
 } // end of namespace lambda
 } // end of namespace graphlab
-
-
-
-/** This is called through ctypes to set up the evaluation function interface.
- */
-extern "C" {
-  void EXPORT set_pylambda_evaluation_functions(void* eval_function_struct) {
-    graphlab::lambda::evaluation_functions
-        = *((graphlab::lambda::pylambda_evaluation_functions*) eval_function_struct);
-  }
-}

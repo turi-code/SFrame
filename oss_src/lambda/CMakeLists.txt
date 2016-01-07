@@ -26,7 +26,7 @@ make_library(pylambda_worker
   SOURCES
   pylambda_worker.cpp
   REQUIRES
-    logger process pylambda_worker_lib
+    logger process pylambda_worker_lib python_callbacks
   SHARED
 )
 

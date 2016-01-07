@@ -9,6 +9,7 @@
 #define GRAPHLAB_LAMBDA_PYLAMBDA_EVALUATOR_HPP
 #include <lambda/lambda_interface.hpp>
 #include <flexible_type/flexible_type.hpp>
+#include <python_callbacks/python_callbacks.hpp>
 #include <parallel/pthread_tools.hpp>
 #include <string>
 
@@ -21,12 +22,6 @@ class server;
 class sframe_rows;
 
 namespace lambda {
-
-struct lambda_exception_info {
-  bool exception_occured = false;
-  std::string exception_pickle;
-  std::string exception_string;
-};
 
 /** The data used in the common call type.
  */
@@ -87,24 +82,20 @@ struct lambda_graph_triple_apply_data {
 
 struct pylambda_evaluation_functions {
   void (*set_random_seed)(size_t seed);
-  size_t (*init_lambda)(const std::string&, lambda_exception_info*);
-  void (*release_lambda)(size_t, lambda_exception_info*);
-  void (*eval_lambda)(size_t, lambda_call_data*, lambda_exception_info*);
-  void (*eval_lambda_by_dict)(size_t, lambda_call_by_dict_data*, lambda_exception_info*);
-  void (*eval_lambda_by_sframe_rows)(size_t, lambda_call_by_sframe_rows_data*, lambda_exception_info*);
-  void (*eval_graph_triple_apply)(size_t, lambda_graph_triple_apply_data*, lambda_exception_info*);  
+  size_t (*init_lambda)(const std::string&);
+  void (*release_lambda)(size_t);
+  void (*eval_lambda)(size_t, lambda_call_data*);
+  void (*eval_lambda_by_dict)(size_t, lambda_call_by_dict_data*);
+  void (*eval_lambda_by_sframe_rows)(size_t, lambda_call_by_sframe_rows_data*);
+  void (*eval_graph_triple_apply)(size_t, lambda_graph_triple_apply_data*);  
 };
 
-extern pylambda_evaluation_functions evaluation_functions;
-
-/**  Processes exceptions raised by the above functions.  To use, do
- *
- *   lambda_exception_info lei;
- *   // ... Call something with &lei as an argument.
- *   if(lei.exception_occured) { process_exception(lei); }
+/** This is called through the cython functions to set up the
+ *  evaluation function interface.
  */
-void process_exception(const lambda_exception_info& lei);
+void set_pylambda_evaluation_functions(pylambda_evaluation_functions* eval_function_struct);
 
+extern pylambda_evaluation_functions evaluation_functions;
   
 /**
  * Creates a lambda from a pickled lambda string.
@@ -235,11 +226,6 @@ class pylambda_evaluator : public lambda_evaluator_interface {
 } // end of graphlab namespace
 
 
-/** This is called through ctypes to set up the evaluation function interface.
- */
-extern "C" {
-  void set_pylambda_evaluation_functions(void* eval_function_struct);
-}
 
 
 #endif
