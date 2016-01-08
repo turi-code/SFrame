@@ -93,6 +93,9 @@ source ${WORKSPACE}/oss_local_scripts/python_env.sh $build_type
 # Windows specific
 archive_file_ext="tar.gz"
 if [[ $OSTYPE == msys ]]; then
+  # C++ tests are default skipped on windows due to annoying issues around
+  # unable to find libstdc++.dll which are not so easily fixable
+  SKIP_CPP_TEST=1
   archive_file_ext="zip"
   unset PYTHONHOME
 fi
@@ -112,6 +115,8 @@ build_source() {
   make -j${NUM_PROCS}
 
   if [[ -z $SKIP_CPP_TEST ]]; then
+      cd ${WORKSPACE}/oss_test
+      touch $(find . -name "*.cxx")
       cd ${WORKSPACE}/${build_type}/oss_test
       make -j${NUM_PROCS}
   fi
