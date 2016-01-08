@@ -14,7 +14,7 @@ import sys as _sys
 class GraphLabConfig:
 
     __slots__ = ['graphlab_server', 'server_addr', 'server_bin', 'log_dir', 'unity_metric',
-                 'mode', 'version', 'librato_user', 'librato_token', 'mixpanel_user',
+                 'mode', 'mixpanel_user',
                  'log_rotation_interval','log_rotation_truncate', 'metrics_url']
 
     def __init__(self, server_addr=None):
@@ -65,11 +65,8 @@ class GraphLabConfig:
         try:
           import graphlab_env
         except ImportError:
-          self.graphlab_server = 'http://pws-billing-stage.herokuapp.com'
+          self.graphlab_server = ''
           self.mode = 'UNIT'
-          self.version = '0.1.desktop'
-          self.librato_user = ''
-          self.librato_token = ''
           self.mixpanel_user = ''
           self.metrics_url = ''
         else:
@@ -78,9 +75,6 @@ class GraphLabConfig:
           else:
             self.mode = 'PROD'
 
-          self.version = graphlab_env.version
-          self.librato_user = graphlab_env.librato_user
-          self.librato_token = graphlab_env.librato_token
           self.mixpanel_user = graphlab_env.mixpanel_user
           self.graphlab_server = graphlab_env.graphlab_server
           self.metrics_url = graphlab_env.metrics_url

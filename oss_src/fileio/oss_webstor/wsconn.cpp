@@ -32,7 +32,7 @@
 #include <openssl/hmac.h>
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
-#include <fileio/set_curl_ssl_options.hpp>
+#include <fileio/set_curl_options.hpp>
 #include <algorithm>
 #include <memory>
 #include <fileio/fileio_constants.hpp>
@@ -2532,12 +2532,12 @@ WsConnection::prepare( WsRequest *request, const char *bucketName, const char *k
             } 
             else 
             {
-              graphlab::fileio::set_ssl_certificate_options(m_curl);
+              graphlab::fileio::set_curl_options(m_curl);
             }
         } 
         else 
         {
-          graphlab::fileio::set_ssl_certificate_options(m_curl);
+          graphlab::fileio::set_curl_options(m_curl);
         }
     }
 

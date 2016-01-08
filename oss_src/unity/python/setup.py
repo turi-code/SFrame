@@ -141,10 +141,11 @@ if __name__ == '__main__':
             )
         sys.stderr.write(msg)
         sys.exit(1)
-
+    
+    version_number='1.8'#{{VERSION_STRING}}
     setup(
         name="SFrame",
-        version='{{VERSION_STRING}}',
+        version=version_number,
         author='Dato, Inc.',
         author_email='contact@dato.com',
         cmdclass=dict(install=InstallEngine),
@@ -165,7 +166,6 @@ if __name__ == '__main__':
         classifiers=classifiers,
         install_requires=[
             "boto == 2.33.0",
-            "librato-metrics == 0.4.9",
             "mixpanel-py == 3.1.1",
             "decorator == 3.4.0",
             "tornado == 4.1",

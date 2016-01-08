@@ -8,7 +8,7 @@
 #ifndef _WIN32
 #include <dlfcn.h>
 #else
-#include <windows.h>
+#include <cross_platform/windows_wrapper.hpp>
 #endif
 
 #include <util/syserr_reporting.hpp>

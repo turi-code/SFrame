@@ -6,4 +6,4 @@
  * of the BSD license. See the LICENSE file for details.
  */
 
-// Add a #define __UNITY_VERSION__ "version" here
+#define __UNITY_VERSION__ "1.8"//#{{VERSION_STRING}}

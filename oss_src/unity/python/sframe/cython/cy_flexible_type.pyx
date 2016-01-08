@@ -268,6 +268,8 @@ cdef dict _code_by_name_lookup = {
     'datetime' : FT_DATETIME_TYPE + FT_SAFE,
     'date'     : FT_DATETIME_TYPE + FT_SAFE,
     'time'     : FT_DATETIME_TYPE + FT_SAFE,
+    'datetime64': FT_DATETIME_TYPE + FT_SAFE,
+    'Timestamp': FT_DATETIME_TYPE + FT_SAFE,
     'set'      : FT_LIST_TYPE + FT_SAFE,
     'frozenset': FT_LIST_TYPE + FT_SAFE,
     'ndarray'  : FT_BUFFER_TYPE  # Just go by name on this one since it's not always imported
@@ -411,12 +413,19 @@ cdef inline bint flex_type_is_vector_implicit_castable(flex_type_enum ft_type):
 ################################################################################
 
 cdef bint HAS_NUMPY = False
+cdef bint HAS_PANDAS = False
 
 try:
     import numpy as np
     HAS_NUMPY = True
 except ImportError:
     HAS_NUMPY = False
+
+try:
+    import pandas as pd
+    HAS_PANDAS = True
+except ImportError:
+    HAS_PANDAS = False
 
 cdef vector[flex_type_enum] _dtype_to_flex_enum_lookup = vector[flex_type_enum](128, UNDEFINED)
 
@@ -1122,6 +1131,8 @@ cdef inline tr_listlike_to_ft(flexible_type& ret, _listlike v, flex_type_enum* c
 # Translate DateTime type
 
 cdef inline tr_datetime_to_ft(flexible_type& ret, v):
+    # Restriction from Boost.Date_Time because calculations are inaccurate
+    # before the introduction of the Gregorian calendar
     if(v.year < 1400 or v.year > 10000):
         raise TypeError('Year is out of valid range: 1400..10000')
     if(v.tzinfo != None):
@@ -1129,6 +1140,14 @@ cdef inline tr_datetime_to_ft(flexible_type& ret, v):
         ret.set_date_time((<long long>(calendar.timegm(v.utctimetuple())),offset), v.microsecond)
     else:
         ret.set_date_time((<long long>(calendar.timegm(v.utctimetuple())),EMPTY_TIMEZONE), v.microsecond)
+
+
+cdef inline tr_datetime64_to_ft(flexible_type& ret, v):
+    # Since flexible type datetime only goes down to microseconds, convert to
+    # this. If higher resolution, this will truncate values
+    cdef object as_py_datetime = v.astype('M8[us]').astype('O')
+    as_py_datetime = as_py_datetime.replace(tzinfo=timezone.GMT(0))
+    tr_datetime_to_ft(ret, as_py_datetime)
 
 
 ################################################################################
@@ -1329,8 +1348,17 @@ cdef flexible_type _ft_translate(object v, int tr_code) except *:
         ret = FLEX_UNDEFINED
         return ret
     elif tr_code == (FT_DATETIME_TYPE + FT_SAFE):
-        tr_datetime_to_ft(ret, datetime(v))
-        return ret
+      if HAS_NUMPY and isinstance(v, np.datetime64):
+          tr_datetime64_to_ft(ret, v)
+      elif HAS_PANDAS and isinstance(v, pd.Timestamp):
+          tr_datetime_to_ft(ret, v.to_datetime())
+      elif isinstance(v, datetime.datetime):
+          tr_datetime_to_ft(ret, v)
+      else:
+          # This should catch only datetime.date, since the check for
+          # datetime.datetime is before it
+          tr_datetime_to_ft(ret, datetime.datetime(v.year, v.month, v.day))
+      return ret
     elif tr_code == (FT_IMAGE_TYPE + FT_SAFE):
         if type(v) != _image_type:
             raise TypeError("Cannot interpret type '" + str(type(v)) + "' as graphlab.Image type.")

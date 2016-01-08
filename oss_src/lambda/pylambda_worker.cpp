@@ -27,35 +27,63 @@ using namespace graphlab;
  *  above.
  */
 int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
-  // Options
-  std::string server_address = _server_address;
-  std::string root_path = _root_path;
 
-  size_t debug_mode = (server_address == "debug");
-  char* debug_mode_str = getenv("GRAPHLAB_LAMBDA_WORKER_DEBUG_MODE");
+  /** Set up the debug configuration. 
+   *  
+   *  By default, all LOG_ERROR and LOG_FATAL messages are sent to
+   *  stderr, and all LOG_INFO messages are sent to stdout (which is
+   *  by default swallowed), and all LOG_DEBUG messages are dropped.
+   *
+   *  If GRAPHLAB_LAMBDA_WORKER_LOG_FILE is set and is non-empty, then
+   *  all log messages are sent to the file instead of the stdout and
+   *  stderr.  In this case, the only errors logged to stderr/stdout
+   *  concern opening the log file.
+   *
+   *  If GRAPHLAB_LAMBDA_WORKER_DEBUG_MODE is set, then the default
+   *  log level is set to LOG_DEBUG.  If a log file is set, then all
+   *  log messages are sent there, otherwise they are sent to stderr.
+   */
+  const char* debug_mode_str = getenv("GRAPHLAB_LAMBDA_WORKER_DEBUG_MODE");
+  const char* debug_mode_file_str = getenv("GRAPHLAB_LAMBDA_WORKER_LOG_FILE");
 
-  if(debug_mode_str != NULL) {
-    debug_mode = true;
+  std::string log_file_string((debug_mode_file_str == NULL) ? "" : debug_mode_file_str);
+  bool log_to_file = (!log_file_string.empty());
+  
+  bool debug_mode = (debug_mode_str != NULL);
+
+  // Logging using the LOG_DEBUG_WITH_PID macro requires this_pid to be set. 
+  size_t this_pid = get_my_pid();
+  global_logger().set_pid(this_pid);
+
+  // Set up the logging to file if needed. 
+  if(log_to_file) {
+    // Set up the logging to the file, with any errors being fully logged.
+    global_logger().set_log_to_console(true, true);
+    global_logger().set_log_file(log_file_string);
+    LOG_DEBUG_WITH_PID("Logging lambda worker logs to " << log_file_string);
+    global_logger().set_log_to_console(false);
   }
 
-  size_t parent_pid = get_parent_pid();
-  size_t this_pid = get_my_pid();
-
+  // Now, set the log mode for debug   
   if(debug_mode) {
     global_logger().set_log_level(LOG_DEBUG);
-    global_logger().set_log_to_console(true, true /* stderr */);
-  } else {
+    if(!log_to_file) {
+      // Set logging to console, with everything logged to stderr.
+      global_logger().set_log_to_console(true, true);
+    }
+  } else { 
     global_logger().set_log_level(LOG_INFO);
-    char* log_file_prefix = getenv("GRAPHLAB_LAMBDA_WORKER_LOG_PREFIX");
-    if (log_file_prefix != NULL) {
-      // Write logs to file ands disable console log
-      std::string log_file = std::string(log_file_prefix) + "-" + std::to_string(parent_pid)
-                                                          + "-" + std::to_string(this_pid) + ".log";
-      global_logger().set_log_file(log_file);
-      global_logger().set_log_to_console(false);
+    
+    if(!log_to_file) {
+      // Set logging to console, with only errors going to stderr.
+      global_logger().set_log_to_console(true, false);
     }
   }
-  global_logger().set_pid(get_my_pid());
+
+  // Log the basic information about parameters.
+  std::string server_address = _server_address;
+  std::string root_path = _root_path;
+  size_t parent_pid = get_parent_pid();
 
   LOG_DEBUG_WITH_PID("root_path = '" << root_path << "'");
   LOG_DEBUG_WITH_PID("server_address = '" << server_address << "'");
@@ -93,7 +121,7 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
     }
 
     if(server_address == "debug") {
-      logstream(LOG_INFO) << "Exiting simulation mode ." << std::endl;
+      logstream(LOG_INFO) << "Exiting dry run." << std::endl;
       return 1; 
     }
 
