@@ -32,7 +32,7 @@ def __do_operation_recursively(operation_name):
     return inner
 
 
-if _version_info == 3:
+if _version_info.major == 3:
     _encode = __do_operation_recursively('encode')
     _decode = __do_operation_recursively('decode')
 else:

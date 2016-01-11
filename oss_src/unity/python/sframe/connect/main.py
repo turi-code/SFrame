@@ -10,7 +10,7 @@ This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
 
-from ..cython import _encode
+from ..cython import _decode, _encode
 from ..cython.cy_unity import UnityGlobalProxy
 from ..cython.cy_ipc import PyCommClient as Client
 from ..cython.cy_ipc import get_public_secret_key_pair
@@ -266,7 +266,7 @@ def _assign_server_and_client(server, client):
     __CLIENT__ = client
     __UNITY_GLOBAL_PROXY__ = UnityGlobalProxy(__CLIENT__)
     server.get_logger().info('GraphLab Server Version: %s' %
-                             UnityGlobalProxy(client).get_version())
+                             _decode(UnityGlobalProxy(client).get_version()))
 
     from ..extensions import _publish
     _publish()

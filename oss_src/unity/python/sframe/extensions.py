@@ -32,6 +32,7 @@ from .cython.cy_model import UnityModel as _UnityModel
 from .toolkits._main import ToolkitError as _ToolkitError
 from .cython.context import debug_trace as cython_context
 
+from sys import version_info as _version_info
 import types as _types
 
 
@@ -380,24 +381,34 @@ def _publish():
         _setattr_wrapper(mod, modpath[-1], newfunc)
 
     # Repeat for classes
-    tkclasslist = unity.list_toolkit_classes()
+    tkclasslist = _decode(unity.list_toolkit_classes())
     for tkclass in tkclasslist:
-        m = unity.describe_toolkit_class(tkclass)
+        m = unity.describe_toolkit_class(_encode(tkclass))
         # of v2 type
         if not ('functions' in m and 'get_properties' in m and 'set_properties' in m and 'uid' in m):
             continue
 
         # create a new class
-        new_class = copy.deepcopy(_ToolkitClass.__dict__)
-        # rewrite the init method to add the toolkit class name so it will
-        # default construct correctly
-
-        new_class['__init__'] = _types.FunctionType(new_class['__init__'].func_code,
-                                     new_class['__init__'].func_globals,
+        if _version_info.major == 3:
+            new_class = _ToolkitClass.__dict__.copy()
+            new_class['__init__'] = _types.FunctionType(new_class['__init__'].__code__,
+                                     new_class['__init__'].__globals__,
                                      name='__init__',
                                      argdefs=(),
                                      closure=())
+        else:
+            new_class = copy.deepcopy(_ToolkitClass.__dict__)
+
+            # rewrite the init method to add the toolkit class name so it will
+            # default construct correctly
+
+            new_class['__init__'] = _types.FunctionType(new_class['__init__'].func_code,
+                                                        new_class['__init__'].func_globals,
+                                                        name='__init__',
+                                                        argdefs=(),
+                                                        closure=())
         new_class['__init__'].tkclass_name = tkclass
+
         newclass = _types.ClassType(tkclass, (), new_class)
         setattr(newclass, '__glmeta__', {'extension_name':tkclass})
         class_uid_to_class[m['uid']] = newclass
