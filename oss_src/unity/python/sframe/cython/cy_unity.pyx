@@ -167,7 +167,7 @@ cdef class UnityGlobalProxy:
         cdef string loc = b""
         with nogil:
             loc = self.thisptr.get_current_cache_file_location()
-        return loc.decode()
+        return loc
 
     cpdef load_toolkit(self, string soname, string module_subpath):
         return self.thisptr.load_toolkit(soname, module_subpath)

@@ -6,6 +6,8 @@ This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
 
+from sys import version_info as _version_info
+
 from ..deps import numpy as _np, HAS_NUMPY as _HAS_NUMPY
 
 def __do_operation_recursively(operation_name):
@@ -25,10 +27,14 @@ def __do_operation_recursively(operation_name):
             return [inner(i) for i in obj]
         elif _HAS_NUMPY and isinstance(obj, _np.ndarray):
             return _np.array([inner(i) for i in obj])
-
         return obj
+
     return inner
 
 
-_encode = __do_operation_recursively('encode')
-_decode = __do_operation_recursively('decode')
+if _version_info == 3:
+    _encode = __do_operation_recursively('encode')
+    _decode = __do_operation_recursively('decode')
+else:
+    _encode = lambda x : x
+    _decode = lambda x : x

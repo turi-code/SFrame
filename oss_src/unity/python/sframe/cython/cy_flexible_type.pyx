@@ -1314,7 +1314,6 @@ cdef flexible_type _ft_translate(object v, int tr_code) except *:
         if type(v) is str:
             ret.set_string(<str>v)
         else:
-            #XXX Python2: str(v)
             ret.set_string(v)
         return ret
     elif tr_code == (FT_UNICODE_TYPE + FT_SAFE):

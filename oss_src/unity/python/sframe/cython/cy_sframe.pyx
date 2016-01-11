@@ -102,7 +102,7 @@ cdef class UnitySFrameProxy:
         return [pytype_from_flex_type_enum(t) for t in self.thisptr.dtype()]
 
     cpdef column_names(self):
-        return [i.decode() for i in self.thisptr.column_names()]
+        return [i for i in self.thisptr.column_names()]
 
     cpdef head(self, size_t n):
         cdef unity_sframe_base_ptr proxy

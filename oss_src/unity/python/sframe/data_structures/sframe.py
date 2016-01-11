@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 """
 This module defines the SFrame class which provides the
 ability to create, access and manipulate a remote scalable dataframe object.
@@ -25,6 +27,7 @@ from .. import aggregate
 from .image import Image as _Image
 from ..deps import pandas, HAS_PANDAS, HAS_NUMPY
 from .grouped_sframe import GroupedSFrame
+
 import array
 from prettytable import PrettyTable
 from textwrap import wrap

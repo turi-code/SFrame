@@ -401,7 +401,6 @@ class SGraph(object):
             List of vertex IDs to retrieve. Only vertices in this list will be
             returned. Also accepts a single vertex id.
 
-        XXXXX: pandas.DataFrame
         fields : dict | pandas.DataFrame
             Dictionary specifying equality constraint on field values. For
             example ``{'gender': 'M'}``, returns only vertices whose 'gender'
