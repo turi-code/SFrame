@@ -12,8 +12,7 @@ import logging.config
 import time as _time
 import tempfile as _tempfile
 import os as _os
-from Queue import Queue as queue
-from queue_channel import QueueHandler, MutableQueueListener
+from .queue_channel import QueueHandler, MutableQueueListener
 
 import urllib as _urllib
 import os as _os
@@ -21,7 +20,6 @@ import re as _re
 from zipfile import ZipFile as _ZipFile
 import bz2 as _bz2
 import tarfile as _tarfile
-import ConfigParser as _ConfigParser
 import itertools as _itertools
 import uuid as _uuid
 import datetime as _datetime
@@ -29,11 +27,21 @@ import time as _time
 import logging as _logging
 import sys as _sys
 
+from ..cython import _decode, _encode
+
 def _i_am_a_lambda_worker():
     if _re.match(".*lambda_worker.*", _sys.argv[0]) is not None:
         return True
     return False
 
+try:
+    from queue import Queue as queue
+except ImportError:
+    from Queue import Queue as queue
+try:
+    import configparser as _ConfigParser
+except ImportError:
+    import ConfigParser as _ConfigParser
 
 __LOGGER__ = _logging.getLogger(__name__)
 # overuse the same logger so we have one logging config
@@ -48,10 +56,13 @@ logging.config.dictConfig({
     'disable_existing_loggers': False,
     'formatters': {
         'standard': {
-            'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+            # XXX: temp!
+            'format': '%(asctime)s [%(levelname)s] %(name)s, %(lineno)s: %(message)s'
         },
         'brief': {
-            'format': '[%(levelname)s] %(message)s'
+            # XXX: temp!
+            'format': '%(asctime)s [%(levelname)s] %(name)s, %(lineno)s: %(message)s'
+            #'format': '[%(levelname)s] %(message)s'
         }
     },
     'handlers': {
@@ -266,26 +277,26 @@ def _download_dataset(url_str, extract=True, force=False, output_dir="."):
     fname = output_dir + "/" + url_str.split("/")[-1]
     #download the file from the web
     if not _os.path.isfile(fname) or force:
-        print "Downloading file from: ", url_str
+        print("Downloading file from:", url_str)
         _urllib.urlretrieve(url_str, fname)
         if extract and fname[-3:] == "zip":
-            print "Decompressing zip archive", fname
+            print("Decompressing zip archive", fname)
             _ZipFile(fname).extractall(output_dir)
         elif extract and fname[-6:] == ".tar.gz":
-            print "Decompressing tar.gz archive", fname
+            print("Decompressing tar.gz archive", fname)
             _tarfile.TarFile(fname).extractall(output_dir)
         elif extract and fname[-7:] == ".tar.bz2":
-            print "Decompressing tar.bz2 archive", fname
+            print("Decompressing tar.bz2 archive", fname)
             _tarfile.TarFile(fname).extractall(output_dir)
         elif extract and fname[-3:] == "bz2":
-            print "Decompressing bz2 archive: ", fname
+            print("Decompressing bz2 archive:", fname)
             outfile = open(fname.split(".bz2")[0], "w")
-            print "Output file: ", outfile
+            print("Output file:", outfile)
             for line in _bz2.BZ2File(fname, "r"):
                 outfile.write(line)
             outfile.close()
     else:
-        print "File is already downloaded."
+        print("File is already downloaded.")
 
 def is_directory_archive(path):
     """
@@ -509,7 +520,7 @@ def set_runtime_config(name, value):
     """
     from ..connect import main as _glconnect
     unity = _glconnect.get_unity()
-    ret = unity.set_global(name, value)
+    ret = _decode(unity.set_global(_encode(name), _encode(value)))
     if ret != "":
         raise RuntimeError(ret);
 
@@ -559,7 +570,7 @@ def crossproduct(d):
     from .. import connect as _mt
     _mt._get_metric_tracker().track('util.crossproduct')
     from .. import SArray
-    d = [zip(d.keys(), x) for x in _itertools.product(*d.values())]
+    d = [list(zip(list(d.keys()), x)) for x in _itertools.product(*list(d.values()))]
     sa = [{k:v for (k,v) in x} for x in d]
     return SArray(sa).unpack(column_name_prefix='')
 
@@ -570,7 +581,7 @@ def get_graphlab_object_type(url):
     Create object type: 'model', 'graph', 'sframe', or 'sarray'
     '''
     from ..connect import main as _glconnect
-    ret = _glconnect.get_unity().get_graphlab_object_type(_make_internal_url(url))
+    ret = _decode(_glconnect.get_unity().get_graphlab_object_type(_encode(_make_internal_url(url))))
 
     # to be consistent, we use sgraph instead of graph here
     if ret == 'graph':
@@ -653,9 +664,9 @@ def _assert_sframe_equal(sf1,
 
     names_to_check = None
     if check_column_names:
-      names_to_check = zip(sorted_s1_names, sorted_s2_names)
+      names_to_check = list(zip(sorted_s1_names, sorted_s2_names))
     else:
-      names_to_check = zip(s1_names, s2_names)
+      names_to_check = list(zip(s1_names, s2_names))
     for i in names_to_check:
         if sf1[i[0]].dtype() != sf2[i[1]].dtype():
           raise AssertionError("Columns " + str(i) + " types mismatched.")
@@ -672,7 +683,7 @@ def _get_temp_file_location():
     '''
     from ..connect import main as _glconnect
     unity = _glconnect.get_unity()
-    cache_dir = _convert_slashes(unity.get_current_cache_file_location())
+    cache_dir = _convert_slashes(_decode(unity.get_current_cache_file_location()))
     if not _os.path.exists(cache_dir):
         _os.makedirs(cache_dir)
     return cache_dir
@@ -754,20 +765,21 @@ def _pickle_to_temp_location_or_memory(obj):
         the directory name. This directory will not have lifespan greater than
         that of unity_server.
         '''
-        import cloudpickle as cloudpickle
+        from . import cloudpickle as cloudpickle
         try:
             # try cloudpickle first and see if that works
             lambda_str = cloudpickle.dumps(obj)
             return lambda_str
         except:
             pass
+
         # nope. that does not work! lets try again with gl pickle
         filename = _make_temp_filename('pickle')
         from .. import _gl_pickle
         pickler = _gl_pickle.GLPickler(filename)
         pickler.dump(obj)
         pickler.close()
-        return filename
+        return filename.encode()
 
 def _raise_error_if_not_of_type(arg, expected_type, arg_name = None):
     """
@@ -797,7 +809,7 @@ def _raise_error_if_not_of_type(arg, expected_type, arg_name = None):
                         ' or '.join([x.__name__ for x in lst_expected_type]))
     err_msg += "(not %s)." % type(arg).__name__
     if not any(map(lambda x: isinstance(arg, x), lst_expected_type)):
-      raise TypeError, err_msg
+      raise TypeError(err_msg)
 
 def _raise_error_if_not_function(arg, arg_name=None):
     """
@@ -820,7 +832,7 @@ def _raise_error_if_not_function(arg, arg_name=None):
     display_name = '%s ' % arg_name if arg_name is not None else ""
     err_msg = "Argument %smust be a function." % display_name
     if not hasattr(arg, '__call__'):
-      raise TypeError, err_msg
+      raise TypeError(err_msg)
 
 def get_log_location():
     from ..connect import main as _glconnect
@@ -835,3 +847,7 @@ def get_client_log_location():
 
 def get_server_log_location():
     return get_log_location()
+
+def _is_non_string_iterable(obj):
+    # In Python 3, str implements '__iter__'.
+    return (hasattr(obj, '__iter__') and not isinstance(obj, str))

@@ -9,9 +9,9 @@ of the BSD license. See the LICENSE file for details.
 import cython
 from libcpp.string cimport string
 from libcpp.pair cimport pair
-cimport cy_graph
-cimport cy_sframe
-cimport cy_sarray
+from . cimport cy_graph
+from . cimport cy_sframe
+from . cimport cy_sarray
 from .cy_graph cimport UnityGraphProxy
 from .cy_model cimport create_model_from_proxy
 from .cy_model cimport UnityModel
@@ -24,7 +24,6 @@ from .cy_flexible_type cimport pyobject_from_flexible_type
 
 from .cy_dataframe cimport gl_dataframe
 from .cy_dataframe cimport is_pandas_dataframe
-from .cy_dataframe cimport gl_dataframe_from_pd
 from .cy_dataframe cimport pd_from_gl_dataframe
 
 from cython.operator cimport dereference as deref
@@ -123,8 +122,6 @@ cdef variant_type from_value(object v) except *:
         variant_set_graph(ret, (<UnityGraphProxy?>(v.__proxy__))._base_ptr)
     elif str(type(v)) == "<class 'sframe.data_structures.sgraph.SGraph'>":
         variant_set_graph(ret, (<UnityGraphProxy?>(v.__proxy__))._base_ptr)
-    elif is_pandas_dataframe(v):
-        variant_set_dataframe(ret, gl_dataframe_from_pd(v))
     elif isinstance(v, UnityModel):
         variant_set_model(ret, (<UnityModel?>v)._base_ptr)
     elif hasattr(v, '_tkclass') and isinstance(v._tkclass, UnityModel):

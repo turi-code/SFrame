@@ -1,4 +1,4 @@
-#cython: language_level=2, c_string_encoding=utf8, boundscheck=False, wraparound=False
+#cython: boundscheck=False, wraparound=False
 
 from cy_flexible_type cimport flexible_type, flex_type_enum, UNDEFINED, flex_int
 from cy_flexible_type cimport flexible_type_from_pyobject
@@ -6,7 +6,7 @@ from cy_flexible_type cimport process_common_typed_list
 from cy_flexible_type cimport pyobject_from_flexible_type
 from cy_callback cimport register_exception
 from .._gl_pickle import GLUnpickler
-import cPickle as py_pickle
+
 from copy import deepcopy
 from libcpp.string cimport string
 from libcpp.vector cimport vector
@@ -17,6 +17,11 @@ import sys
 cimport cython
 
 from random import seed as set_random_seed
+
+if sys.version_info.major == 2:
+   import cPickle as py_pickle
+elif sys.version_info.major == 3:
+   import pickle as py_pickle
 
 cdef extern from "<util/cityhash_gl.hpp>" namespace "graphlab":
     size_t hash64(const string&)
@@ -103,9 +108,9 @@ cdef class lambda_evaluator(object):
     cdef list output_buffer
     cdef list keys
     cdef dict arg_dict_base 
-    cdef str lambda_string
+    cdef bytes lambda_string
 
-    def __init__(self, str lambda_string):
+    def __init__(self, bytes lambda_string):
 
         self.lambda_string = lambda_string
         self.keys = None
@@ -119,7 +124,7 @@ cdef class lambda_evaluator(object):
             is_directory = False
 
         if is_directory:
-            unpickler = GLUnpickler(self.lambda_string)
+            unpickler = GLUnpickler(self.lambda_string.decode())
             self.lambda_function = unpickler.load()
         else:
             self.lambda_function = py_pickle.loads(self.lambda_string)
@@ -233,11 +238,11 @@ cdef class lambda_evaluator(object):
         for j, k in enumerate(mut_keys):
 
             try:
-                src_val = ret_dict[k]
+                src_val = ret_dict[k.decode()]
                 src_key_count += 1
                 
             except KeyError:                
-                src_val = ref_dict[k]
+                src_val = ref_dict[k.decode()]
                  
             output_values[j] = flexible_type_from_pyobject(src_val)
 
@@ -292,14 +297,14 @@ cdef class lambda_evaluator(object):
 
             # Set the edge update object. 
             for j in range(n_edge_keys):
-                edge_object[edge_keys[j]] = pyobject_from_flexible_type(lcg.all_edge_data[0][i][j]);
+                edge_object[edge_keys[j].decode()] = pyobject_from_flexible_type(lcg.all_edge_data[0][i][j]);
                 
             edge_object_param = edge_object.copy()
                 
             # Set the vertex data
             for j in range(n_vertex_keys):
-                source_object[vertex_keys[j]] = pyobject_from_flexible_type(lcg.source_partition[0][srcid][j])
-                target_object[vertex_keys[j]] = pyobject_from_flexible_type(lcg.target_partition[0][dstid][j])
+                source_object[vertex_keys[j].decode()] = pyobject_from_flexible_type(lcg.source_partition[0][srcid][j])
+                target_object[vertex_keys[j].decode()] = pyobject_from_flexible_type(lcg.target_partition[0][dstid][j])
 
             source_object_param = source_object.copy()
             target_object_param = target_object.copy()
@@ -367,11 +372,10 @@ eval_functions.set_random_seed = _set_random_seed
 # Initialization function.
 
 cdef size_t _init_lambda(const string& _lambda_string):
-
     global _lambda_id_to_evaluator
     global _lambda_function_string_to_id
-    
-    cdef str lambda_string = _lambda_string
+
+    cdef string lambda_string = _lambda_string
     cdef object lmfunc_id
 
     try:

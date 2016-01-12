@@ -11,6 +11,7 @@ This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
 
+from ..cython import _encode
 from ..cython.cy_ipc import PyCommClient as Client
 from ..cython.cy_ipc import get_public_secret_key_pair
 from ..util.config import DEFAULT_CONFIG as default_local_conf
@@ -185,6 +186,7 @@ class LocalServer(GraphLabServer):
         max_retry = 5
         retry = 0
         server_alive = True
+        c = None
         while retry < max_retry:
             retry += 1
             # Make sure the server process is still alive
@@ -194,11 +196,12 @@ class LocalServer(GraphLabServer):
             # OK, server is alive, try create a client and connect
             if (server_alive):
                 try:
-                    c = Client([], self.server_addr, num_tolerable_ping_failures,
-                               public_key=client_public_key, secret_key=client_secret_key,
-                               server_public_key=self.public_key)
+                    c = Client([], self.server_addr.encode(), num_tolerable_ping_failures,
+                               public_key=client_public_key.encode(),
+                               secret_key=client_secret_key.encode(),
+                               server_public_key=self.public_key.encode())
                     if self.auth_token:
-                        c.add_auth_method_token(self.auth_token)
+                        c.add_auth_method_token(_encode(self.auth_token))
                     c.set_server_alive_watch_pid(self.proc.pid)
                     c.start()
                     # everything works, break out of the retry loop
@@ -207,7 +210,8 @@ class LocalServer(GraphLabServer):
                     self.logger.error('Try connecting to server. Error: %s. Retry = %d' % (str(e), retry))
                     time.sleep(0.5)
                 finally:
-                    c.stop()
+                    if c:
+                        c.stop()
             # Server process terminated, raise exception and get the return code
             else:
                 retcode = self.proc.returncode
@@ -231,7 +235,7 @@ class LocalServer(GraphLabServer):
     def stop(self):
         num_polls_before_kill = 20
         if (self.proc):
-            self.proc.communicate("\n")
+            self.proc.communicate(b"\n")
             self.wait_thread.join()
             # Wait a couple of seconds for the process to die
             died = False
@@ -299,11 +303,11 @@ class RemoteServer(GraphLabServer):
         if self.public_key != '':
             (client_public_key, client_secret_key) = get_public_secret_key_pair()
         try:
-            c = Client([], self.server_addr, num_tolerable_ping_failures,
-                       public_key=client_public_key, secret_key=client_secret_key,
-                       server_public_key=self.public_key)
+            c = Client([], self.server_addr.encode(), num_tolerable_ping_failures,
+                       public_key=client_public_key.encode(), secret_key=client_secret_key.encode(),
+                       server_public_key=self.public_key.encode())
             if self.auth_token:
-                c.add_auth_method_token(self.auth_token)
+                c.add_auth_method_token(_encode(self.auth_token))
             c.start()
         finally:
           c.stop()

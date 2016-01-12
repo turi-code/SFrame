@@ -12,7 +12,7 @@ from distutils.util import get_platform as _get_platform
 import ctypes
 import glob as _glob
 import subprocess as _subprocess
-import _scripts._pylambda_worker as _pylambda_worker
+from ._scripts import _pylambda_worker
 from copy import copy
 
 def make_unity_server_env():
@@ -114,7 +114,7 @@ def set_windows_dll_path():
         kernel32.SetDllDirectoryW.errcheck = errcheck_bool
         kernel32.SetDllDirectoryW.argtypes = (wintypes.LPCWSTR,)
         kernel32.SetDllDirectoryW(lib_path)
-    except Exception, e:
+    except Exception as e:
         logging.getLogger(__name__).warning(
             "Error setting DLL load orders: %s (things should still work)." % str(e))
 
@@ -127,7 +127,7 @@ def test_pylambda_worker():
     in case there is an error.
     """
 
-    print "\nLaunch pylambda_worker process with simulated unity_server environment."
+    print("\nLaunch pylambda_worker process with simulated unity_server environment.")
 
     import subprocess
 
@@ -172,8 +172,8 @@ def dump_directory_structure():
         else:
             return n
 
-    print "\n".join( ("  %s: %s" % (strip_name(name), stats))
-                     for name, stats in sorted(visited_files))
+    print("\n".join( ("  %s: %s" % (strip_name(name), stats))
+                     for name, stats in sorted(visited_files)))
 
 def get_libpython_path():
     """
@@ -235,9 +235,9 @@ def get_libjvm_path():
         # directory that libjvm.so resides (the path_suffix will not be used)
         # Then, check GRAPHLAB_JAVA_HOME, which will override JAVA_HOME.
         potential_paths = []
-        if os.environ.has_key('JAVA_HOME'):
+        if 'JAVA_HOME' in os.environ:
             path_prefixes.insert(0, os.environ['JAVA_HOME'])
-        if os.environ.has_key('GRAPHLAB_JAVA_HOME'):
+        if 'GRAPHLAB_JAVA_HOME' in os.environ:
             path_prefixes.insert(0, os.environ['GRAPHLAB_JAVA_HOME'])
 
         # Construct the full paths to search
@@ -245,7 +245,7 @@ def get_libjvm_path():
             for j in path_prefixes:
                 potential_paths.append(j + i)
 
-        if os.environ.has_key('GRAPHLAB_LIBJVM_DIRECTORY'):
+        if 'GRAPHLAB_LIBJVM_DIRECTORY' in os.environ:
             potential_paths.insert(0, os.environ['GRAPHLAB_LIBJVM_DIRECTORY'])
         for path in potential_paths:
             if sys.platform == 'win32':

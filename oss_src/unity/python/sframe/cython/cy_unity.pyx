@@ -19,9 +19,9 @@ from .cy_flexible_type cimport pyobject_from_flexible_type
 from .cy_flexible_type cimport flexible_type_from_pyobject
 from .cy_flexible_type cimport pydict_from_gl_options_map
 
-cimport cy_graph
-cimport cy_sarray
-cimport cy_sframe
+from . cimport cy_graph
+from . cimport cy_sarray
+from . cimport cy_sframe
 
 from .cy_sarray cimport UnitySArrayProxy
 from .cy_model cimport UnityModel, create_model_from_proxy
@@ -164,7 +164,7 @@ cdef class UnityGlobalProxy:
         return cy_sarray.create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
     cpdef get_current_cache_file_location(self):
-        cdef string loc = ""
+        cdef string loc = b""
         with nogil:
             loc = self.thisptr.get_current_cache_file_location()
         return loc

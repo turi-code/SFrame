@@ -11,6 +11,7 @@ of the BSD license. See the LICENSE file for details.
 '''
 from .. import connect as _mt
 from ..connect import main as glconnect
+from ..cython import _decode, _encode
 from ..cython.cy_sketch import UnitySketchProxy
 from ..cython.context import debug_trace as cython_context
 from .sarray import SArray
@@ -212,7 +213,7 @@ class Sketch(object):
           else:
               frequent_strkeys[strkey] = frequent[key]
 
-      sorted_freq = sorted(frequent_strkeys.iteritems(), key=operator.itemgetter(1), reverse=True)
+      sorted_freq = sorted(frequent_strkeys.items(), key=operator.itemgetter(1), reverse=True)
       if len(sorted_freq) == 0:
           s += " -- All elements appear with less than 0.01% frequency -- \n"
       else:
@@ -432,7 +433,7 @@ class Sketch(object):
         _mt._get_metric_tracker().track('sketch.frequent_items')
 
         with cython_context():
-            return self.__proxy__.frequent_items()
+            return _decode(self.__proxy__.frequent_items())
 
     def quantile(self, quantile_val):
         """
@@ -462,7 +463,7 @@ class Sketch(object):
         """
 
         with cython_context():
-            return self.__proxy__.get_quantile(quantile_val)
+            return _decode(self.__proxy__.get_quantile(quantile_val))
 
     def frequency_count(self, element):
         """
@@ -492,7 +493,7 @@ class Sketch(object):
 
     def sketch_ready(self):
         """
-        Returns true if the sketch has been executed on all the data.
+        Returns True if the sketch has been executed on all the data.
         If the sketch is created with background == False (default), this will
         always return True. Otherwise, this will return False until the sketch
         is ready.
@@ -727,7 +728,7 @@ class Sketch(object):
         if keys == None:
             keys = []
         else:
-            if not hasattr(keys, "__iter__"):
+            if not isinstance(keys, list):
                 single_val = True
                 keys = [keys]
             value_types = set([type(i) for i in keys])
@@ -736,7 +737,7 @@ class Sketch(object):
 
         _mt._get_metric_tracker().track('sketch.element_sub_sketch')
         with cython_context():
-            ret_sketches = self.__proxy__.element_sub_sketch(keys)
+            ret_sketches = _decode(self.__proxy__.element_sub_sketch(keys))
             ret = {}
 
             # check return key matches input key

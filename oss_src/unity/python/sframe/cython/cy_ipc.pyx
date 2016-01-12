@@ -20,10 +20,10 @@ cdef class PyCommClient:
 
     def __cinit__(self, vector[string] zkhosts, string name, unsigned int max_init_ping_failures=3,
                         public_key="", secret_key="", server_public_key="", ops_interruptible=True):
-        self.thisptr = new comm_client(zkhosts, name, max_init_ping_failures, "", "", public_key,
+        self.thisptr = new comm_client(zkhosts, name, max_init_ping_failures, b"", b"", public_key,
                                                 secret_key, server_public_key, ops_interruptible)
         assert (self.thisptr != NULL), "Fail to create comm client with zkhosts: %s, and host %s" % (str(zkhosts, name))
-        self.thisptr.add_status_watch("PROGRESS", print_status)
+        self.thisptr.add_status_watch(b"PROGRESS", print_status)
 
     def __dealloc__(self):
         pass
@@ -33,9 +33,9 @@ cdef class PyCommClient:
 
     cpdef set_log_progress(self, bint is_on):
         if (is_on):
-            self.thisptr.add_status_watch("PROGRESS", print_status)
+            self.thisptr.add_status_watch(b"PROGRESS", print_status)
         else:
-            self.thisptr.remove_status_watch("PROGRESS")
+            self.thisptr.remove_status_watch(b"PROGRESS")
 
     cpdef add_auth_method_token(self, string authtoken):
         assert self.thisptr != NULL

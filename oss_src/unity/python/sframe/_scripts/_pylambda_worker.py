@@ -1,4 +1,4 @@
-import gl_lib_load_routines as gllib
+from sframe._scripts import gl_lib_load_routines as gllib      # XXX: installation flavor
 import sys
 import os
 import ctypes
@@ -49,15 +49,14 @@ if __name__ == "__main__":
         _write_log("Logging initialization routines to %s." % _write_out_file_name)
         try:
             _write_out_file = open(_write_out_file_name, "w")
-        except Exception, e:
+        except Exception as e:
             _write_log("Error opening '%s' for write: %s" % (_write_out_file_name, repr(e)))
             _write_out_file = None
 
-    for s in sys.argv:
-        _write_log("Lambda worker args: \n  %s" % ("\n  ".join(sys.argv)))
+    _write_log("Lambda worker args: \n  %s" % ("\n  ".join(sys.argv)))
             
     if dry_run:
-        print "PyLambda script called with no IPC information; entering diagnostic mode."
+        print("PyLambda script called with no IPC information; entering diagnostic mode.")
 
     ############################################################
     # Load the correct pylambda worker library.
@@ -82,18 +81,18 @@ if __name__ == "__main__":
     try:
         pylambda_lib.pylambda_worker_main.argtypes = [c_char_p, c_char_p]
         pylambda_lib.pylambda_worker_main.restype = c_int
-    except Exception, e:
+    except Exception as e:
         _write_log("Error accessing pylambda_worker_main: %s\n" % repr(e), error = True)
         sys.exit(205)
 
     main_dir = gllib.get_main_dir()
-    
+
     if not dry_run:
         # This call only returns after the parent process is done.
-        result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir), c_char_p(sys.argv[1]))
+        result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir.encode()), c_char_p(sys.argv[1].encode()))
     else:
         # This version will print out a bunch of diagnostic information and then exit.
-        result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir), c_char_p("debug"))
+        result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir.encode()), c_char_p(b"debug"))
 
     _write_log("Lambda process exited with code %d." % result)
     sys.exit(0)

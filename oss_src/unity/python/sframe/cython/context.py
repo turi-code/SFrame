@@ -52,4 +52,4 @@ class debug_trace(object):
 
                 # In verbose mode we print the server log
                 if self.show_server_log:
-                    print self._fetch_unity_log()
+                    print(self._fetch_unity_log())

@@ -5,9 +5,13 @@ All rights reserved.
 This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
-from .. import SGraph, Edge 
+from .. import SGraph, Edge
 import unittest
 import time
+
+import sys
+if sys.version_info.major > 2:
+    unittest.TestCase.assertItemsEqual = unittest.TestCase.assertCountEqual
 
 def degree_count_fn(source, edge, target, edge_dir, field):
     if field is None:

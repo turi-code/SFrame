@@ -28,23 +28,23 @@ def get_installation_flavor():
 
 def load_internal_ctypes_library(libnamepattern, info_log_function = None, error_log_function = None):
 
-    def _write_log(s, error = True):
+    def _write_log(s, error = False):
         if error:
             if error_log_function is None:
-                print s
+                print(s)
             else:
                 try:
                     error_log_function(s)
-                except Exception, e:
-                    print "Error setting exception: repr(e)"
-                    print "Error: ", s
+                except Exception as e:
+                    print("Error setting exception: repr(e)")
+                    print("Error: ", s)
         else:
             if info_log_function is not None:
                 try:
                     info_log_function(s)            
-                except Exception, e:
-                    print "Error logging info: %s." % repr(e)
-                    print "Message: ", s
+                except Exception as e:
+                    print("Error logging info: %s." % repr(e))
+                    print("Message: ", s)
     
     ########################################
     # Set up the system path. 
@@ -91,7 +91,7 @@ def load_internal_ctypes_library(libnamepattern, info_log_function = None, error
             kernel32.SetDllDirectoryW.errcheck = errcheck_bool
             kernel32.SetDllDirectoryW.argtypes = (wintypes.LPCWSTR,)
             kernel32.SetDllDirectoryW(lib_path)
-        except Exception, e:
+        except Exception as e:
             _write_log("Error setting DLL load orders: %s (things may still work).\n" % str(e), error = True)
         set_windows_dll_path()
 
@@ -120,7 +120,7 @@ def load_internal_ctypes_library(libnamepattern, info_log_function = None, error
 
     try:
         loaded_lib = PyDLL(libfiles[0], mode=ctypes.RTLD_GLOBAL)
-    except Exception, e:
+    except Exception as e:
         _write_log("Error loading library %s: %s" % (libfiles[0], repr(e)), error = True)
         sys.exit(203)
 

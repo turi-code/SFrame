@@ -75,7 +75,7 @@ class FileUtilTests(unittest.TestCase):
         self.assertFalse(fu.is_s3_path(self.http_path))
 
     def test_expand_full_path(self):
-        if not os.environ.has_key('HOME'):
+        if not 'HOME' in os.environ:
             raise RuntimeError('warning: cannot find $HOME key in environment')
         else:
             home = os.environ['HOME']

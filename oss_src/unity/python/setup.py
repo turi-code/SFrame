@@ -39,9 +39,9 @@ class InstallEngine(install):
             sys.exit(1)
 
         # Check correct version of Python
-        if sys.version_info[:2] < (2, 7) or sys.version_info[0] > 2:
-            msg = ("SFrame currently only supports Python 2.7 and does not support any version of Python 3. " +
-                   "Please install using a supported version. Your current Python version is: %s" % sys.version)
+        if sys.version_info.major == 2 and sys.version_info[:2] < (2, 7):
+            msg = ("SFrame requires at least Python 2.7, please install using a supported version."
+                   + " Your current Python version is: %s" % sys.version)
             sys.stderr.write(msg)
             sys.exit(1)
 
@@ -80,13 +80,13 @@ class InstallEngine(install):
             sys.stderr.write(msg)
             sys.exit(1)
 
-        print ""
-        print ""
-        print ""
-        print "Thank you for downloading and trying SFrame."
-        print ""
-        print ""
-        print ""
+        print ("")
+        print ("")
+        print ("")
+        print ("Thank you for downloading and trying SFrame.")
+        print ("")
+        print ("")
+        print ("")
 
         from distutils import sysconfig
         import stat
@@ -166,7 +166,7 @@ if __name__ == '__main__':
         classifiers=classifiers,
         install_requires=[
             "boto == 2.33.0",
-            "mixpanel-py == 3.1.1",
+            "mixpanel == 4.2.0",
             "decorator == 3.4.0",
             "tornado == 4.1",
             "prettytable == 0.7.2",
