@@ -587,7 +587,7 @@ class sarray : public swriter_base<swriter_impl::output_iterator<T> > {
     delete writer;
     writing = false;
 
-    if (size() > 0) keep_array_file_ref();
+    keep_array_file_ref();
   }
 
   /**
