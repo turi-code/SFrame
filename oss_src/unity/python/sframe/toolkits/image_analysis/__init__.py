@@ -8,4 +8,4 @@ of the BSD license. See the LICENSE file for details.
 
 __all__ = ['image_analysis']
 
-import image_analysis
+from . import image_analysis

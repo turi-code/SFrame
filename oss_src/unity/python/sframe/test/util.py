@@ -5,10 +5,7 @@ All rights reserved.
 This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
-from string import lower
-import os
 import random
-import time
 import tempfile
 import shutil
 import math
@@ -43,7 +40,7 @@ class SFrameComparer():
                 if type(v1) == dict:
                     assert len(v1) == len(v2)
                     for key in v1:
-                        assert v1.has_key(key)
+                        assert key in v1
                         assert v1[key] == v2[key]
 
                 elif (hasattr(v1, "__iter__")):
@@ -68,10 +65,10 @@ class SubstringMatcher():
     Code adapted from http://www.michaelpollmeier.com/python-mock-how-to-assert-a-substring-of-logger-output/
     """
     def __init__(self, containing):
-        self.containing = lower(containing)
+        self.containing = containing.lower()
 
     def __eq__(self, other):
-        return lower(other).find(self.containing) > -1
+        return other.lower().find(self.containing) > -1
 
     def __unicode__(self):
         return 'a string containing "%s"' % self.containing

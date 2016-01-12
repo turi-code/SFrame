@@ -13,9 +13,9 @@ import cython
 import types
 from libcpp.string cimport string
 from libcpp.pair cimport pair
-cimport cy_graph
-cimport cy_sframe
-cimport cy_sarray
+from . cimport cy_graph
+from . cimport cy_sframe
+from . cimport cy_sarray
 from .cy_graph cimport UnityGraphProxy
 from .cy_model cimport create_model_from_proxy
 from .cy_model cimport UnityModel
@@ -29,7 +29,6 @@ from .cy_flexible_type cimport check_list_to_vector_translation
 
 from .cy_dataframe cimport gl_dataframe
 from .cy_dataframe cimport is_pandas_dataframe
-from .cy_dataframe cimport gl_dataframe_from_pd
 from .cy_dataframe cimport pd_from_gl_dataframe
 
 from cython.operator cimport dereference as deref

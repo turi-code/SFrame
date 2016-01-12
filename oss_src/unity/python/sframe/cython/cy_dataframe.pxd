@@ -27,12 +27,6 @@ ctypedef dataframe_t gl_dataframe
 
 cdef bint is_pandas_dataframe(object v)
 
-#/**************************************************************************/
-#/*                                                                        */
-#/*                Convert pandas dataframe to gl_dataframe                */
-#/*                                                                        */
-#/**************************************************************************/
-cdef gl_dataframe gl_dataframe_from_pd(object) except *
 cdef gl_dataframe gl_dataframe_from_dict_of_arrays(dict) except *
 
 #/**************************************************************************/

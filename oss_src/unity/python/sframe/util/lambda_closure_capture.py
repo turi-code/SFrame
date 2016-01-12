@@ -201,7 +201,10 @@ class lambda_closure_visitor(ast.NodeVisitor):
     def visit_arguments(self, node):
         if (self.state != self.FUNCTION):
             raise NotImplementedError("Unexpected function")
-        self.input_arg_names = [arg.id for arg in node.args]
+        if sys.version_info.major == 2:
+            self.input_arg_names = [arg.id for arg in node.args]
+        else:
+            self.input_arg_names = [arg.arg for arg in node.args]
 
     def visit_Name(self, node):
             raise NotImplementedError("Unexpected name")
@@ -255,11 +258,18 @@ def _isalambda(v):
 
 def translate(fn):
     visitor = lambda_closure_visitor()
-    visitor.caller_globals = fn.func_globals.copy()
+    if sys.version_info.major == 2:
+        visitor.caller_globals = fn.func_globals.copy()
+        func_closure = fn.func_closure
+        co_freevars = fn.func_code.co_freevars
+    else:
+        visitor.caller_globals = fn.__globals__.copy()
+        func_closure = fn.__closure__
+        co_freevars = fn.__code__.co_freevars
     # now. annoyingly enough certain captures are not here. We need to 
     # look in func_closures for it
-    if fn.func_closure:
-        closure = dict(zip(fn.func_code.co_freevars, (c.cell_contents for c in fn.func_closure)))
+    if func_closure:
+        closure = dict(zip(co_freevars, (c.cell_contents for c in func_closure)))
         # inject closure into "caller_globals"
         for i in closure:
             visitor.caller_globals[i] = closure[i]

@@ -15,7 +15,6 @@ fi
 BUILD_TYPE=$1
 SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 cd ${SCRIPT_DIR}/..
-oss_local_scripts/install_python_toolchain.sh
 source oss_local_scripts/python_env.sh $BUILD_TYPE
 
 # Make nosetest prints unity server log on exception

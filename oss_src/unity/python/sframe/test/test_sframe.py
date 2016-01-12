@@ -11,7 +11,9 @@ from ..data_structures.sarray import SArray
 from ..data_structures.image import Image
 from ..connect import main as glconnect
 from ..util import _assert_sframe_equal
-from ..import _launch, load_sframe, aggregate
+from .. import _launch, load_sframe, aggregate
+from . import util
+
 import pandas as pd
 from ..util.timezone import GMT
 from pandas.util.testing import assert_frame_equal
@@ -21,7 +23,6 @@ import tempfile
 import os
 import csv
 import gzip
-import util
 import string
 import time
 import numpy as np
@@ -55,7 +56,7 @@ class SFrameTest(unittest.TestCase):
         self.int_data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         self.float_data = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]
         self.string_data = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
-        self.a_to_z = [str(unichr(97 + i)) for i in range(0, 26)]
+        self.a_to_z = [str(chr(97 + i)) for i in range(0, 26)]
         self.dataframe = pd.DataFrame({'int_data': self.int_data, 'float_data': self.float_data, 'string_data': self.string_data})
         self.url = "http://s3-us-west-2.amazonaws.com/testdatasets/a_to_z.txt.gz"
 
@@ -68,6 +69,8 @@ class SFrameTest(unittest.TestCase):
         self.employees_sf = SFrame()
         self.employees_sf.add_column(SArray(['Rafferty','Jones','Heisenberg','Robinson','Smith','John']), 'last_name')
         self.employees_sf.add_column(SArray([31,33,33,34,34,None]), 'dep_id')
+
+        # XXX: below are only used by one test!
         self.departments_sf = SFrame()
         self.departments_sf.add_column(SArray([31,33,34,35]), 'dep_id')
         self.departments_sf.add_column(SArray(['Sales','Engineering','Clerical','Marketing']), 'dep_name')
@@ -85,7 +88,7 @@ class SFrameTest(unittest.TestCase):
                 if type(v1) == dict:
                     self.assertEquals(len(v1), len(v2))
                     for key in v1:
-                        self.assertTrue(v1.has_key(key))
+                        self.assertTrue(key in v1)
                         self.assertEqual(v1[key], v2[key])
 
                 elif (hasattr(v1, "__iter__")):
@@ -177,13 +180,12 @@ class SFrameTest(unittest.TestCase):
         sf = SFrame(data=original_p)
         self.__test_equal(sf, effective_p)
 
-        original_p = pd.DataFrame({'a':['a',None,'b',float('nan')]})
-        effective_p = pd.DataFrame({'a':['a',None,'b',None]})
+        original_p = pd.DataFrame({'a':['a',None,'b']})
         sf = SFrame(data=original_p)
-        self.__test_equal(sf, effective_p)
+        self.__test_equal(sf, original_p)
 
     def test_auto_parse_csv(self):
-        with tempfile.NamedTemporaryFile(delete=False) as csvfile:
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as csvfile:
             df = pd.DataFrame({'float_data': self.float_data,
                                'int_data': self.int_data,
                                'string_data': self.a_to_z[:len(self.int_data)]})
@@ -197,7 +199,7 @@ class SFrameTest(unittest.TestCase):
 
 
     def test_parse_csv(self):
-        with tempfile.NamedTemporaryFile(delete=False) as csvfile:
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as csvfile:
             self.dataframe.to_csv(csvfile, index=False)
             csvfile.close()
 
@@ -677,7 +679,7 @@ class SFrameTest(unittest.TestCase):
         self.__assert_sarray_equal(sf['int_data'] + sf['float_data'], sa)
 
     def test_transform_with_recursion(self):
-        sf = SFrame(data={'a':[0, 1,2,3,4],'b':['0', '1','2','3','4']})
+        sf = SFrame(data={'a':[0,1,2,3,4], 'b':['0','1','2','3','4']})
         # this should be the equivalent to sf.apply(lambda x:x since a is
         # equivalent to range(4)
         sa = sf.apply(lambda x: sf[x['a']])
@@ -703,7 +705,7 @@ class SFrameTest(unittest.TestCase):
         self.assertRaises(KeyError, lambda: sf.apply(lambda x: x['some random key']))  # cannot find the key
         self.assertRaises(TypeError, lambda: sf.apply(lambda x: sum(x.values())))  # lambda cannot sum int and str
         self.assertRaises(ZeroDivisionError, lambda: sf.apply(lambda x: x['int_data'] / 0))  # divide by 0 error
-        self.assertRaises(IndexError, lambda: sf.apply(lambda x: x.values()[10]))  # index out of bound error
+        self.assertRaises(IndexError, lambda: sf.apply(lambda x: list(x.values())[10]))  # index out of bound error
 
     def test_empty_transform(self):
         sf = SFrame()
@@ -1350,7 +1352,7 @@ class SFrameTest(unittest.TestCase):
         sf['d'] = [1.0,2.0,1.0,2.0,      3.0,3.0,1.0,    4.0,   None, 2.0,  None]
         sf['e'] = [{'x': 1}] * len(sf['a'])
 
-        print sf['b'].dtype()
+        print(sf['b'].dtype())
 
         result = sf.groupby('a', aggregate.CONCAT('b'))
         expected_result = SFrame({
@@ -1423,12 +1425,13 @@ class SFrameTest(unittest.TestCase):
     def test_unique(self):
         sf = SFrame({'a':[1,1,2,2,3,3,4,4,5,5],'b':[1,2,3,4,5,6,7,8,9,10]})
         self.assertEqual(len(sf.unique()), 10)
+
         vals = [1,1,2,2,3,3,4,4, None, None]
         sf = SFrame({'a':vals,'b':vals})
         res = sf.unique()
         self.assertEqual(len(res), 5)
-        self.assertEqual(sorted(list(res['a'])), sorted([1,2,3,4,None]))
-        self.assertEqual(sorted(list(res['b'])), sorted([1,2,3,4,None]))
+        self.assertEqual(set(res['a']), set([1,2,3,4,None]))
+        self.assertEqual(set(res['b']), set([1,2,3,4,None]))
 
     def test_append_empty(self):
         sf_with_data = SFrame(data=self.dataframe)
@@ -1481,8 +1484,11 @@ class SFrameTest(unittest.TestCase):
         def _test_print():
             sf.__repr__()
             sf._repr_html_()
-            import StringIO
-            output = StringIO.StringIO()
+            try:
+                from StringIO import StringIO
+            except ImportError:
+                from io import StringIO
+            output = StringIO()
             sf.print_rows(output_file=output)
 
         n = 20
@@ -1567,7 +1573,7 @@ class SFrameTest(unittest.TestCase):
         beg = time.time()
         res = self.employees_sf.join(self.departments_sf)
         end = time.time()
-        print "Really small join: " + str(end-beg) + " s"
+        print("Really small join: " + str(end-beg) + " s")
 
         self.__assert_join_results_equal(res, inner_expected)
 
@@ -1694,7 +1700,7 @@ class SFrameTest(unittest.TestCase):
         beg = time.time()
         res = pk_gibberish.join(join_with_gibberish, on={'letter':'a_letter','number':'a_number'})
         end = time.time()
-        print "Join took " + str(end-beg) + " seconds"
+        print("Join took " + str(end-beg) + " seconds")
         self.__assert_join_results_equal(res, expected_answer)
 
     def test_convert_dataframe_empty(self):
@@ -1820,6 +1826,7 @@ class SFrameTest(unittest.TestCase):
         res = sf.filter_by([5,6], "id", exclude=True)
         self.__assert_join_results_equal(res, exp_opposite)
 
+    # XXXXXX: should be inner function
     def __test_to_from_dataframe(self, data, type):
         sf = SFrame()
         sf['a'] = data
@@ -2806,16 +2813,16 @@ class SFrameTest(unittest.TestCase):
         sf = SFrame(self.__create_test_df(400000))
 
         sf = sf.add_row_number('id')
-        self.assertEquals(list(sf['id']), range(0,400000))
+        self.assertEquals(list(sf['id']), list(range(0,400000)))
 
         del sf['id']
 
         sf = sf.add_row_number('id', -20000)
-        self.assertEquals(list(sf['id']), range(-20000,380000))
+        self.assertEquals(list(sf['id']), list(range(-20000,380000)))
         del sf['id']
 
         sf = sf.add_row_number('id', 40000)
-        self.assertEquals(list(sf['id']), range(40000,440000))
+        self.assertEquals(list(sf['id']), list(range(40000,440000)))
 
         with self.assertRaises(RuntimeError):
             sf.add_row_number('id')
@@ -2848,7 +2855,7 @@ class SFrameTest(unittest.TestCase):
 
     def test_sframe_to_rdd(self):
         if not HAS_PYSPARK:
-            print "Did not run Pyspark unit tests!"
+            print("Did not run Pyspark unit tests!")
             return
         sc = SparkContext('local')
         # Easiest case: single column of integers
@@ -2864,7 +2871,7 @@ class SFrameTest(unittest.TestCase):
 
     def test_rdd_to_sframe(self):
         if not HAS_PYSPARK:
-            print "Did not run Pyspark unit tests!"
+            print("Did not run Pyspark unit tests!")
             return
 
         sc = SparkContext('local')
@@ -2949,7 +2956,7 @@ class SFrameTest(unittest.TestCase):
         tmp_dir = tempfile.mkdtemp()
         data.save(tmp_dir)
         shutil.rmtree(tmp_dir)
-        print data
+        print(data)
 
     def test_empty_argmax_does_not_fail(self):
         # an empty argmax should not result in a crash

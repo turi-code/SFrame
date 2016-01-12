@@ -222,7 +222,7 @@ package_egg() {
   if [[ $OSTYPE == darwin* ]] || [[ $OSTYPE == msys ]]; then
     dist_type="bdist_wheel"
   fi
-  VERSION_NUMBER=`python -c "import sframe; print sframe.version"`
+  VERSION_NUMBER=`python -c "import sframe; print(sframe.version)"`
   ${PYTHON_EXECUTABLE} setup.py ${dist_type} # This produced an egg/wheel starting with SFrame-${VERSION_NUMBER} under dist/
   
   cd ${WORKSPACE}
@@ -237,6 +237,11 @@ package_egg() {
     EGG_PATH=${NEW_EGG_PATH}
   elif [[ $OSTYPE == msys ]]; then
     EGG_PATH=${WORKSPACE}/${build_type}/oss_src/unity/python/dist/SFrame-${VERSION_NUMBER}-cp27-none-win_amd64.whl
+  elif [[ $OSTYPE == linux-* ]]; then
+    PYTHON_VERSION=`$PYTHON_EXECUTABLE -V 2>&1 | perl -ne 'print m/^Python (\d\.\d)/'`
+    NEW_EGG_PATH=${WORKSPACE}/${build_type}/oss_src/unity/python/dist/SFrame-${VERSION_NUMBER}-py${PYTHON_VERSION}.${archive_file_ext}
+    mv ${EGG_PATH} ${NEW_EGG_PATH}
+    EGG_PATH=${NEW_EGG_PATH}
   fi
 
   # Install the egg and do a sanity check

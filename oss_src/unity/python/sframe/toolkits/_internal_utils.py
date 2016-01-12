@@ -312,7 +312,7 @@ def _raise_error_if_column_exists(dataset, column_name = 'dataset',
                                                 dataset_variable_name,
                                              column_name_error_message_name)
     if column_name not in dataset.column_names():
-      raise ToolkitError, str(err_msg)
+      raise ToolkitError(str(err_msg))
 
 def _check_categorical_option_type(option_name, option_value, possible_values):
     """
@@ -323,7 +323,7 @@ def _check_categorical_option_type(option_name, option_value, possible_values):
 
     err_msg += ', '.join(map(str, possible_values))
     if option_value not in possible_values:
-        raise ToolkitError, err_msg
+        raise ToolkitError(err_msg)
 
 def _raise_error_if_not_sarray(dataset, variable_name="SFrame"):
     """
@@ -332,7 +332,7 @@ def _raise_error_if_not_sarray(dataset, variable_name="SFrame"):
     """
     err_msg = "Input %s is not an SArray."
     if not isinstance(dataset, _SArray):
-      raise ToolkitError, err_msg % variable_name
+      raise ToolkitError(err_msg % variable_name)
 
 def _raise_error_if_not_sframe(dataset, variable_name="SFrame"):
     """
@@ -343,7 +343,7 @@ def _raise_error_if_not_sframe(dataset, variable_name="SFrame"):
     err_msg += " you may use the to_sframe() function to convert it to an SFrame."
 
     if not isinstance(dataset, _SFrame):
-      raise ToolkitError, err_msg % variable_name
+      raise ToolkitError(err_msg % variable_name)
 
 def _raise_error_if_sframe_empty(dataset, variable_name="SFrame"):
     """
@@ -353,7 +353,7 @@ def _raise_error_if_sframe_empty(dataset, variable_name="SFrame"):
     err_msg += "is required."
 
     if dataset.num_rows() == 0 or dataset.num_cols() == 0:
-        raise ToolkitError, err_msg % variable_name
+        raise ToolkitError(err_msg % variable_name)
 
 def _raise_error_if_not_iterable(dataset, variable_name="SFrame"):
     """
@@ -362,7 +362,7 @@ def _raise_error_if_not_iterable(dataset, variable_name="SFrame"):
     err_msg = "Input %s is not iterable: hasattr(%s, '__iter__') must be true."
 
     if not hasattr(dataset, '__iter__'):
-        raise ToolkitError, err_msg % variable_name
+        raise ToolkitError(err_msg % variable_name)
 
 def _raise_error_evaluation_metric_is_valid(metric, allowed_metrics):
     """
@@ -374,8 +374,8 @@ def _raise_error_evaluation_metric_is_valid(metric, allowed_metrics):
     err_msg += " metrics are (%s)."
 
     if metric not in allowed_metrics:
-      raise ToolkitError, err_msg % (metric,
-                          ', '.join(map(lambda x: "'%s'" % x, allowed_metrics)))
+      raise ToolkitError(err_msg % (metric,
+                          ', '.join(map(lambda x: "'%s'" % x, allowed_metrics))))
 
 def _numeric_param_check_range(variable_name, variable_value, range_bottom, range_top):
     """
@@ -384,4 +384,61 @@ def _numeric_param_check_range(variable_name, variable_value, range_bottom, rang
     err_msg = "%s must be between %i and %i"
 
     if variable_value < range_bottom or variable_value > range_top:
-        raise ToolkitError, err_msg % (variable_name, range_bottom, range_top)
+        raise ToolkitError(err_msg % (variable_name, range_bottom, range_top))
+
+def _validate_row_label(dataset, label=None, default_label='__id'):
+    """
+    Validate a row label column. If the row label is not specified, a column is
+    created with row numbers, named with the string in the `default_label`
+    parameter.
+
+    Parameters
+    ----------
+    dataset : SFrame
+        Input dataset.
+
+    label : str, optional
+        Name of the column containing row labels.
+
+    default_label : str, optional
+        The default column name if `label` is not specified. A column with row
+        numbers is added to the output SFrame in this case.
+
+    Returns
+    -------
+    dataset : SFrame
+        The input dataset, but with an additional row label column, *if* there
+        was no input label.
+
+    label : str
+        The final label column name.
+    """
+    ## If no label is provided, set it to be a default and add a row number to
+    #  dataset. Check that this new name does not conflict with an existing
+    #  name.
+    if not label:
+
+        ## Try a bunch of variations of the default label to find one that's not
+        #  already a column name.
+        label_name_base = default_label
+        label = default_label
+        i = 1
+
+        while label in dataset.column_names():
+            label = label_name_base + '.{}'.format(i)
+            i += 1
+
+        dataset = dataset.add_row_number(column_name=label)
+
+    ## Validate the label name and types.
+    if not isinstance(label, str):
+        raise TypeError("The row label column name '{}' must be a string.".format(label))
+
+    if not label in dataset.column_names():
+        raise ToolkitError("Row label column '{}' not found in the dataset.".format(label))
+
+    if not dataset[label].dtype() in (str, int):
+        raise TypeError("Row labels must be integers or strings.")
+
+    ## Return the modified dataset and label
+    return dataset, label

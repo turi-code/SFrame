@@ -10,6 +10,8 @@ This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
 
+from .util import _is_non_string_iterable
+
 def SUM(src_column):
   """
   Builtin sum aggregator for groupby.
@@ -248,7 +250,7 @@ def QUANTILE(src_column, *args):
     else:
         quantiles = list(args)
 
-    if not hasattr(quantiles, '__iter__'):
+    if not _is_non_string_iterable(quantiles):
         quantiles = [quantiles]
     query = ",".join([str(i) for i in quantiles])
     return ("__builtin__quantile__[" + query + "]", [src_column])

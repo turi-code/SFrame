@@ -28,7 +28,7 @@ try:
                       % (pandas.__version__, PANDAS_MIN_VERSION) )
 except:
     HAS_PANDAS = False
-    import pandas_mock as pandas
+    from . import pandas_mock as pandas
 
 
 HAS_NUMPY = True
@@ -43,7 +43,7 @@ try:
                       % (numpy.__version__, NUMPY_MIN_VERSION) )
 except:
     HAS_NUMPY = False
-    import numpy_mock as numpy
+    from . import numpy_mock as numpy
 
 
 HAS_SKLEARN = True
@@ -63,7 +63,7 @@ try:
                       % (sklearn.__version__, SKLEARN_MIN_VERSION) )
 except:
     HAS_SKLEARN = False
-    import sklearn_mock as sklearn
+    from . import sklearn_mock as sklearn
 
 
 HAS_NLTK = True
@@ -82,4 +82,4 @@ try:
                       % (nltk.__version__, NLTK_MIN_VERSION) )
 except:
     HAS_NLTK = False
-    import nltk_mock as nltk
+    from . import nltk_mock as nltk
