@@ -5,24 +5,49 @@
  * This software may be modified and distributed under the terms
  * of the BSD license. See the LICENSE file for details.
  */
+#include <cppipc/client/comm_client.hpp>
 #include <logger/logger.hpp>
 #include <logger/assertions.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <startup_teardown/startup_teardown.hpp>
-#include "unity_server_options.hpp"
 
-void exported_symbols();
+#include "unity_server.hpp"
 
 namespace graphlab {
-int parse_program_options(int argc, char** argv, unity_server_options& option);
-void start_embeded_server(const unity_server_options& server_options);
-void* get_embeded_client();
-void stop_embeded_server();
+
+// Global embeded server and client object
+static unity_server* SERVER;
+static cppipc::comm_client* CLIENT;
+
+void start_server(const unity_server_options& server_options) {
+  unity_server_initializer server_initializer;
+  SERVER = new unity_server(server_options);
+  SERVER->start(server_initializer);
+
+  auto zmq_ctx = SERVER->get_comm_server()->get_zmq_context();
+  // we are going to leak this pointer 
+  CLIENT = new cppipc::comm_client(SERVER->get_comm_server_address(), zmq_ctx);
+  CLIENT->start();
 }
 
-extern "C" {
+void* get_client() {
+  return (void*)CLIENT;
+}
 
+void stop_server() {
+  logstream(LOG_EMPH) << "Stopping server" << std::endl;
+  if (SERVER) {
+    SERVER->stop();
+    delete SERVER;
+    SERVER = NULL;
+  }
+}
+
+} // end of graphlab
+
+
+extern "C" {
 /**
  * Starts the server in the same process.
  *
@@ -30,7 +55,7 @@ extern "C" {
  * \param server_address the inproc address of the server, could be anything like "inproc://test_server"
  * \param log_file local file for logging
  */
-EXPORT void start_embeded_server(const char* root_path,
+EXPORT void start_server(const char* root_path,
                                  const char* server_address,
                                  const char* log_file) {
 
@@ -55,23 +80,22 @@ EXPORT void start_embeded_server(const char* root_path,
 
   graphlab::configure_global_environment(server_options.root_path);
   graphlab::global_startup::get_instance().perform_startup();
-  graphlab::start_embeded_server(server_options);
+  graphlab::start_server(server_options);
 }
 
 /**
  * Return the comm client associated with the embeded server. Require calling
- * start_embeded_server first.
+ * start_server first.
  */
-EXPORT void* get_embeded_client() {
-  return graphlab::get_embeded_client();
+EXPORT void* get_client() {
+  return graphlab::get_client();
 }
 
 /**
  * Shutdown the server, and cleanup all the resourcese
  */
-EXPORT void stop_embeded_server() {
-  graphlab::stop_embeded_server();
+EXPORT void stop_server() {
+  graphlab::stop_server();
   graphlab::global_teardown::get_instance().perform_teardown();
 }
-
-}
+} // end of extern "C"

@@ -28,6 +28,9 @@ namespace lambda {
    * function on different input types (single value, list, dictionary)
    * in parallel.
    *
+   * \ref set_lambda_worker_binary or must be called first to inform
+   * the location of the lambda worker binaries.
+   *
    * Internally, it manages a worker pool of lambda_workers.
    *
    * Each evaluation call is allocated to a worker, and block until the evaluation
@@ -160,6 +163,16 @@ namespace lambda {
     static std::vector<std::string> lambda_worker_binary_and_args;    
 
   };
+
+
+/**
+ * Set the path to the pylambda_worker binary from environment variables:
+ *   "__GL_PYTHON_EXECUTABLE__" points to the python executable
+ *   "__GL_PYLAMBDA_SCRIPT__" points to the lambda worker driver script
+ *
+ * The binaries are used for evaluate python lambdas parallel in separate processes.
+ */
+void set_pylambda_worker_binary_from_environment_variables();
 
 } // end lambda
 } // end graphlab

@@ -11,7 +11,8 @@
 
 namespace graphlab {
 
-struct unity_server_options {
+class unity_server_options {
+ public:
   std::string server_address;
   std::string control_address;
   std::string publish_address;
@@ -22,14 +23,14 @@ struct unity_server_options {
   bool daemon = false;
   size_t log_rotation_interval = 0;
   size_t log_rotation_truncate = 0;
+
+  /**
+   * Parse server options from commandline input
+   * Return 0 if success, 1 if error, 2 if help.
+   */
+  int parse_command_line(int argc, char** argv);
 };
 
-/**
- * Parse server options from commandline input
- *
- * Return 0 if success, 1 if error, 2 if help.
- */
-int parse_program_options(int argc, char** argv, unity_server_options& option);
 
 } // end of namespace graphlab
 #endif

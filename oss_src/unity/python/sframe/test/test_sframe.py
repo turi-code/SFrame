@@ -483,27 +483,26 @@ class SFrameTest(unittest.TestCase):
         os.unlink(f.name)
 
     def test_creation_from_csv_on_local(self):
-        if (isinstance(glconnect.get_server(), server.LocalServer)):
-            if os.path.exists('./foo.csv'):
-                os.remove('./foo.csv')
-            with open('./foo.csv', 'w') as f:
-                url = f.name
-                basesf = SFrame(self.dataframe)
-                basesf.save(url, format="csv")
-                f.close()
-                sf = SFrame('./foo.csv')
-                self.assertEquals(sf['float_data'].dtype(), int)
-                sf['float_data'] = sf['float_data'].astype(float)
-                self.assertEquals(sf['string_data'].dtype(), int)
-                sf['string_data'] = sf['string_data'].astype(str)
-                self.__test_equal(sf, self.dataframe)
-                sf = SFrame(url)
-                self.assertEquals(sf['float_data'].dtype(), int)
-                sf['float_data'] = sf['float_data'].astype(float)
-                self.assertEquals(sf['string_data'].dtype(), int)
-                sf['string_data'] = sf['string_data'].astype(str)
-                self.__test_equal(sf, self.dataframe)
-                os.remove(url)
+        if os.path.exists('./foo.csv'):
+            os.remove('./foo.csv')
+        with open('./foo.csv', 'w') as f:
+            url = f.name
+            basesf = SFrame(self.dataframe)
+            basesf.save(url, format="csv")
+            f.close()
+            sf = SFrame('./foo.csv')
+            self.assertEquals(sf['float_data'].dtype(), int)
+            sf['float_data'] = sf['float_data'].astype(float)
+            self.assertEquals(sf['string_data'].dtype(), int)
+            sf['string_data'] = sf['string_data'].astype(str)
+            self.__test_equal(sf, self.dataframe)
+            sf = SFrame(url)
+            self.assertEquals(sf['float_data'].dtype(), int)
+            sf['float_data'] = sf['float_data'].astype(float)
+            self.assertEquals(sf['string_data'].dtype(), int)
+            sf['string_data'] = sf['string_data'].astype(str)
+            self.__test_equal(sf, self.dataframe)
+            os.remove(url)
 
     def test_alternate_line_endings(self):
         # test Windows line endings
