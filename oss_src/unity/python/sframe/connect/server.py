@@ -57,7 +57,7 @@ class EmbededServer(GraphLabServer):
     Embeded Server loads unity_server into the same process as shared library.
     """
 
-    # SERVER_LIB = 'libunity_server.so'
+    SERVER_LIB = 'libunity_server.so'
 
     def __init__(self, server_address, unity_log_file):
         """
