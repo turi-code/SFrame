@@ -1,3 +1,3 @@
 include *.txt
-recursive-include sframe *.so *.so.1 *.dylib *.pyd *.dll unity_server pylambda_worker spark_unity.jar *.exe
+recursive-include sframe *.so *.so.1 *.dylib *.pyd *.dll pylambda_worker spark_unity.jar *.exe
 recursive-include *.pyd *.so
