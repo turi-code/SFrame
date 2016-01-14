@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     ############################################################
     # Load the correct pylambda worker library.
-    
+
     pylambda_lib = gllib.load_internal_ctypes_library(
         "libpylambda_worker*",
         info_log_function = _write_log,
@@ -70,18 +70,8 @@ if __name__ == "__main__":
     ############################################################
     # Load in the cython lambda workers.  On import, this will resolve
     # the proper symbols.
-
-    main_dir = gllib.get_main_dir()
-    module_name = os.path.split(main_dir)[1]
-
-    if module_name != "graphlab" and module_name != "sframe":
-        _write_log("Module path not sframe or graphlab.", error = True)
-        sys.exit(200)
     
-    if module_name == "graphlab":
-        import graphlab.cython.cy_pylambda_workers
-    else:
-        import sframe.cython.cy_pylambda_workers
+    gllib.load_gl_module("cython", "cy_pylambda_workers")
 
     ############################################################
     # Call the proper pylambda worker main function.

@@ -16,9 +16,9 @@ def get_main_dir():
 def load_gl_module(subdir, name):
 
     if subdir:
-        path = join(gllib.get_main_dir(), subdir)
+        path = join(get_main_dir(), subdir)
     else:
-        path = gllib.get_main_dir()
+        path = get_main_dir()
 
     fp, pathname, description = imp.find_module(name, [path])
     
