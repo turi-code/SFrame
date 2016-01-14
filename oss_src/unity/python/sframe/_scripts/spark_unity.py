@@ -5,8 +5,11 @@ if __name__ == "__main__":
 
     ############################################################
     # Load in the spark cython functions.
-    
-    cy_spark = gllib.load_gl_module("cython", "cy_spark_interface")
+
+    if gllib.get_installation_flavor() == "sframe":
+        import sframe.cython.cy_spark_interface as cy_spark
+    else:
+        import graphlab.cython.cy_spark_interface as cy_spark
 
     ############################################################
     # Call the proper pylambda worker main function.

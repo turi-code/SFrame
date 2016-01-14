@@ -13,21 +13,17 @@ def get_main_dir():
 
     return main_dir
 
-def load_gl_module(subdir, name):
+def get_installation_flavor():
 
-    if subdir:
-        path = join(get_main_dir(), subdir)
+    module = split(get_main_dir())[1]
+
+    if module == "sframe":
+        return "sframe"
+    elif module == "graphlab":
+        return "graphlab"
     else:
-        path = get_main_dir()
-
-    fp, pathname, description = imp.find_module(name, [path])
-    
-    try:
-        return imp.load_module(name, fp, pathname, description)
-    finally:
-        # Since we may exit via an exception, close fp explicitly.
-        if fp:
-            fp.close()
+        raise ImportError("Installation module does not appear to be sframe or graphlab; main dir = %s"
+                          % get_main_dir())
     
 
 def load_internal_ctypes_library(libnamepattern, info_log_function = None, error_log_function = None):
