@@ -4,7 +4,7 @@ import ctypes
 from ctypes import PyDLL, c_char_p, c_int
 from os.path import split, abspath, join
 from glob import glob
-from itertools import chain
+
 
 def set_windows_dll_path():
     """
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     if dry_run or os.environ.get("GRAPHLAB_LAMBDA_WORKER_DRY_RUN") == "1":
         _write_out = sys.stderr
     else:
-        _write_out = sys.stdout
+        _write_out = None
 
     _write_out_file_name = os.environ.get("GRAPHLAB_LAMBDA_WORKER_LOG_FILE", "")
     _write_out_file = None
@@ -59,7 +59,7 @@ if __name__ == "__main__":
         if error:
             sys.stderr.write(s)
             sys.stderr.flush()
-        else:
+        elif _write_out is not None:
             _write_out.write(s)
             _write_out.flush()
 
@@ -121,18 +121,19 @@ if __name__ == "__main__":
         sys.exit(203)
 
     try:
-        pylambda_lib.pylambda_worker_main.argtypes = [c_char_p, c_char_p]
+        pylambda_lib.pylambda_worker_main.argtypes = [c_char_p, c_char_p, c_int]
         pylambda_lib.pylambda_worker_main.restype = c_int
     except Exception, e:
         _write_log("Error accessing pylambda_worker_main: %s\n" % repr(e), error = True)
         sys.exit(204)
 
+    loglevel = 5  # 5: LOG_WARNING, 4: LOG_PROGRESS  3: LOG_EMPH  2: LOG_INFO  1: LOG_DEBUG
     if not dry_run:
         # This call only returns after the parent process is done.
-        result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir), c_char_p(sys.argv[1]))
+        result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir), c_char_p(sys.argv[1]), loglevel)
     else:
         # This version will print out a bunch of diagnostic information and then exit.
-        result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir), c_char_p("debug"))
+        result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir), c_char_p("debug"), loglevel)
 
     _write_log("Lambda process exited with code %d." % result)
     sys.exit(0)

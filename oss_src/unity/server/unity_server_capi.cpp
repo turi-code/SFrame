@@ -56,8 +56,8 @@ extern "C" {
  * \param log_file local file for logging
  */
 EXPORT void start_server(const char* root_path,
-                                 const char* server_address,
-                                 const char* log_file) {
+                         const char* server_address,
+                         const char* log_file) {
 
   ASSERT_MSG(boost::starts_with(std::string(server_address), "inproc://"), "Server address must starts with inproc://");
 
@@ -76,7 +76,7 @@ EXPORT void start_server(const char* root_path,
   // Example: "/tmp/sframe.log";
   server_options.log_file = log_file;
   // Example: "/home/jay/virtualenv/lib/python2.7/site-packages/sframe"
-  server_options.root_path = fs::path(root_path).parent_path().string();
+  server_options.root_path = fs::path(root_path).string();
 
   graphlab::configure_global_environment(server_options.root_path);
   graphlab::global_startup::get_instance().perform_startup();

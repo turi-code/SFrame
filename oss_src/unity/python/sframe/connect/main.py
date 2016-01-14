@@ -72,13 +72,13 @@ def launch(server_addr=None, server_bin=None,
             " Please stop the connection first by running 'graphlab.stop()' and try again.")
         return
 
+    # construct the server instance
     if server_addr is None:
         server_addr = 'inproc://sframe_server'
-
-    # construct the server instance
     server = EmbededServer(server_addr, server_log)
 
-    # start the server
+
+    # product_key and license are good to go
     try:
         server.start()
     except Exception as e:
@@ -105,7 +105,6 @@ def stop():
     global __CLIENT__, __SERVER__
     if not is_connected():
         return
-    __LOGGER__.info("Stopping the server connection.")
     if (__CLIENT__):
         __CLIENT__.stop()
         __CLIENT__ = None
@@ -168,8 +167,8 @@ def _assign_server_and_client(server, client):
     __SERVER__ = server
     __CLIENT__ = client
     __UNITY_GLOBAL_PROXY__ = UnityGlobalProxy(__CLIENT__)
-    server.get_logger().info('SFrame Version: %s' %
-                             UnityGlobalProxy(client).get_version())
+    server.get_logger().info('SFrame v%s started. Logging %s' %
+                             (UnityGlobalProxy(client).get_version(), server.unity_log))
 
     from ..extensions import _publish
     _publish()

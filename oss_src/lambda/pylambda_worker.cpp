@@ -26,13 +26,12 @@ using namespace graphlab;
  *  Different error routes produce different error codes of 101 and
  *  above.
  */
-int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
+int _pylambda_worker_main(const char* _root_path, const char* _server_address, int loglevel) {
 
   /** Set up the debug configuration. 
    *  
    *  By default, all LOG_ERROR and LOG_FATAL messages are sent to
-   *  stderr, and all LOG_INFO messages are sent to stdout (which is
-   *  by default swallowed), and all LOG_DEBUG messages are dropped.
+   *  stderr, and all messages above loglevel are sent to stdout.
    *
    *  If GRAPHLAB_LAMBDA_WORKER_LOG_FILE is set and is non-empty, then
    *  all log messages are sent to the file instead of the stdout and
@@ -51,7 +50,10 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
   
   bool debug_mode = (debug_mode_str != NULL);
 
-  // Logging using the LOG_DEBUG_WITH_PID macro requires this_pid to be set. 
+  global_logger().set_log_level(loglevel);
+  global_logger().set_log_to_console(true);
+
+  // Logging using the LOG_DEBUG_WITH_PID macro requires this_pid to be set.
   size_t this_pid = get_my_pid();
   global_logger().set_pid(this_pid);
 
@@ -70,13 +72,6 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
     if(!log_to_file) {
       // Set logging to console, with everything logged to stderr.
       global_logger().set_log_to_console(true, true);
-    }
-  } else { 
-    global_logger().set_log_level(LOG_INFO);
-    
-    if(!log_to_file) {
-      // Set logging to console, with only errors going to stderr.
-      global_logger().set_log_to_console(true, false);
     }
   }
 
@@ -178,8 +173,8 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address) {
 
 // This one has to be accessible from python's ctypes.  
 extern "C" {
-  int EXPORT pylambda_worker_main(const char* _root_path, const char* _server_address) {
-    return _pylambda_worker_main(_root_path, _server_address);
+  int EXPORT pylambda_worker_main(const char* _root_path, const char* _server_address, int loglevel) {
+    return _pylambda_worker_main(_root_path, _server_address, loglevel);
   }
 }
 

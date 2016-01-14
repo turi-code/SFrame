@@ -51,6 +51,11 @@ class GraphLabServer(object):
         """ Return the logger object. """
         raise NotImplementedError
 
+ADDITIONAL_SUPPORT_MESSAGE = """
+There may have been an issue during installation. Please uninstall sframe
+and reinstall it, looking for errors that may occur during installation.
+"""
+
 
 class EmbededServer(GraphLabServer):
     """
@@ -67,14 +72,15 @@ class EmbededServer(GraphLabServer):
         self.unity_log = unity_log_file
         self.logger = logging.getLogger(__name__)
 
-        root_path = os.path.dirname(os.path.abspath(__file__))
-        root_path = os.path.abspath(os.path.join(root_path, os.pardir))
+        root_path = os.path.dirname(os.path.abspath(__file__))  # sframe/connect
+        root_path = os.path.abspath(os.path.join(root_path, os.pardir))  # sframe/
         self.root_path = root_path
-
-        self.dll = CDLL(os.path.join(root_path, 'libunity_server.so'))
 
         if not self.unity_log:
             self.unity_log = default_local_conf.get_unity_log()
+
+        if not self._load_dll_ok(self.root_path):
+            self.logger.error("Fail to load library. %s" % ADDITIONAL_SUPPORT_MESSAGE)
 
     def __del__(self):
         self.stop()
@@ -84,7 +90,7 @@ class EmbededServer(GraphLabServer):
 
     def start(self):
         _get_metric_tracker().track('engine-started', value=1, send_sys_info=True)
-        _get_metric_tracker().track('engine-started-embeded', value=1)
+        _get_metric_tracker().track('engine-started-local', value=1, send_sys_info=True)
 
         if sys.platform == 'win32':
             self.unity_log += ".0"
@@ -92,10 +98,15 @@ class EmbededServer(GraphLabServer):
         server_env = _sys_util.make_unity_server_env()
         os.environ.update(server_env)
 
-        self.dll.start_server.argtypes = [c_char_p, c_char_p, c_char_p]
-        self.dll.start_server(self.root_path, self.server_addr, self.unity_log)
-
-        self.logger.info('SFrame logging: ' + self.unity_log)
+        try:
+            self.dll.start_server(self.root_path, self.server_addr, self.unity_log,
+                                  self.product_key, self.license_info)
+        except Exception as e:
+            self.logger.error(e)
+            self.logger.error("Fail to start server. %s" % ADDITIONAL_SUPPORT_MESSAGE)
+            _get_metric_tracker().track('server_launch.unity_server_error', send_sys_info=True)
+            return
+        self.started = True
 
     def get_client_ptr(self):
         """
@@ -106,7 +117,29 @@ class EmbededServer(GraphLabServer):
         return self.dll.get_client()
 
     def stop(self):
-        self.dll.stop_server()
+        if self.started:
+            self.dll.stop_server()
+            self.started = False
 
     def get_logger(self):
         return self.logger
+
+    def _load_dll_ok(self, root_path):
+        try:
+            self.dll = CDLL(os.path.join(root_path, self.SERVER_LIB))
+        except Exception as e:
+            self.logger.error(e)
+            return False
+
+        # Touch all symbols and make sure they exist
+        try:
+            self.dll.start_server.argtypes = [c_char_p, c_char_p, c_char_p]
+            self.dll.is_product_key_valid.argtypes = [c_char_p]
+            self.dll.is_license_valid.argtypes = [c_char_p, c_char_p]
+            self.dll.get_client.restype = c_void_p
+            self.dll.stop_server
+        except Exception as e:
+            self.logger.error(e)
+            return False
+        return True
+
