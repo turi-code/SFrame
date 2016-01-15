@@ -153,7 +153,7 @@ cdef class lambda_evaluator(object):
         cdef object x
         
         for i in range(0, n):
-            if v_in[i].get_type() == UNDEFINED and self.skip_undefined:
+            if v_in[i].get_type() == UNDEFINED and lcd.skip_undefined:
                 self.output_buffer[i] = None
                 continue
             
