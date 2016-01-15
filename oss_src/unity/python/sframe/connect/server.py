@@ -99,8 +99,7 @@ class EmbededServer(GraphLabServer):
         os.environ.update(server_env)
 
         try:
-            self.dll.start_server(self.root_path, self.server_addr, self.unity_log,
-                                  self.product_key, self.license_info)
+            self.dll.start_server(self.root_path, self.server_addr, self.unity_log)
         except Exception as e:
             self.logger.error(e)
             self.logger.error("Fail to start server. %s" % ADDITIONAL_SUPPORT_MESSAGE)
@@ -134,8 +133,6 @@ class EmbededServer(GraphLabServer):
         # Touch all symbols and make sure they exist
         try:
             self.dll.start_server.argtypes = [c_char_p, c_char_p, c_char_p]
-            self.dll.is_product_key_valid.argtypes = [c_char_p]
-            self.dll.is_license_valid.argtypes = [c_char_p, c_char_p]
             self.dll.get_client.restype = c_void_p
             self.dll.stop_server
         except Exception as e:

@@ -78,7 +78,7 @@ def launch(server_addr=None, server_bin=None,
     server = EmbededServer(server_addr, server_log)
 
 
-    # product_key and license are good to go
+    # Good to go
     try:
         server.start()
     except Exception as e:
