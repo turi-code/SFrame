@@ -57,12 +57,12 @@ and reinstall it, looking for errors that may occur during installation.
 """
 
 
-class EmbededServer(GraphLabServer):
+class EmbeddedServer(GraphLabServer):
     """
-    Embeded Server loads unity_server into the same process as shared library.
+    Embedded Server loads unity_server into the same process as shared library.
     """
 
-    SERVER_LIB = 'libunity_server.so'
+    SERVER_LIB = 'libunity_server.%s' % _sys_util.get_current_platform_dll_extension()
 
     def __init__(self, server_address, unity_log_file):
         """
@@ -109,7 +109,7 @@ class EmbededServer(GraphLabServer):
 
     def get_client_ptr(self):
         """
-        Embeded server automatically constructs a client object
+        Embedded server automatically constructs a client object
         Call this function to get pointer to a ready to use client
         """
         self.dll.get_client.restype = c_void_p

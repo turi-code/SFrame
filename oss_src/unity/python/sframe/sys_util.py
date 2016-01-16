@@ -106,6 +106,18 @@ def set_windows_dll_path():
             "Error setting DLL load orders: %s (things should still work)." % str(e))
 
 
+def get_current_platform_dll_extension():
+    """
+    Return the dynamic loading library extension for the current platform
+    """
+    if sys.platform == 'win32':
+        return 'dll'
+    elif sys.platform == 'darwin':
+        return 'dylib'
+    else:
+        return 'so'
+
+
 def test_pylambda_worker():
     """
     Tests the pylambda workers by spawning off a seperate python

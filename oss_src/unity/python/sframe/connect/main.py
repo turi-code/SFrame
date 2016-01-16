@@ -12,7 +12,7 @@ of the BSD license. See the LICENSE file for details.
 
 from ..cython.cy_unity import UnityGlobalProxy
 from ..cython import cy_ipc
-from ..connect.server import EmbededServer
+from ..connect.server import EmbeddedServer
 from ..connect import __SERVER__, __CLIENT__
 
 import decorator
@@ -75,7 +75,7 @@ def launch(server_addr=None, server_bin=None,
     # construct the server instance
     if server_addr is None:
         server_addr = 'inproc://sframe_server'
-    server = EmbededServer(server_addr, server_log)
+    server = EmbeddedServer(server_addr, server_log)
 
 
     # Good to go

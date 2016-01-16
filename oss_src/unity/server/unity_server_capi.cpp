@@ -17,8 +17,8 @@
 namespace graphlab {
 
 // Global embeded server and client object
-static unity_server* SERVER;
-static cppipc::comm_client* CLIENT;
+static unity_server* SERVER = nullptr;
+static cppipc::comm_client* CLIENT = nullptr;
 
 void start_server(const unity_server_options& server_options) {
   unity_server_initializer server_initializer;
