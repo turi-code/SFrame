@@ -48,10 +48,6 @@ def make_unity_server_env():
     # Add the pylambda execution script to the runtime config
     env['__GL_PYLAMBDA_SCRIPT__'] = os.path.abspath(_pylambda_worker.__file__)
 
-    # For Windows, add path to DLLs for the pylambda_worker
-    if sys.platform == 'win32':
-        set_windows_dll_path()
-
     #### Remove PYTHONEXECUTABLE ####
     # Anaconda overwrites this environment variable
     # which forces all python sub-processes to use the same binary.
@@ -75,7 +71,7 @@ def make_unity_server_env():
             pass
     return env
 
-def set_windows_dll_path():
+def add_windows_pylambda_dll_path():
     """
     Sets the dll load path so that things are resolved correctly.
     """
@@ -98,9 +94,9 @@ def set_windows_dll_path():
 
     try:
         kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
-        kernel32.SetDllDirectoryW.errcheck = errcheck_bool
-        kernel32.SetDllDirectoryW.argtypes = (wintypes.LPCWSTR,)
-        kernel32.SetDllDirectoryW(lib_path)
+        kernel32.AddDllDirectory.errcheck = errcheck_bool
+        kernel32.AddDllDirectory.argtypes = (wintypes.LPCWSTR,)
+        kernel32.AddDllDirectory(lib_path)
     except Exception, e:
         logging.getLogger(__name__).warning(
             "Error setting DLL load orders: %s (things should still work)." % str(e))

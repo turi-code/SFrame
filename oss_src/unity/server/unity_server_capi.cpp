@@ -62,9 +62,7 @@ EXPORT void start_server(const char* root_path,
   ASSERT_MSG(boost::starts_with(std::string(server_address), "inproc://"), "Server address must starts with inproc://");
 
   namespace fs = boost::filesystem;
-  global_logger().set_log_level(LOG_INFO);
-  // we do not want to show server logs in python console 
-  global_logger().set_log_to_console(false);
+  global_logger().set_log_level(LOG_WARNING);
   // we do not want to show lambda worker logs in python console 
   fs::path lambda_log_prefix = fs::path(log_file).parent_path() / fs::path("lambda-worker");
   std::string lambda_log_prefix_str = lambda_log_prefix.string();

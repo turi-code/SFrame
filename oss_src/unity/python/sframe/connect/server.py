@@ -95,9 +95,6 @@ class EmbeddedServer(GraphLabServer):
         if sys.platform == 'win32':
             self.unity_log += ".0"
 
-        server_env = _sys_util.make_unity_server_env()
-        os.environ.update(server_env)
-
         try:
             self.dll.start_server(self.root_path, self.server_addr, self.unity_log)
         except Exception as e:
@@ -124,6 +121,16 @@ class EmbeddedServer(GraphLabServer):
         return self.logger
 
     def _load_dll_ok(self, root_path):
+        server_env = _sys_util.make_unity_server_env()
+        os.environ.update(server_env)
+        for k,v in server_env.iteritems():
+            os.putenv(k, v)
+            if k.startswith('__GL'):
+                print "Setting environment variable: %s = %s" % (k, v)
+        # For Windows, add path to DLLs for the pylambda_worker
+        if sys.platform == 'win32':
+            _sys_util.add_windows_pylambda_dll_path()
+
         try:
             self.dll = CDLL(os.path.join(root_path, self.SERVER_LIB))
         except Exception as e:
