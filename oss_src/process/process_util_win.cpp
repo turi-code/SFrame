@@ -8,6 +8,7 @@
 #include <cross_platform/windows_wrapper.hpp>
 #include <tlhelp32.h>
 #include <process/process_util.hpp>
+#include <logger/logger.hpp>
 
 namespace graphlab {
 
@@ -67,7 +68,7 @@ bool is_process_running(size_t pid) {
 }
 
 std::string getenv_str(const char* variable_name) {
-  const char* bufsize = 65535;
+  size_t bufsize = 65535;
   char buf[bufsize];
   size_t retsize = GetEnvironmentVariable(variable_name, buf, bufsize);
   if (retsize == 0) {
