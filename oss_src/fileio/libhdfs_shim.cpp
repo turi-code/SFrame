@@ -84,7 +84,7 @@ extern  "C" {
 #ifndef _WIN32
                          void*& out_handle);
 #else
-                         HINSTANCE*& out_handle);
+                         HINSTANCE& out_handle);
 #endif
 
   static void connect_shim() {
@@ -443,7 +443,7 @@ extern  "C" {
 #ifndef _WIN32
                          void*& out_handle)
 #else
-                         HINSTANCE*& out_handle)
+                         HINSTANCE& out_handle)
 #endif
   {
     // We don't want to freak customers out with failure messages as we try
