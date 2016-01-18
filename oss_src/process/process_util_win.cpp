@@ -66,4 +66,18 @@ bool is_process_running(size_t pid) {
   return false;
 }
 
+std::string getenv_str(const char* variable_name) {
+  const char* bufsize = 65535;
+  char buf[bufsize];
+  size_t retsize = GetEnvironmentVariable(variable_name, buf, bufsize);
+  if (retsize == 0) {
+    return "";
+  } else if (retsize == bufsize) {
+    logstream(LOG_WARNING) << "Environment variable " << variable_name << " exceeds max size" << std::endl;
+    return "";
+  } else {
+    return std::string(buf, retsize);
+  }
+}
+
 } // namespace graphlab

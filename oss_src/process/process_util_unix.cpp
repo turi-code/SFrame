@@ -33,4 +33,8 @@ bool is_process_running(size_t pid) {
   return (kill(pid, 0) == 0);
 }
 
+std::string getenv_str(const char* variable_name) {
+  return std::string(std::getenv(variable_name));
+}
+
 } // namespace graphlab
