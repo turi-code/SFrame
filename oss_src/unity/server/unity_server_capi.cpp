@@ -68,7 +68,12 @@ EXPORT void start_server(const char* root_path,
   // we do not want to show lambda worker logs in python console 
   fs::path lambda_log_prefix = fs::path(log_file).parent_path() / fs::path("lambda-worker");
   std::string lambda_log_prefix_str = lambda_log_prefix.string();
+
+#ifndef _WIN32
   setenv("GRAPHLAB_LAMBDA_WORKER_LOG_PREFIX", lambda_log_prefix_str.c_str(), 0 /* do not overwrite */);
+#else
+  _putenv_s("GRAPHLAB_LAMBDA_WORKER_LOG_PREFIX", lambda_log_prefix_str.c_str());
+#endif
 
   graphlab::unity_server_options server_options;
   // Example: "inproc://graphlab_server";
