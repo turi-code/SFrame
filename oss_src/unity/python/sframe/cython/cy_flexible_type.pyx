@@ -172,9 +172,6 @@ cdef extern from "math.h":
 ###### Date time stuff
 DEF _NUM_FLEX_TYPES = 9
 
-# Have to explicitly init the cython datetime support at module load.
-# import_datetime()
-
 from datetime import tzinfo
 from datetime import timedelta
 
