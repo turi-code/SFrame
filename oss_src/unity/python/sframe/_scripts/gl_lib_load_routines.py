@@ -24,6 +24,23 @@ def get_installation_flavor():
     else:
         raise ImportError("Installation module does not appear to be sframe or graphlab; main dir = %s"
                           % get_main_dir())
+
+
+def load_isolated_gl_module(subdir, name):
+
+    if subdir:
+        path = join(get_main_dir(), subdir)
+    else:
+        path = get_main_dir()
+
+    fp, pathname, description = imp.find_module(name, [path])
+
+    try:
+        return imp.load_module(name, fp, pathname, description)
+    finally:
+        # Since we may exit via an exception, close fp explicitly.
+        if fp:
+            fp.close()
     
 
 def load_internal_ctypes_library(libnamepattern, info_log_function = None, error_log_function = None):
@@ -35,14 +52,14 @@ def load_internal_ctypes_library(libnamepattern, info_log_function = None, error
             else:
                 try:
                     error_log_function(s)
-                except Exception, e:
+                except Exception as e:
                     print "Error setting exception: repr(e)"
                     print "Error: ", s
         else:
             if info_log_function is not None:
                 try:
                     info_log_function(s)            
-                except Exception, e:
+                except Exception as e:
                     print "Error logging info: %s." % repr(e)
                     print "Message: ", s
     
@@ -91,7 +108,7 @@ def load_internal_ctypes_library(libnamepattern, info_log_function = None, error
             kernel32.SetDllDirectoryW.errcheck = errcheck_bool
             kernel32.SetDllDirectoryW.argtypes = (wintypes.LPCWSTR,)
             kernel32.SetDllDirectoryW(lib_path)
-        except Exception, e:
+        except Exception as e:
             _write_log("Error setting DLL load orders: %s (things may still work).\n" % str(e), error = True)
         set_windows_dll_path()
 
@@ -120,7 +137,7 @@ def load_internal_ctypes_library(libnamepattern, info_log_function = None, error
 
     try:
         loaded_lib = PyDLL(libfiles[0], mode=ctypes.RTLD_GLOBAL)
-    except Exception, e:
+    except Exception as e:
         _write_log("Error loading library %s: %s" % (libfiles[0], repr(e)), error = True)
         sys.exit(203)
 

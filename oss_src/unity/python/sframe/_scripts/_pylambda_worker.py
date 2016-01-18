@@ -49,7 +49,7 @@ if __name__ == "__main__":
         _write_log("Logging initialization routines to %s." % _write_out_file_name)
         try:
             _write_out_file = open(_write_out_file_name, "w")
-        except Exception, e:
+        except Exception as e:
             _write_log("Error opening '%s' for write: %s" % (_write_out_file_name, repr(e)))
             _write_out_file = None
 
@@ -76,13 +76,13 @@ if __name__ == "__main__":
     else:
         import graphlab.cython.cy_pylambda_workers
     
-    ############################################################
+    ###########################################################
     # Call the proper pylambda worker main function.
     
     try:
         pylambda_lib.pylambda_worker_main.argtypes = [c_char_p, c_char_p]
         pylambda_lib.pylambda_worker_main.restype = c_int
-    except Exception, e:
+    except Exception as e:
         _write_log("Error accessing pylambda_worker_main: %s\n" % repr(e), error = True)
         sys.exit(205)
 

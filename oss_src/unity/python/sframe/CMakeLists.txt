@@ -52,6 +52,7 @@ ADD_CUSTOM_COMMAND(
 )
 
 add_subdirectory(cython)
+add_subdirectory(_scripts)
 
 
 set_property(DIRECTORY PROPERTY INSTALLATION_EXTENSIONS "${INSTALLATION_EXTENSIONS}")

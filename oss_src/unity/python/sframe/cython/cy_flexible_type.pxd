@@ -104,12 +104,8 @@ cpdef type pytype_from_dtype(object dt)
 cdef flex_type_enum flex_type_from_dtype(object dt)
 cpdef type pytype_from_array_typecode(str a)
 
-cdef flex_type_enum infer_common_type_of_flex_list(const flex_list& fl, bint undefined_on_error = ?)
 cpdef type infer_type_of_list(list l)
-cdef flex_type_enum infer_flex_type_of_sequence(object l, bint undefined_on_error = ?) except *
 cpdef type infer_type_of_sequence(object t)
-
-
 
 #/**************************************************************************/
 #/*                                                                        */

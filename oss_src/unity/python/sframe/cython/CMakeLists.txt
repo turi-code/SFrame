@@ -21,9 +21,6 @@ foreach(source ${cython_sources})
   add_dependencies(cython_targets ${target})
 endforeach()
 
-# Custom additions for the cy_spark_unity stuff
-target_link_libraries(cy_spark_interface spark_unity)
-
 ADD_CUSTOM_TARGET (oss_clean_cython)
 ADD_CUSTOM_COMMAND(
   COMMENT "clean cython"
