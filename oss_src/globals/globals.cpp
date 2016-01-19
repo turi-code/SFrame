@@ -272,10 +272,10 @@ set_global_error_codes set_global(std::string name, flexible_type val) {
 void initialize_globals_from_environment(std::string root_path) {
   for (auto& i: get_global_registry()) {
     std::string envname = i.name;
-    std::string envval = getenv_str(envname.c_str());
-    if (!envval.empty()) {
+    boost::optional<std::string> envval = getenv_str(envname.c_str());
+    if (envval) {
       set_value_from_string_visitor visitor;
-      visitor.new_value = envval;
+      visitor.new_value = *envval;
       if (i.value.apply_visitor(visitor)) {
         logstream(LOG_INFO) << "Setting configuration variable " << i.name 
                             << " to " << visitor.new_value << std::endl;

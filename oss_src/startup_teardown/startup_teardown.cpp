@@ -181,14 +181,14 @@ void configure_global_environment(std::string argv0) {
   // use up at most half of system memory.
   size_t total_system_memory = total_mem();
   total_system_memory /= 2;
-  std::string envval = getenv_str("DISABLE_MEMORY_AUTOTUNE");
-  bool disable_memory_autotune = !envval.empty() && (std::string(envval) == "1");
+  boost::optional<std::string> envval = getenv_str("DISABLE_MEMORY_AUTOTUNE");
+  bool disable_memory_autotune = ((bool)envval) && (std::string(*envval) == "1");
 
   
   // memory limit
   envval = getenv_str("GRAPHLAB_MEMORY_LIMIT_IN_MB");
-  if (!envval.empty()) {
-    size_t limit = atoll(envval.c_str()) * 1024 * 1024; /* MB */
+  if (envval) {
+    size_t limit = atoll((*envval).c_str()) * 1024 * 1024; /* MB */
     if (limit == 0) {
       logstream(LOG_WARNING) << "GRAPHLAB_MEMORY_LIMIT_IN_MB environment "
                                 "variable cannot be parsed" << std::endl;

@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <process/process_util.hpp>
+#include <cstdlib>
 
 namespace graphlab {
 
@@ -33,12 +34,12 @@ bool is_process_running(size_t pid) {
   return (kill(pid, 0) == 0);
 }
 
-std::string getenv_str(const char* variable_name) {
+boost::optional<std::string> getenv_str(const char* variable_name) {
   char* val = std::getenv(variable_name);
   if (val == nullptr) {
-    return "";
+    return boost::optional<std::string>();
   } else {
-    return std::string(val);
+    return boost::optional<std::string>(std::string(val));
   }
 }
 

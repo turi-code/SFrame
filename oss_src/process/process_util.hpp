@@ -10,6 +10,7 @@
 #define PROCESS_UTIL_HPP
 
 #include<string>
+#include<boost/optional.hpp>
 
 namespace graphlab {
 
@@ -25,12 +26,11 @@ bool is_process_running(size_t pid);
 
 /*
  * Returns the environment variable's value
- * or empty string if doesn't exist.
  *
  * Note: on windows, the length of the return
  * value is limited to 65534.
  */
-std::string getenv_str(const char* variable_name);
+boost::optional<std::string> getenv_str(const char* variable_name);
 
 } // namespace graphlab
 #endif // PROCESS_UTIL_HPP 

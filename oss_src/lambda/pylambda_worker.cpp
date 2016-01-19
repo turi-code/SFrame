@@ -42,13 +42,13 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address, i
    *  log level is set to LOG_DEBUG.  If a log file is set, then all
    *  log messages are sent there, otherwise they are sent to stderr.
    */
-  std::string debug_mode_str = graphlab::getenv_str("GRAPHLAB_LAMBDA_WORKER_DEBUG_MODE");
-  std::string debug_mode_file_str = graphlab::getenv_str("GRAPHLAB_LAMBDA_WORKER_LOG_FILE");
+  boost::optional<std::string> debug_mode_str = graphlab::getenv_str("GRAPHLAB_LAMBDA_WORKER_DEBUG_MODE");
+  boost::optional<std::string> debug_mode_file_str = graphlab::getenv_str("GRAPHLAB_LAMBDA_WORKER_LOG_FILE");
 
-  std::string log_file_string(debug_mode_file_str);
+  std::string log_file_string = debug_mode_file_str ? *debug_mode_file_str :  "";
   bool log_to_file = (!log_file_string.empty());
   
-  bool debug_mode = (!debug_mode_str.empty());
+  bool debug_mode = (bool)(debug_mode_str);
 
   global_logger().set_log_level(loglevel);
   global_logger().set_log_to_console(true);
