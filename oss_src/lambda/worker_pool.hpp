@@ -186,7 +186,7 @@ class worker_pool {
     });
 
     if (num_workers() == 0) {
-      log_and_throw("Unable to evaluate lambdas. Lambda workers did not start.");
+      log_and_throw("Cannot evaluate lambda. Lambda workers did not start.");
     } else if (num_workers() < nworkers) {
       logprogress_stream << "Less than " << nworkers << " successfully started. "
                          << "Using only " << num_workers()  << " workers." << std::endl;

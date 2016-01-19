@@ -75,16 +75,16 @@ def launch(server_addr=None, server_bin=None,
     # construct the server instance
     if server_addr is None:
         server_addr = 'inproc://sframe_server'
-    server = EmbeddedServer(server_addr, server_log)
-
 
     # Good to go
+    server = None
     try:
+        server = EmbeddedServer(server_addr, server_log)
         server.start()
     except Exception as e:
-        __LOGGER__.error('Cannot start server: %s' % e)
-        server.try_stop()
-        return
+        if server:
+            server.try_stop()
+        raise e
 
     # start the client
     client = cy_ipc.make_comm_client_from_existing_ptr(server.get_client_ptr())

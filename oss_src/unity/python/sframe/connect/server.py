@@ -51,11 +51,6 @@ class GraphLabServer(object):
         """ Return the logger object. """
         raise NotImplementedError
 
-ADDITIONAL_SUPPORT_MESSAGE = """
-There may have been an issue during installation. Please uninstall sframe
-and reinstall it, looking for errors that may occur during installation.
-"""
-
 
 class EmbeddedServer(GraphLabServer):
     """
@@ -75,12 +70,14 @@ class EmbeddedServer(GraphLabServer):
         root_path = os.path.dirname(os.path.abspath(__file__))  # sframe/connect
         root_path = os.path.abspath(os.path.join(root_path, os.pardir))  # sframe/
         self.root_path = root_path
+        self.started = False
 
         if not self.unity_log:
             self.unity_log = default_local_conf.get_unity_log()
 
-        if not self._load_dll_ok(self.root_path):
-            self.logger.error("Fail to load library. %s" % ADDITIONAL_SUPPORT_MESSAGE)
+        (success, dll_error_message) = self._load_dll_ok(self.root_path)
+        if not success:
+            raise RuntimeError("Cannot load library. %s" % dll_error_message)
 
     def __del__(self):
         self.stop()
@@ -100,10 +97,9 @@ class EmbeddedServer(GraphLabServer):
                                   default_local_conf.log_rotation_interval,
                                   default_local_conf.log_rotation_truncate)
         except Exception as e:
-            self.logger.error(e)
-            self.logger.error("Fail to start server. %s" % ADDITIONAL_SUPPORT_MESSAGE)
             _get_metric_tracker().track('server_launch.unity_server_error', send_sys_info=True)
-            return
+            raise RuntimeError("Cannot start engine. %s" % str(e))
+
         self.started = True
 
     def get_client_ptr(self):
@@ -125,7 +121,7 @@ class EmbeddedServer(GraphLabServer):
     def _load_dll_ok(self, root_path):
         server_env = _sys_util.make_unity_server_env()
         os.environ.update(server_env)
-        for k,v in server_env.iteritems():
+        for (k, v) in server_env.iteritems():
             os.putenv(k, v)
 
         # For Windows, add path to DLLs for the pylambda_worker
@@ -135,8 +131,7 @@ class EmbeddedServer(GraphLabServer):
         try:
             self.dll = CDLL(os.path.join(root_path, self.SERVER_LIB))
         except Exception as e:
-            self.logger.error(e)
-            return False
+            return (False, str(e))
 
         # Touch all symbols and make sure they exist
         try:
@@ -144,7 +139,6 @@ class EmbeddedServer(GraphLabServer):
             self.dll.get_client.restype = c_void_p
             self.dll.stop_server
         except Exception as e:
-            self.logger.error(e)
-            return False
-        return True
+            return (False, str(e))
 
+        return (True, "")

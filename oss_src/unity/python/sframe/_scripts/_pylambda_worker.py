@@ -38,8 +38,7 @@ def set_windows_dll_path():
         sys.stderr.write("Error setting DLL load orders: %s (things may still work).\n" % str(e))
         sys.stderr.flush()
 
-if __name__ == "__main__":
-
+def main():
     if len(sys.argv) == 1:
         dry_run = True
     else:
@@ -127,13 +126,20 @@ if __name__ == "__main__":
         _write_log("Error accessing pylambda_worker_main: %s\n" % repr(e), error = True)
         sys.exit(204)
 
-    loglevel = 5  # 5: LOG_WARNING, 4: LOG_PROGRESS  3: LOG_EMPH  2: LOG_INFO  1: LOG_DEBUG
+    default_loglevel = 5  # 5: LOG_WARNING, 4: LOG_PROGRESS  3: LOG_EMPH  2: LOG_INFO  1: LOG_DEBUG
+    dryrun_loglevel = 1
     if not dry_run:
         # This call only returns after the parent process is done.
-        result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir), c_char_p(sys.argv[1]), loglevel)
+        result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir), c_char_p(sys.argv[1]), default_loglevel)
     else:
         # This version will print out a bunch of diagnostic information and then exit.
-        result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir), c_char_p("debug"), loglevel)
+        result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir), c_char_p("debug"), dryrun_loglevel)
 
     _write_log("Lambda process exited with code %d." % result)
+    if (dry_run and result == 1):
+        _write_log("Succeed")
     sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
