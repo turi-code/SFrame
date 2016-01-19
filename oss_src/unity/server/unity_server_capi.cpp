@@ -10,7 +10,6 @@
 #include <logger/assertions.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
-#include <startup_teardown/startup_teardown.hpp>
 
 #include "unity_server.hpp"
 
@@ -57,12 +56,15 @@ extern "C" {
  */
 EXPORT void start_server(const char* root_path,
                          const char* server_address,
-                         const char* log_file) {
+                         const char* log_file,
+                         size_t log_rotation_interval,
+                         size_t log_rotation_truncate) {
 
   ASSERT_MSG(boost::starts_with(std::string(server_address), "inproc://"), "Server address must starts with inproc://");
 
   namespace fs = boost::filesystem;
-  global_logger().set_log_level(LOG_WARNING);
+  global_logger().set_log_level(LOG_INFO);
+  global_logger().set_log_to_console(false);
 
   graphlab::unity_server_options server_options;
   // Example: "inproc://graphlab_server";
@@ -71,9 +73,10 @@ EXPORT void start_server(const char* root_path,
   server_options.log_file = log_file;
   // Example: "/home/jay/virtualenv/lib/python2.7/site-packages/sframe"
   server_options.root_path = fs::path(root_path).string();
+  // Example: "log_rotation_interval = 86400", "log_rotation_truncate = 8"
+  server_options.log_rotation_interval = log_rotation_interval;
+  server_options.log_rotation_truncate = log_rotation_truncate;
 
-  graphlab::configure_global_environment(server_options.root_path);
-  graphlab::global_startup::get_instance().perform_startup();
   graphlab::start_server(server_options);
 }
 
@@ -90,6 +93,5 @@ EXPORT void* get_client() {
  */
 EXPORT void stop_server() {
   graphlab::stop_server();
-  graphlab::global_teardown::get_instance().perform_teardown();
 }
 } // end of extern "C"

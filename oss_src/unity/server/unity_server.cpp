@@ -21,6 +21,7 @@
 #include <unity/lib/unity_global_singleton.hpp>
 #include <unity/lib/toolkit_class_registry.hpp>
 #include <unity/lib/toolkit_function_registry.hpp>
+#include <startup_teardown/startup_teardown.hpp>
 
 #include <lambda/lambda_master.hpp>
 
@@ -34,6 +35,7 @@ unity_server::unity_server(unity_server_options options) : options(options) {
 }
 
 void unity_server::start(const unity_server_initializer& server_initializer) {
+
   // log files
   if (!options.log_file.empty()) {
     if (options.log_rotation_interval) {
@@ -44,6 +46,9 @@ void unity_server::start(const unity_server_initializer& server_initializer) {
       global_logger().set_log_file(options.log_file);
     }
   }
+
+  graphlab::configure_global_environment(options.root_path);
+  graphlab::global_startup::get_instance().perform_startup();
 
   // server address
   options.server_address = parse_server_address(options.server_address);
@@ -87,6 +92,7 @@ void unity_server::stop() {
   delete server;
   server = nullptr;
   global_logger().add_observer(LOG_PROGRESS, NULL);
+  graphlab::global_teardown::get_instance().perform_teardown();
 }
 
 /**

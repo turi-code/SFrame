@@ -96,7 +96,9 @@ class EmbeddedServer(GraphLabServer):
             self.unity_log += ".0"
 
         try:
-            self.dll.start_server(self.root_path, self.server_addr, self.unity_log)
+            self.dll.start_server(self.root_path, self.server_addr, self.unity_log,
+                                  default_local_conf.log_rotation_interval,
+                                  default_local_conf.log_rotation_truncate)
         except Exception as e:
             self.logger.error(e)
             self.logger.error("Fail to start server. %s" % ADDITIONAL_SUPPORT_MESSAGE)
@@ -138,7 +140,7 @@ class EmbeddedServer(GraphLabServer):
 
         # Touch all symbols and make sure they exist
         try:
-            self.dll.start_server.argtypes = [c_char_p, c_char_p, c_char_p]
+            self.dll.start_server.argtypes = [c_char_p, c_char_p, c_char_p, c_ulonglong, c_ulonglong]
             self.dll.get_client.restype = c_void_p
             self.dll.stop_server
         except Exception as e:
