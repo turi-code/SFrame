@@ -63,15 +63,6 @@ EXPORT void start_server(const char* root_path,
 
   namespace fs = boost::filesystem;
   global_logger().set_log_level(LOG_WARNING);
-  // we do not want to show lambda worker logs in python console 
-  fs::path lambda_log_prefix = fs::path(log_file).parent_path() / fs::path("lambda-worker");
-  std::string lambda_log_prefix_str = lambda_log_prefix.string();
-
-#ifndef _WIN32
-  setenv("GRAPHLAB_LAMBDA_WORKER_LOG_PREFIX", lambda_log_prefix_str.c_str(), 0 /* do not overwrite */);
-#else
-  _putenv_s("GRAPHLAB_LAMBDA_WORKER_LOG_PREFIX", lambda_log_prefix_str.c_str());
-#endif
 
   graphlab::unity_server_options server_options;
   // Example: "inproc://graphlab_server";
@@ -92,13 +83,6 @@ EXPORT void start_server(const char* root_path,
  */
 EXPORT void* get_client() {
   return graphlab::get_client();
-}
-
-EXPORT void check_env() {
-  std::string python_exe = graphlab::getenv_str("__GL_PYTHON_EXECUTABLE__");
-  std::string pylambda_script = graphlab::getenv_str("__GL_PYLAMBDA_SCRIPT__");
-  std::cout << "pylambda exe: " << python_exe << std::endl;
-  std::cout << "pylambda script: " << pylambda_script << std::endl;
 }
 
 /**

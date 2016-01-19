@@ -125,8 +125,7 @@ class EmbeddedServer(GraphLabServer):
         os.environ.update(server_env)
         for k,v in server_env.iteritems():
             os.putenv(k, v)
-            if k.startswith('__GL'):
-                print "Setting environment variable: %s = %s" % (k, v)
+
         # For Windows, add path to DLLs for the pylambda_worker
         if sys.platform == 'win32':
             _sys_util.add_windows_pylambda_dll_path()
