@@ -94,6 +94,13 @@ EXPORT void* get_client() {
   return graphlab::get_client();
 }
 
+EXPORT void check_env() {
+  std::string python_exe = graphlab::getenv_str("__GL_PYTHON_EXECUTABLE__");
+  std::string pylambda_script = graphlab::getenv_str("__GL_PYLAMBDA_SCRIPT__");
+  std::cout << "pylambda exe: " << python_exe << std::endl;
+  std::cout << "pylambda script: " << pylambda_script << std::endl;
+}
+
 /**
  * Shutdown the server, and cleanup all the resourcese
  */
