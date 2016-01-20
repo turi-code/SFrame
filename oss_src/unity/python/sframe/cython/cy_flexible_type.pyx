@@ -1547,11 +1547,10 @@ cdef dict pydict_from_gl_options_map(const gl_options_map& m):
     Converting  map[string, flexible_type] into python dict
     """
     cdef dict ret = {}
-
     cdef options_map_iter it = <options_map_iter>m.begin()
 
     while it != <options_map_iter>m.end():
-        ret[deref(it).first] = pyobject_from_flexible_type(deref(it).second)
+        ret[deref(it).first.decode()] = pyobject_from_flexible_type(deref(it).second)
         inc(it)
 
     return ret
@@ -1564,7 +1563,9 @@ cdef gl_options_map gl_options_map_from_pydict(dict d) except *:
     cdef gl_options_map ret
 
     for k,v in d.iteritems():
-        ret[str(k)] = flexible_type_from_pyobject(v)
+        if PY_MAJOR_VERSION <= 2:
+            k = str(k)        
+        ret[k] = flexible_type_from_pyobject(v)
 
     return ret
 
