@@ -208,9 +208,10 @@ class worker_pool {
     for (auto& conn : connections) {
       deleted_connections.push_back(std::move(conn));
     }
-    for(size_t i = 0; i < deleted_connections.size(); ++i) { 
+    // Shutdown connection is slow, run in parallel.
+    parallel_for(0, deleted_connections.size(), [&](size_t i) { 
       deleted_connections[i].reset();
-    }
+    });
   }
 
   /**
