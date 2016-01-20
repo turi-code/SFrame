@@ -13,7 +13,8 @@ def set_windows_dll_path():
 
     # Back up to the directory, then to the base directory as this is
     # in ./_scripts.
-    lib_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    lib_path = os.path.dirname(os.path.abspath(__file__))
+    lib_path = os.path.abspath(os.path.join(lib_path, os.pardir))
 
     def errcheck_bool(result, func, args):
         if not result:
@@ -38,7 +39,8 @@ def set_windows_dll_path():
         sys.stderr.write("Error setting DLL load orders: %s (things may still work).\n" % str(e))
         sys.stderr.flush()
 
-def main():
+if __name__ == "__main__":
+
     if len(sys.argv) == 1:
         dry_run = True
     else:
@@ -127,7 +129,7 @@ def main():
         sys.exit(204)
 
     default_loglevel = 5  # 5: LOG_WARNING, 4: LOG_PROGRESS  3: LOG_EMPH  2: LOG_INFO  1: LOG_DEBUG
-    dryrun_loglevel = 1
+    dryrun_loglevel = 1  # 5: LOG_WARNING, 4: LOG_PROGRESS  3: LOG_EMPH  2: LOG_INFO  1: LOG_DEBUG
     if not dry_run:
         # This call only returns after the parent process is done.
         result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir), c_char_p(sys.argv[1]), default_loglevel)
@@ -136,10 +138,4 @@ def main():
         result = pylambda_lib.pylambda_worker_main(c_char_p(main_dir), c_char_p("debug"), dryrun_loglevel)
 
     _write_log("Lambda process exited with code %d." % result)
-    if (dry_run and result == 1):
-        _write_log("Succeed")
     sys.exit(0)
-
-
-if __name__ == "__main__":
-    main()

@@ -23,7 +23,7 @@ size_t get_my_pid() {
 
 void wait_for_parent_exit(size_t parent_pid) {
   while(1) {
-    sleep(5);
+    sleep(1);
     if (parent_pid != 0 && kill(parent_pid, 0) == -1) {
       break;
     }

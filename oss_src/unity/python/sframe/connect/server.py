@@ -126,7 +126,7 @@ class EmbeddedServer(GraphLabServer):
 
         # For Windows, add path to DLLs for the pylambda_worker
         if sys.platform == 'win32':
-            _sys_util.add_windows_pylambda_dll_path()
+            _sys_util.set_windows_dll_path()
 
         try:
             self.dll = CDLL(os.path.join(root_path, self.SERVER_LIB))

@@ -262,8 +262,12 @@ global_startup& global_startup::get_instance() {
 /**************************************************************************/
 
 void global_teardown::perform_teardown() {
-  if (teardown_performed) return;
+  if (teardown_performed) {
+    logstream(LOG_WARNING) << "Teardown already performed" << std::endl;
+    return;
+  }
   teardown_performed = true;
+  logstream(LOG_INFO) << "Performing teardown" << std::endl;
   try {
     MEMORY_RELEASE_THREAD->stop();
     delete MEMORY_RELEASE_THREAD;
@@ -278,6 +282,7 @@ void global_teardown::perform_teardown() {
   } catch (...) {
     std::cerr << "Exception on teardown." << std::endl;
   }
+  logstream(LOG_INFO) << "Teardown complete" << std::endl;
 }
 
 global_teardown::~global_teardown() { }

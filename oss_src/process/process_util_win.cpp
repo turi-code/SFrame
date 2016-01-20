@@ -49,8 +49,8 @@ namespace graphlab {
     HANDLE parent_handle = OpenProcess(SYNCHRONIZE, FALSE, (DWORD)parent_pid);
     DWORD wait_ret = WAIT_TIMEOUT;
     while(wait_ret == WAIT_TIMEOUT) {
-      // Wait 5 seconds for the parent to be signaled
-      wait_ret = WaitForSingleObject(parent_handle, 5000);
+      // Wait 1 seconds for the parent to be signaled
+      wait_ret = WaitForSingleObject(parent_handle, 1000);
     }
   }
 
