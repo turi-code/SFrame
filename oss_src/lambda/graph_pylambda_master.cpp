@@ -14,7 +14,7 @@ namespace graphlab {
 
 namespace lambda {
 
-static graph_pylambda_master* instance_ptr;
+static graph_pylambda_master* instance_ptr = nullptr;
 
 graph_pylambda_master& graph_pylambda_master::get_instance() {
   if (instance_ptr == nullptr) {
