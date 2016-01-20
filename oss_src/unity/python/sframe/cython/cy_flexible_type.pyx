@@ -1563,8 +1563,8 @@ cdef gl_options_map gl_options_map_from_pydict(dict d) except *:
     cdef gl_options_map ret
 
     for k,v in d.iteritems():
-        if PY_MAJOR_VERSION <= 2:
-            k = str(k)        
+        if PY_MAJOR_VERSION <= 2 and type(k) is not str:
+            k = str(k)
         ret[k] = flexible_type_from_pyobject(v)
 
     return ret
