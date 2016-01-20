@@ -21,12 +21,24 @@ namespace graphlab { namespace lambda {
   // Get the python executable path
 
 std::vector<std::string> lambda_master::lambda_worker_binary_and_args = {};
+static lambda_master* instance_ptr = nullptr;
 
   lambda_master& lambda_master::get_instance() {
-    static lambda_master instance(std::min<size_t>(DEFAULT_NUM_PYLAMBDA_WORKERS,
-                                                     std::max<size_t>(thread::cpu_count(), 1)));
-    return instance;
+    if (instance_ptr == nullptr) {
+      size_t num_workers = std::min<size_t>(DEFAULT_NUM_PYLAMBDA_WORKERS,
+                                            std::max<size_t>(thread::cpu_count(), 1));
+      instance_ptr = new lambda_master(num_workers);
+    }
+    return *instance_ptr;
   };
+
+  void lambda_master::shutdown_instance() {
+    if (instance_ptr != nullptr) {
+      logstream(LOG_INFO) << "Shutdown lambda workers" << std::endl;
+      delete instance_ptr;
+      instance_ptr = nullptr;
+    }
+  }
 
   lambda_master::lambda_master(size_t nworkers) {
     std::vector<std::string> worker_addresses;
