@@ -62,13 +62,6 @@ export PATH=$R_HOME/bin:$PATH
 
 deps/R/bin/Rscript ./oss_local_scripts/r_requirements.r
 
-# git clone and install since curl is not available
-if [ ! -f deps/R/library/RApiSerialize/libs/RApiSerialize.so ]; then
-    git clone https://github.com/thirdwing/rapiserialize.git
-    deps/R/bin/R CMD INSTALL rapiserialize
-    rm -rf rapiserialize
-fi
-
 mkdir -p deps/local/lib
 mkdir -p deps/local/include
 
@@ -81,29 +74,3 @@ cp -R deps/R/include/* deps/local/include
 cp -R deps/R/library/Rcpp/include/* deps/local/include
 cp -R deps/R/library/RInside/include/* deps/local/include
 cp -R deps/R/library/RApiSerialize/include/* deps/local/include
-
-cd oss_src/unity/R-package/inst/include
-
-rm -rf boost
-rm -rf graphlab
-rm -rf export.hpp
-
-git clone https://github.com/dato-code/GraphLab-Create-SDK.git
-
-mv ./GraphLab-Create-SDK/export.hpp .
-mv ./GraphLab-Create-SDK/boost .
-mv ./GraphLab-Create-SDK/graphlab .
-rm -rf GraphLab-Create-SDK
-
-mkdir -p ../extdata
-cd ../extdata
-
-if [ ! -f diamonds.csv ]; then
-    download_file https://s3.amazonaws.com/dato-datasets/R-datasets/diamonds.csv diamonds.csv
-    download_file https://s3.amazonaws.com/dato-datasets/R-datasets/flights.csv flights.csv
-    download_file https://s3.amazonaws.com/dato-datasets/R-datasets/higgs_edge.csv higgs_edge.csv
-    download_file https://s3.amazonaws.com/dato-datasets/R-datasets/higgs_vertex.csv higgs_vertex.csv
-fi
-
-cd ../../../../..
-
