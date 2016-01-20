@@ -69,6 +69,3 @@ subdirs(server)
 
 subdirs(python)
 
-if (${R_INTEGRATION} AND NOT WIN32)
-  subdirs(R-package)
-endif()

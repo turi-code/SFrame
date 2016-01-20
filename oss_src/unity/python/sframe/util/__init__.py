@@ -26,6 +26,9 @@ import datetime as _datetime
 import logging as _logging
 import sys as _sys
 
+from sframe_generation import generate_random_sframe
+from sframe_generation import generate_random_regression_sframe
+from sframe_generation import generate_random_classification_sframe
 
 def _i_am_a_lambda_worker():
     if _re.match(".*lambda_worker.*", _sys.argv[0]) is not None:
