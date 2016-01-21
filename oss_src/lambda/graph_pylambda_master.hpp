@@ -24,6 +24,10 @@ namespace lambda {
 
     static graph_pylambda_master& get_instance();
 
+    static void shutdown_instance();
+
+    graph_pylambda_master(size_t nworkers = 8);
+
     inline size_t num_workers() { return m_worker_pool->num_workers(); }
 
     static void set_pylambda_worker_binary(const std::string& path) { pylambda_worker_binary = path; };
@@ -33,8 +37,6 @@ namespace lambda {
     }
 
    private:
-
-    graph_pylambda_master(size_t nworkers = 8);
 
     graph_pylambda_master(graph_pylambda_master const&) = delete;
 

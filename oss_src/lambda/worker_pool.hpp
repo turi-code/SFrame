@@ -186,7 +186,7 @@ class worker_pool {
     });
 
     if (num_workers() == 0) {
-      log_and_throw("Unable to evaluate lambdas. Lambda workers did not start.");
+      log_and_throw("Cannot evaluate lambda. Lambda workers did not start.");
     } else if (num_workers() < nworkers) {
       logprogress_stream << "Less than " << nworkers << " successfully started. "
                          << "Using only " << num_workers()  << " workers." << std::endl;
@@ -208,9 +208,10 @@ class worker_pool {
     for (auto& conn : connections) {
       deleted_connections.push_back(std::move(conn));
     }
-    for(size_t i = 0; i < deleted_connections.size(); ++i) { 
+    // Shutdown connection is slow, run in parallel.
+    parallel_for(0, deleted_connections.size(), [&](size_t i) { 
       deleted_connections[i].reset();
-    }
+    });
   }
 
   /**

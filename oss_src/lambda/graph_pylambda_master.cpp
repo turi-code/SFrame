@@ -14,11 +14,23 @@ namespace graphlab {
 
 namespace lambda {
 
+static graph_pylambda_master* instance_ptr = nullptr;
+
 graph_pylambda_master& graph_pylambda_master::get_instance() {
-  static graph_pylambda_master instance(std::min<size_t>(DEFAULT_NUM_GRAPH_LAMBDA_WORKERS,
-                                                         std::max<size_t>(thread::cpu_count(), 1)));
-  return instance;
+  if (instance_ptr == nullptr) {
+    size_t num_workers = (std::min<size_t>(DEFAULT_NUM_GRAPH_LAMBDA_WORKERS, std::max<size_t>(thread::cpu_count(), 1)));
+    instance_ptr = new graph_pylambda_master(num_workers);
+  }
+  return *instance_ptr;
 }
+
+void graph_pylambda_master::shutdown_instance() {
+  if (instance_ptr) {
+    logstream(LOG_INFO) << "Shutdown graph lambda workers" << std::endl;
+    delete instance_ptr;
+    instance_ptr = nullptr;
+  }
+} 
 
 graph_pylambda_master::graph_pylambda_master(size_t nworkers) {
   std::vector<std::string> worker_addresses;

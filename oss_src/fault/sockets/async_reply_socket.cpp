@@ -79,7 +79,7 @@ async_reply_socket::async_reply_socket(void* zmq_ctx,
     }
   }
   local_address = normalize_address(local_address);
-  std::cout << "Bound to " << local_address << "\n";
+  // std::cout << "Bound to " << local_address << "\n";
 
   // now construct the threads and the required inproc sockets
   char inprocname[64];

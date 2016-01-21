@@ -364,7 +364,6 @@ def _raise_error_if_not_iterable(dataset, variable_name="SFrame"):
     if not hasattr(dataset, '__iter__'):
         raise ToolkitError, err_msg % variable_name
 
-
 def _raise_error_evaluation_metric_is_valid(metric, allowed_metrics):
     """
     Check if the input is an SFrame. Provide a proper error
@@ -378,85 +377,6 @@ def _raise_error_evaluation_metric_is_valid(metric, allowed_metrics):
       raise ToolkitError, err_msg % (metric,
                           ', '.join(map(lambda x: "'%s'" % x, allowed_metrics)))
 
-def _select_valid_features(dataset, features, valid_feature_types,
-                           target_column=None):
-    """
-    Utility function for selecting columns of only valid feature types.
-
-    Parameters
-    ----------
-    dataset: SFrame
-        The input SFrame containing columns of potential features.
-
-    features: list[str]
-        List of feature column names.  If None, the candidate feature set is
-        taken to be all the columns in the dataset.
-
-    valid_feature_types: list[type]
-        List of Python types that represent valid features.  If type is array.array,
-        then an extra check is done to ensure that the individual elements of the array
-        are of numeric type.  If type is dict, then an extra check is done to ensure
-        that dictionary values are numeric.
-
-    target_column: str
-        Name of the target column.  If not None, the target column is excluded
-        from the list of valid feature columns.
-
-    Returns
-    -------
-    out: list[str]
-        List of valid feature column names.  Warnings are given for each candidate
-        feature column that is excluded.
-
-    Examples
-    --------
-    # Select all the columns of type `str` in sf, excluding the target column named
-    # 'rating'
-    >>> valid_columns = _select_valid_features(sf, None, [str], target_column='rating')
-
-    # Select the subset of columns 'X1', 'X2', 'X3' that has dictionary type or defines
-    # numeric array type
-    >>> valid_columns = _select_valid_features(sf, ['X1', 'X2', 'X3'], [dict, array.array])
-    """
-    if features is not None:
-        if not hasattr(features, '__iter__'):
-            raise TypeError("Input 'features' must be an iterable type.")
-
-        if not all([isinstance(x, str) for x in features]):
-            raise TypeError("Input 'features' must contain only strings.")
-
-    ## Extract the features and labels
-    if features is None:
-        features = dataset.column_names()
-
-    col_type_map = {
-        col_name: col_type for (col_name, col_type) in
-        zip(dataset.column_names(), dataset.column_types()) }
-
-    valid_features = []
-    for col_name in features:
-
-        if col_name not in dataset.column_names():
-            _logging.warning("Column '{}' is not in the input dataset.".format(col_name))
-
-        elif col_name == target_column:
-            _logging.warning("Excluding target column " + target_column +\
-                             " as a feature.")
-
-        elif col_type_map[col_name] not in valid_feature_types:
-            _logging.warning("Column '{}' is excluded as a ".format(col_name) +
-                             "feature due to invalid column type.")
-
-        else:
-            valid_features.append(col_name)
-
-    if len(valid_features) == 0:
-        raise ValueError("The dataset does not contain any valid feature columns. " +
-            "Accepted feature types are " + str(valid_feature_types) + ".")
-
-    return valid_features
-
-
 def _numeric_param_check_range(variable_name, variable_value, range_bottom, range_top):
     """
     Checks if numeric parameter is within given range
@@ -465,63 +385,3 @@ def _numeric_param_check_range(variable_name, variable_value, range_bottom, rang
 
     if variable_value < range_bottom or variable_value > range_top:
         raise ToolkitError, err_msg % (variable_name, range_bottom, range_top)
-
-def _validate_row_label(dataset, label=None, default_label='__id'):
-    """
-    Validate a row label column. If the row label is not specified, a column is
-    created with row numbers, named with the string in the `default_label`
-    parameter.
-
-    Parameters
-    ----------
-    dataset : SFrame
-        Input dataset.
-
-    label : str, optional
-        Name of the column containing row labels.
-
-    default_label : str, optional
-        The default column name if `label` is not specified. A column with row
-        numbers is added to the output SFrame in this case.
-
-    Returns
-    -------
-    dataset : SFrame
-        The input dataset, but with an additional row label column, *if* there
-        was no input label.
-
-    label : str
-        The final label column name.
-    """
-    ## If no label is provided, set it to be a default and add a row number to
-    #  dataset. Check that this new name does not conflict with an existing
-    #  name.
-    if not label:
-
-        ## Try a bunch of variations of the default label to find one that's not
-        #  already a column name.
-        label_name_base = default_label
-        label = default_label
-        i = 1
-
-        while label in dataset.column_names():
-            label = label_name_base + '.{}'.format(i)
-            i += 1
-
-        dataset = dataset.add_row_number(column_name=label)
-
-    ## Validate the label name and types.
-    if not isinstance(label, str):
-        raise TypeError("The row label column name '{}' must be a string.".format(label))
-
-    if not label in dataset.column_names():
-        raise ToolkitError("Row label column '{}' not found in the dataset.".format(label))
-
-    if not dataset[label].dtype() in (str, int):
-        raise TypeError("Row labels must be integers or strings.")
-
-    ## Return the modified dataset and label
-    return dataset, label
-
-
-

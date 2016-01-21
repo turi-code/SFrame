@@ -36,7 +36,7 @@ else()
                 unity_toolkits
                 cppipc
                 )
-	      
+
         make_empty_library(unity REQUIRES unity_shared)
         set(UNITY_ALL_LIBRARIES unity_shared)
         set(UNITY_EXTENSION_LIBRARY unity_shared)
@@ -69,6 +69,3 @@ subdirs(server)
 
 subdirs(python)
 
-if (${R_INTEGRATION} AND NOT WIN32)
-  subdirs(R-package)
-endif()

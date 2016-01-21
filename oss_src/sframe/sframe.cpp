@@ -630,6 +630,12 @@ void sframe::close() {
   } else {
     index_info.nrows = 0;
   }
+
+  if (!group_index.group_index_file.empty()) {
+    index_file_handle.push_back(
+        fileio::file_handle_pool::get_instance().register_file(
+            group_index.group_index_file));
+  }
   group_writer.reset();
   write_sframe_index_file(index_file, index_info);
   inited = true;
@@ -640,7 +646,7 @@ void sframe::close() {
     columns[i]->open_for_read(group_index.columns[i]);
   }
   // we can now read.
-  if (index_info.nrows > 0) keep_array_file_ref();
+  keep_array_file_ref();
 }
 
 
