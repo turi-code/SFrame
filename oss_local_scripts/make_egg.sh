@@ -103,9 +103,6 @@ build_source() {
   echo -e "\n\n\n================= Build ${BUILD_NUMBER} ================\n\n\n"
   # Configure
   cd ${WORKSPACE}
-  # Clean up, except for the deps.
-  rm -rf "${WORKSPACE}/debug" "${WORKSPACE}/release"
-  # Configure
   ./configure ${toolchain}
   # Make clean
   cd ${WORKSPACE}/${build_type}/oss_src/unity/python
