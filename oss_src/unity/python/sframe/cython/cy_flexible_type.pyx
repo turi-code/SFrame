@@ -1222,7 +1222,7 @@ cdef inline tr_datetime64_to_ft(flexible_type& ret, v):
     # Since flexible type datetime only goes down to microseconds, convert to
     # this. If higher resolution, this will truncate values
     cdef object as_py_datetime = v.astype('M8[us]').astype('O')
-    as_py_datetime = as_py_datetime.replace(tzinfo=timezone.GMT(0))
+    as_py_datetime = as_py_datetime.replace(tzinfo=GMT(0))
     tr_datetime_to_ft(ret, as_py_datetime)
 
 
