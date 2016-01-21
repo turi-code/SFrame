@@ -4,17 +4,17 @@ if(WIN32)
   make_copy_target(unity_core_copy TARGETS ${UNITY_ALL_LIBRARIES})
 endif()
 
-make_executable(unity_server
+make_library(unity_server
                 SOURCES
                   unity_server_init.cpp
                   unity_server.cpp
+                  unity_server_options.cpp
+                  unity_server_capi.cpp
                 REQUIRES
                   unity
                   perf
-                  tcmalloc
-                  crash_handler
-                  minipsutil_static)
-
+                  minipsutil_static
+                SHARED)
 
 add_dependencies(unity_server pylambda_worker spark_unity ./oss_src/sframe/spark_unity.jar)
 

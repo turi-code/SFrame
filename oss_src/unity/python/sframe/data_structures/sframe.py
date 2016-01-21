@@ -1796,11 +1796,6 @@ class SFrame(object):
         dummysf.__proxy__.delete_on_close()
         SFRAME_GARBAGE_COLLECTOR.append(dummysf)
 
-        # Get the environment variables as a java map
-        # env  = sys_util.make_unity_server_env()
-        # java_env_map = MapConverter().convert(env, sc._gateway._gateway_client)
-
-
         # Run the spark job
         javaRDD = graphlab_util_ref.pySparkToRDD(
             sc._jsc.sc(),sf_loc,number_of_partitions,"")

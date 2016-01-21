@@ -30,10 +30,12 @@ namespace fs = boost::filesystem;
 extern  "C" {
 #ifndef _WIN32
   static void* libhdfs_handle = NULL;
+  static void* libjvm_handle = NULL;
 #else
   static HINSTANCE libhdfs_handle = NULL;
+  static HINSTANCE libjvm_handle = NULL;
 #endif
-  bool dlopen_fail = false;
+  static bool dlopen_fail = false;
   /*
    * All the shim pointers
    */
@@ -75,65 +77,28 @@ extern  "C" {
   static int (*ptr_hdfsChmod)(hdfsFS fs, const char* path, short mode) = NULL;
   static int (*ptr_hdfsUtime)(hdfsFS fs, const char* path, tTime mtime, tTime atime) = NULL;
 
+  // Helper functions for dlopens
+  static std::vector<fs::path> get_potential_libjvm_paths();
+  static std::vector<fs::path> get_potential_libhdfs_paths();
+  static void try_dlopen(std::vector<fs::path> potential_paths, const char* name,
+#ifndef _WIN32
+                         void*& out_handle);
+#else
+                         HINSTANCE& out_handle);
+#endif
+
   static void connect_shim() {
     static bool shim_attempted = false;
     if (shim_attempted == false) {
       shim_attempted = true;
-      const char *err_msg;
 
-      std::vector<fs::path> potential_paths = {
-        // find one in the unity_server directory
-        fs::path(graphlab::GLOBALS_MAIN_PROCESS_PATH + "/libhdfs.so"),
-        fs::path(graphlab::GLOBALS_MAIN_PROCESS_PATH + "/hdfs.dll"),
-        // find one in the local directory
-        fs::path("./libhdfs.so"),
-        fs::path("./hdfs.dll"),
-        // special handling for internal build path locations
-        fs::path(graphlab::GLOBALS_MAIN_PROCESS_PATH + "/../../../../deps/local/lib/libhdfs.so"),
-        fs::path(graphlab::GLOBALS_MAIN_PROCESS_PATH + "/../../../../deps/local/bin/hdfs.dll"),
-        // find a global libhdfs.so
-        fs::path("libhdfs.so"),
-        fs::path("hdfs.dll"),
-      };
+      std::vector<fs::path> libjvm_potential_paths = get_potential_libjvm_paths();
+      try_dlopen(libjvm_potential_paths, "libjvm", libjvm_handle);
 
-      // We don't want to freak customers out with failure messages as we try
-      // to load these libraries.  There's going to be a few in the normal
-      // case. Print them if we really didn't find libhdfs.so.
-      std::vector<std::string> error_messages;
+      std::vector<fs::path> libhdfs_potential_paths = get_potential_libhdfs_paths();
+      try_dlopen(libhdfs_potential_paths, "libhdfs", libhdfs_handle);
 
-      for(auto &i : potential_paths) {
-        i.make_preferred();
-        logstream(LOG_INFO) << "Trying " << i.string().c_str() << std::endl;
-#ifndef _WIN32
-        libhdfs_handle = dlopen(i.native().c_str(), RTLD_NOW | RTLD_LOCAL);
-#else
-        libhdfs_handle = LoadLibrary(i.string().c_str());
-#endif
-
-        if(libhdfs_handle != NULL) {
-          logstream(LOG_INFO) << "Success!" << std::endl;
-          break;
-        } else {
-#ifndef _WIN32
-          err_msg = dlerror();
-          if(err_msg != NULL) {
-            error_messages.push_back(std::string(err_msg));
-          } else {
-            error_messages.push_back(std::string(" returned NULL"));
-          }
-#else
-          error_messages.push_back(get_last_err_str(GetLastError()));
-#endif
-        }
-      }
-
-      if (libhdfs_handle == NULL) {
-        logstream(LOG_INFO) << "Unable to load libhdfs.so" << std::endl;
-        dlopen_fail = true;
-        for(size_t i = 0; i < potential_paths.size(); ++i) {
-          logstream(LOG_INFO) << error_messages[i] << std::endl;
-        }
-      }
+      dlopen_fail = (libhdfs_handle == NULL);
     }
   }
 
@@ -381,5 +346,146 @@ extern  "C" {
     else return 0;
   }
 
+
+  static std::vector<fs::path> get_potential_libhdfs_paths() {
+    std::vector<fs::path> libhdfs_potential_paths = {
+      // find one in the unity_server directory
+      fs::path(graphlab::GLOBALS_MAIN_PROCESS_PATH + "/libhdfs.so"),
+      fs::path(graphlab::GLOBALS_MAIN_PROCESS_PATH + "/hdfs.dll"),
+      // find one in the local directory
+      fs::path("./libhdfs.so"),
+      fs::path("./hdfs.dll"),
+      // special handling for internal build path locations
+      fs::path(graphlab::GLOBALS_MAIN_PROCESS_PATH + "/../../../../deps/local/lib/libhdfs.so"),
+      fs::path(graphlab::GLOBALS_MAIN_PROCESS_PATH + "/../../../../deps/local/bin/hdfs.dll"),
+      // find a global libhdfs.so
+      fs::path("libhdfs.so"),
+      fs::path("hdfs.dll"),
+    };
+    return libhdfs_potential_paths;
+  }
+
+  static std::vector<fs::path> get_potential_libjvm_paths() {
+    std::vector<fs::path> libjvm_potential_paths;
+
+    std::vector<fs::path> search_prefixes;
+    std::vector<fs::path> search_suffixes;
+    std::string file_name;
+
+    // From heuristics
+#ifdef __WIN32
+    search_prefixes = {""};
+    search_suffixes = {
+      "/jre/bin/server",
+      "/bin/server"
+    };
+    file_name = "jvm.dll";
+#elif __APPLE__
+    search_prefixes = {""};
+    search_suffixes = {""};
+    file_name = "libjvm.dylib";
+#else
+    search_prefixes = {
+      "/usr/lib/jvm/default-java",               // ubuntu / debian distros
+      "/usr/lib/jvm/java",                       // rhel6
+      "/usr/lib/jvm",                            // centos6
+      "/usr/lib64/jvm",                          // opensuse 13
+      "/usr/local/lib/jvm/default-java",         // alt ubuntu / debian distros
+      "/usr/local/lib/jvm/java",                 // alt rhel6
+      "/usr/local/lib/jvm",                      // alt centos6
+      "/usr/local/lib64/jvm",                    // alt opensuse 13
+      "/usr/local/lib/jvm/java-7-openjdk-amd64", // alt ubuntu / debian distros
+      "/usr/lib/jvm/java-7-openjdk-amd64",       // alt ubuntu / debian distros
+      "/usr/local/lib/jvm/java-6-openjdk-amd64", // alt ubuntu / debian distros
+      "/usr/lib/jvm/java-6-openjdk-amd64",       // alt ubuntu / debian distros
+      "/usr/lib/jvm/java-7-oracle",              // alt ubuntu
+      "/usr/lib/jvm/java-8-oracle",              // alt ubuntu
+      "/usr/lib/jvm/java-6-oracle",              // alt ubuntu
+      "/usr/local/lib/jvm/java-7-oracle",        // alt ubuntu
+      "/usr/local/lib/jvm/java-8-oracle",        // alt ubuntu
+      "/usr/local/lib/jvm/java-6-oracle",        // alt ubuntu
+      "/usr/lib/jvm/default",                    // alt centos
+      "/usr/java/latest",                        // alt centos
+    };
+    search_suffixes = {
+      "/jre/lib/amd64/server"
+    };
+    file_name = "libjvm.so";
+#endif
+    // From direct enviornment variable 
+    char* env_value = NULL;
+    if ((env_value = getenv("GRAPHLAB_LIBJVM_DIRECTORY")) != NULL) {
+      logstream(LOG_INFO) << "Found environment variable GRAPHLAB_LIBJVM_DIRECTORY: " << env_value << std::endl;
+      libjvm_potential_paths.push_back(fs::path(env_value) / fs::path(file_name));
+      libjvm_potential_paths.push_back(fs::path(env_value));
+    }
+
+    // Add following environment variables to search_prefixes: "GRAPHLAB_JAVA_HOME", or "JAVA_HOME"
+    for (const auto& env_name : {"GRAPHLAB_JAVA_HOME", "JAVA_HOME"}) {
+      if ((env_value = getenv(env_name)) != NULL) {
+        logstream(LOG_INFO) << "Found environment variable " << env_name << ": " << env_value << std::endl;
+        search_prefixes.insert(search_prefixes.begin(), env_value);
+      }
+    }
+
+    // Generate cross product between search_prefixes, search_suffixes, and file_name
+    for (auto& prefix: search_prefixes) {
+      for (auto& suffix: search_suffixes) {
+        auto path = (fs::path(prefix) / fs::path(suffix) / fs::path(file_name));
+        libjvm_potential_paths.push_back(path);
+      }
+    }
+
+    return libjvm_potential_paths;
+  }
+
+  static void try_dlopen(std::vector<fs::path> potential_paths, const char* name,
+#ifndef _WIN32
+                         void*& out_handle)
+#else
+                         HINSTANCE& out_handle)
+#endif
+  {
+    // We don't want to freak customers out with failure messages as we try
+    // to load these libraries.  There's going to be a few in the normal
+    // case. Print them if we really didn't find libhdfs.so.
+    std::vector<std::string> error_messages;
+
+    for(auto &i : potential_paths) {
+      i.make_preferred();
+      logstream(LOG_INFO) << "Trying " << i.string().c_str() << std::endl;
+#ifndef _WIN32
+      out_handle = dlopen(i.native().c_str(), RTLD_NOW | RTLD_LOCAL);
+#else
+      out_handle = LoadLibrary(i.string().c_str());
+#endif
+
+      if(out_handle != NULL) {
+        logstream(LOG_INFO) << "Success!" << std::endl;
+        break;
+      } else {
+#ifndef _WIN32
+        const char *err_msg = dlerror();
+        if(err_msg != NULL) {
+          error_messages.push_back(std::string(err_msg));
+        } else {
+          error_messages.push_back(std::string(" returned NULL"));
+        }
+#else
+        error_messages.push_back(get_last_err_str(GetLastError()));
+#endif
+      }
+    }
+
+    if (out_handle == NULL) {
+      logstream(LOG_INFO) << "Unable to load " << name << std::endl;
+      for(size_t i = 0; i < potential_paths.size(); ++i) {
+        logstream(LOG_INFO) << error_messages[i] << std::endl;
+      }
+    }
+  }
+
+
 }
+
 #endif

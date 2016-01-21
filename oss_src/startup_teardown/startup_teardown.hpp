@@ -9,6 +9,7 @@
 #define GRAPHLAB_STARTUP_TEARDOWN_HPP
 #include <export.hpp>
 #include <string>
+
 namespace graphlab {
 
 /**
@@ -16,6 +17,35 @@ namespace graphlab {
  * (or close to the first thing) called on program startup.
  */
 void EXPORT configure_global_environment(std::string argv0);
+
+/**
+ * This class centralizes all startup functions
+ */
+class EXPORT global_startup {
+ public:
+  global_startup() = default;
+
+  global_startup(const global_startup&) = delete;
+  global_startup(global_startup&&) = delete;
+  global_startup& operator=(global_startup&&) = delete;
+  global_startup& operator=(const global_startup&) = delete;
+
+  /**
+   * Performs all the startup calls immediately. Further calls to this
+   * function does nothing.
+   */
+  void perform_startup();
+
+  /**
+   * Performs the startup if startup has not yet been performed.
+   */
+  ~global_startup();
+
+  static global_startup& get_instance();
+
+ private:
+  bool startup_performed = false;
+};
 
 /**
  * This class centralizes all tear down functions allowing destruction

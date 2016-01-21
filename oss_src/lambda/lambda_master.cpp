@@ -21,12 +21,24 @@ namespace graphlab { namespace lambda {
   // Get the python executable path
 
 std::vector<std::string> lambda_master::lambda_worker_binary_and_args = {};
+static lambda_master* instance_ptr = nullptr;
 
   lambda_master& lambda_master::get_instance() {
-    static lambda_master instance(std::min<size_t>(DEFAULT_NUM_PYLAMBDA_WORKERS,
-                                                     std::max<size_t>(thread::cpu_count(), 1)));
-    return instance;
+    if (instance_ptr == nullptr) {
+      size_t num_workers = std::min<size_t>(DEFAULT_NUM_PYLAMBDA_WORKERS,
+                                            std::max<size_t>(thread::cpu_count(), 1));
+      instance_ptr = new lambda_master(num_workers);
+    }
+    return *instance_ptr;
   };
+
+  void lambda_master::shutdown_instance() {
+    if (instance_ptr != nullptr) {
+      logstream(LOG_INFO) << "Shutdown lambda workers" << std::endl;
+      delete instance_ptr;
+      instance_ptr = nullptr;
+    }
+  }
 
   lambda_master::lambda_master(size_t nworkers) {
     std::vector<std::string> worker_addresses;
@@ -286,5 +298,44 @@ std::vector<std::string> lambda_master::lambda_worker_binary_and_args = {};
       throw reinterpret_comm_failure(e);
     }
   }
+
+
+/**
+ * Set the path to the pylambda_worker binary from environment variables:
+ *   "__GL_PYTHON_EXECUTABLE__" points to the python executable
+ *   "__GL_PYLAMBDA_SCRIPT__" points to the lambda worker driver script
+ *
+ * The binaries are used for evaluate python lambdas parallel in separate processes.
+ */
+void set_pylambda_worker_binary_from_environment_variables() {
+  namespace fs = boost::filesystem;
+  boost::optional<std::string> python_executable_env = graphlab::getenv_str("__GL_PYTHON_EXECUTABLE__");
+  if (python_executable_env) {
+    graphlab::GLOBALS_PYTHON_EXECUTABLE = *python_executable_env;
+    logstream(LOG_INFO) << "Python executable: " << graphlab::GLOBALS_PYTHON_EXECUTABLE << std::endl;
+    ASSERT_MSG(fs::exists(fs::path(graphlab::GLOBALS_PYTHON_EXECUTABLE)),
+               "Python executable is not valid path. Do I exist?");
+  } else {
+    logstream(LOG_WARNING) << "Python executable not set. Python lambdas may not be available" << std::endl;
+  }
+
+  std::string pylambda_worker_script;
+  {
+    boost::optional<std::string> pylambda_worker_script_env = graphlab::getenv_str("__GL_PYLAMBDA_SCRIPT__");
+    if (pylambda_worker_script_env) {
+      logstream(LOG_INFO) << "PyLambda worker script: " << *pylambda_worker_script_env << std::endl;
+      pylambda_worker_script = *pylambda_worker_script_env;
+      ASSERT_MSG(fs::exists(fs::path(pylambda_worker_script)), "PyLambda worker script not valid.");
+    } else {
+      logstream(LOG_WARNING) << "Python lambda worker script not set. Python lambdas may not be available" 
+                             << std::endl;
+    }
+  }
+
+  // Set the lambda_worker_binary_and_args
+  graphlab::lambda::lambda_master::set_lambda_worker_binary(
+      std::vector<std::string>{graphlab::GLOBALS_PYTHON_EXECUTABLE, pylambda_worker_script});
+}
+
 } // end of lambda
 } // end of graphlab

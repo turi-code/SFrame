@@ -19,14 +19,14 @@ from ..connect import main as glconnect
 from .. import sys_util as _sys_util
 from .. import util
 from .. import SGraph, Model, SFrame, load_graph, load_model, load_sframe
-from create_server_util import create_server, start_test_tcp_server
 from pandas.util.testing import assert_frame_equal
 
 restricted_place = '/root'
 if sys.platform == 'win32':
     restricted_place = 'C:/Windows/System32/config/RegBack'
 
-def _test_save_load_object_helper(testcase, obj, url):
+
+def _test_save_load_object_helper(testcase, obj, path):
     """
     Helper function to test save and load a server side object to a given url.
     """
@@ -34,34 +34,25 @@ def _test_save_load_object_helper(testcase, obj, url):
         """
         Remove the saved file from temp directory.
         """
-        protocol = None
-        path = None
-        splits = url.split("://")
-        if len(splits) > 1:
-            protocol = splits[0]
-            path = splits[1]
-        else:
-            path = url
-        if not protocol or protocol is "local" or protocol is "remote":
-            tempdir = tempfile.gettempdir()
-            pattern = path + ".*"
-            for f in os.listdir(tempdir):
-                if re.search(pattern, f):
-                    os.remove(os.path.join(tempdir, f))
+        tempdir = tempfile.gettempdir()
+        pattern = path + ".*"
+        for f in os.listdir(tempdir):
+            if re.search(pattern, f):
+                os.remove(os.path.join(tempdir, f))
 
     if isinstance(obj, SGraph):
-        obj.save(url + ".graph")
-        newobj = load_graph(url + ".graph")
+        obj.save(path + ".graph")
+        newobj = load_graph(path + ".graph")
         testcase.assertItemsEqual(obj.get_fields(), newobj.get_fields())
         testcase.assertDictEqual(obj.summary(), newobj.summary())
     elif isinstance(obj, Model):
-        obj.save(url + ".model")
-        newobj = load_model(url + ".model")
+        obj.save(path + ".model")
+        newobj = load_model(path + ".model")
         testcase.assertItemsEqual(obj.list_fields(), newobj.list_fields())
         testcase.assertEqual(type(obj), type(newobj))
     elif isinstance(obj, SFrame):
-        obj.save(url + ".frame_idx")
-        newobj = load_sframe(url + ".frame_idx")
+        obj.save(path + ".frame_idx")
+        newobj = load_sframe(path + ".frame_idx")
         testcase.assertEqual(obj.shape, newobj.shape)
         testcase.assertEqual(obj.column_names(), newobj.column_names())
         testcase.assertEqual(obj.column_types(), newobj.column_types())
@@ -69,7 +60,7 @@ def _test_save_load_object_helper(testcase, obj, url):
                            newobj.head(newobj.num_rows()).to_dataframe())
     else:
         raise TypeError
-    cleanup(url)
+    cleanup(path)
 
 
 def create_test_objects():
@@ -101,20 +92,15 @@ class LocalFSConnectorTests(unittest.TestCase):
             os.remove(url)
 
     def test_object_save_load(self):
-        for prefix in ['', 'local://', 'remote://']:
-            _test_save_load_object_helper(self, self.graph, prefix + self.tempfile)
-            _test_save_load_object_helper(self, self.sframe, prefix + self.tempfile)
+        _test_save_load_object_helper(self, self.graph, self.tempfile)
+        _test_save_load_object_helper(self, self.sframe, self.tempfile)
 
     def test_basic(self):
         self._test_read_write_helper(self.tempfile, 'hello world')
-        self._test_read_write_helper("local://" + self.tempfile + ".csv", 'hello,world,woof')
-        self._test_read_write_helper("remote://" + self.tempfile + ".csv", 'hello,world,woof')
 
     def test_gzip(self):
         self._test_read_write_helper(self.tempfile + ".gz", 'hello world')
         self._test_read_write_helper(self.tempfile + ".csv.gz", 'hello world')
-        self._test_read_write_helper("local://" + self.tempfile + ".csv.gz", 'hello world')
-        self._test_read_write_helper("remote://" + self.tempfile + ".csv.gz", 'hello world')
 
     def test_exception(self):
         self.assertRaises(IOError, lambda: glconnect.get_unity().__read__(restricted_place+"/tmp"))
@@ -126,53 +112,6 @@ class LocalFSConnectorTests(unittest.TestCase):
         self.assertRaises(IOError, lambda: load_graph(restricted_place+"/tmp.graph"))
         self.assertRaises(IOError, lambda: load_sframe(restricted_place+"/tmp.frame_idx"))
         self.assertRaises(IOError, lambda: load_model(restricted_place+"/tmp.model"))
-
-
-class RemoteFSConnectorTests(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(self):
-        glconnect.stop()
-        auth_token = 'graphlab_awesome'
-        self.server = start_test_tcp_server(auth_token=auth_token)
-        glconnect.launch(self.server.get_server_addr(), auth_token=auth_token)
-        self.tempfile = tempfile.NamedTemporaryFile().name
-        (self.graph, self.sframe) = create_test_objects()
-
-    @classmethod
-    def tearDownClass(self):
-        glconnect.stop()
-        self.server.stop()
-
-    def _test_read_write_helper(self, url, content):
-        url = util._make_internal_url(url)
-        glconnect.get_unity().__write__(url, content)
-        content_read = glconnect.get_unity().__read__(url)
-        self.assertEquals(content_read, content)
-
-    def test_basic(self):
-        self._test_read_write_helper("remote://" + self.tempfile, 'hello,world,woof')
-
-    def test_gzip(self):
-        self._test_read_write_helper("remote://" + self.tempfile + ".csv.gz", 'hello,world,woof')
-
-    def test_object_save_load(self):
-        prefix = "remote://"
-        _test_save_load_object_helper(self, self.graph, prefix + self.tempfile)
-        _test_save_load_object_helper(self, self.sframe, prefix + self.tempfile)
-
-    @unittest.skipIf(sys.platform == 'win32', "This for some reason doesn't pass on Jenkins")
-    def test_exception(self):
-        self.assertRaises(ValueError, lambda: self._test_read_write_helper(self.tempfile, 'hello world'))
-        self.assertRaises(ValueError, lambda: self._test_read_write_helper("local://" + self.tempfile + ".csv.gz", 'hello,world,woof'))
-        self.assertRaises(IOError, lambda: glconnect.get_unity().__read__("remote://"+restricted_place+"/tmp"))
-        self.assertRaises(IOError, lambda: glconnect.get_unity().__read__("remote://"+restricted_place+"/tmp"))
-        self.assertRaises(IOError, lambda: glconnect.get_unity().__write__("remote://"+restricted_place+"/tmp", '.....'))
-        self.assertRaises(IOError, lambda: self.graph.save("remote://"+restricted_place+"/tmp.graph"))
-        self.assertRaises(IOError, lambda: self.sframe.save("remote://"+restricted_place+"/tmp.frame_idx"))
-        self.assertRaises(IOError, lambda: load_graph("remote://"+restricted_place+"/tmp.graph"))
-        self.assertRaises(IOError, lambda: load_sframe("remote://"+restricted_place+"/tmp.frame_idx"))
-        self.assertRaises(IOError, lambda: load_model("remote://"+restricted_place+"/tmp.model"))
 
 
 class HttpConnectorTests(unittest.TestCase):
@@ -193,6 +132,7 @@ class HttpConnectorTests(unittest.TestCase):
 
     def test_exception(self):
         self.assertRaises(IOError, lambda: glconnect.get_unity().__write__(self.url, '.....'))
+
 
 @unittest.skip("Disabling HDFS Connector Tests")
 class HDFSConnectorTests(unittest.TestCase):
