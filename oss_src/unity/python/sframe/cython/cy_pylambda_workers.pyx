@@ -88,7 +88,7 @@ cdef extern from "<lambda/pylambda.hpp>" namespace "graphlab::lambda":
     # The function to call to set everything up.
     void set_pylambda_evaluation_functions(pylambda_evaluation_functions* eval_function_struct)
 
-
+    
 ################################################################################
 # Lambda evaluation class. 
 
@@ -460,4 +460,14 @@ eval_functions.eval_graph_triple_apply = _eval_graph_triple_apply
 
 # Finally, set pylambda evaluation functions in the 
 set_pylambda_evaluation_functions(&eval_functions)
+
+################################################################################
+# Stuff like this. 
+
+cdef extern from "<lambda/pylambda_worker.hpp>" namespace "graphlab::lambda":
+    int pylambda_worker_main(const char* _root_path, const char* _server_address, int loglevel)
+
+
+def run_pylambda_worker(str root_path, str server_address, int loglevel):
+    return pylambda_worker_main(root_path, server_address, loglevel)
 

@@ -35,6 +35,7 @@ make_library(unity_core
     libjson sgraph 
     image_type image_io
     startup_teardown
+    python_callbacks
     EXTERNAL_VISIBILITY
 )
 

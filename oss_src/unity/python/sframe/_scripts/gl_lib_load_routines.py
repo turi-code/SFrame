@@ -1,7 +1,5 @@
 import sys
 import os
-import ctypes
-from ctypes import PyDLL, c_char_p, c_int, c_void_p
 from os.path import split, abspath, join
 from glob import glob
 from itertools import chain
@@ -43,9 +41,9 @@ def load_isolated_gl_module(subdir, name):
             fp.close()
     
 
-def load_internal_ctypes_library(libnamepattern, info_log_function = None, error_log_function = None):
+def setup_environment(info_log_function = None, error_log_function = None):
 
-    def _write_log(s, error = True):
+    def _write_log(s, error = False):
         if error:
             if error_log_function is None:
                 print s
@@ -82,8 +80,11 @@ def load_internal_ctypes_library(libnamepattern, info_log_function = None, error
     _write_log("Main program directory: %s." % main_dir)
 
     ########################################
-    # Set the dll load path if we are on windows
+    # Finally, set the dll load path if we are on windows
     if sys.platform == 'win32':
+
+        import ctypes
+        import ctypes.wintypes as wintypes
 
         # Back up to the directory, then to the base directory as this is
         # in ./_scripts.
@@ -98,8 +99,6 @@ def load_internal_ctypes_library(libnamepattern, info_log_function = None, error
                     raise OSError
             return args
 
-        import ctypes.wintypes as wintypes
-
         # Also need to set the dll loading directory to the main
         # folder so windows attempts to load all DLLs from this
         # directory.
@@ -110,35 +109,4 @@ def load_internal_ctypes_library(libnamepattern, info_log_function = None, error
             kernel32.SetDllDirectoryW(lib_path)
         except Exception as e:
             _write_log("Error setting DLL load orders: %s (things may still work).\n" % str(e), error = True)
-        set_windows_dll_path()
 
-    ########################################
-    # Find the correct main worker library. 
-    libnamepattern = join(main_dir, libnamepattern)
-    _write_log("Library file worker search pattern: %s\n" % libnamepattern)
-    libfiles = glob(libnamepattern)
-
-    _write_log("Found %d candidade library file(s): \n   %s."
-               % (len(libfiles), "\n   ".join(libfiles)))
-
-    if len(libfiles) > 1:
-        _write_log("WARNING: multiple library load files.")
-
-    if len(libfiles) == 0:
-        _write_log("ERROR: Cannot find extension library matching pattern '%s'."
-                   % libnamepattern, error = True)
-        sys.exit(202)
-
-    _write_log("INFO: Loading library: %s." % libfiles[0])
-
-    ########################################
-    # Get the pointers to the cython callback functions that can
-    # actually execute the lambda functions.
-
-    try:
-        loaded_lib = PyDLL(libfiles[0], mode=ctypes.RTLD_GLOBAL)
-    except Exception as e:
-        _write_log("Error loading library %s: %s" % (libfiles[0], repr(e)), error = True)
-        sys.exit(203)
-
-    return loaded_lib

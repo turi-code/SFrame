@@ -21,7 +21,7 @@ void EXPORT register_python_exception(const python_exception_info* pei) {
 /** Processes an exception previously registered through a call to
  *  register exception.
  */
-void _process_registered_exception() {
+void EXPORT _process_registered_exception() {
 
   // Reset for the next time. 
   _python_exception_occured = false;
