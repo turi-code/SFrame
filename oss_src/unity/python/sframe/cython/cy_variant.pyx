@@ -5,6 +5,7 @@ All rights reserved.
 This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
+# cython: c_string_type=str, c_string_encoding=UTF-8
 # distutils: language = c++
 import cython
 import types
@@ -36,6 +37,7 @@ from .cy_unity cimport make_function_closure_info
 from .cy_unity cimport variant_set_closure
 from .cy_unity cimport function_closure_info
 from cpython.ref cimport PyObject
+from python_version cimport PY_MAJOR_VERSION
 
 from libcpp.vector cimport vector
 from libcpp.string cimport string
@@ -52,27 +54,28 @@ DEF VAR_TR_FT_INT                      = 0
 DEF VAR_TR_FT_LONG                     = 1
 DEF VAR_TR_FT_FLOAT                    = 2
 DEF VAR_TR_FT_STR                      = 3
+DEF VAR_TR_FT_UNICODE                  = 4
 
 # Nested types
-DEF VAR_TR_DICT                        = 4
-DEF VAR_TR_TUPLE                       = 5
-DEF VAR_TR_LIST                        = 6
+DEF VAR_TR_DICT                        = 5
+DEF VAR_TR_TUPLE                       = 6
+DEF VAR_TR_LIST                        = 7
 
 # Other general types
-DEF VAR_TR_SFRAME                      = 7
-DEF VAR_TR_SARRAY                      = 8
-DEF VAR_TR_GRAPH                       = 9
-DEF VAR_TR_UNITY_MODEL                 = 10
-DEF VAR_TR_UNITY_MODEL_TKCLASS         = 11
-DEF VAR_TR_DATAFRAME                   = 12
-DEF VAR_TR_SFRAME_PROXY                = 13
-DEF VAR_TR_SARRAY_PROXY                = 14
-DEF VAR_TR_GRAPH_PROXY                 = 15
-DEF VAR_TR_FUNCTION                    = 16
-DEF VAR_TR_CLOSURE                     = 17
+DEF VAR_TR_SFRAME                      = 8
+DEF VAR_TR_SARRAY                      = 9
+DEF VAR_TR_GRAPH                       = 10
+DEF VAR_TR_UNITY_MODEL                 = 11
+DEF VAR_TR_UNITY_MODEL_TKCLASS         = 12
+DEF VAR_TR_DATAFRAME                   = 13
+DEF VAR_TR_SFRAME_PROXY                = 14
+DEF VAR_TR_SARRAY_PROXY                = 15
+DEF VAR_TR_GRAPH_PROXY                 = 16
+DEF VAR_TR_FUNCTION                    = 17
+DEF VAR_TR_CLOSURE                     = 18
 
 # The last resort -- attempt to convert it to a general flexible type
-DEF VAR_TR_ATTEMPT_OTHER_FLEXIBLE_TYPE = 18  #
+DEF VAR_TR_ATTEMPT_OTHER_FLEXIBLE_TYPE = 19  #
 
 
 # Codes for translating variant type back to python types.
@@ -89,6 +92,7 @@ DEF VAR_TYPE_VARIANT_CLOSURE     = 8
 # Some hard coded class types.
 cdef type instance_type = types.InstanceType
 cdef type function_type = types.FunctionType
+cdef type unicode_type = unicode
 
 # Handle the sframe types.  We don't want to start the server before
 # we need to, which means that can be imported on demand
@@ -141,6 +145,8 @@ cdef int _get_tr_code_by_type_string(object v) except -1:
         ret =  VAR_TR_FT_FLOAT
     elif type(v) is str:
         ret =  VAR_TR_FT_STR
+    elif type(v) is unicode_type:
+        ret =  VAR_TR_FT_UNICODE
     elif type(v) is list:
         ret =  VAR_TR_LIST
     elif type(v) is tuple:
@@ -312,6 +318,9 @@ cdef bint _var_set_listlike_internal(variant_vector_type& ret_as_vv,
             element_stored_in_flex_list = True
         elif tr_code == VAR_TR_FT_STR:
             ret_as_fl[i].set_string(<str>x)
+            element_stored_in_flex_list = True
+        elif tr_code == VAR_TR_FT_UNICODE:
+            ret_as_fl[i].set_string((<unicode>x))
             element_stored_in_flex_list = True
         elif tr_code == VAR_TR_LIST or tr_code == VAR_TR_TUPLE:
             ret_as_fl[i].set_list(flex_list())
@@ -489,6 +498,9 @@ cdef _convert_to_variant_type(variant_type& ret, object v, int tr_code):
         variant_set_flexible_type(ret, ft)
     elif tr_code == VAR_TR_FT_STR:
         ft.set_string(<str>v)
+        variant_set_flexible_type(ret, ft)
+    elif tr_code == VAR_TR_FT_UNICODE:
+        ft.set_string(<unicode>v)
         variant_set_flexible_type(ret, ft)
 
     # Nested container types
