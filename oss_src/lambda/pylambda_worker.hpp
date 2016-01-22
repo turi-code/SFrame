@@ -5,6 +5,9 @@
  * This software may be modified and distributed under the terms
  * of the BSD license. See the LICENSE file for details.
  */
+#ifndef GRAPHLAB_LAMBDA_PYLAMBDA_WORKER_H_
+#define GRAPHLAB_LAMBDA_PYLAMBDA_WORKER_H_
+
 #include <cppipc/server/comm_server.hpp>
 #include <lambda/pylambda.hpp>
 #include <shmipc/shmipc.hpp>
@@ -23,8 +26,8 @@ namespace graphlab { namespace lambda {
  */
 static int pylambda_worker_main(const char* _root_path, const char* _server_address, int loglevel) {
 
-  /** Set up the debug configuration. 
-   *  
+  /** Set up the debug configuration.
+   *
    *  By default, all LOG_ERROR and LOG_FATAL messages are sent to
    *  stderr, and all messages above loglevel are sent to stdout.
    *
@@ -42,7 +45,7 @@ static int pylambda_worker_main(const char* _root_path, const char* _server_addr
 
   std::string log_file_string = debug_mode_file_str ? *debug_mode_file_str :  "";
   bool log_to_file = (!log_file_string.empty());
-  
+
   bool debug_mode = (bool)(debug_mode_str);
 
   global_logger().set_log_level(loglevel);
@@ -52,7 +55,7 @@ static int pylambda_worker_main(const char* _root_path, const char* _server_addr
   size_t this_pid = get_my_pid();
   global_logger().set_pid(this_pid);
 
-  // Set up the logging to file if needed. 
+  // Set up the logging to file if needed.
   if(log_to_file) {
     // Set up the logging to the file, with any errors being fully logged.
     global_logger().set_log_to_console(true, true);
@@ -61,7 +64,7 @@ static int pylambda_worker_main(const char* _root_path, const char* _server_addr
     global_logger().set_log_to_console(false);
   }
 
-  // Now, set the log mode for debug   
+  // Now, set the log mode for debug
   if(debug_mode) {
     global_logger().set_log_level(LOG_DEBUG);
     if(!log_to_file) {
@@ -85,9 +88,9 @@ static int pylambda_worker_main(const char* _root_path, const char* _server_addr
 
     if(server_address == "debug") {
       logstream(LOG_INFO) << "Exiting dry run." << std::endl;
-      return 1; 
+      return 1;
     }
-    
+
     graphlab::shmipc::server shm_comm_server;
     bool has_shm = shm_comm_server.bind();
 
@@ -136,3 +139,4 @@ static int pylambda_worker_main(const char* _root_path, const char* _server_addr
 
 }}
 
+#endif /* _PYLAMBDA_WORKER_H_ */
