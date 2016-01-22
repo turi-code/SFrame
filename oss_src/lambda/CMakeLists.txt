@@ -14,20 +14,12 @@ make_library(pylambda
 )
 
 
-make_library(pylambda_worker_lib
+make_library(pylambda_worker
   SOURCES
   pylambda.cpp
   graph_pylambda.cpp
   REQUIRES
     flexible_type cppipc sframe shmipc
-)
-
-make_library(pylambda_worker
-  SOURCES
-  pylambda_worker.cpp
-  REQUIRES
-    logger process pylambda_worker_lib python_callbacks
-  SHARED
 )
 
 

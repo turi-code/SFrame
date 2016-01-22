@@ -13,7 +13,7 @@
 #include <process/process_util.hpp>
 #include <util/try_finally.hpp>
 
-using namespace graphlab;
+namespace graphlab { namespace lambda {
 
 /** The main function to be called from the python ctypes library to
  *  create a pylambda worker process.
@@ -21,7 +21,7 @@ using namespace graphlab;
  *  Different error routes produce different error codes of 101 and
  *  above.
  */
-int _pylambda_worker_main(const char* _root_path, const char* _server_address, int loglevel) {
+static int pylambda_worker_main(const char* _root_path, const char* _server_address, int loglevel) {
 
   /** Set up the debug configuration. 
    *  
@@ -134,10 +134,5 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address, i
   }
 }
 
-// This one has to be accessible from python's ctypes.  
-extern "C" {
-  int EXPORT pylambda_worker_main(const char* _root_path, const char* _server_address, int loglevel) {
-    return _pylambda_worker_main(_root_path, _server_address, loglevel);
-  }
-}
+}}
 
