@@ -5,6 +5,9 @@
  * This software may be modified and distributed under the terms
  * of the BSD license. See the LICENSE file for details.
  */
+#ifndef GRAPHLAB_LAMBDA_PYLAMBDA_WORKER_H_
+#define GRAPHLAB_LAMBDA_PYLAMBDA_WORKER_H_
+
 #include <cppipc/server/comm_server.hpp>
 #include <lambda/pylambda.hpp>
 #include <shmipc/shmipc.hpp>
@@ -136,3 +139,4 @@ static int pylambda_worker_main(const char* _root_path, const char* _server_addr
 
 }}
 
+#endif /* _PYLAMBDA_WORKER_H_ */
