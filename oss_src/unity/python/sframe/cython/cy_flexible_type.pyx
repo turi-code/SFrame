@@ -571,7 +571,7 @@ cdef inline bint _flex_list_can_be_vector(const flex_list& v):
     return True
 
 
-cdef _check_list_to_vector_translation(flexible_type& v):
+cdef check_list_to_vector_translation(flexible_type& v):
     """
     If a numerical list, translates it to a vector.
     """
@@ -1034,7 +1034,7 @@ cdef inline fill_list(flex_list& retl, _listlike v,
             seen_types |= _choose_inference_code(tr_code, v[i])
         else:
             # With no common type expected, translate lists to vectors.
-            _check_list_to_vector_translation(retl[i])
+            check_list_to_vector_translation(retl[i])
 
     if(common_type != NULL):
         common_type[0] = infer_common_type(seen_types)
@@ -1385,7 +1385,7 @@ cdef flexible_type flexible_type_from_pyobject(object v) except *:
 
     cdef int tr_code = get_translation_code(t, v)
     ret = _ft_translate(v, tr_code)
-    _check_list_to_vector_translation(ret)
+    check_list_to_vector_translation(ret)
     return ret
 
 

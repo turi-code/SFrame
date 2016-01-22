@@ -23,7 +23,7 @@ cdef extern from "<unity/lib/api/model_interface.hpp>" namespace 'graphlab':
 cdef class UnityModel:
     cdef model_proxy* thisptr
     cdef model_base_ptr _base_ptr
-    cdef _cli
+    cdef PyCommClient _cli
 
     cpdef list_fields(self)
 

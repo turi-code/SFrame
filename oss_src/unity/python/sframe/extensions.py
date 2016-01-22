@@ -30,7 +30,6 @@ from .cython.cy_graph import UnityGraphProxy as _UnityGraphProxy
 from .cython.cy_model import UnityModel as _UnityModel
 from .toolkits._main import ToolkitError as _ToolkitError
 from .cython.context import debug_trace as cython_context
-
 import types as _types
 
 
@@ -113,23 +112,8 @@ def _setattr_wrapper(mod, key, value):
         setattr(_sys.modules[__name__], key, value)
 
 
-def _translate_function_arguments(argument):
-    import inspect
-    if inspect.isfunction(argument):
-        try:
-            return _build_native_function_call(argument)
-        except:
-            raise TypeError("Only native functions, or simple lambdas of native functions (with constant capture values) can be passed to an extension function.")
-    elif type(argument) is list:
-        return [_translate_function_arguments(i) for i in argument]
-    elif type(argument) is tuple:
-        return [_translate_function_arguments(i) for i in argument]
-    elif type(argument) is dict:
-        return {i:_translate_function_arguments(v) for (i, v) in argument.iteritems()}
-    elif hasattr(argument, '_tkclass') and hasattr(argument, '__glmeta__'):
-        return argument._tkclass
-    else:
-        return argument
+import types
+
 
 def _run_toolkit_function(fnname, arguments, args, kwargs):
     """
@@ -166,7 +150,6 @@ def _run_toolkit_function(fnname, arguments, args, kwargs):
             raise TypeError("Got multiple values for keyword argument '" + k + "'")
         argument_dict[k] = kwargs[k]
 
-    argument_dict = _translate_function_arguments(argument_dict)
     # unwrap it
     with cython_context():
         ret = _get_unity().run_toolkit(fnname, argument_dict)

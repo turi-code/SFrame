@@ -56,36 +56,21 @@ cdef extern from "<unity/lib/api/client_base_types.hpp>" namespace "graphlab":
     void variant_set_variant_map "graphlab::variant_set_value<graphlab::variant_map_type>" (variant_type& v, const map[string, variant_type]& f)
     void variant_set_variant_vector "graphlab::variant_set_value<graphlab::variant_vector_type>" (variant_type& v, const vector[variant_type]& f)
 
+
 ctypedef map[string, variant_type] variant_map_type
 ctypedef map[string, variant_type].iterator variant_map_type_iterator
 ctypedef vector[variant_type] variant_vector_type
 ctypedef vector[variant_type].iterator variant_vector_type_iterator
 
+cdef dict to_dict(PyCommClient cli, variant_map_type& d)
+cdef list to_vector(PyCommClient cli, variant_vector_type& d)
 
-cdef bint variant_contains_flexible_type(const variant_type&) except *
+cdef variant_map_type from_dict(dict d) except *
+cdef variant_vector_type from_list(list d) except *
 
-cdef bint variant_contains_graph(const variant_type&) except *
 
-cdef bint variant_contains_dataframe(const variant_type&) except *
-
-cdef bint variant_contains_model(const variant_type&) except *
-
-cdef bint variant_contains_sframe(const variant_type&) except *
-
-cdef bint variant_contains_sarray(const variant_type&) except *
-
-cdef bint variant_contains_variant_map(const variant_type& v) except *
-
-cdef bint variant_contains_variant_vector(const variant_type& v) except *
-
-cdef variant_map_type from_dict(object d) except *
-cdef variant_vector_type from_list(object d) except *
 cdef variant_type from_value(object d) except *
-
-cdef to_dict(PyCommClient cli, variant_map_type& d)
-cdef to_vector(PyCommClient cli, variant_vector_type& d)
 cdef to_value(PyCommClient cli, variant_type& v)
-
 
 cdef extern from "<memory>" namespace 'std':
     shared_ptr[variant_type] make_shared_variant "std::make_shared<graphlab::variant_type>"(const variant_type&)
