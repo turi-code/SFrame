@@ -74,8 +74,8 @@ namespace lambda {
       m_current_lambda = NULL;
     }
 
-    m_lambda_hash.erase(lambda_hash);
     delete m_lambda_hash[lambda_hash];
+    m_lambda_hash.erase(lambda_hash);
 
     // run gc to reclaim heap
     py_gc.attr("collect")();
