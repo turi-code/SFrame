@@ -6,5 +6,6 @@ make_library(globals
   REQUIRES
     logger
     flexible_type
+    process
     EXTERNAL_VISIBILITY
   )
