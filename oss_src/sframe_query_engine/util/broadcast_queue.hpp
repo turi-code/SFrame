@@ -109,7 +109,7 @@ struct broadcast_queue_serializer {
  *  - or reads from the in memory queue. (a little bit of bookkeeping
  *    is needed since the queue may get flushed to disk)  
  *
- * While this satisfies the property (1), this dies not satisfy property (2).
+ * While this satisfies the property (1), this does not satisfy property (2).
  * i.e. Assuming producer and consumer rates match. i.e. we alternate
  * producing 'q' elements and every consumer consuming 'q' elements. 
  * When q > k, This procedure will write every element to file.

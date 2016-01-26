@@ -336,7 +336,7 @@ class unity_sarray_test: public CxxTest::TestSuite {
     TS_ASSERT_EQUALS(dbl->dtype(), flex_type_enum::FLOAT);
     TS_ASSERT_EQUALS(dbl->max().get_type(), flex_type_enum::UNDEFINED);
     TS_ASSERT_EQUALS(dbl->min().get_type(), flex_type_enum::UNDEFINED);
-    TS_ASSERT_EQUALS(dbl->sum().get_type(), flex_type_enum::UNDEFINED);
+    TS_ASSERT_EQUALS(dbl->sum().get_type(), flex_type_enum::FLOAT);
     TS_ASSERT_EQUALS(dbl->mean().get_type(), flex_type_enum::UNDEFINED);
     TS_ASSERT_EQUALS(dbl->topk_index(10, false)->size(), 0);
 
@@ -344,7 +344,7 @@ class unity_sarray_test: public CxxTest::TestSuite {
     dbl->construct_from_vector(vec, flex_type_enum::FLOAT);
     TS_ASSERT_EQUALS(dbl->max().get_type(), flex_type_enum::UNDEFINED);
     TS_ASSERT_EQUALS(dbl->min().get_type(), flex_type_enum::UNDEFINED);
-    TS_ASSERT_EQUALS(dbl->sum().get_type(), flex_type_enum::UNDEFINED);
+    TS_ASSERT_EQUALS(dbl->sum().get_type(), flex_type_enum::FLOAT);
     TS_ASSERT_EQUALS(dbl->mean().get_type(), flex_type_enum::UNDEFINED);
     TS_ASSERT_EQUALS(dbl->topk_index(10, false)->size(), 0);
 
