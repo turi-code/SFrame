@@ -145,6 +145,6 @@ class pylambda_evaluator : public lambda_evaluator_interface {
   graphlab::thread m_shared_memory_listener;
   volatile bool m_shared_memory_thread_terminating = false;
 };
-  } // end of lambda namespace
+} // end of lambda namespace
 } // end of graphlab namespace
 #endif

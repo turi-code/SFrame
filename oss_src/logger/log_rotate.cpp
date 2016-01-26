@@ -26,7 +26,7 @@ static std::string symlink_name;
 static size_t log_counter = 0;
 static size_t log_interval = 24 * 60 * 60;
 static size_t truncate_limit = 2;
-static thread log_rotate_thread;
+static std::shared_ptr<thread> log_rotate_thread;
 static mutex lock;
 static conditional cond;
 static bool thread_running = false;
@@ -79,8 +79,9 @@ void begin_log_rotation(std::string _log_file_name,
   symlink_name = log_base_name;
 
   thread_running = true;
-  std::cout << "Launching log rotate thread" << std::endl;
-  log_rotate_thread.launch(log_rotation_background_thread);
+  // std::cout << "Launching log rotate thread" << std::endl;
+  log_rotate_thread.reset(new thread());
+  log_rotate_thread->launch(log_rotation_background_thread);
 }
 
 void stop_log_rotation() {
@@ -91,7 +92,8 @@ void stop_log_rotation() {
   thread_running = false;
   cond.signal();
   lock.unlock();
-  log_rotate_thread.join();
+  log_rotate_thread->join();
+  log_rotate_thread.reset();
   // we will continue logging to the same location, but we will 
   // delete the symlink
 #ifndef _WIN32

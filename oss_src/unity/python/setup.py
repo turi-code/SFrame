@@ -94,17 +94,6 @@ class InstallEngine(install):
 
         root_path = os.path.join(self.install_lib, 'sframe')
 
-        # make sure all of our binaries are executable to all
-        packaged_binaries = ['unity_server']
-        packaged_binary_paths = []
-        for exe_name in packaged_binaries:
-            exe_path = os.path.join(root_path, exe_name)
-            if cur_platform.startswith("win"):
-                exe_path += ".exe"
-            st = os.stat(exe_path)
-            os.chmod(exe_path, st.st_mode | stat.S_IEXEC | stat.S_IXOTH | stat.S_IXGRP)
-            packaged_binary_paths.append(exe_path)
-
 
 if __name__ == '__main__':
     from distutils.util import get_platform
@@ -141,7 +130,7 @@ if __name__ == '__main__':
             )
         sys.stderr.write(msg)
         sys.exit(1)
-    
+
     version_number='1.8'#{{VERSION_STRING}}
     setup(
         name="SFrame",
@@ -152,7 +141,6 @@ if __name__ == '__main__':
         distclass=BinaryDistribution,
         package_data={
         'sframe': ['cython/*.so', 'cython/*.pyd', 'cython/*.dll',
-                     'unity_server',
                      '*.so', '*.so.1', '*.dylib',
                      '*.dll', '*.def', 'spark_unity.jar',
                      'deploy/*.jar', '*.exe', 'libminipsutil.*'

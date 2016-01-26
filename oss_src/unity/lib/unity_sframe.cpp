@@ -38,18 +38,24 @@ namespace graphlab {
 
 using namespace graphlab::query_eval;
 
-unity_sframe::unity_sframe() {
+static std::shared_ptr<sframe> get_empty_sframe() {
   // make empty sframe and keep it around, reusing it whenever
-  // I need an empty sframe
-  static std::shared_ptr<sframe> sf;
+  // I need an empty sframe. We are intentionally leaking this object.
+  // Otherwise the termination of this will race against the cleanup of the 
+  // cache files.
+  static std::shared_ptr<sframe>* sf = nullptr;
   static graphlab::mutex static_sf_lock;
   std::lock_guard<graphlab::mutex> guard(static_sf_lock);
   if (sf == nullptr) {
-    sf = std::make_shared<sframe>();
-    sf->open_for_write({}, {}, "", 1);
-    sf->close();
+    sf = new std::shared_ptr<sframe>();
+    (*sf) = std::make_shared<sframe>();
+    (*sf)->open_for_write({}, {}, "", 1);
+    (*sf)->close();
   }
-  this->set_sframe(sf);
+  return *sf;
+}
+unity_sframe::unity_sframe() {
+  this->set_sframe(get_empty_sframe());
 }
 
 unity_sframe::~unity_sframe() { clear(); }

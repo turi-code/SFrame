@@ -6,9 +6,17 @@
  * of the BSD license. See the LICENSE file for details.
  */
 #include <sys/time.h>
+#ifdef HAS_TCMALLOC
+#include <google/malloc_extension.h>
+#endif
 #ifndef _WIN32
 #include <sys/resource.h>
 #endif
+#ifndef _WIN32
+#include <crash_handler/crash_handler.hpp>
+#include <signal.h>
+#endif
+#include <Eigen/Core>
 #include <globals/globals.hpp>
 #include <globals/global_constants.hpp>
 #include <sframe/sframe_constants.hpp>
@@ -20,13 +28,25 @@
 #include <parallel/thread_pool.hpp>
 #include <logger/logger.hpp>
 #include <logger/log_rotate.hpp>
+#include <lambda/lambda_master.hpp>
+#include <lambda/graph_pylambda_master.hpp>
 #include <minipsutil/minipsutil.h>
+
 #include "startup_teardown.hpp"
+
 namespace graphlab {
 
+// Global Variables
+class memory_release_thread;
+memory_release_thread* MEMORY_RELEASE_THREAD;
 
+/**************************************************************************/
+/*                                                                        */
+/*                             Helper functions                           */
+/*                                                                        */
+/**************************************************************************/
 /**
- * Attempts to increase the file handle limit. 
+ * Attempts to increase the file handle limit.
  * Returns true on success, false on failure.
  */
 bool upgrade_file_handle_limit(size_t limit) {
@@ -39,7 +59,6 @@ bool upgrade_file_handle_limit(size_t limit) {
   return true;
 #endif
 }
-
 
 /**
  * Gets the current file handle limit.
@@ -57,8 +76,81 @@ int get_file_handle_limit() {
 #endif
 }
 
-void configure_global_environment(std::string argv0) {
+void install_sighandlers() {
+  //TODO: This functionality can be mirrored in Windows. Potentially with SEH,
+  //WER, and possibly needing some asm code written? Too complicated without a
+  //high payout to be on the critical path for now.  Revisit later.
+#ifndef _WIN32
+  /// Installing crash handler to print stack trace in case of segfault.
+  struct sigaction sigact;
+  sigact.sa_sigaction = crit_err_hdlr;
+  sigact.sa_flags = SA_RESTART | SA_SIGINFO;
+  // the crit_err_hdlr writes to this file, by default stderr. See crash_handler.hpp
+  BACKTRACE_FNAME = std::string("/tmp/graphlab_server_") 
+                            + std::to_string(getpid())
+                            + ".backtrace";
+  if (sigaction(SIGSEGV, &sigact, (struct sigaction *)NULL) != 0) {
+    fprintf(stderr, "error setting signal handler for %d (%s)\n",
+        SIGSEGV, strsignal(SIGSEGV));
+    exit(EXIT_FAILURE);
+  }
+#endif
 
+#ifdef _WIN32
+  // Make sure dialog boxes don't come up for errors (apparently doesn't affect
+  // "hard system errors")
+  SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
+
+  // Don't listen to ctrl-c.  On Windows, a ctrl-c is delivered to every
+  // application "sharing" the console that is selected with the mouse. This
+  // causes unity_server to crash even though the client handles it correctly,
+  // unless we disable ctrl-c events.
+  SetConsoleCtrlHandler(NULL, true);
+#endif
+}
+
+
+#ifdef HAS_TCMALLOC
+/**
+ *  If TCMalloc is available, we try to release memory back to the
+ *  system every 15 seconds or so. TCMalloc is otherwise somewhat...
+ *  aggressive about keeping memory around.
+ */
+class memory_release_thread {
+  public:
+  void start() {
+    memory_release_thread.launch([this]() { this->memory_release_loop(); });
+  }
+  void stop() {
+    stop_memory_release_thread = true;
+    memory_release_cond.signal();
+    memory_release_thread.join();
+  }
+
+  private:
+  void memory_release_loop() {
+    memory_release_lock.lock();
+    while (!stop_memory_release_thread) {
+      memory_release_cond.timedwait(memory_release_lock, 15);
+      MallocExtension::instance()->ReleaseFreeMemory();
+    }
+    memory_release_lock.unlock();
+  }
+  private:
+  graphlab::thread memory_release_thread;
+  bool stop_memory_release_thread = false;
+  graphlab::mutex memory_release_lock;
+  graphlab::conditional memory_release_cond;
+};
+#else
+class memory_release_thread {
+  public:
+    void start() { }
+    void stop() { }
+};
+#endif
+
+void configure_global_environment(std::string argv0) {
   // file limit upgrade has to be the very first thing that happens. The 
   // reason is that on Mac, once a file descriptor has been used (even STDOUT),
   // the file handle limit increase will appear to work, but will in fact fail
@@ -91,14 +183,14 @@ void configure_global_environment(std::string argv0) {
   // use up at most half of system memory.
   size_t total_system_memory = total_mem();
   total_system_memory /= 2;
-  char* envval = getenv("DISABLE_MEMORY_AUTOTUNE");
-  bool disable_memory_autotune = envval != nullptr && (std::string(envval) == "1");
+  boost::optional<std::string> envval = getenv_str("DISABLE_MEMORY_AUTOTUNE");
+  bool disable_memory_autotune = ((bool)envval) && (std::string(*envval) == "1");
 
   
   // memory limit
-  envval = getenv("GRAPHLAB_MEMORY_LIMIT_IN_MB");
-  if (envval != nullptr) {
-    size_t limit = atoll(envval) * 1024 * 1024; /* MB */
+  envval = getenv_str("GRAPHLAB_MEMORY_LIMIT_IN_MB");
+  if (envval) {
+    size_t limit = atoll((*envval).c_str()) * 1024 * 1024; /* MB */
     if (limit == 0) {
       logstream(LOG_WARNING) << "GRAPHLAB_MEMORY_LIMIT_IN_MB environment "
                                 "variable cannot be parsed" << std::endl;
@@ -129,20 +221,60 @@ void configure_global_environment(std::string argv0) {
     graphlab::fileio::FILEIO_MAXIMUM_CACHE_CAPACITY = total_system_memory / 2;
   }
   graphlab::globals::initialize_globals_from_environment(argv0);
-  
-  graphlab::reap_unused_temp_files();
+
 
   // force initialize rng
   graphlab::random::get_source();
-
 }
 
 
-void global_teardown::perform_teardown() {
-  if (teardown_performed) return;
-  teardown_performed = true;
+/**************************************************************************/
+/*                                                                        */
+/*                            Global Startup                              */
+/*                                                                        */
+/**************************************************************************/
+void global_startup::perform_startup() {
+  if (startup_performed) return;
+  startup_performed = true;
+  // non graphlab stuff
+  Eigen::initParallel();
+  install_sighandlers();
+  MEMORY_RELEASE_THREAD = new memory_release_thread();
+  MEMORY_RELEASE_THREAD->start();
+  // graphlab stuff
+  graphlab::reap_unused_temp_files();
+}
 
+global_startup::~global_startup() { }
+
+namespace startup_impl {
+// we use an externed global variable so that only one occurance of this 
+// object shows up after many shared library linkings.
+global_startup startup_instance;
+} // startup_impl
+
+global_startup& global_startup::get_instance() {
+  return startup_impl::startup_instance;
+}
+
+/**************************************************************************/
+/*                                                                        */
+/*                            Global Teardown                             */
+/*                                                                        */
+/**************************************************************************/
+
+void global_teardown::perform_teardown() {
+  if (teardown_performed) {
+    logstream(LOG_WARNING) << "Teardown already performed" << std::endl;
+    return;
+  }
+  teardown_performed = true;
+  logstream(LOG_INFO) << "Performing teardown" << std::endl;
   try {
+    graphlab::lambda::lambda_master::shutdown_instance();
+    graphlab::lambda::graph_pylambda_master::shutdown_instance();
+    MEMORY_RELEASE_THREAD->stop();
+    delete MEMORY_RELEASE_THREAD;
     graphlab::fileio::fixed_size_cache_manager::get_instance().clear();
     graphlab::file_download_cache::get_instance().clear();
     graphlab::block_cache::release_instance();
@@ -154,10 +286,10 @@ void global_teardown::perform_teardown() {
   } catch (...) {
     std::cerr << "Exception on teardown." << std::endl;
   }
+  logstream(LOG_INFO) << "Teardown complete" << std::endl;
 }
 
-global_teardown::~global_teardown() {
-}
+global_teardown::~global_teardown() { }
 
 namespace teardown_impl {
 // we use an externed global variable so that only one occurance of this 
@@ -166,7 +298,6 @@ global_teardown teardown_instance;
 } // teardown_impl
 
 global_teardown& global_teardown::get_instance() {
-  // we use a
   return teardown_impl::teardown_instance;
 }
 

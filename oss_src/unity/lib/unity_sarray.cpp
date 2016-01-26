@@ -48,6 +48,24 @@ namespace graphlab {
 
 using namespace query_eval;
 
+static std::shared_ptr<sarray<flexible_type>> get_empty_sarray() {
+  // make empty sarray and keep it around, reusing it whenever
+  // I need an empty sarray . We are intentionally leaking this object.
+  // Otherwise the termination of this will race against the cleanup of the 
+  // cache files.
+  static std::shared_ptr<sarray<flexible_type> >* empty_sarray = nullptr;
+  static graphlab::mutex static_sa_lock;
+  std::lock_guard<graphlab::mutex> guard(static_sa_lock);
+  if (empty_sarray == nullptr) {
+    empty_sarray = new std::shared_ptr<sarray<flexible_type>>();
+    (*empty_sarray) = std::make_shared<sarray<flexible_type>>();
+    (*empty_sarray)->open_for_write(1);
+    (*empty_sarray)->set_type(flex_type_enum::FLOAT);
+    (*empty_sarray)->close();
+  }
+  return *empty_sarray;
+}
+
 unity_sarray::unity_sarray() {
   // make empty sarray and keep it around, reusing it whenever
   // I need an empty sarray
@@ -288,17 +306,8 @@ void unity_sarray::save_array_by_index_file(std::string index_file) {
 }
 
 void unity_sarray::clear() {
-  static std::shared_ptr<sarray<flexible_type> > empty_sarray;
-  static graphlab::mutex static_sa_lock;
-  std::lock_guard<graphlab::mutex> guard(static_sa_lock);
-  if (empty_sarray == nullptr) {
-    empty_sarray = std::make_shared<sarray<flexible_type>>();
-    empty_sarray->open_for_write(1);
-    empty_sarray->set_type(flex_type_enum::FLOAT);
-    empty_sarray->close();
-  }
   m_planner_node = 
-      query_eval::op_sarray_source::make_planner_node(empty_sarray);
+      query_eval::op_sarray_source::make_planner_node(get_empty_sarray());
 }
 
 void unity_sarray::save(oarchive& oarc) const {

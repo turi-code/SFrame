@@ -457,28 +457,6 @@ class SFrameTest(unittest.TestCase):
         for f in filelist:
             os.remove(f)
 
-    def test_creation_from_csv_on_server(self):
-        # create from 'remote' csv url
-        csvfile = tempfile.NamedTemporaryFile(suffix='.csv', delete=False)
-        basesf = SFrame(self.dataframe)
-        basesf.save(csvfile.name, format="csv")
-        # Read csv giving type hints
-        #sf = SFrame(data='remote://' + csvfile.name, format='csv',
-        #            column_type_hints={'int_data': int, 'float_data': float, 'string_data': str})
-        sf = SFrame.read_csv('remote://' + csvfile.name,
-                    column_type_hints={'int_data': int, 'float_data': float, 'string_data': str})
-        self.__test_equal(sf, self.dataframe)
-
-        # Read csv without giving type hints, all column will be string type
-        sf = SFrame(data='remote://' + csvfile.name, format='csv')
-        self.assertEquals(sf['float_data'].dtype(), int)
-        sf['float_data'] = sf['float_data'].astype(float)
-        self.assertEquals(sf['string_data'].dtype(), int)
-        sf['string_data'] = sf['string_data'].astype(str)
-        self.__test_equal(sf, self.dataframe)
-        csvfile.close()
-        os.unlink(csvfile.name)
-
     def test_creation_from_txt(self):
         f = tempfile.NamedTemporaryFile(suffix='.txt', delete=False)
         df = self.dataframe[['string_data']]
@@ -505,27 +483,26 @@ class SFrameTest(unittest.TestCase):
         os.unlink(f.name)
 
     def test_creation_from_csv_on_local(self):
-        if (isinstance(glconnect.get_server(), server.LocalServer)):
-            if os.path.exists('./foo.csv'):
-                os.remove('./foo.csv')
-            with open('./foo.csv', 'w') as f:
-                url = f.name
-                basesf = SFrame(self.dataframe)
-                basesf.save(url, format="csv")
-                f.close()
-                sf = SFrame('./foo.csv')
-                self.assertEquals(sf['float_data'].dtype(), int)
-                sf['float_data'] = sf['float_data'].astype(float)
-                self.assertEquals(sf['string_data'].dtype(), int)
-                sf['string_data'] = sf['string_data'].astype(str)
-                self.__test_equal(sf, self.dataframe)
-                sf = SFrame(url)
-                self.assertEquals(sf['float_data'].dtype(), int)
-                sf['float_data'] = sf['float_data'].astype(float)
-                self.assertEquals(sf['string_data'].dtype(), int)
-                sf['string_data'] = sf['string_data'].astype(str)
-                self.__test_equal(sf, self.dataframe)
-                os.remove(url)
+        if os.path.exists('./foo.csv'):
+            os.remove('./foo.csv')
+        with open('./foo.csv', 'w') as f:
+            url = f.name
+            basesf = SFrame(self.dataframe)
+            basesf.save(url, format="csv")
+            f.close()
+            sf = SFrame('./foo.csv')
+            self.assertEquals(sf['float_data'].dtype(), int)
+            sf['float_data'] = sf['float_data'].astype(float)
+            self.assertEquals(sf['string_data'].dtype(), int)
+            sf['string_data'] = sf['string_data'].astype(str)
+            self.__test_equal(sf, self.dataframe)
+            sf = SFrame(url)
+            self.assertEquals(sf['float_data'].dtype(), int)
+            sf['float_data'] = sf['float_data'].astype(float)
+            self.assertEquals(sf['string_data'].dtype(), int)
+            sf['string_data'] = sf['string_data'].astype(str)
+            self.__test_equal(sf, self.dataframe)
+            os.remove(url)
 
     def test_alternate_line_endings(self):
         # test Windows line endings
@@ -552,7 +529,7 @@ class SFrameTest(unittest.TestCase):
         os.remove(windows_file_url)
 
     def test_skip_rows(self):
-        # test line skippng 
+        # test line skippng
         if os.path.exists('./skip_lines.csv'):
             os.remove('./skip_lines.csv')
         skip_file_url = None
@@ -2990,8 +2967,8 @@ class SFrameTest(unittest.TestCase):
 
         for i in range(0, 4000, 20):
             self.assertEqual(X[i], {'a' : i, 'b' : i})
-        
-        X['a'] = range(1000, 5000)                
+
+        X['a'] = range(1000, 5000)
 
         for i in range(0, 4000, 20):
             self.assertEqual(X[i], {'a' : 1000 + i, 'b' : i})
@@ -3007,10 +2984,10 @@ class SFrameTest(unittest.TestCase):
             self.assertEqual(X[i], {'a' : 1000 + i, 'b' : 1000 + i})
 
         X.rename({'b' : 'c'})
-        
+
         for i in range(0, 4000, 20):
             self.assertEqual(X[i], {'a' : 1000 + i, 'c' : 1000 + i})
-            
+
     def test_to_numpy(self):
         X = SFrame({'a' : range(100),
                     'b' : range(100)})

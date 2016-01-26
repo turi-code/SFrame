@@ -213,7 +213,7 @@ class GraphTests(unittest.TestCase):
             fcsv.write(toy_graph_csv)
             fcsv.file.flush()
             for (fname, fmt) in zip([fsnap.name, ftsv.name, fcsv.name], ['snap', 'tsv', 'csv']):
-                g = load_graph('remote://' + fname, fmt)
+                g = load_graph(fname, fmt)
                 self.assertEqual(g.summary(), {'num_vertices': 3, 'num_edges': 6})
                 temp_fnames.append(fname)
 

@@ -8,6 +8,7 @@
 #include <cross_platform/windows_wrapper.hpp>
 #include <tlhelp32.h>
 #include <process/process_util.hpp>
+#include <logger/logger.hpp>
 
 namespace graphlab {
 
@@ -48,8 +49,8 @@ namespace graphlab {
     HANDLE parent_handle = OpenProcess(SYNCHRONIZE, FALSE, (DWORD)parent_pid);
     DWORD wait_ret = WAIT_TIMEOUT;
     while(wait_ret == WAIT_TIMEOUT) {
-      // Wait 5 seconds for the parent to be signaled
-      wait_ret = WaitForSingleObject(parent_handle, 5000);
+      // Wait 1 seconds for the parent to be signaled
+      wait_ret = WaitForSingleObject(parent_handle, 1000);
     }
   }
 
@@ -64,6 +65,20 @@ bool is_process_running(size_t pid) {
     return (ret == WAIT_TIMEOUT);
   }
   return false;
+}
+
+boost::optional<std::string> getenv_str(const char* variable_name) {
+  size_t bufsize = 65535;
+  char buf[bufsize];
+  size_t retsize = GetEnvironmentVariable(variable_name, buf, bufsize);
+  if (retsize == 0) {
+    return boost::optional<std::string>();
+  } else if (retsize == bufsize) {
+    logstream(LOG_WARNING) << "Environment variable " << variable_name << " exceeds max size" << std::endl;
+    return boost::optional<std::string>();
+  } else {
+    return boost::optional<std::string>(std::string(buf, retsize));
+  }
 }
 
 } // namespace graphlab
