@@ -87,6 +87,19 @@ planner_node_type planner_node_name_to_type(const std::string& name);
  */
 query_operator_attributes planner_node_type_to_attributes(planner_node_type type);
 
+/**
+ *  Attempts to prove that the two inputs have equal length.
+ *  Returns a pair [can_prove, is_equal_length].
+ *  If can_prove is false, we were unable to confirm that the two inputs have
+ *  equal or non-equal length; the value of is_equal_length is then meaningless
+ *  but it will be set to false.
+ *
+ *  If can_prove is true, and is_equal_length is true, we ensure that the two
+ *  have equal length. If is_equal_length is false, we ensure that the two
+ *  do not have equal length.
+ */
+std::pair<bool, bool> prove_equal_length(const std::shared_ptr<planner_node>& a,
+                                         const std::shared_ptr<planner_node>& b);
 ////////////////////////////////////////////////////////////////////////////////
 
 /**  This operator consumes all inputs at the same rate, and there

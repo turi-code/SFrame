@@ -7,6 +7,8 @@
  */
 #include <logger/assertions.hpp>
 #include <sframe/sframe_rows.hpp>
+#include <sframe/sarray_v2_block_types.hpp>
+#include <sframe/sarray_v2_type_encoding.hpp>
 
 namespace graphlab {
 
@@ -32,16 +34,36 @@ void sframe_rows::clear() {
 
 void sframe_rows::save(oarchive& oarc) const {
   oarc << m_decoded_columns.size();
-  for (auto& i : m_decoded_columns) oarc << *i;
+  oarchive temp_inmemory_arc;
+  for (auto& i : m_decoded_columns) {
+    v2_block_impl::block_info info;
+    // write into the in memory archive to fill the block info
+    temp_inmemory_arc.off = 0;
+    v2_block_impl::typed_encode(*i, info, temp_inmemory_arc);
+    info.block_size = temp_inmemory_arc.off;
+
+    // write the block info
+    oarc.write(reinterpret_cast<const char*>(&info), sizeof(info));
+    // write the data
+    oarc.write(temp_inmemory_arc.buf, temp_inmemory_arc.off);
+  }
+  free(temp_inmemory_arc.buf);
 }
 
 void sframe_rows::load(iarchive& iarc) {
   size_t ncols = 0;
   iarc >> ncols;
   resize(ncols);
+  char* buf = nullptr;
   for (size_t i = 0; i < ncols; ++i) {
-    iarc >> *(m_decoded_columns[i]);
+    // read the block info
+    v2_block_impl::block_info info;
+    iarc.read(reinterpret_cast<char*>(&info), sizeof(info));
+    buf = (char*)realloc(buf, info.block_size);
+    iarc.read(buf, info.block_size);
+    typed_decode(info, buf, info.block_size, *(m_decoded_columns[i]));
   }
+  if (buf != nullptr) free(buf);
 }
 
 void sframe_rows::add_decoded_column(
