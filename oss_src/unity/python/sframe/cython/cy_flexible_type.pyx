@@ -121,8 +121,9 @@ AnySequence: Any of the above.
 # performance reasons.
 
 #!python
-#cython: boundscheck=False cython:
+#cython: boundscheck=False
 #cython: always_allow_keywords=False
+#cython: c_string_encoding=utf-8
 
 cimport cython
 from cython.operator cimport dereference as deref

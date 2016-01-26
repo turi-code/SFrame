@@ -18,9 +18,11 @@ cimport cython
 
 from random import seed as set_random_seed
 
-if sys.version_info.major == 2:
+from cpython.version cimport PY_MAJOR_VERSION
+
+if PY_MAJOR_VERSION == 2:
    import cPickle as py_pickle
-elif sys.version_info.major == 3:
+elif PY_MAJOR_VERSION >= 3:
    import pickle as py_pickle
 
 cdef extern from "<util/cityhash_gl.hpp>" namespace "graphlab":
@@ -135,12 +137,16 @@ cdef class lambda_evaluator(object):
     cdef _set_dict_keys(self, const vector[string]* input_keys):
         cdef long n_keys = input_keys[0].size()
         cdef long i
-    
+        
         if self.keys is None or len(self.keys) != n_keys:
-            self.keys = [input_keys[0][i] for i in range(n_keys)]
-        else:
-            for i in range(n_keys):
-                self.keys[i] = input_keys[0][i]
+            self.keys = [None] * n_keys
+
+        for i in range(n_keys):
+            if PY_MAJOR_VERSION >= 3:
+                self.keys[i] = bytes(input_keys[0][i]).decode('UTF-8')
+            else:
+                self.keys[i] = str(input_keys[0][i])
+
 
         # Now, build the base arg_dict_base
         self.arg_dict_base = {k : None for k in self.keys}
@@ -181,7 +187,6 @@ cdef class lambda_evaluator(object):
             self.output_buffer = [None]*n
 
         for i in range(n):
-
             if lcd.input_keys[0][i].size() != n_keys:
                 raise ValueError("Row %d does not have the correct number of rows (%d, should be %d)"
                                  % (lcd.input_keys[0][i].size(), n))
