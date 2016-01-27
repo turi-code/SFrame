@@ -3,10 +3,10 @@
 # in the CMakeLists pulls in the cython source files directly, so we
 # don't actually depend on these libraries at link time.
 
-from ..cython.cy_flexible_type cimport flexible_type, flex_type_enum, UNDEFINED
-from ..cython.cy_flexible_type cimport flexible_type_from_pyobject
-from ..cython.cy_flexible_type cimport pyobject_from_flexible_type
-from ..cython.cy_callback cimport register_exception
+from cy_flexible_type cimport flexible_type, flex_type_enum, UNDEFINED
+from cy_flexible_type cimport flexible_type_from_pyobject
+from cy_flexible_type cimport pyobject_from_flexible_type
+from cy_callback cimport register_exception
 
 from libcpp.string cimport string
 from libcpp.vector cimport vector

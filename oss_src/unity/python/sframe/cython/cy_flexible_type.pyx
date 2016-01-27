@@ -236,7 +236,8 @@ try:
     from ..data_structures import image
     _image_type = image.Image
     have_imagetype = True
-except ImportError:
+except Exception:  # relative import can raise ValueError or
+                   #ImportError, so catch anything
     have_imagetype = False
     _image_type = __bad_image
 
