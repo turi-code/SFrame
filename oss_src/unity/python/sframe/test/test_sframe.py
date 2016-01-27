@@ -3160,7 +3160,7 @@ class SFrameTest(unittest.TestCase):
         bad_paramstyle = dbapi2_mock()
         bad_paramstyle.paramstyle = 'foo'
         with self.assertRaises(TypeError):
-            self.sf_all_types.to_sql(conn, "ins_test", dbapi_module=bad_version)
+            self.sf_all_types.to_sql(conn, "ins_test", dbapi_module=bad_paramstyle)
 if __name__ == "__main__":
 
     import sys
