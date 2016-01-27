@@ -26,15 +26,21 @@ void escape_string(const std::string& val,
     char c = val[i];
     switch(c) {
      case '\'':
-       (*cur_out++) = escape_char;
-       (*cur_out++) = '\'';
+       if (use_quote_char && quote_char == '\'') {
+         (*cur_out++) = escape_char;
+         (*cur_out++) = '\'';
+       } else {
+         (*cur_out++) = '\'';
+       }
        break;
      case '\"':
        if (double_quote) {
          (*cur_out++) = '\"';
          (*cur_out++) = '\"';
-       } else {
+       } else if (use_quote_char && quote_char == '\"') {
          (*cur_out++) = escape_char;
+         (*cur_out++) = '\"';
+       } else {
          (*cur_out++) = '\"';
        }
        break;
@@ -72,6 +78,29 @@ void escape_string(const std::string& val,
     }
   }
   if (use_quote_char) (*cur_out++) = quote_char;
+  size_t len = cur_out - &(output[0]);
+  output_len = len;
+}
+
+void double_quote_escape(const std::string& val,
+                         std::string& output, size_t& output_len) {
+  // A maximum of 2 * input array size is needed.
+  // (every character is escaped, and quotes on both end
+  char* cur_out = &(output[0]);
+  if (output.size() < 2 * val.size()) {
+    output.resize(2 * val.size());
+  }
+  // loop through the input string
+  for (size_t i = 0; i < val.size(); ++i) {
+    char c = val[i];
+    switch(c) {
+     case '\"':
+       (*cur_out++) = '\"';
+       // pass through to write the original quote
+     default:
+       (*cur_out++) = c;
+    }
+  }
   size_t len = cur_out - &(output[0]);
   output_len = len;
 }

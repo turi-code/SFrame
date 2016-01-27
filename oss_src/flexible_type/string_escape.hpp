@@ -41,6 +41,14 @@ void escape_string(const std::string& val,
                    bool double_quote,
                    std::string& output, 
                    size_t& output_len);
+
+
+/**
+ * Only perform double quoting escaping
+ */
+void double_quote_escape(const std::string& val,
+                         std::string& output,
+                         size_t& output_len);
 } // namespace graphlab
 
 #endif

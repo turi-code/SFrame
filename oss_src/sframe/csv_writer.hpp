@@ -31,16 +31,21 @@ class csv_writer {
   std::string delimiter = ",";
 
   /**
-   * The character to use to identify the beginning of a C escape sequence 
+   * The character to use to identify the beginning of a C escape sequence
    * (Defualt '\'). i.e. "\n" will be converted to the '\n' character, "\\"
-   * will be converted to "\", etc. Note that only the single character 
+   * will be converted to "\", etc. Note that only the single character
    * escapes are converted. unicode (\Unnnn), octal (\nnn), hexadecimal (\xnn)
    * are not interpreted.
    */
   char escape_char = '\\';
 
   /**
-   * If set to true, pairs of quote characters in a quoted string 
+   * If true, escape characters will not be used at all.
+   */
+  bool use_escape_char = true;
+
+  /**
+   * If set to true, pairs of quote characters in a quoted string
    * are interpreted as a single quote (Default false).
    * For instance, if set to true, the 2nd field of the 2nd line is read as
    * \b "hello "world""
@@ -49,7 +54,7 @@ class csv_writer {
    * 123, "hello ""world"""
    * \endverbatim
    */
-  bool double_quote = true; 
+  bool double_quote = true;
 
   /**
    * The quote character to use (Default '\"')
@@ -84,20 +89,33 @@ class csv_writer {
   void write_verbatim(std::ostream& out, const std::vector<std::string>& row);
 
   /**
-   * Writes an array of values as a row, making the appropriate formatting 
+   * Writes an array of values as a row, making the appropriate formatting
    * changes. Not safe to use in parallel.
    */
   void write(std::ostream& out, const std::vector<flexible_type>& row);
-  
+
   /**
-   * Converts one value to a string
+   * Converts one value to a string.
+   * \param out The stream to write to
+   * \param val The value of emit
+   * \param allow_empty_output This parameter is a little tricky to interpret.
+   *  If this flag is set to true (default), some inputs may result in
+   *  completely empty outputs.  (For instance empty string, or missing value
+   *  where na_value is the empty string). This can cause issues in some
+   *  situations. For instance, in a csv file with only a single columns, some
+   *  parsers may skip empty lines. If this flag is set to false, the complete
+   *  empty output will never be emitted and instead
+   *  out << quote_char << quote_char
+   *  will be generated.
    */
-  void csv_print(std::ostream& out, const flexible_type& val);
- 
+  void csv_print(std::ostream& out,
+                 const flexible_type& val,
+                 bool allow_empty_output=true);
+
  private:
 
   /**
-   * Converts one value, appending it to a string. 
+   * Converts one value, appending it to a string.
    * minimal quoting is performed: only strings are quoted.
    * This is used for recursive prints (ex: printing a list)
    */
@@ -105,28 +123,28 @@ class csv_writer {
 
   /*
    * These are basically some optimizations to csv_print / csv_print_internal
-   * to avoid allocating additional strings everytime. We just 
+   * to avoid allocating additional strings everytime. We just
    * repeatedly make use of the same set of buffers.
    * This does mean that csv_print is *not* thread safe. But that's alright.
-   */ 
+   */
 
   /** The buffer used by csv_print to handle additional quoting required.
-   * Specifically, csv_print calls csv_print_internal on some cases 
+   * Specifically, csv_print calls csv_print_internal on some cases
    * (like dictionary) into this buffer. Then calls escape_string on this
    * buffer to generate a dictionary in string form.
    */
-  std::string m_complex_type_temporary; 
-  std::string m_complex_type_escape_buffer; 
-  size_t m_complex_type_escape_buffer_len = 0; 
+  std::string m_complex_type_temporary;
+  std::string m_complex_type_escape_buffer;
+  size_t m_complex_type_escape_buffer_len = 0;
 
   /**
-   * Temporary storage used by csv_print, and csv_print_internal to escape 
+   * Temporary storage used by csv_print, and csv_print_internal to escape
    * flexible_types containing strings.
    */
-  std::string m_string_escape_buffer; 
-  size_t m_string_escape_buffer_len = 0; 
+  std::string m_string_escape_buffer;
+  size_t m_string_escape_buffer_len = 0;
 };
-  
+
 
 } // namespace graphlab
 #endif

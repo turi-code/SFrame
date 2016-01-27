@@ -563,6 +563,22 @@ csv_test multiline_json() {
   return ret;
 }
 
+csv_test tab_delimited_csv_with_list() {
+  csv_test ret;
+  std::stringstream strm;
+  strm << "xxx\t[1,2,3]\t[1,2,3]\n";
+  ret.file = strm.str();
+  ret.tokenizer.delimiter = "\t";
+  ret.header = false;
+
+  ret.values.push_back({"xxx", flex_list{1,2,3}, flex_list{1,2,3}});
+
+  ret.types = {{"X1", flex_type_enum::STRING},
+               {"X2", flex_type_enum::LIST},
+               {"X3", flex_type_enum::LIST}};
+  return ret;
+}
+
 struct test_equality_visitor {
   template <typename T, typename U>
   void operator()(T& t, const U& u) const { TS_FAIL("type mismatch"); }
@@ -770,6 +786,7 @@ class sframe_test : public CxxTest::TestSuite {
      evaluate(non_escaped_parsing());
      evaluate(single_string_column());
      evaluate(test_missing_tab_values());
+     evaluate(tab_delimited_csv_with_list());
    }
 
 
