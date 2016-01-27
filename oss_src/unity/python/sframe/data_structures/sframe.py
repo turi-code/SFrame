@@ -1094,7 +1094,7 @@ class SFrame(object):
         _mt._get_metric_tracker().track(('sframe.location.%s' % (suffix)), value=1)
         try:
             if (not verbose):
-                glconnect.get_client().set_log_progress(False)
+                glconnect.get_server().set_log_progress(False)
             with cython_context():
                 errors = proxy.load_from_csvs(internal_url, parsing_config, type_hints)
         except Exception as e:
@@ -1110,13 +1110,13 @@ class SFrame(object):
                     with cython_context():
                         errors = proxy.load_from_csvs(internal_url, parsing_config, type_hints)
                 except:
-                    glconnect.get_client().set_log_progress(True)
+                    glconnect.get_server().set_log_progress(True)
                     raise
             else:
-                glconnect.get_client().set_log_progress(True)
+                glconnect.get_server().set_log_progress(True)
                 raise
 
-        glconnect.get_client().set_log_progress(True)
+        glconnect.get_server().set_log_progress(True)
 
         return (cls(_proxy=proxy), { f: SArray(_proxy = es) for (f, es) in errors.iteritems() })
 
@@ -2035,12 +2035,12 @@ class SFrame(object):
         >>> sf.to_odbc(db, 'a_cool_table')
         """
         if (not verbose):
-            glconnect.get_client().set_log_progress(False)
+            glconnect.get_server().set_log_progress(False)
 
         db._insert_sframe(self, table_name, append_if_exists)
 
         if (not verbose):
-            glconnect.get_client().set_log_progress(True)
+            glconnect.get_server().set_log_progress(True)
 
     def __repr__(self):
         """

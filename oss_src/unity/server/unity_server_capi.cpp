@@ -26,7 +26,7 @@ void start_server(const unity_server_options& server_options) {
 
   auto zmq_ctx = SERVER->get_comm_server()->get_zmq_context();
   // we are going to leak this pointer 
-  CLIENT = new cppipc::comm_client(SERVER->get_comm_server_address(), zmq_ctx);
+  CLIENT = new cppipc::comm_client(SERVER->get_comm_server_address(),zmq_ctx);
   CLIENT->start();
 }
 
@@ -94,4 +94,12 @@ EXPORT void* get_client() {
 EXPORT void stop_server() {
   graphlab::stop_server();
 }
-} // end of extern "C"
+
+/**
+ * Enable or disable log progress stream.
+ */
+EXPORT void set_log_progress(bool enable) {
+  graphlab::unity_server::set_log_progress(enable);
+}
+}
+ // end of extern "C"

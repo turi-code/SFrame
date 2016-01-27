@@ -39,6 +39,10 @@ class GraphLabServer(object):
         """ Stops the server. """
         raise NotImplementedError
 
+    def set_log_progress(self, enable):
+        """ Enable or disable log progress printing """
+        raise NotImplementedError
+
     def try_stop(self):
         """ Try stopping the server and swallow the exception. """
         try:
@@ -118,6 +122,9 @@ class EmbeddedServer(GraphLabServer):
     def get_logger(self):
         return self.logger
 
+    def set_log_progress(self, enable):
+        self.dll.set_log_progress(enable)
+
     def _load_dll_ok(self, root_path):
         server_env = _sys_util.make_unity_server_env()
         os.environ.update(server_env)
@@ -137,6 +144,7 @@ class EmbeddedServer(GraphLabServer):
         try:
             self.dll.start_server.argtypes = [c_char_p, c_char_p, c_char_p, c_ulonglong, c_ulonglong]
             self.dll.get_client.restype = c_void_p
+            self.dll.set_log_progress.argtypes = [c_bool]
             self.dll.stop_server
         except Exception as e:
             return (False, str(e))
