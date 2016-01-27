@@ -6,6 +6,8 @@ This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
 # cython: c_string_type=str, c_string_encoding=UTF-8
+# cython: boundscheck=False
+# cython: wraparound=False
 # distutils: language = c++
 import cython
 import types
@@ -391,24 +393,80 @@ cdef inline bint _var_set_dict_internal(variant_map_type& ret_as_vm, flex_dict& 
     # are doing a variant_map_type.  Otherwise, encode it as a
     # flexible type.
 
-    cdef bint output_is_varmap = True
+    cdef bint output_can_be_varmap = True
 
     for k in d.iterkeys():
         if type(k) is not str:
-            output_is_varmap = False
-            break
+            output_can_be_varmap = False
+            break        
 
-    if require_varmap and not output_is_varmap:
+    if require_varmap and not output_can_be_varmap:
         raise TypeError("Dictionary cannot be translated into a variant type map (keys not strings)")
 
     cdef long pos
-
     cdef int tr_code
-    if output_is_varmap:
-        for k, v in d.iteritems():
-            tr_code = get_var_tr_code(v)
-            _convert_to_variant_type(ret_as_vm[k], v, tr_code)
-        return False
+    cdef bint writing_to_flex_dict
+    
+    if output_can_be_varmap:
+        # First see if it can be translated as flexible type, which
+        # would be great.
+
+        if not require_varmap:
+            ret_as_fd.resize(len(d))
+
+            writing_to_flex_dict = True
+            
+            pos = 0
+            for k, v in d.iteritems():
+
+                if writing_to_flex_dict:
+                    ret_as_fd[pos].first.set_string(<str>k)
+
+                    tr_code = get_var_tr_code(v)
+
+                    if tr_code == VAR_TR_FT_INT:
+                        ret_as_fd[pos].second.set_int(<int>v)
+                    elif tr_code == VAR_TR_FT_LONG:
+                        ret_as_fd[pos].second.set_int(<long>v)
+                    elif tr_code == VAR_TR_FT_FLOAT:
+                        ret_as_fd[pos].second.set_double(<double>v)
+                    elif tr_code == VAR_TR_FT_STR:
+                        ret_as_fd[pos].second.set_string(<str>v)
+                    elif tr_code == VAR_TR_FT_UNICODE:
+                        ret_as_fd[pos].second.set_string((<unicode>v))
+                    elif tr_code == VAR_TR_ATTEMPT_OTHER_FLEXIBLE_TYPE:
+                        ret_as_fd[pos].second = _translate_to_flexible_type(v)
+                    else:                    
+                        # That didn't work -- translate the rest as
+                        # variant type if it can be a varmap.
+                        if not output_can_be_varmap:
+                            raise TypeError("Dictionary cannot be translated to native C++ types: "
+                                            "use string keys or simpler value types.")
+
+                        # Move things out of the flex_dict container
+                        for i in range(pos):
+                            variant_set_flexible_type(ret_as_vm[ret_as_fd[pos].first.get_string()],
+                                                      ret_as_fd[pos].second)
+
+                        # Convert the current one
+                        tr_code = get_var_tr_code(v)
+                        _convert_to_variant_type(ret_as_vm[<str>k], v, tr_code)
+
+                        # Make the 
+                        writing_to_flex_dict = False
+                        
+                    pos += 1
+                else:
+                    tr_code = get_var_tr_code(v)
+                    _convert_to_variant_type(ret_as_vm[<str>k], v, tr_code)
+
+            return writing_to_flex_dict
+                
+        else: # require_varmap is true, so we're going to do that. 
+            for k, v in d.iteritems():
+                tr_code = get_var_tr_code(v)
+                _convert_to_variant_type(ret_as_vm[k], v, tr_code)
+            return False
     else:
         ret_as_fd.resize(len(d))
 
