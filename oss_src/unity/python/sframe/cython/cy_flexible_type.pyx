@@ -1355,7 +1355,7 @@ cdef flexible_type _ft_translate(object v, int tr_code) except *:
         ret.set_string(<str>v)
         return ret
     elif tr_code == FT_UNICODE_TYPE:
-        ret.set_string(<str>(v.encode('utf-8')))
+        ret.set_string(<str>(v.encode()))
         return ret
     elif tr_code == FT_LIST_TYPE:
         tr_listlike_to_ft(ret, <list>v)
@@ -1394,9 +1394,9 @@ cdef flexible_type _ft_translate(object v, int tr_code) except *:
         return ret
     elif tr_code == (FT_UNICODE_TYPE + FT_SAFE):
         if type(v) is unicode:
-            ret.set_string(<str>(v.encode('utf-8')))
+            ret.set_string(<str>(v.encode()))
         else:
-            ret.set_string(<str>(unicode(v).encode('utf-8')))
+            ret.set_string(<str>(unicode(v).encode()))
         return ret
     elif tr_code == (FT_LIST_TYPE + FT_SAFE):
         if type(v) is list:
