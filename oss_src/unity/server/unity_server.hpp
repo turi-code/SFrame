@@ -37,16 +37,16 @@ class unity_server {
    */
   void stop();
 
+  /**
+   * Enable or disable log progress stream.
+   */
+  static void set_log_progress(bool enable);
+
   inline cppipc::comm_server* get_comm_server() { return server; }
 
   inline std::string get_comm_server_address() { return options.server_address; }
 
  protected:
-  /**
-   * Include the authentication method if the auth token is provided
-   */
-  void set_auth_token();
-
   /**
    * Parse the server_address and return the parsed address.
    *

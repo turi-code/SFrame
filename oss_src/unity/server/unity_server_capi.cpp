@@ -94,4 +94,12 @@ EXPORT void* get_client() {
 EXPORT void stop_server() {
   graphlab::stop_server();
 }
-} // end of extern "C"
+
+/**
+ * Enable or disable log progress stream.
+ */
+EXPORT void set_log_progress(bool enable) {
+  graphlab::unity_server::set_log_progress(enable);
+}
+}
+ // end of extern "C"
