@@ -47,7 +47,6 @@ void release_lambda(size_t lambda_id) {
   python::check_for_python_exception();
 }
 
-
 // First, the lower-level functions that wrap each of the cython
 // functions.  These don't do much more than set up the calling
 // argmuments.

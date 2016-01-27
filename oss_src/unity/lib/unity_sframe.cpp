@@ -30,6 +30,7 @@
 #include <sframe_query_engine/operators/operator_properties.hpp>
 #include <sframe_query_engine/algorithm/sort.hpp>
 #include <sframe_query_engine/algorithm/groupby_aggregate.hpp>
+#include <sframe_query_engine/operators/operator_properties.hpp>
 #include <lambda/pylambda_function.hpp>
 #include <exceptions/error_types.hpp>
 
@@ -707,22 +708,9 @@ std::shared_ptr<unity_sframe_base> unity_sframe::head(size_t nrows) {
       return false;
     };
 
-    try {
-      query_eval::planner().materialize(this->get_planner_node(),
-                                        callback,
-                                        1 /* process in as 1 segment */,
-                                        false /* do not partial materialize */);
-    } catch (...) {
-      // it's ok, let's try it again with partial materialize
-      sf_head = sframe();
-      sf_head.open_for_write(column_names(), dtype(), "", 1);
-      out = sf_head.get_output_iterator(0);
-      row_counter = 0;
-      query_eval::planner().materialize(this->get_planner_node(),
-                                        callback,
-                                        1 /* process in as 1 segment */,
-                                        true /* partial materialize */);
-    }
+    query_eval::planner().materialize(this->get_planner_node(),
+                                      callback,
+                                      1 /* process in as 1 segment */);
   }
   sf_head.close();
   std::shared_ptr<unity_sframe> ret(new unity_sframe());
@@ -766,17 +754,21 @@ std::shared_ptr<unity_sframe_base> unity_sframe::logical_filter(
 
   std::shared_ptr<unity_sarray> filter_array = std::static_pointer_cast<unity_sarray>(index);
 
-  // Checking the size of index array is the same
-  if (this->size() != filter_array->size()) {
-    log_and_throw("Logical filter array must have the same size");
-  }
-
   std::shared_ptr<unity_sarray> other_array_binarized =
       std::static_pointer_cast<unity_sarray>(
       filter_array->transform_lambda(
             [](const flexible_type& f)->flexible_type {
               return (flex_int)(!f.is_zero());
             }, flex_type_enum::INTEGER, true, 0));
+
+
+  auto equal_length = query_eval::planner().test_equal_length(this->get_planner_node(),
+                                                              other_array_binarized->get_planner_node());
+
+  if (!equal_length) {
+    log_and_throw("Logical filter array must have the same size");
+  }
+
 
   auto new_planner_node = op_logical_filter::make_planner_node(this->get_planner_node(),
                                                                other_array_binarized->get_planner_node());

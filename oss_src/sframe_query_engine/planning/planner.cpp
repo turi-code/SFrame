@@ -47,8 +47,9 @@ static sframe execute_node_impl(pnode_ptr input_n, const materialize_options& ex
   }
 }
 
+
 /**
- * Executes a linear query plan, potentially parallelizing it if possible.
+ * Executes a query plan, potentially parallelizing it if possible.
  * Also implements fast paths in the event the input node is a source node.
  */
 static sframe execute_node(pnode_ptr input_n, const materialize_options& exec_params) {
@@ -69,8 +70,7 @@ static sframe execute_node(pnode_ptr input_n, const materialize_options& exec_pa
         sf.save(exec_params.output_index_file);
       }
       return sf;
-    } else {
-    }
+    } 
     // fast path for SARRAY_SOURCE . If I am not streaming into
     // a callback, I can just call save
   } else if (exec_params.write_callback == nullptr &&
@@ -143,6 +143,7 @@ static sframe execute_node(pnode_ptr input_n, const materialize_options& exec_pa
   }
   return execute_node_impl(input_n, exec_params);
 }
+////////////////////////////////////////////////////////////////////////////////
 
 /** 
  * Materializes deeper nodes, leaving with just a single linearly executable 
@@ -185,39 +186,7 @@ static pnode_ptr partial_materialize_impl(pnode_ptr n,
 
   // Make sure that the inputs are all parallel sliceable.
 
-  if(consumes_inputs_at_same_rates(n)) {
-    // Need to make sure that all inputs are indeed parallel slicable
-    // going into this.  Otherwise, we need to materialize the input
-    // to one of them.  1 indicates it's a source node.  If one of the
-    // nodes comes up with a different code, that's okay, but there
-    // cannot be two non-source codes present in the inputs.  
-
-    size_t allowed_non_source_slicing_code = 0; 
-    
-    std::vector<size_t> slicing_codes = get_parallel_slicable_codes(n);
-
-    size_t code_0 = slicing_codes.front();
-
-    if(code_0 != 1) {
-      allowed_non_source_slicing_code = code_0;
-    }
-
-    for(size_t i = 1; i < slicing_codes.size(); ++i) {
-      size_t c = slicing_codes[i];
-      
-      if(c != 1) {
-        if(allowed_non_source_slicing_code != 0) {
-          if(c != allowed_non_source_slicing_code) {
-            // logprogress_stream << "Partial Materializing: " << n->inputs[i] << std::endl;
-            (*n->inputs[i]) = 
-                (*op_sframe_source::make_planner_node(execute_node(n->inputs[i], exec_params)));
-          }
-        } else {
-          allowed_non_source_slicing_code = c;
-        }
-      }
-    }
-  } else {
+  if(!consumes_inputs_at_same_rates(n)) {
     // consumes inputs at different rates. 
     // materialize all inputs into this node
     for(auto& i: n->inputs) {
@@ -227,8 +196,6 @@ static pnode_ptr partial_materialize_impl(pnode_ptr n,
     }
     // logprogress_stream << "Reduced Plan: " << n << std::endl;
   }
-
-  // Now that we verified that all of the inputs are correctly 
 
   if(is_linear_transform(n) || is_sublinear_transform(n)) {
     memo[n] = n;
@@ -242,8 +209,6 @@ static pnode_ptr partial_materialize_impl(pnode_ptr n,
   memo[n] = n;
   return memo[n];
 }
-
-////////////////////////////////////////////////////////////////////////////////
 
 pnode_ptr naive_partial_materialize(pnode_ptr n, const materialize_options& exec_params) {
 
@@ -276,8 +241,6 @@ static pnode_ptr partial_materialize(pnode_ptr ptip,
     return partial_materialize_impl(ptip, exec_params, memo);
   }
 }
-////////////////////////////////////////////////////////////////////////////////
-
 sframe planner::materialize(pnode_ptr ptip, 
                             materialize_options exec_params) {
   std::lock_guard<recursive_mutex> GLOBAL_LOCK(global_query_lock);
@@ -300,6 +263,7 @@ sframe planner::materialize(pnode_ptr ptip,
   // Execute stuff.
   pnode_ptr final_node = ptip;
 
+
   // Partially materialize the graph first
   // Only a subset of execution paramets matter to the partial materialization calls.
   if (exec_params.partial_materialize) {
@@ -309,6 +273,7 @@ sframe planner::materialize(pnode_ptr ptip,
     recursive_exec_params.write_callback = nullptr;
     final_node = partial_materialize(ptip, recursive_exec_params);
   }
+  logstream(LOG_INFO) << "Reduced plan: " << final_node << std::endl;
 
   if (exec_params.write_callback == nullptr) {
     // no write callback
@@ -324,12 +289,10 @@ sframe planner::materialize(pnode_ptr ptip,
 
 void planner::materialize(std::shared_ptr<planner_node> tip, 
                           write_callback_type callback,
-                          size_t num_segments,
-                          bool partial_materialize) {
+                          size_t num_segments) {
   materialize_options args;
   args.num_segments = num_segments;
   args.write_callback = callback;
-  args.partial_materialize = partial_materialize;
   materialize(tip, args);
 };
 
@@ -353,4 +316,22 @@ std::shared_ptr<planner_node>  planner::materialize_as_planner_node(
   return op_sframe_source::make_planner_node(res);
 }
 
+bool planner::test_equal_length(std::shared_ptr<planner_node> a,
+                                std::shared_ptr<planner_node> b) {
+  // Checking the size of index array is the same
+  auto prove_equal = prove_equal_length(a, b);
+
+  if (!prove_equal.first && infer_planner_node_length(b) == -1) {
+    logstream(LOG_INFO) << "Unable to prove equi-length. Materializing RHS" << std::endl;
+    materialize(b);
+    prove_equal = prove_equal_length(a, b);
+  }
+  if (!prove_equal.first && infer_planner_node_length(a) == -1) {
+    logstream(LOG_INFO) << "Still unable to prove equi-length. Materializing LHS" << std::endl;
+    materialize(a);
+    prove_equal = prove_equal_length(a, b);
+  }
+  DASSERT_TRUE(prove_equal.first);
+  return prove_equal.second;
+}
 }}

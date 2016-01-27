@@ -683,8 +683,16 @@ class SArrayTest(unittest.TestCase):
         s = SArray([], float)
         self.assertTrue(s.max() is None)
         self.assertTrue(s.min() is None)
-        self.assertTrue(s.sum() is None)
         self.assertTrue(s.mean() is None)
+
+        # test sum
+        t = SArray([], float).sum()
+        self.assertTrue(type(t) == float)
+        self.assertTrue(t == 0.0)
+        t = SArray([], int).sum()
+        self.assertTrue(type(t) == int or type(t) == long)
+        self.assertTrue(t == 0)
+        self.assertTrue(SArray([], array.array).sum() == array.array('d',[]))
 
         # test big ints
         huge_int = 9223372036854775807

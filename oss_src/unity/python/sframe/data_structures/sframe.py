@@ -2340,7 +2340,7 @@ class SFrame(object):
         where the corresponding row in the selector is non-zero.
         """
         if type(other) is SArray:
-            if len(other) != len(self):
+            if self.__has_size__() and other.__has_size__() and len(other) != len(self):
                 raise IndexError("Cannot perform logical indexing on arrays of different length.")
             with cython_context():
                 return SFrame(_proxy=self.__proxy__.logical_filter(other.__proxy__))
