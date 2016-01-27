@@ -106,7 +106,12 @@ cdef call_main():
     for i in range(len(args)):
         c_args[i] = args[i]
 
-    sys.exit(_spark_unity_main(len(args), c_args.data()))
+    # If this script is run with a different libpython minor version,
+    # e.g. 2.7.6 vs 2.7.10, or 2.7.11 vs 2.7.10, there appears to be
+    # race condition in tearing things down.  Everything appears to
+    # work besides that.  Using sys._exit instead of exit gets around
+    # this.
+    sys._exit(_spark_unity_main(len(args), c_args.data()))
 
 
 if __name__ == "__main__":
