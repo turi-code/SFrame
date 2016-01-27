@@ -70,7 +70,8 @@ comm_client::comm_client(std::string name, void* zmq_ctx) :
                boost::bind(&comm_client::subscribe_callback, this, _1)),
     endpoint_name(name) {
       ASSERT_MSG(boost::starts_with(name, "inproc://"), "This constructor only supports inproc address");
-      init();
+      bool ops_interruptible = true;
+      init(ops_interruptible);
 }
 
 void comm_client::init(bool ops_interruptible) {

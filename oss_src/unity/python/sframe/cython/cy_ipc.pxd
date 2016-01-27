@@ -15,10 +15,6 @@ cdef extern from "<cppipc/common/message_types.hpp>" namespace 'cppipc':
 
 cdef extern from "<cppipc/client/comm_client.hpp>" namespace 'cppipc':
     cdef cppclass comm_client nogil:
-        comm_client(vector[string] zkhosts, string name, unsigned int max_init_ping_failures,
-                      string alternate_control_address, string alternate_publish_address, 
-                      string public_key, string secret_key, string server_public_key,
-                      ops_interruptible) except +
         reply_status start() except + 
         void stop() except +
 

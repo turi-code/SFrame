@@ -29,20 +29,6 @@ cdef class PyCommClient:
         if (<size_t>r != 0):
             raise RuntimeError(reply_status_to_string(r))
 
-def make_comm_client(string name,
-                     unsigned int max_init_ping_failures=3,
-                     public_key="",
-                     secret_key="",
-                     server_public_key="",
-                     ops_interruptible=True):
-    cdef vector[string] dummy_zkhosts 
-    client_ptr = new comm_client(dummy_zkhosts, name, max_init_ping_failures, "", "", public_key,
-                                 secret_key, server_public_key, ops_interruptible)
-    assert (client_ptr!= NULL), "Fail to create comm client with zkhosts: %s, and host %s" % (str(dummy_zkhosts, name))
-    ret = PyCommClient()
-    ret.thisptr = client_ptr
-    return ret
-
 def make_comm_client_from_existing_ptr(size_t client_ptr):
     ret = PyCommClient()
     ret.thisptr = <comm_client*>(client_ptr)
