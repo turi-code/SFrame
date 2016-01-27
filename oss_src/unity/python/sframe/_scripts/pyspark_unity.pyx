@@ -29,6 +29,10 @@ cdef extern from "<sframe/sframe.hpp>" namespace "graphlab":
         string column_name(size_t idx)
         size_t num_columns()
 
+cdef extern from "<cstdlib>":
+    void _exit(int)
+
+        
 cdef extern from "<sframe/sframe_iterators.hpp>" namespace "graphlab":
 
     cdef cppclass parallel_sframe_iterator_initializer:
@@ -111,7 +115,7 @@ cdef call_main():
     # race condition in tearing things down.  Everything appears to
     # work besides that.  Using sys._exit instead of exit gets around
     # this.
-    sys._exit(_spark_unity_main(len(args), c_args.data()))
+    _exit(_spark_unity_main(len(args), c_args.data()))
 
 
 if __name__ == "__main__":
