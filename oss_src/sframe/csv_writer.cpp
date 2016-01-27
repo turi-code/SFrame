@@ -31,7 +31,8 @@ void csv_writer::csv_print_internal(std::string& out, const flexible_type& val) 
       out += std::string(val);
       break;
     case flex_type_enum::STRING:
-      escape_string(val.get<flex_string>(), escape_char,
+      // do not print double quotes
+      escape_string(val.get<flex_string>(), escape_char, use_escape_char,
                     quote_char, true, false,
                     m_string_escape_buffer, m_string_escape_buffer_len);
       out += std::string(m_string_escape_buffer.c_str(), m_string_escape_buffer_len);
@@ -95,9 +96,8 @@ void csv_writer::csv_print(std::ostream& out,
        */
       if (quote_level == csv_quote_level::QUOTE_ALL) {
         // quote all, pass through the whole escaping sequence
-        escape_string(val.get<flex_string>(), escape_char,
-                      quote_char,
-                      true,
+        escape_string(val.get<flex_string>(), escape_char, use_escape_char,
+                      quote_char, true,
                       double_quote,
                       m_string_escape_buffer, m_string_escape_buffer_len);
         out.write(m_string_escape_buffer.c_str(), m_string_escape_buffer_len);
@@ -133,22 +133,22 @@ void csv_writer::csv_print(std::ostream& out,
                    double_quote == true) {
           // - no delimiterization needed.
           // - we have double quote to handle quotes
-          double_quote_escape(valstr,
-                              m_string_escape_buffer, m_string_escape_buffer_len);
+          escape_string(valstr, escape_char, false,
+                        quote_char, false,
+                        double_quote,
+                        m_string_escape_buffer, m_string_escape_buffer_len);
           out.write(m_string_escape_buffer.c_str(), m_string_escape_buffer_len);
         }  else if (quote_level == csv_quote_level::QUOTE_NONE) {
           // do not quote at all, just escape
-          escape_string(valstr, escape_char,
-                        quote_char,
-                        false,
-                        false,
+          escape_string(valstr, escape_char, use_escape_char,
+                        quote_char, false,
+                        double_quote,
                         m_string_escape_buffer, m_string_escape_buffer_len);
           out.write(m_string_escape_buffer.c_str(), m_string_escape_buffer_len);
         } else {
           // the regular case
-          escape_string(val.get<flex_string>(), escape_char,
-                        quote_char,
-                        true,
+          escape_string(val.get<flex_string>(), escape_char, use_escape_char,
+                        quote_char, true,
                         double_quote,
                         m_string_escape_buffer, m_string_escape_buffer_len);
           out.write(m_string_escape_buffer.c_str(), m_string_escape_buffer_len);
@@ -164,9 +164,8 @@ void csv_writer::csv_print(std::ostream& out,
       } else {
         m_complex_type_temporary.clear();
         csv_print_internal(m_complex_type_temporary, val);
-        escape_string(m_complex_type_temporary, escape_char,
-                      quote_char,
-                      true,
+        escape_string(m_complex_type_temporary, escape_char, use_escape_char,
+                      quote_char, true,
                       double_quote,
                       m_complex_type_escape_buffer,
                       m_complex_type_escape_buffer_len);

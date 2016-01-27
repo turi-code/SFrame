@@ -40,7 +40,8 @@ class csv_writer {
   char escape_char = '\\';
 
   /**
-   * If true, escape characters will not be used at all.
+   * If true, escape characters will not be used at all. Note that enabling
+   * this may result in non-parseable CSVs.
    */
   bool use_escape_char = true;
 

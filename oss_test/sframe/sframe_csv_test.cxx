@@ -107,7 +107,7 @@ csv_test basic_comments_and_skips(std::string dlm=",", std::string line_ending="
 std::string default_escape_string(std::string s) {
   std::string out;
   size_t outputlength;
-  escape_string(s, '\\','\"',true, false, out, outputlength);
+  escape_string(s, '\\',true,'\"',true, false, out, outputlength);
   out.resize(outputlength);
   return out;
 }

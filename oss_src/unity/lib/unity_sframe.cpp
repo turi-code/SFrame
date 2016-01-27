@@ -889,6 +889,7 @@ void unity_sframe::save_as_csv(const std::string& url,
   // first the defaults
   writer.delimiter = ",";
   writer.escape_char = '\\';
+  writer.use_escape_char = true;
   writer.double_quote = true;
   writer.quote_char = '\"';
   writer.quote_level = csv_writer::csv_quote_level::QUOTE_NONNUMERIC;
@@ -907,6 +908,7 @@ void unity_sframe::save_as_csv(const std::string& url,
   if (writing_config["escape_char"].get_type() == flex_type_enum::STRING) {
     std::string tmp = (flex_string)writing_config["escape_char"];
     if (tmp.length() > 0) writer.escape_char = tmp[0];
+    else writer.use_escape_char = false;
   }
   if (writing_config.count("double_quote")) {
     writer.double_quote = !writing_config["double_quote"].is_zero();

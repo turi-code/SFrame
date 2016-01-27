@@ -7,8 +7,10 @@
  */
 #include <flexible_type/string_escape.hpp>
 namespace graphlab {
+
 void escape_string(const std::string& val, 
                    char escape_char, 
+                   bool use_escape_char,
                    char quote_char, 
                    bool use_quote_char,
                    bool double_quote,
@@ -22,85 +24,95 @@ void escape_string(const std::string& val,
   char* cur_out = &(output[0]);
   if (use_quote_char) (*cur_out++) = quote_char;
   // loop through the input string
-  for (size_t i = 0; i < val.size(); ++i) {
-    char c = val[i];
-    switch(c) {
-     case '\'':
-       if (use_quote_char && quote_char == '\'') {
+  if (use_escape_char) {
+    // allow generation of escape characters
+    for (size_t i = 0; i < val.size(); ++i) {
+      char c = val[i];
+      switch(c) {
+       case '\'':
+         if (double_quote && quote_char == '\'') {
+           (*cur_out++) = '\'';
+           (*cur_out++) = '\'';
+         } else if (use_quote_char && quote_char == '\'') {
+           (*cur_out++) = escape_char;
+           (*cur_out++) = '\'';
+         } else {
+           (*cur_out++) = '\'';
+         }
+         break;
+       case '\"':
+         if (double_quote && quote_char == '\"') {
+           (*cur_out++) = '\"';
+           (*cur_out++) = '\"';
+         } else if (use_quote_char && quote_char == '\"') {
+           (*cur_out++) = escape_char;
+           (*cur_out++) = '\"';
+         } else {
+           (*cur_out++) = '\"';
+         }
+         break;
+       case '\\':
+         // do not "double escape" if we have \u or \x. i.e. \u does not emit \\u
+         if (i < val.size() - 1 && (val[i+1] == 'u' || val[i+1] == 'x')) {
+           (*cur_out++) = c;
+         } else { 
+           (*cur_out++) = escape_char;
+           (*cur_out++) = '\\';
+         }
+         break;
+       case '\t':
          (*cur_out++) = escape_char;
-         (*cur_out++) = '\'';
-       } else {
-         (*cur_out++) = '\'';
-       }
-       break;
-     case '\"':
-       if (double_quote) {
-         (*cur_out++) = '\"';
-         (*cur_out++) = '\"';
-       } else if (use_quote_char && quote_char == '\"') {
+         (*cur_out++) = 't';
+         break;
+       case '\b':
          (*cur_out++) = escape_char;
-         (*cur_out++) = '\"';
-       } else {
-         (*cur_out++) = '\"';
-       }
-       break;
-     case '\\':
-       // do not "double escape" if we have \u or \x. i.e. \u does not emit \\u
-       if (i < val.size() - 1 && (val[i+1] == 'u' || val[i+1] == 'x')) {
+         (*cur_out++) = 'b';
+         break;
+       case '\r':
+         (*cur_out++) = escape_char;
+         (*cur_out++) = 'r';
+         break;
+       case '\n':
+         (*cur_out++) = escape_char;
+         (*cur_out++) = 'n';
+         break;
+       case 0:
+         (*cur_out++) = escape_char;
+         (*cur_out++) = 0;
+         break;
+       default:
          (*cur_out++) = c;
-       } else { 
-         (*cur_out++) = escape_char;
-         (*cur_out++) = '\\';
-       }
-       break;
-     case '\t':
-       (*cur_out++) = escape_char;
-       (*cur_out++) = 't';
-       break;
-     case '\b':
-       (*cur_out++) = escape_char;
-       (*cur_out++) = 'b';
-       break;
-     case '\r':
-       (*cur_out++) = escape_char;
-       (*cur_out++) = 'r';
-       break;
-     case '\n':
-       (*cur_out++) = escape_char;
-       (*cur_out++) = 'n';
-       break;
-     case 0:
-       (*cur_out++) = escape_char;
-       (*cur_out++) = 0;
-       break;
-     default:
-       (*cur_out++) = c;
+      }
     }
+  } else {
+    // disallow generation of escape characters. Only do double quoting
+    // where necessary
+    for (size_t i = 0; i < val.size(); ++i) {
+      char c = val[i];
+      switch(c) {
+       case '\'':
+         if (double_quote && quote_char == '\'') {
+           (*cur_out++) = '\'';
+           (*cur_out++) = '\'';
+         } else {
+           (*cur_out++) = '\'';
+         }
+         break;
+       case '\"':
+         if (double_quote) {
+           (*cur_out++) = '\"';
+           (*cur_out++) = '\"';
+         } else {
+           (*cur_out++) = '\"';
+         }
+         break;
+       default:
+         (*cur_out++) = c;
+      }
+    }
+
   }
   if (use_quote_char) (*cur_out++) = quote_char;
-  size_t len = cur_out - &(output[0]);
-  output_len = len;
-}
-
-void double_quote_escape(const std::string& val,
-                         std::string& output, size_t& output_len) {
-  // A maximum of 2 * input array size is needed.
-  // (every character is escaped, and quotes on both end
-  char* cur_out = &(output[0]);
-  if (output.size() < 2 * val.size()) {
-    output.resize(2 * val.size());
-  }
-  // loop through the input string
-  for (size_t i = 0; i < val.size(); ++i) {
-    char c = val[i];
-    switch(c) {
-     case '\"':
-       (*cur_out++) = '\"';
-       // pass through to write the original quote
-     default:
-       (*cur_out++) = c;
-    }
-  }
   size_t len = cur_out - &(output[0]);
   output_len = len;
 }
