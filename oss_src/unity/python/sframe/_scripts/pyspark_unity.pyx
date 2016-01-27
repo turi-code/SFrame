@@ -3,10 +3,10 @@
 # in the CMakeLists pulls in the cython source files directly, so we
 # don't actually depend on these libraries at link time.
 
-from ..cython.cy_flexible_type cimport flexible_type, flex_type_enum, UNDEFINED
-from ..cython.cy_flexible_type cimport flexible_type_from_pyobject
-from ..cython.cy_flexible_type cimport pyobject_from_flexible_type
-from ..cython.cy_callback cimport register_exception
+from cy_flexible_type cimport flexible_type, flex_type_enum, UNDEFINED
+from cy_flexible_type cimport flexible_type_from_pyobject
+from cy_flexible_type cimport pyobject_from_flexible_type
+from cy_callback cimport register_exception
 
 from libcpp.string cimport string
 from libcpp.vector cimport vector
@@ -29,6 +29,10 @@ cdef extern from "<sframe/sframe.hpp>" namespace "graphlab":
         string column_name(size_t idx)
         size_t num_columns()
 
+cdef extern from "<cstdlib>":
+    void _exit(int)
+
+        
 cdef extern from "<sframe/sframe_iterators.hpp>" namespace "graphlab":
 
     cdef cppclass parallel_sframe_iterator_initializer:
@@ -106,7 +110,12 @@ cdef call_main():
     for i in range(len(args)):
         c_args[i] = args[i]
 
-    sys.exit(_spark_unity_main(len(args), c_args.data()))
+    # If this script is run with a different libpython minor version,
+    # e.g. 2.7.6 vs 2.7.10, or 2.7.11 vs 2.7.10, there appears to be
+    # race condition in tearing things down.  Everything appears to
+    # work besides that.  Using sys._exit instead of exit gets around
+    # this.
+    _exit(_spark_unity_main(len(args), c_args.data()))
 
 
 if __name__ == "__main__":
