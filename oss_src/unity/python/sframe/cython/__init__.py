@@ -32,9 +32,9 @@ def __do_operation_recursively(operation_name):
     return inner
 
 
-if _version_info.major == 3:
-    _encode = __do_operation_recursively('encode')
-    _decode = __do_operation_recursively('decode')
-else:
-    _encode = lambda x : x
-    _decode = lambda x : x
+# if _version_info.major == 3:
+#     _encode = __do_operation_recursively('encode')
+#     _decode = __do_operation_recursively('decode')
+# else:
+_encode = lambda x : x
+_decode = lambda x : x
