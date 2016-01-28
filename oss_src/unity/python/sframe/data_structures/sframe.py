@@ -763,6 +763,7 @@ class SFrame(object):
     """
 
     __slots__ = ['shape', '__proxy__', '_proxy', '_cache']
+    __construct_ctr = int(time.time()) % 1000
 
     def __init__(self, data=None,
                  format='auto',
@@ -771,7 +772,10 @@ class SFrame(object):
         Construct a new SFrame from a url or a pandas.DataFrame.
         """
         # emit metrics for num_rows, num_columns, and type (local://, s3, hdfs, http)
-        tracker = _mt._get_metric_tracker()
+        SFrame.__construct_ctr += 1
+        if SFrame.__construct_ctr % 1000 == 0:
+            _mt._get_metric_tracker().track('sframe.init1000')
+
         if (_proxy):
             self.__proxy__ = _proxy
         else:
@@ -780,14 +784,12 @@ class SFrame(object):
             if (format == 'auto'):
                 if (HAS_PANDAS and isinstance(data, pandas.DataFrame)):
                     _format = 'dataframe'
-                    tracker.track('sframe.location.memory', value=1)
                 elif (isinstance(data, str) or isinstance(data, unicode)):
 
                     if data.find('://') == -1:
                         suffix = 'local'
                     else:
                         suffix = data.split('://')[0]
-                    tracker.track(('sframe.location.%s' % (suffix)), value=1)
 
                     if data.endswith(('.csv', '.csv.gz')):
                         _format = 'csv'
@@ -807,11 +809,9 @@ class SFrame(object):
 
                 elif (hasattr(data, 'iteritems')):
                     _format = 'dict'
-                    tracker.track('sframe.location.memory', value=1)
 
                 elif hasattr(data, '__iter__'):
                     _format = 'array'
-                    tracker.track('sframe.location.memory', value=1)
                 elif data is None:
                     _format = 'empty'
                 else:
@@ -819,7 +819,6 @@ class SFrame(object):
             else:
                 _format = format
 
-            tracker.track(('sframe.format.%s' % _format), value=1)
 
             with cython_context():
                 if (_format == 'dataframe'):
@@ -870,8 +869,6 @@ class SFrame(object):
         sframe_size = -1
         if self.__has_size__():
           sframe_size = self.num_rows()
-        tracker.track('sframe.row.size', value=sframe_size)
-        tracker.track('sframe.col.size', value=self.num_cols())
 
     @staticmethod
     def _infer_column_types_from_lines(first_rows):
@@ -1083,7 +1080,6 @@ class SFrame(object):
             raise TypeError("Invalid type for column_type_hints. Must be a dictionary, list or a single type.")
 
 
-        _mt._get_metric_tracker().track('sframe.csv.parse')
 
         suffix=''
         if url.find('://') == -1:
@@ -1091,7 +1087,6 @@ class SFrame(object):
         else:
             suffix = url.split('://')[0]
 
-        _mt._get_metric_tracker().track(('sframe.location.%s' % (suffix)), value=1)
         try:
             if (not verbose):
                 glconnect.get_server().set_log_progress(False)
@@ -1973,6 +1968,7 @@ class SFrame(object):
 
         >>> join_result = graphlab.SFrame.from_odbc(db, 'SELECT * FROM "MyTable" a, "AnotherTable" b WHERE a.id=b.id')
         """
+        _mt._get_metric_tracker().track('sframe.from_odbc')
         result = db.execute_query(sql)
         if not isinstance(result, SFrame):
             raise RuntimeError("Cannot create an SFrame for query. No result set.")
@@ -2034,6 +2030,7 @@ class SFrame(object):
 
         >>> sf.to_odbc(db, 'a_cool_table')
         """
+        _mt._get_metric_tracker().track('sframe.to_odbc')
         if (not verbose):
             glconnect.get_server().set_log_progress(False)
 
@@ -2591,7 +2588,6 @@ class SFrame(object):
         if not seed:
             seed = int(time.time())
 
-        _mt._get_metric_tracker().track('sframe.apply')
 
         nativefn = None
         try:
@@ -2674,7 +2670,6 @@ class SFrame(object):
         if not seed:
             seed = int(time.time())
 
-        _mt._get_metric_tracker().track('sframe.flat_map')
 
         # determine the column_types
         if column_types == 'auto':
@@ -2746,7 +2741,6 @@ class SFrame(object):
         if (fraction > 1 or fraction < 0):
             raise ValueError('Invalid sampling rate: ' + str(fraction))
 
-        _mt._get_metric_tracker().track('sframe.sample')
 
         if (self.num_rows() == 0 or self.num_cols() == 0):
             return self
@@ -2801,7 +2795,6 @@ class SFrame(object):
         except ValueError:
             raise ValueError('The \'seed\' parameter must be of type int.')
 
-        _mt._get_metric_tracker().track('sframe.random_split')
 
         with cython_context():
             proxy_pair = self.__proxy__.random_split(fraction, seed)
@@ -2861,7 +2854,6 @@ class SFrame(object):
         if type(column_name) is not str:
             raise TypeError("column_name must be a string")
 
-        _mt._get_metric_tracker().track('sframe.topk')
 
         sf = self[self[column_name].topk_index(k, reverse)]
         return sf.sort(column_name, ascending=reverse)
@@ -2898,7 +2890,6 @@ class SFrame(object):
         >>> sf.save('data/training_data.csv', format='csv')
         """
 
-        _mt._get_metric_tracker().track('sframe.save', properties={'format':format})
         if format == None:
             if filename.endswith(('.csv', '.csv.gz')):
                 format = 'csv'
@@ -3116,7 +3107,6 @@ class SFrame(object):
         >>> # Save the sframe into binary format
         >>> sf.save_reference('data/training_data_sframe')
         """
-        _mt._get_metric_tracker().track('sframe.save_reference')
         ## Save the SFrame
         url = _make_internal_url(filename)
 
@@ -3707,7 +3697,6 @@ class SFrame(object):
         Provides an iterator to the rows of the SFrame.
         """
 
-        _mt._get_metric_tracker().track('sframe.__iter__')
 
         def generator():
             elems_at_a_time = 262144
@@ -3760,7 +3749,6 @@ class SFrame(object):
         +----+-----+
         [6 rows x 2 columns]
         """
-        _mt._get_metric_tracker().track('sframe.append')
         if type(other) is not SFrame:
             raise RuntimeError("SFrame append can only work with SFrame")
 
@@ -4190,7 +4178,6 @@ class SFrame(object):
                     if col not in my_column_names:
                         raise KeyError("Column " + col + " does not exist in SFrame")
 
-            _mt._get_metric_tracker().track('sframe.groupby', properties={'operator':op})
 
         with cython_context():
             return SFrame(_proxy=self.__proxy__.groupby_aggregate(key_columns_array, group_columns,
@@ -4298,7 +4285,6 @@ class SFrame(object):
         +----+-------+-------+
         [5 rows x 3 columns]
         """
-        _mt._get_metric_tracker().track('sframe.join', properties={'type':how})
         available_join_types = ['left','right','outer','inner']
 
         if not isinstance(right, SFrame):
@@ -4382,7 +4368,6 @@ class SFrame(object):
         +-------------+----+--------+
         [2 rows x 3 columns]
         """
-        _mt._get_metric_tracker().track('sframe.filter_by')
         if type(column_name) is not str:
             raise TypeError("Must pass a str as column_name")
 
@@ -4725,7 +4710,6 @@ class SFrame(object):
         else:
             new_column_name = ""
 
-        _mt._get_metric_tracker().track('sframe.pack_columns')
 
         ret_sa = None
         with cython_context():
@@ -4816,7 +4800,6 @@ class SFrame(object):
             new_names = [name + ".1" for name in new_names]
         new_sf.rename(dict(zip(new_sf.column_names(), new_names)))
 
-        _mt._get_metric_tracker().track('sframe.split_datetime')
         ret_sf = self.select_columns(rest_columns)
         ret_sf.add_columns(new_sf)
         return ret_sf
@@ -4957,7 +4940,6 @@ class SFrame(object):
             new_names = [name + ".1" for name in new_names]
         new_sf.rename(dict(zip(new_sf.column_names(), new_names)))
 
-        _mt._get_metric_tracker().track('sframe.unpack')
         ret_sf = self.select_columns(rest_columns)
         ret_sf.add_columns(new_sf)
         return ret_sf
@@ -5151,7 +5133,6 @@ class SFrame(object):
                 values = [v for v in itertools.chain.from_iterable(head_row)]
                 new_column_type = [infer_type_of_list(values)]
 
-        _mt._get_metric_tracker().track('sframe.stack')
 
         with cython_context():
             return SFrame(_proxy=self.__proxy__.stack(column_name, new_column_name, new_column_type, drop_na))
@@ -5231,7 +5212,6 @@ class SFrame(object):
         if (type(column) != str and len(column) != 2):
             raise TypeError("'column' parameter has to be either a string or a list of two strings.")
 
-        _mt._get_metric_tracker().track('sframe.unstack')
 
         with cython_context():
             if type(column) == str:
@@ -5430,7 +5410,6 @@ class SFrame(object):
             if (self[column].dtype() not in (str, int, float,datetime.datetime)):
                 raise TypeError("Only columns of type (str, int, float) can be sorted")
 
-        _mt._get_metric_tracker().track('sframe.sort')
 
         with cython_context():
             return SFrame(_proxy=self.__proxy__.sort(sort_column_names, sort_column_orders))
@@ -5500,7 +5479,6 @@ class SFrame(object):
         +---+---+
         [1 rows x 2 columns]
         """
-        _mt._get_metric_tracker().track('sframe.dropna')
 
         # If the user gives me an empty list (the indicator to use all columns)
         # NA values being dropped would not be the expected behavior. This
@@ -5563,7 +5541,6 @@ class SFrame(object):
         +------+------+
         [2 rows x 2 columns]
         """
-        _mt._get_metric_tracker().track('sframe.dropna_split')
 
         # If the user gives me an empty list (the indicator to use all columns)
         # NA values being dropped would not be the expected behavior. This
@@ -5694,7 +5671,6 @@ class SFrame(object):
         +----+------+------+
         [3 rows x 3 columns]
         """
-        _mt._get_metric_tracker().track('sframe.add_row_number')
 
         if type(column_name) is not str:
             raise TypeError("Must give column_name as strs")

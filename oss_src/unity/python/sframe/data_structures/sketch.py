@@ -162,7 +162,6 @@ class Sketch(object):
             key needs to be a string, for SArray of vector(array) type, the key
             needs to be positive integer
         """
-        _mt._get_metric_tracker().track('sketch.init')
         if (_proxy):
             self.__proxy__ = _proxy
         else:
@@ -405,7 +404,6 @@ class Sketch(object):
         out : float
             An estimate of the number of unique values in the SArray.
         """
-        _mt._get_metric_tracker().track('sketch.num_unique')
 
         with cython_context():
             return int(self.__proxy__.num_unique())
@@ -429,7 +427,6 @@ class Sketch(object):
         out : dict
             A dictionary mapping items and their estimated occurrence frequencies.
         """
-        _mt._get_metric_tracker().track('sketch.frequent_items')
 
         with cython_context():
             return self.__proxy__.frequent_items()
@@ -486,7 +483,6 @@ class Sketch(object):
         out : int
             An estimate of the number of occurrences of the element.
         """
-        _mt._get_metric_tracker().track('sketch.frequency_count')
         with cython_context():
             return int(self.__proxy__.frequency_count(element))
 
@@ -551,7 +547,6 @@ class Sketch(object):
         out : Sketch
           An new sketch object regarding the element length of the current SArray
         """
-        _mt._get_metric_tracker().track('sketch.element_length_summary')
 
         with cython_context():
             return Sketch(_proxy = self.__proxy__.element_length_summary())
@@ -581,7 +576,6 @@ class Sketch(object):
         +-------+---+------+--------+--------+
 
         """
-        _mt._get_metric_tracker().track('sketch.dict_key_summary')
         with cython_context():
             return Sketch(_proxy = self.__proxy__.dict_key_summary())
 
@@ -624,7 +618,6 @@ class Sketch(object):
         +-----+-----+-----+-----+-----+-----+-----+-----+------+
 
         """
-        _mt._get_metric_tracker().track('sketch.dict_value_summary')
         with cython_context():
             return Sketch(_proxy = self.__proxy__.dict_value_summary())
 
@@ -666,7 +659,6 @@ class Sketch(object):
         | 1.0 | 1.0 | 1.0 | 2.0 | 3.0 | 4.0 | 5.0 | 5.0 | 5.0  |
         +-----+-----+-----+-----+-----+-----+-----+-----+------+
         """
-        _mt._get_metric_tracker().track('sketch.element_summary')
         with cython_context():
             return Sketch(_proxy = self.__proxy__.element_summary())
 
@@ -734,7 +726,6 @@ class Sketch(object):
             if (len(value_types) > 1):
                 raise ValueError("All keys should have the same type.")
 
-        _mt._get_metric_tracker().track('sketch.element_sub_sketch')
         with cython_context():
             ret_sketches = self.__proxy__.element_sub_sketch(keys)
             ret = {}

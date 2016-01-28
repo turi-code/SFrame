@@ -322,7 +322,6 @@ class SGraph(object):
         | hippo |  0.0   | 0.0  |     0      |
         +-------+--------+------+------------+
         """
-        _mt._get_metric_tracker().track('sgraph.vertices')
 
         return self._vertices
 
@@ -354,7 +353,6 @@ class SGraph(object):
         |   dog    |  fossa   |    likes     |   equal to   |
         +----------+----------+--------------+--------------+
         """
-        _mt._get_metric_tracker().track('sgraph.edges')
 
         return self._edges
 
@@ -380,7 +378,6 @@ class SGraph(object):
         >>> n_edge = g.summary()['num_edges']
         0
         """
-        _mt._get_metric_tracker().track('sgraph.summary')
         ret = self.__proxy__.summary()
         return dict(ret.items())
 
@@ -453,7 +450,6 @@ class SGraph(object):
         |  0   |   M    |
         +------+--------+
         """
-        _mt._get_metric_tracker().track('sgraph.get_vertices')
 
         if not hasattr(ids, '__iter__'):
             ids = [ids]
@@ -553,7 +549,6 @@ class SGraph(object):
         |    1     |    2     |  None  |
         +----------+----------+--------+
         """
-        _mt._get_metric_tracker().track('sgraph.get_edges')
 
         if not hasattr(src_ids, '__iter__'):
             src_ids = [src_ids]
@@ -646,7 +641,6 @@ class SGraph(object):
         >>> sf_vert = SFrame({'id': [0, 1, 2], 'breed':['lab', 'lab', 'vizsla']})
         >>> g = g.add_vertices(sf_vert, vid_field='id')
         """
-        _mt._get_metric_tracker().track('sgraph.add_vertices')
 
         sf = _vertex_data_to_sframe(vertices, vid_field)
 
@@ -719,7 +713,6 @@ class SGraph(object):
         >>> sf_edge = SFrame({'source': [0, 1], 'dest': [2, 2]})
         >>> g = g.add_edges(sf_edge, src_field='source', dst_field='dest')
         """
-        _mt._get_metric_tracker().track('sgraph.add_edges')
 
         sf = _edge_data_to_sframe(edges, src_field, dst_field)
 
@@ -753,7 +746,6 @@ class SGraph(object):
         >>> fields = g.get_fields()
         ['__id', 'name', '__src_id', '__dst_id', 'frequency']
         """
-        _mt._get_metric_tracker().track('sgraph.get_fields')
 
         return self.get_vertex_fields() + self.get_edge_fields()
 
@@ -781,7 +773,6 @@ class SGraph(object):
         >>> fields = g.get_vertex_fields()
         ['__id', 'name']
         """
-        _mt._get_metric_tracker().track('sgraph.')
 
         with cython_context():
             return self.__proxy__.get_vertex_fields()
@@ -810,7 +801,6 @@ class SGraph(object):
         >>> fields = g.get_vertex_fields()
         ['__src_id', '__dst_id', 'frequency']
         """
-        _mt._get_metric_tracker().track('sgraph.get_edge_fields')
 
         with cython_context():
             return self.__proxy__.get_edge_fields()
@@ -845,7 +835,6 @@ class SGraph(object):
         >>> g = g.add_vertices(verts)
         >>> g2 = g.select_fields(fields=['breed'])
         """
-        _mt._get_metric_tracker().track('sgraph.select_fields')
 
         if (type(fields) is str):
             fields = [fields]
@@ -975,7 +964,6 @@ class SGraph(object):
         Rows: 5
         [4, 1, 1, 1, 4]
         '''
-        _mt._get_metric_tracker().track('sgraph.triple_apply')
 
         assert inspect.isfunction(triple_apply_fn), "Input must be a function"
         if not (type(mutated_fields) is list or type(mutated_fields) is str):
@@ -1056,7 +1044,6 @@ class SGraph(object):
 
         >>> g.save('mygraph.json', format='json')
         """
-        _mt._get_metric_tracker().track('sgraph.save')
 
         if format is 'auto':
             if filename.endswith(('.json', '.json.gz')):
@@ -1241,7 +1228,6 @@ class SGraph(object):
                                           full_subgraph=True)
         """
 
-        _mt._get_metric_tracker().track('sgraph.get_neighborhood')
 
         verts = ids
 
@@ -1330,7 +1316,6 @@ def load_sgraph(filename, format='binary', delimiter='auto'):
     >>> g2 = graphlab.load_graph('mygraph')
     """
 
-    _mt._get_metric_tracker().track('sgraph.load_sgraph')
 
     if not format in ['binary', 'snap', 'csv', 'tsv']:
         raise ValueError('Invalid format: %s' % format)
