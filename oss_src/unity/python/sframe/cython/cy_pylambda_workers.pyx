@@ -169,6 +169,19 @@ cdef class lambda_evaluator(object):
                 continue
             
             x = pyobject_from_flexible_type(v_in[i])
+
+            if hasattr(x, 'decode'):
+                x = x.decode()
+            elif isinstance(x, dict):
+                temp = {}
+                for k,v in x.items():
+                    if hasattr(k, 'decode'):
+                        k = k.decode()
+                    if hasattr(v, 'decode'):
+                        v = v.decode()
+                    temp[k] = v
+                x = temp
+
             self.output_buffer[i] = self.lambda_function(x)
 
         process_common_typed_list(lcd.output_values, self.output_buffer, lcd.output_enum_type)

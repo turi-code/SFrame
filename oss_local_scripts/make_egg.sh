@@ -101,9 +101,17 @@ fi
 ### Build the source with version number ###
 build_source() {
   echo -e "\n\n\n================= Build ${BUILD_NUMBER} ================\n\n\n"
+
   # Configure
   cd ${WORKSPACE}
-  ./configure ${toolchain}
+
+  PY_MAJOR_VERSION=`python -V 2>&1 | perl -ne 'print m/^Python (\d)\.\d/'`
+  if [[ $PY_MAJOR_VERSION == 3 ]]; then
+      ./configure ${toolchain} --python3
+  else
+      ./configure ${toolchain}
+  fi
+
   # Make clean
   cd ${WORKSPACE}/${build_type}/oss_src/unity/python
   make oss_clean_python

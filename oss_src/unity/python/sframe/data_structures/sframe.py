@@ -5352,6 +5352,11 @@ class SFrame(object):
         out : SFrame
             A new SFrame that is sorted according to given sort criteria
 
+        Notes
+        -----
+        - This sort is not stable; the relative order of rows with equal values are
+          not maintained.
+
         See Also
         --------
         topk
