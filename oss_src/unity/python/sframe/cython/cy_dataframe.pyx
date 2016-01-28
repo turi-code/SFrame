@@ -1,4 +1,4 @@
-# cython: c_string_type=str, c_string_encoding=utf8
+# cython: c_string_type=bytes, c_string_encoding=utf8
 '''
 Copyright (C) 2015 Dato, Inc.
 All rights reserved.
@@ -28,7 +28,7 @@ cdef bint is_pandas_dataframe(object v):
         return isinstance(v, pd.core.frame.DataFrame)
     else:
         return False
-
+    
 cdef gl_dataframe gl_dataframe_from_dict_of_arrays(dict df) except *:
     cdef gl_dataframe ret
     cdef flex_type_enum ftype
@@ -51,3 +51,4 @@ cdef pd_from_gl_dataframe(gl_dataframe& df):
             """ special handling of empty list, we need to force the type information """
             ret[_name] = ret[_name].astype(_type)
     return ret 
+

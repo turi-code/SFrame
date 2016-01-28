@@ -1,4 +1,4 @@
-# cython: c_string_type=str, c_string_encoding=utf8
+# cython: c_string_type=bytes, c_string_encoding=utf8
 #cython: boundscheck=False, wraparound=False
 
 from cy_flexible_type cimport flexible_type, flex_type_enum, UNDEFINED, flex_int
@@ -18,6 +18,7 @@ import sys
 cimport cython
 
 from random import seed as set_random_seed
+from cy_cpp_utils cimport str_to_cpp, cpp_to_str
 
 from cpython.version cimport PY_MAJOR_VERSION
 
@@ -143,11 +144,7 @@ cdef class lambda_evaluator(object):
             self.keys = [None] * n_keys
 
         for i in range(n_keys):
-            if PY_MAJOR_VERSION >= 3:
-                self.keys[i] = bytes(input_keys[0][i]).decode('UTF-8')
-            else:
-                self.keys[i] = str(input_keys[0][i])
-
+            self.keys[i] = cpp_to_str(input_keys[0][i])
 
         # Now, build the base arg_dict_base
         self.arg_dict_base = {k : None for k in self.keys}
@@ -381,7 +378,7 @@ cdef size_t _init_lambda(const string& _lambda_string):
     global _lambda_id_to_evaluator
     global _lambda_function_string_to_id
 
-    cdef string lambda_string = _lambda_string
+    cdef bytes lambda_string = _lambda_string
     cdef object lmfunc_id
 
     try:
@@ -475,8 +472,8 @@ set_pylambda_evaluation_functions(&eval_functions)
 # Stuff like this.
 
 cdef extern from "<lambda/pylambda_worker.hpp>" namespace "graphlab::lambda":
-    int pylambda_worker_main(const char* _root_path, const char* _server_address, int loglevel)
+    int pylambda_worker_main(const string& root_path, const string& server_address, int loglevel)
 
 
 def run_pylambda_worker(str root_path, str server_address, int loglevel):
-    return pylambda_worker_main(root_path, server_address, loglevel)
+    return pylambda_worker_main(str_to_cpp(root_path), str_to_cpp(server_address),loglevel)

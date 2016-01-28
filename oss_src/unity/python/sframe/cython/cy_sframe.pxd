@@ -1,4 +1,4 @@
-# cython: c_string_type=str, c_string_encoding=utf8
+# cython: c_string_type=bytes, c_string_encoding=utf8
 '''
 Copyright (C) 2015 Dato, Inc.
 All rights reserved.
@@ -83,11 +83,11 @@ cdef class UnitySFrameProxy:
 
     cpdef load_from_sframe_index(self, index_file)
 
-    cpdef load_from_csvs(self, string url, object csv_config, object column_type_hints)
+    cpdef load_from_csvs(self, url, object csv_config, dict column_type_hints)
     
-    cpdef save(self, string index_file)
+    cpdef save(self, index_file)
 
-    cpdef save_reference(self, string index_file)
+    cpdef save_reference(self, index_file)
 
     cpdef num_rows(self)
 
@@ -105,19 +105,19 @@ cdef class UnitySFrameProxy:
 
     cpdef transform_native(self, fn, t, int seed)
 
-    cpdef flat_map(self, object fn, vector[string] column_names, object column_types, int seed)
-
+    cpdef flat_map(self, object fn, column_names, object column_types, int seed)
+        
     cpdef logical_filter(self, UnitySArrayProxy other)
 
-    cpdef select_columns(self, vector[string] keylist)
+    cpdef select_columns(self, keylist)
 
-    cpdef select_column(self, string key)
+    cpdef select_column(self, key)
 
-    cpdef add_column(self, UnitySArrayProxy data, string name)
+    cpdef add_column(self, UnitySArrayProxy data, name)
 
-    cpdef add_columns(self, datalist, vector[string] namelist)
+    cpdef add_columns(self, datalist, namelist)
 
-    cpdef set_column_name(self, size_t i, string name)
+    cpdef set_column_name(self, size_t i, name)
 
     cpdef remove_column(self, size_t i)
 
@@ -127,13 +127,13 @@ cdef class UnitySFrameProxy:
 
     cpdef iterator_get_next(self, size_t length)
 
-    cpdef save_as_csv(self, string url, object csv_config)
+    cpdef save_as_csv(self, url, object csv_config)
 
     cpdef sample(self, float percent, int random_seed)
 
     cpdef random_split(self, float percent, int random_seed)
 
-    cpdef groupby_aggregate(self, vector[string] key_columns, vector[vector[string]] group_columns, vector[string] group_output_columns, vector[string] column_ops)
+    cpdef groupby_aggregate(self, key_columns, group_columns, group_output_columns, column_ops)
     
     cpdef append(self, UnitySFrameProxy other)
 
@@ -145,17 +145,17 @@ cdef class UnitySFrameProxy:
 
     cpdef query_plan_string(self)
 
-    cpdef join(self, UnitySFrameProxy right, string how, map[string, string] on)
+    cpdef join(self, UnitySFrameProxy right, how, dict on)
 
-    cpdef pack_columns(self, vector[string] columns, vector[string] keys, dtype, fill_na)
+    cpdef pack_columns(self, columns, keys, dtype, fill_na)
 
-    cpdef stack(self, string column_name, vector[string] new_column_names, new_column_types, drop_na)
+    cpdef stack(self, column_name, new_column_names, new_column_types, drop_na)
 
-    cpdef sort(self, vector[string] column_names, vector[int] sort_orders)
+    cpdef sort(self, column_names, vector[int] sort_orders)
 
     cpdef copy_range(self, size_t start, size_t step, size_t end)
 
-    cpdef drop_missing_values(self, vector[string] columns, bint is_all, bint split)
+    cpdef drop_missing_values(self, columns, bint is_all, bint split)
 
     cpdef __get_object_id(self)
 

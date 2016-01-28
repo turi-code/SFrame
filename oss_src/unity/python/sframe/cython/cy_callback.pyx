@@ -1,4 +1,4 @@
-# cython: c_string_type=str, c_string_encoding=utf8
+# cython: c_string_type=bytes, c_string_encoding=utf8
 from libcpp.string cimport string
 import traceback
 

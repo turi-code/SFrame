@@ -1,3 +1,4 @@
+# cython: c_string_type=bytes, c_string_encoding=utf8
 """
 This module contains the interface for graphlab server, and the
 implementation of a local graphlab server.
@@ -16,6 +17,7 @@ import logging
 import os
 import sys
 from libcpp.string cimport string
+from cy_cpp_utils cimport str_to_cpp, cpp_to_str
 
 
 cdef extern from "<unity/server/unity_server_capi.hpp>" namespace "graphlab":
@@ -96,7 +98,7 @@ class EmbeddedServer(GraphLabServer):
 
     def __del__(self):
         self.stop()
-
+ 
     def get_server_addr(self):
         return self.server_addr
 
@@ -109,9 +111,9 @@ class EmbeddedServer(GraphLabServer):
 
         # Set up the structure used to call it with all these parameters.
         cdef unity_server_options server_opts
-        server_opts.root_path = self.root_path
-        server_opts.server_address = self.server_addr
-        server_opts.log_file = self.unity_log
+        server_opts.root_path             = str_to_cpp(self.root_path)
+        server_opts.server_address        = str_to_cpp(self.server_addr)
+        server_opts.log_file              = str_to_cpp(self.unity_log)
         server_opts.log_rotation_interval = default_local_conf.log_rotation_interval
         server_opts.log_rotation_truncate = default_local_conf.log_rotation_truncate
 
@@ -128,7 +130,7 @@ class EmbeddedServer(GraphLabServer):
         except Exception as e:
             _get_metric_tracker().track('server_launch.unity_server_error', send_sys_info=True)
             raise
-
+        
         self.started = True
 
     def get_client_ptr(self):

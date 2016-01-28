@@ -24,7 +24,8 @@ namespace graphlab { namespace lambda {
  *  Different error routes produce different error codes of 101 and
  *  above.
  */
-static int pylambda_worker_main(const char* _root_path, const char* _server_address, int loglevel) {
+static int pylambda_worker_main(const std::string& root_path,
+                                const std::string& server_address, int loglevel) {
 
   /** Set up the debug configuration.
    *
@@ -74,8 +75,6 @@ static int pylambda_worker_main(const char* _root_path, const char* _server_addr
   }
 
   // Log the basic information about parameters.
-  std::string server_address = _server_address;
-  std::string root_path = _root_path;
   size_t parent_pid = get_parent_pid();
 
   LOG_DEBUG_WITH_PID("root_path = '" << root_path << "'");

@@ -1,4 +1,4 @@
-# cython: c_string_type=str, c_string_encoding=utf8
+# cython: c_string_type=bytes, c_string_encoding=utf8
 '''
 Copyright (C) 2015 Dato, Inc.
 All rights reserved.
@@ -6,7 +6,7 @@ All rights reserved.
 This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
-# cython: c_string_type=str, c_string_encoding=UTF-8
+# cython: c_string_type=bytes, c_string_encoding=UTF-8
 # cython: boundscheck=False
 # cython: wraparound=False
 # distutils: language = c++
@@ -29,8 +29,9 @@ from .cy_flexible_type cimport pyobject_from_flexible_type
 from .cy_flexible_type cimport check_list_to_vector_translation
 
 from .cy_dataframe cimport gl_dataframe
-from .cy_dataframe cimport is_pandas_dataframe
 from .cy_dataframe cimport pd_from_gl_dataframe
+
+from .cy_cpp_utils cimport str_to_cpp
 
 from cython.operator cimport dereference as deref
 from cython.operator cimport preincrement as inc
@@ -39,7 +40,7 @@ from .cy_unity cimport make_function_closure_info
 from .cy_unity cimport variant_set_closure
 from .cy_unity cimport function_closure_info
 from cpython.ref cimport PyObject
-from python_version cimport PY_MAJOR_VERSION
+from cpython.version cimport PY_MAJOR_VERSION
 
 from libcpp.vector cimport vector
 from libcpp.string cimport string
@@ -69,16 +70,14 @@ DEF VAR_TR_SARRAY                      = 9
 DEF VAR_TR_GRAPH                       = 10
 DEF VAR_TR_UNITY_MODEL                 = 11
 DEF VAR_TR_UNITY_MODEL_TKCLASS         = 12
-DEF VAR_TR_DATAFRAME                   = 13
-DEF VAR_TR_SFRAME_PROXY                = 14
-DEF VAR_TR_SARRAY_PROXY                = 15
-DEF VAR_TR_GRAPH_PROXY                 = 16
-DEF VAR_TR_FUNCTION                    = 17
-DEF VAR_TR_CLOSURE                     = 18
+DEF VAR_TR_SFRAME_PROXY                = 13
+DEF VAR_TR_SARRAY_PROXY                = 14
+DEF VAR_TR_GRAPH_PROXY                 = 15
+DEF VAR_TR_FUNCTION                    = 16
+DEF VAR_TR_CLOSURE                     = 17
 
 # The last resort -- attempt to convert it to a general flexible type
-DEF VAR_TR_ATTEMPT_OTHER_FLEXIBLE_TYPE = 19  #
-
+DEF VAR_TR_ATTEMPT_OTHER_FLEXIBLE_TYPE = 18  #
 
 # Codes for translating variant type back to python types.
 DEF VAR_TYPE_FLEXIBLE_TYPE       = 0
@@ -92,9 +91,9 @@ DEF VAR_TYPE_VARIANT_VECTOR      = 7
 DEF VAR_TYPE_VARIANT_CLOSURE     = 8
 
 # Some hard coded class types.
-cdef type instance_type = types.InstanceType
+cdef type instance_type = getattr(types, 'InstanceType', object)
 cdef type function_type = types.FunctionType
-cdef type unicode_type = unicode
+cdef type lambda_type   = types.LambdaType
 
 # Handle the sframe types.  We don't want to start the server before
 # we need to, which means that can be imported on demand
@@ -147,7 +146,7 @@ cdef int _get_tr_code_by_type_string(object v) except -1:
         ret =  VAR_TR_FT_FLOAT
     elif type(v) is str:
         ret =  VAR_TR_FT_STR
-    elif type(v) is unicode_type:
+    elif type(v).__name__  == "unicode":
         ret =  VAR_TR_FT_UNICODE
     elif type(v) is list:
         ret =  VAR_TR_LIST
@@ -165,6 +164,8 @@ cdef int _get_tr_code_by_type_string(object v) except -1:
         ret =  VAR_TR_UNITY_MODEL
     elif type(v) is function_type:
         ret =  VAR_TR_FUNCTION
+    elif type(v) is lambda_type:
+        ret =  VAR_TR_FUNCTION
     elif hasattr(v, '_tkclass') and type(v._tkclass) is UnityModel:
         ret =  VAR_TR_UNITY_MODEL_TKCLASS
     elif type(v) is UnitySFrameProxy:
@@ -175,8 +176,6 @@ cdef int _get_tr_code_by_type_string(object v) except -1:
         ret =  VAR_TR_GRAPH_PROXY
     elif is_function_closure_info(v):
         ret =  VAR_TR_CLOSURE
-    elif is_pandas_dataframe(v):
-        ret =  VAR_TR_DATAFRAME
     else:
         ret =  VAR_TR_ATTEMPT_OTHER_FLEXIBLE_TYPE
 
@@ -207,7 +206,7 @@ cdef inline int get_var_tr_code(object v) except -1:
         except AttributeError:
             raise ValueError("Unable to encode object as variant type (old-style class / non-instance type).")
 
-    elif t is function_type:
+    elif t is function_type or t is lambda_type:
         lookup_code = <object_ptr>(v)
     else:
         lookup_code = <object_ptr>(t)
@@ -458,14 +457,14 @@ cdef inline bint _var_set_dict_internal(variant_map_type& ret_as_vm, flex_dict& 
                     pos += 1
                 else:
                     tr_code = get_var_tr_code(v)
-                    _convert_to_variant_type(ret_as_vm[<str>k], v, tr_code)
+                    _convert_to_variant_type(ret_as_vm[str_to_cpp(k)], v, tr_code)
 
             return writing_to_flex_dict
                 
         else: # require_varmap is true, so we're going to do that. 
             for k, v in d.iteritems():
                 tr_code = get_var_tr_code(v)
-                _convert_to_variant_type(ret_as_vm[k], v, tr_code)
+                _convert_to_variant_type(ret_as_vm[str_to_cpp(k)], v, tr_code)
             return False
     else:
         ret_as_fd.resize(len(d))
@@ -582,10 +581,6 @@ cdef _convert_to_variant_type(variant_type& ret, object v, int tr_code):
         variant_set_model(ret, (<UnityModel?>v)._base_ptr)
     elif tr_code == VAR_TR_UNITY_MODEL_TKCLASS:
         variant_set_model(ret, (<UnityModel?>(v._tkclass))._base_ptr)
-
-    # Dataframe-like
-    elif tr_code == VAR_TR_DATAFRAME:
-        variant_set_dataframe(ret, gl_dataframe_from_pd(v))
 
     # Proxy objects
     elif tr_code == VAR_TR_SFRAME_PROXY:

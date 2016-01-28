@@ -17,7 +17,6 @@ of the BSD license. See the LICENSE file for details.
 '''
 from .. import connect as _mt
 from ..connect import main as glconnect
-from ..cython import _decode, _encode
 from ..cython.cy_flexible_type import infer_type_of_list
 from ..cython.context import debug_trace as cython_context
 from ..cython.cy_sframe import UnitySFrameProxy
@@ -837,7 +836,7 @@ class SFrame(object):
                     for col in data.column_names():
                         self.__proxy__.add_column(data[col].__proxy__, col)
                 elif (_format == 'sarray'):
-                    self.__proxy__.add_column(data.__proxy__, _encode(''))
+                    self.__proxy__.add_column(data.__proxy__, '')
                 elif (_format == 'array'):
                     if len(data) > 0:
                         unique_types = set([type(x) for x in data if x is not None])
@@ -847,7 +846,7 @@ class SFrame(object):
                         elif SArray in unique_types:
                             raise ValueError("Cannot create SFrame from mix of regular values and SArrays")
                         else:
-                            self.__proxy__.add_column(SArray(data).__proxy__, _encode(''))
+                            self.__proxy__.add_column(SArray(data).__proxy__, '')
                 elif (_format == 'dict'):
                     # Validate that every column is the same length.
                     if len(set(len(value) for value in data.values())) > 1:
@@ -859,7 +858,7 @@ class SFrame(object):
                     sarray_keys = sorted(key for key,value in six.iteritems(data) if isinstance(value, SArray))
                     self.__proxy__.load_from_dataframe({key:value for key,value in six.iteritems(data) if not isinstance(value, SArray)})
                     for key in sarray_keys:
-                        self.__proxy__.add_column(data[key].__proxy__, _encode(key))
+                        self.__proxy__.add_column(data[key].__proxy__, key)
                 elif (_format == 'csv'):
                     url = data
                     tmpsf = SFrame.read_csv(url, delimiter=',', header=True)
@@ -870,7 +869,7 @@ class SFrame(object):
                     self.__proxy__ = tmpsf.__proxy__
                 elif (_format == 'sframe'):
                     url = _make_internal_url(data)
-                    self.__proxy__.load_from_sframe_index(_encode(url))
+                    self.__proxy__.load_from_sframe_index(url)
                 elif (_format == 'empty'):
                     pass
                 else:
@@ -1105,7 +1104,7 @@ class SFrame(object):
             if (not verbose):
                 glconnect.get_server().set_log_progress(False)
             with cython_context():
-                errors = proxy.load_from_csvs(_encode(internal_url), _encode(parsing_config), _encode(type_hints))
+                errors = proxy.load_from_csvs(internal_url, parsing_config, type_hints)
         except Exception as e:
             if type(e) == RuntimeError and "CSV parsing cancelled" in e.args[0]:
                 raise e
@@ -2440,7 +2439,7 @@ class SFrame(object):
         --------
         rename
         """
-        return _decode(self.__proxy__.column_names())
+        return self.__proxy__.column_names()
 
     def column_types(self):
         """
@@ -2728,7 +2727,7 @@ class SFrame(object):
         assert type(column_types) is list
         assert len(column_types) == len(column_names), "Number of output columns must match the size of column names"
         with cython_context():
-            return SFrame(_proxy=self.__proxy__.flat_map(fn, _encode(column_names), column_types, seed))
+            return SFrame(_proxy=self.__proxy__.flat_map(fn, column_names, column_types, seed))
 
     def sample(self, fraction, seed=None):
         """
@@ -2938,10 +2937,10 @@ class SFrame(object):
 
         with cython_context():
             if format is 'binary':
-                self.__proxy__.save(_encode(url))
+                self.__proxy__.save(url)
             elif format is 'csv':
                 assert filename.endswith(('.csv', '.csv.gz'))
-                self.__proxy__.save_as_csv(_encode(url), {})
+                self.__proxy__.save_as_csv(url, {})
             elif format is 'json':
                 self.export_json(url)
             else:
@@ -3036,7 +3035,7 @@ class SFrame(object):
         write_csv_options['_no_prefix_on_first_value'] = _no_prefix_on_first_value
 
         url = _make_internal_url(filename)
-        self.__proxy__.save_as_csv(_encode(url), _encode(write_csv_options))
+        self.__proxy__.save_as_csv(url, write_csv_options)
 
     def export_json(self,
                     filename,
@@ -3143,7 +3142,7 @@ class SFrame(object):
         url = _make_internal_url(filename)
 
         with cython_context():
-            self.__proxy__.save_reference(_encode(url))
+            self.__proxy__.save_reference(url)
 
 
     def select_column(self, key):
@@ -3180,7 +3179,7 @@ class SFrame(object):
         if not isinstance(key, str):
             raise TypeError("Invalid key type: must be str")
         with cython_context():
-            return SArray(data=[], _proxy=self.__proxy__.select_column(_encode(key)))
+            return SArray(data=[], _proxy=self.__proxy__.select_column(key))
 
     def select_columns(self, keylist):
         """
@@ -3259,7 +3258,7 @@ class SFrame(object):
             if i[1] in typelist and i[0] not in selected_columns:
                 selected_columns += [i[0]]
 
-        selected_columns = _encode(selected_columns)
+        selected_columns = selected_columns
 
         with cython_context():
             return SFrame(data=[], _proxy=self.__proxy__.select_columns(selected_columns))
@@ -3311,7 +3310,7 @@ class SFrame(object):
         if not isinstance(name, str):
             raise TypeError("Invalid column name: must be str")
         with cython_context():
-            self.__proxy__.add_column(data.__proxy__, str.encode(name))
+            self.__proxy__.add_column(data.__proxy__, name)
         self._cache = None
         return self
 
@@ -3377,7 +3376,7 @@ class SFrame(object):
                 raise TypeError("Invalid column name in list : must all be str")
 
         with cython_context():
-            self.__proxy__.add_columns([x.__proxy__ for x in datalist], _encode(namelist))
+            self.__proxy__.add_columns([x.__proxy__ for x in datalist], namelist)
         self._cache = None
         return self
 
@@ -3416,7 +3415,7 @@ class SFrame(object):
             raise KeyError('Cannot find column %s' % name)
         colid = self.column_names().index(name)
         with cython_context():
-            self.__proxy__.remove_column(_encode(colid))
+            self.__proxy__.remove_column(colid)
         self._cache = None
         return self
 
@@ -3549,7 +3548,7 @@ class SFrame(object):
         with cython_context():
             for k in names:
                 colid = self.column_names().index(k)
-                self.__proxy__.set_column_name(colid, _encode(names[k]))
+                self.__proxy__.set_column_name(colid, names[k])
         self._cache = None
         return self
 
@@ -3736,14 +3735,14 @@ class SFrame(object):
         def generator():
             elems_at_a_time = 262144
             self.__proxy__.begin_iterator()
-            ret = _decode(self.__proxy__.iterator_get_next(elems_at_a_time))
+            ret = self.__proxy__.iterator_get_next(elems_at_a_time)
             column_names = self.column_names()
             while(True):
                 for j in ret:
                     yield dict(list(zip(column_names, j)))
 
                 if len(ret) == elems_at_a_time:
-                    ret = _decode(self.__proxy__.iterator_get_next(elems_at_a_time))
+                    ret = self.__proxy__.iterator_get_next(elems_at_a_time)
                 else:
                     break
 
@@ -4217,10 +4216,10 @@ class SFrame(object):
             _mt._get_metric_tracker().track('sframe.groupby', properties={'operator':op})
 
         with cython_context():
-            return SFrame(_proxy=self.__proxy__.groupby_aggregate(_encode(key_columns_array),
-                                                                  _encode(group_columns),
-                                                                  _encode(group_output_columns),
-                                                                  _encode(group_ops)))
+            return SFrame(_proxy=self.__proxy__.groupby_aggregate(key_columns_array,
+                                                                  group_columns,
+                                                                  group_output_columns,
+                                                                  group_ops))
 
     def join(self, right, on=None, how='inner'):
         """
@@ -4356,7 +4355,7 @@ class SFrame(object):
             raise TypeError("Must pass a str, list, or dict of join keys")
 
         with cython_context():
-            return SFrame(_proxy=self.__proxy__.join(right.__proxy__, _encode(how), _encode(join_keys)))
+            return SFrame(_proxy=self.__proxy__.join(right.__proxy__, how, join_keys))
 
     def filter_by(self, values, column_name, exclude=False):
         """
@@ -4446,15 +4445,15 @@ class SFrame(object):
                 value_sf = value_sf.add_row_number(id_name)
 
                 tmp = SFrame(_proxy=self.__proxy__.join(value_sf.__proxy__,
-                                                     _encode('left'),
-                                                     _encode({column_name:column_name})))
+                                                     'left',
+                                                     {column_name:column_name}))
                 ret_sf = tmp[tmp[id_name] == None]
                 del ret_sf[id_name]
                 return ret_sf
             else:
                 return SFrame(_proxy=self.__proxy__.join(value_sf.__proxy__,
-                                                     _encode('inner'),
-                                                     _encode({column_name:column_name})))
+                                                     'inner',
+                                                     {column_name:column_name}))
 
     def show(self, columns=None, view=None, x=None, y=None):
         """
@@ -4755,8 +4754,8 @@ class SFrame(object):
 
         ret_sa = None
         with cython_context():
-            ret_sa = SArray(_proxy=self.__proxy__.pack_columns(_encode(columns), _encode(dict_keys),
-                                                               _encode(dtype), _encode(fill_na)))
+            ret_sa = SArray(_proxy=self.__proxy__.pack_columns(columns, dict_keys,
+                                                               dtype, fill_na))
 
         new_sf = self.select_columns(rest_columns)
         new_sf.add_column(ret_sa, new_column_name)
@@ -5181,8 +5180,8 @@ class SFrame(object):
         _mt._get_metric_tracker().track('sframe.stack')
 
         with cython_context():
-            return SFrame(_proxy=self.__proxy__.stack(_encode(column_name),
-                                                      _encode(new_column_name),
+            return SFrame(_proxy=self.__proxy__.stack(column_name,
+                                                      new_column_name,
                                                       new_column_type, drop_na))
 
     def unstack(self, column, new_column_name=None):
@@ -5462,7 +5461,7 @@ class SFrame(object):
         _mt._get_metric_tracker().track('sframe.sort')
 
         with cython_context():
-            return SFrame(_proxy=self.__proxy__.sort([i.encode() for i in sort_column_names], sort_column_orders))
+            return SFrame(_proxy=self.__proxy__.sort(sort_column_names, sort_column_orders))
 
     def dropna(self, columns=None, how='any'):
         """
@@ -5540,7 +5539,7 @@ class SFrame(object):
         (columns, all_behavior) = self.__dropna_errchk(columns, how)
 
         with cython_context():
-            return SFrame(_proxy=self.__proxy__.drop_missing_values(_encode(columns), _encode(all_behavior), False))
+            return SFrame(_proxy=self.__proxy__.drop_missing_values(columns, all_behavior, False))
 
     def dropna_split(self, columns=None, how='any'):
         """
@@ -5602,7 +5601,7 @@ class SFrame(object):
 
         (columns, all_behavior) = self.__dropna_errchk(columns, how)
 
-        sframe_tuple = self.__proxy__.drop_missing_values(_encode(columns), _encode(all_behavior), True)
+        sframe_tuple = self.__proxy__.drop_missing_values(columns, all_behavior, True)
 
         if len(sframe_tuple) != 2:
             raise RuntimeError("Did not return two SFrames!")

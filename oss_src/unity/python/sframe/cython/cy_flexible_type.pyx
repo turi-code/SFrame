@@ -1,4 +1,4 @@
-# cython: c_string_type=str, c_string_encoding=utf8
+# cython: c_string_type=bytes, c_string_encoding=utf8
 '''
 Copyright (C) 2015 Dato, Inc.
 All rights reserved.
@@ -125,7 +125,7 @@ AnySequence: Any of the above.
 #cython: boundscheck=False
 #cython: always_allow_keywords=False
 #cython: c_string_encoding='ascii'
-#cython: c_string_type=str
+#cython: c_string_type=bytes
 #cython: wraparound=False
 
 cimport cython
@@ -133,6 +133,8 @@ from cython.operator cimport dereference as deref
 from cython.operator cimport preincrement as inc
 from libcpp cimport bool as cbool
 from cpython cimport array
+
+from .cy_cpp_utils cimport str_to_cpp, cpp_to_str
 
 from cpython.ref cimport PyObject, PyTypeObject
 import itertools
@@ -1353,10 +1355,10 @@ cdef flexible_type _ft_translate(object v, int tr_code) except *:
         ret.set_double(<double>v)
         return ret
     elif tr_code == FT_STR_TYPE:
-        ret.set_string(<str>v)
+        ret.set_string(str_to_cpp(v))
         return ret
     elif tr_code == FT_UNICODE_TYPE:
-        ret.set_string(<str>(v.encode()))
+        ret.set_string(str_to_cpp(v))
         return ret
     elif tr_code == FT_LIST_TYPE:
         tr_listlike_to_ft(ret, <list>v)
@@ -1388,16 +1390,10 @@ cdef flexible_type _ft_translate(object v, int tr_code) except *:
         ret.set_double(v)
         return ret
     elif tr_code == (FT_STR_TYPE + FT_SAFE):
-        if type(v) is str:
-            ret.set_string(<str>v)
-        else:
-            ret.set_string(v)
+        ret.set_string(str_to_cpp(v))
         return ret
     elif tr_code == (FT_UNICODE_TYPE + FT_SAFE):
-        if type(v) is unicode:
-            ret.set_string(<str>(v.encode()))
-        else:
-            ret.set_string(<str>(unicode(v).encode()))
+        ret.set_string(str_to_cpp(v))
         return ret
     elif tr_code == (FT_LIST_TYPE + FT_SAFE):
         if type(v) is list:
@@ -1548,7 +1544,7 @@ cdef pyobject_from_flexible_type(const flexible_type& v):
     elif f_type == FLOAT:
         return v.get_double()
     elif f_type == STRING:
-        return v.get_string()
+        return cpp_to_str(v.get_string())
     elif f_type == LIST:
         return pylist_from_flex_list(v.get_list())
     elif f_type == VECTOR:
@@ -1579,7 +1575,7 @@ cdef dict pydict_from_gl_options_map(const gl_options_map& m):
     cdef options_map_iter it = <options_map_iter>m.begin()
 
     while it != <options_map_iter>m.end():
-        ret[deref(it).first.decode()] = pyobject_from_flexible_type(deref(it).second)
+        ret[cpp_to_str(deref(it).first)] = pyobject_from_flexible_type(deref(it).second)
         inc(it)
 
     return ret
@@ -1592,9 +1588,7 @@ cdef gl_options_map gl_options_map_from_pydict(dict d) except *:
     cdef gl_options_map ret
 
     for k,v in d.iteritems():
-        if PY_MAJOR_VERSION <= 2 and type(k) is not str:
-            k = str(k)
-        ret[k] = flexible_type_from_pyobject(v)
+        ret[str_to_cpp(k)] = flexible_type_from_pyobject(v)
 
     return ret
 

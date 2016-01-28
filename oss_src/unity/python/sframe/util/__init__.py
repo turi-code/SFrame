@@ -490,7 +490,7 @@ def set_runtime_config(name, value):
     """
     from ..connect import main as _glconnect
     unity = _glconnect.get_unity()
-    ret = _decode(unity.set_global(_encode(name), _encode(value)))
+    ret = unity.set_global(name, value)
     if ret != "":
         raise RuntimeError(ret);
 
@@ -551,7 +551,7 @@ def get_graphlab_object_type(url):
     Create object type: 'model', 'graph', 'sframe', or 'sarray'
     '''
     from ..connect import main as _glconnect
-    ret = _decode(_glconnect.get_unity().get_graphlab_object_type(_encode(_make_internal_url(url))))
+    ret = _glconnect.get_unity().get_graphlab_object_type(_make_internal_url(url))
 
     # to be consistent, we use sgraph instead of graph here
     if ret == 'graph':
@@ -653,7 +653,7 @@ def _get_temp_file_location():
     '''
     from ..connect import main as _glconnect
     unity = _glconnect.get_unity()
-    cache_dir = _convert_slashes(_decode(unity.get_current_cache_file_location()))
+    cache_dir = _convert_slashes(unity.get_current_cache_file_location())
     if not _os.path.exists(cache_dir):
         _os.makedirs(cache_dir)
     return cache_dir
@@ -750,7 +750,7 @@ def _pickle_to_temp_location_or_memory(obj):
         pickler = _gl_pickle.GLPickler(filename)
         pickler.dump(obj)
         pickler.close()
-        return filename.encode()
+        return filename
 
 
 def _raise_error_if_not_of_type(arg, expected_type, arg_name=None):

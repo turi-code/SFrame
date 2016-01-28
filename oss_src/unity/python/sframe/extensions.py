@@ -24,7 +24,6 @@ of the BSD license. See the LICENSE file for details.
 from . import SArray as _SArray, SFrame as _SFrame, SGraph as _SGraph
 from .connect.main import get_unity as _get_unity
 from .util import _make_internal_url
-from .cython import _decode, _encode
 from .cython.cy_sframe import UnitySFrameProxy as _UnitySFrameProxy
 from .cython.cy_sarray import UnitySArrayProxy as _UnitySArrayProxy
 from .cython.cy_graph import UnityGraphProxy as _UnityGraphProxy
@@ -113,30 +112,6 @@ def _setattr_wrapper(mod, key, value):
     if mod == _thismodule:
         setattr(_sys.modules[__name__], key, value)
 
-
-<<<<<<< 46ef23ffc11088c7a294288600b3fbfbfec7adb6
-import types
-
-=======
-def _translate_function_arguments(argument):
-    import inspect
-    if inspect.isfunction(argument):
-        try:
-            return _build_native_function_call(argument)
-        except:
-            raise TypeError("Only native functions, or simple lambdas of native functions (with constant capture values) can be passed to an extension function.")
-    elif type(argument) is list:
-        return [_translate_function_arguments(i) for i in argument]
-    elif type(argument) is tuple:
-        return [_translate_function_arguments(i) for i in argument]
-    elif type(argument) is dict:
-        return {i:_translate_function_arguments(v) for (i, v) in argument.items()}
-    elif hasattr(argument, '_tkclass') and hasattr(argument, '__glmeta__'):
-        return argument._tkclass
-    else:
-        return argument
->>>>>>> Initial Python3 Support
-
 def _run_toolkit_function(fnname, arguments, args, kwargs):
     """
     Dispatches arguments to a toolkit function.
@@ -174,7 +149,7 @@ def _run_toolkit_function(fnname, arguments, args, kwargs):
 
     # unwrap it
     with cython_context():
-        ret = _get_unity().run_toolkit(_encode(fnname), _encode(argument_dict))
+        ret = _get_unity().run_toolkit(fnname, argument_dict)
     # handle errors
     if ret[0] != True:
         if len(ret[1]) > 0:
@@ -182,7 +157,7 @@ def _run_toolkit_function(fnname, arguments, args, kwargs):
         else:
             raise _ToolkitError("Toolkit failed with unknown error")
 
-    ret = _decode(_wrap_function_return(ret[2]))
+    ret = _wrap_function_return(ret[2])
     if type(ret) == dict and 'return_value' in ret:
         return ret['return_value']
     else:
@@ -359,7 +334,6 @@ def _publish():
     # graphlab.extensions.somemodule.somefunction
     for fn in fnlist:
         props = unity.describe_toolkit_function(fn)
-        fn = fn.decode()
         # quit if there is nothing we can process
         if 'arguments' not in props:
             continue
@@ -384,9 +358,9 @@ def _publish():
         _setattr_wrapper(mod, modpath[-1], newfunc)
 
     # Repeat for classes
-    tkclasslist = _decode(unity.list_toolkit_classes())
+    tkclasslist = unity.list_toolkit_classes()
     for tkclass in tkclasslist:
-        m = unity.describe_toolkit_class(_encode(tkclass))
+        m = unity.describe_toolkit_class(tkclass)
         # of v2 type
         if not ('functions' in m and 'get_properties' in m and 'set_properties' in m and 'uid' in m):
             continue
@@ -636,7 +610,7 @@ def _get_argument_list_from_toolkit_function_name(fn):
     Given a toolkit function name, return the argument list
     """
     unity = _get_unity()
-    fnprops = unity.describe_toolkit_function(fn.encode())
+    fnprops = unity.describe_toolkit_function(fn)
     argnames = fnprops['arguments']
     return argnames
 
