@@ -39,7 +39,7 @@ from .cy_unity cimport make_function_closure_info
 from .cy_unity cimport variant_set_closure
 from .cy_unity cimport function_closure_info
 from cpython.ref cimport PyObject
-from python_version cimport PY_MAJOR_VERSION
+from cpython.version cimport PY_MAJOR_VERSION
 
 from libcpp.vector cimport vector
 from libcpp.string cimport string
