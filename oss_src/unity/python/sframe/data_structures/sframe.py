@@ -1762,6 +1762,7 @@ class SFrame(object):
         >>> rdd.collect()
         [{'x': 1L, 'y': 'fish'}, {'x': 2L, 'y': 'chips'}, {'x': 3L, 'y': 'salad'}]
         """
+        _mt._get_metric_tracker().track('sframe.to_rdd')
         if not RDD_SUPPORT:
             raise Exception("Support for translation to Spark RDDs not enabled.")
 
@@ -1849,6 +1850,7 @@ class SFrame(object):
         +-----+
         [3 rows x 1 columns]
         """
+        _mt._get_metric_tracker().track('sframe.from_rdd')
         if not RDD_SUPPORT:
             raise Exception("Support for translation to Spark RDDs not enabled.")
 
@@ -1966,6 +1968,7 @@ class SFrame(object):
 
         >>> join_result = graphlab.SFrame.from_odbc(db, 'SELECT * FROM "MyTable" a, "AnotherTable" b WHERE a.id=b.id')
         """
+        _mt._get_metric_tracker().track('sframe.from_odbc')
         result = db.execute_query(sql)
         if not isinstance(result, SFrame):
             raise RuntimeError("Cannot create an SFrame for query. No result set.")
@@ -2027,6 +2030,7 @@ class SFrame(object):
 
         >>> sf.to_odbc(db, 'a_cool_table')
         """
+        _mt._get_metric_tracker().track('sframe.to_odbc')
         if (not verbose):
             glconnect.get_server().set_log_progress(False)
 
