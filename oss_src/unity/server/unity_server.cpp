@@ -130,7 +130,7 @@ std::string unity_server::parse_server_address(std::string server_address) {
   return server_address;
 }
 
-void unity_server::set_log_progress(bool enable) {
+EXPORT void unity_server::set_log_progress(bool enable) {
   global_logger().add_observer(LOG_PROGRESS, NULL);
   if (enable == true) {
     // set the progress observer

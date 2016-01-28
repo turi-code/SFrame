@@ -12,7 +12,7 @@ of the BSD license. See the LICENSE file for details.
 
 from ..cython.cy_unity import UnityGlobalProxy
 from ..cython import cy_ipc
-from ..connect.server import EmbeddedServer
+from ..cython.cy_server import EmbeddedServer
 from ..connect import __SERVER__, __CLIENT__
 
 import decorator

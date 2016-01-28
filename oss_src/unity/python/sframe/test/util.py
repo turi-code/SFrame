@@ -16,7 +16,6 @@ import string
 import numpy as np
 from pandas.util.testing import assert_frame_equal
 
-from ..connect import server as server
 from .. import SArray
 
 class SFrameComparer():
