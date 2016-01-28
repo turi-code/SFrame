@@ -70,6 +70,7 @@ cdef extern from "<flexible_type/flexible_type.hpp>" namespace "graphlab":
         const flex_list& get_list "get<graphlab::flex_list>"()
         flex_list& get_list_m "mutable_get<graphlab::flex_list>"()
         const flex_dict& get_dict "get<graphlab::flex_dict>"()
+        flex_dict& get_dict_m "mutable_get<graphlab::flex_dict>"()
         const flex_image& get_img "get<graphlab::flex_image>"()
 
         flex_float as_double "to<graphlab::flex_float>"()
@@ -128,3 +129,7 @@ cdef object pyobject_from_flexible_type(const flexible_type&)
 cdef list   pylist_from_flex_list(const flex_list&)
 cdef dict   pydict_from_gl_options_map(const gl_options_map&)
 
+# In some cases, a numeric list can be converted to a vector.  This
+# function checks for that case, and converts the underlying type as
+# needed.
+cdef check_list_to_vector_translation(flexible_type& v)

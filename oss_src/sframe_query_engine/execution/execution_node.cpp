@@ -61,9 +61,13 @@ void execution_node::reset() {
     m_exception_occured = false;
     m_exception = std::exception_ptr();
   }
+  m_output_queue.reset();
 }
 
 void execution_node::start_coroutines() {
+  // create the output queue
+  m_output_queue.reset(new broadcast_queue<std::shared_ptr<sframe_rows>>(m_consumer_pos.size(), 2));
+
   // restart the coroutine
   m_coroutines_started = true;
   auto coro_attributes = boost::coroutines::attributes(COROUTINE_STACK_SIZE);
@@ -177,54 +181,24 @@ std::shared_ptr<sframe_rows> execution_node::get_next(size_t consumer_id, bool s
   DASSERT_LT(consumer_id, m_consumer_pos.size());
 
   // consume from source when queue is empty and there is more in source
-  while (m_output_queue.empty() && m_source) {
+  while (m_output_queue->empty(consumer_id) && m_source) {
     m_source();
   }
   // end of data
-  if (m_output_queue.empty() && !m_source) return nullptr;
+  if (m_output_queue->empty(consumer_id) && !m_source) return nullptr;
 
-  // The only case in which a consumer does not appear in lock-step
-  // is if the last thing it consumed was an incomplete block.
-  // 
-  // Under normal circumstances the following happens within the operator
-  //  - context switch into operator
-  //  - read BLOCK_SIZE rows
-  //  - emit BLOCK_SIZE rows 
-  //    - (produces context switch to next consumer)
-  //
-  // However, in the last block, the following may happen
-  //  - context switch into operator
-  //  - read less than BLOCK_SIZE rows
-  //  - emit less than BLOCK_SIZE rows 
-  //    - context switch to next consumer does not happen because less than
-  //      BLOCK_SIZE rows were buffered
-  //  - read again.
-  //
-  //  This results in consumer misalignment since the same operator reads twice
-  //  in a row. We thus catch this scenario here, and return a nullptr: 
-  //  indicated completion of read.
-  if (m_consumer_pos[consumer_id] > m_head && !m_source) return nullptr;
+  ASSERT_TRUE(!m_output_queue->empty(consumer_id));
 
-  // all consumers must consume in lock step
-  ASSERT_EQ(m_consumer_pos[consumer_id], m_head);
-  ASSERT_TRUE(!m_output_queue.empty());
-
-  auto ret = m_output_queue.front();
+  std::shared_ptr<sframe_rows> ret;
+  m_output_queue->pop(consumer_id, ret);
   ++m_consumer_pos[consumer_id];
 
-  size_t earliest_consumer = 
-      *std::min_element(m_consumer_pos.begin(), m_consumer_pos.end());
-  // cache evition -- every one has moved along
-  if (earliest_consumer > m_head) {
-    m_output_queue.pop();
-    m_head++;
-  }
   if (skip) return nullptr;
   else return ret;
 }
 
 void execution_node::add_operator_output(const std::shared_ptr<sframe_rows>& rows) {
-  m_output_queue.push(rows);
+  m_output_queue->push(rows);
 }
 
 std::shared_ptr<sframe_rows> execution_node::get_next_from_input(size_t input_id, bool skip) {

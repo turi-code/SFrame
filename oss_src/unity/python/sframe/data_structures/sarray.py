@@ -620,7 +620,7 @@ class SArray(object):
         """
         data_str = self.__str__()
         ret = "dtype: " + str(self.dtype().__name__) + "\n"
-        if (self.__proxy__.has_size()):
+        if (self.__has_size__()):
             ret = ret + "Rows: " + str(self.size()) + "\n"
         else:
             ret = ret + "Rows: ?\n"
@@ -638,7 +638,7 @@ class SArray(object):
         else:
             headln = self._escape_space(str(list(self.head(100))))
             headln = unicode(headln.decode('string_escape'),'utf-8',errors='replace').encode('utf-8')
-        if (self.__proxy__.has_size() == False or self.size() > 100):
+        if (self.__has_size__() == False or self.size() > 100):
             # cut the last close bracket
             # and replace it with ...
             headln = headln[0:-1] + ", ... ]"
@@ -1007,6 +1007,12 @@ class SArray(object):
             raise TypeError("SArray can only perform logical or against another SArray")
 
 
+    def __has_size__(self):
+        """
+        Returns whether or not the size of the SArray is known.
+        """
+        return self.__proxy__.has_size()
+
     def __getitem__(self, other):
         """
         If the key is an SArray of identical length, this function performs a
@@ -1016,8 +1022,8 @@ class SArray(object):
         the SArray. If the key is a slice, this returns an SArray with the
         sliced rows. See the GraphLab Create User Guide for usage examples.
         """
-        sa_len = len(self)
         if isinstance(other, numbers.Integral):
+            sa_len = len(self)
             if other < 0:
                 other += sa_len
             if other >= sa_len:
@@ -1044,12 +1050,13 @@ class SArray(object):
             return val_list[other - lb]
 
         elif type(other) is SArray:
-            if len(other) != sa_len:
+            if self.__has_size__() and other.__has_size__() and len(other) != len(self):
                 raise IndexError("Cannot perform logical indexing on arrays of different length.")
             with cython_context():
                 return SArray(_proxy = self.__proxy__.logical_filter(other.__proxy__))
 
         elif type(other) is slice:
+            sa_len = len(self)
             start = other.start
             stop = other.stop
             step = other.step

@@ -53,7 +53,7 @@ def run(toolkit_name, options, verbose=True, show_progress=False):
     """
     unity = glconnect.get_unity()
     if (not verbose):
-        glconnect.get_client().set_log_progress(False)
+        glconnect.get_server().set_log_progress(False)
     # spawn progress threads
     try:
         start_time = time.time()
@@ -78,7 +78,7 @@ def run(toolkit_name, options, verbose=True, show_progress=False):
     _get_metric_tracker().track(metric_name, value=1, properties=track_props, send_sys_info=False)
 
     # set the verbose level back to default
-    glconnect.get_client().set_log_progress(True)
+    glconnect.get_server().set_log_progress(True)
 
     if success:
         return params

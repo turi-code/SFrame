@@ -59,12 +59,8 @@ void unity_server::start(const unity_server_initializer& server_initializer) {
                                    options.control_address,
                                    options.publish_address,
                                    options.secret_key);
-  // set the progress observer
-  global_logger().add_observer(
-      LOG_PROGRESS,
-      [=](int lineloglevel, const char* buf, size_t len){
-        server->report_status("progress", std::string(buf, len));
-      });
+
+  set_log_progress(true);
 
   // initialize built-in data structures, toolkits and models, defined in unity_server_init.cpp
   server_initializer.init_toolkits(*toolkit_functions);
@@ -91,20 +87,8 @@ void unity_server::start(const unity_server_initializer& server_initializer) {
 void unity_server::stop() {
   delete server;
   server = nullptr;
-  global_logger().add_observer(LOG_PROGRESS, NULL);
+  set_log_progress(false);
   graphlab::global_teardown::get_instance().perform_teardown();
-}
-
-/**
- * Include the authentication method if the auth token is provided
- */
-void unity_server::set_auth_token() {
-  if (!options.auth_token.empty()) {
-    logstream(LOG_EMPH) << "authentication method: authentication_token applied" << std::endl;
-    server->add_auth_method(std::make_shared<cppipc::authentication_token_method>(options.auth_token));
-  } else {
-    logstream(LOG_EMPH) << "no authentication method." << std::endl;
-  }
 }
 
 /**
@@ -145,5 +129,18 @@ std::string unity_server::parse_server_address(std::string server_address) {
   }
   return server_address;
 }
+
+EXPORT void unity_server::set_log_progress(bool enable) {
+  global_logger().add_observer(LOG_PROGRESS, NULL);
+  if (enable == true) {
+    // set the progress observer
+    global_logger().add_observer(
+        LOG_PROGRESS,
+        [=](int lineloglevel, const char* buf, size_t len){
+          std::cout << "PROGRESS: " << std::string(buf, len);
+        });
+  }
+}
+
 
 } // end of graphlab

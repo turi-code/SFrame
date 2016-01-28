@@ -47,11 +47,9 @@ void release_lambda(size_t lambda_id) {
   python::check_for_python_exception();
 }
 
-
 // First, the lower-level functions that wrap each of the cython
 // functions.  These don't do much more than set up the calling
 // argmuments.
-
 pylambda_evaluator::~pylambda_evaluator() {
   if (m_shared_memory_listener.active()) {
     m_shared_memory_thread_terminating = true;

@@ -10,7 +10,6 @@ from ..data_structures.sframe import SFrame
 from ..data_structures.sarray import SArray
 from ..data_structures.image import Image
 from ..connect import main as glconnect
-from ..connect import server
 from ..util import _assert_sframe_equal
 from ..import _launch, load_sframe, aggregate
 import pandas as pd
