@@ -1192,9 +1192,9 @@ class SFrame(object):
             A string or list of strings to be interpreted as missing values.
 
         line_terminator : str, optional
-            A string to be interpreted as the line terminator. Defaults to "\n"
+            A string to be interpreted as the line terminator. Defaults to "\\n"
             which will also correctly match Mac, Linux and Windows line endings
-            ("\r", "\n" and "\r\n" respectively)
+            ("\\r", "\\n" and "\\r\\n" respectively)
 
         usecols : list of str, optional
             A subset of column names to output. If unspecified (default),
@@ -1346,7 +1346,7 @@ class SFrame(object):
         line_terminator : str, optional
             A string to be interpreted as the line terminator. Defaults to "\n"
             which will also correctly match Mac, Linux and Windows line endings
-            ("\r", "\n" and "\r\n" respectively)
+            ("\\r", "\\n" and "\\r\\n" respectively)
 
         usecols : list of str, optional
             A subset of column names to output. If unspecified (default),

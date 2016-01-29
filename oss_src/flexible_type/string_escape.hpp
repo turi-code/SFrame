@@ -30,17 +30,21 @@ size_t unescape_string(char* cal,
  *
  * \param val The string to escape
  * \param escape_char The escape character to use (recommended '\\')
+ * \param use_escape_char If true, escape character is used. Note that
+ *       if this is false, the resultant string may not always be parseable.
  * \param quote_char The quote character to use. (recommended '\"')
  * \param use_quote_char If the output string should be quoted
  * \param double_quote If double quotes are converted to single quotes.
  */
 void escape_string(const std::string& val, 
                    char escape_char,
+                   bool use_escape_char,
                    char quote_char,
                    bool use_quote_char,
                    bool double_quote,
                    std::string& output, 
                    size_t& output_len);
+
 } // namespace graphlab
 
 #endif
