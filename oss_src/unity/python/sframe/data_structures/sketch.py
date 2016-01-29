@@ -11,7 +11,6 @@ of the BSD license. See the LICENSE file for details.
 '''
 from .. import connect as _mt
 from ..connect import main as glconnect
-from ..cython import _decode, _encode
 from ..cython.cy_sketch import UnitySketchProxy
 from ..cython.context import debug_trace as cython_context
 from .sarray import SArray
@@ -433,7 +432,7 @@ class Sketch(object):
         _mt._get_metric_tracker().track('sketch.frequent_items')
 
         with cython_context():
-            return _decode(self.__proxy__.frequent_items())
+            return self.__proxy__.frequent_items()
 
     def quantile(self, quantile_val):
         """
@@ -463,7 +462,7 @@ class Sketch(object):
         """
 
         with cython_context():
-            return _decode(self.__proxy__.get_quantile(quantile_val))
+            return self.__proxy__.get_quantile(quantile_val)
 
     def frequency_count(self, element):
         """
@@ -737,7 +736,7 @@ class Sketch(object):
 
         _mt._get_metric_tracker().track('sketch.element_sub_sketch')
         with cython_context():
-            ret_sketches = _decode(self.__proxy__.element_sub_sketch(keys))
+            ret_sketches = self.__proxy__.element_sub_sketch(keys)
             ret = {}
 
             # check return key matches input key

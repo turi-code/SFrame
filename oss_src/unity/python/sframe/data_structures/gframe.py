@@ -6,7 +6,6 @@ This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
 from .sframe import SFrame
-from ..cython import _decode, _encode
 from ..cython.context import debug_trace as cython_context
 from ..util import _is_non_string_iterable
 from .sarray import SArray, _create_sequential_sarray
@@ -81,10 +80,10 @@ class GFrame(SFrame):
         self.__is_dirty__ = True
         with cython_context():
             if self._is_vertex_frame():
-                graph_proxy = self.__graph__.__proxy__.add_vertex_field(data.__proxy__, _encode(name))
+                graph_proxy = self.__graph__.__proxy__.add_vertex_field(data.__proxy__, name)
                 self.__graph__.__proxy__ = graph_proxy
             elif self._is_edge_frame():
-                graph_proxy = self.__graph__.__proxy__.add_edge_field(data.__proxy__, _encode(name))
+                graph_proxy = self.__graph__.__proxy__.add_edge_field(data.__proxy__, name)
                 self.__graph__.__proxy__ = graph_proxy
 
     def add_columns(self, datalist, namelist):
@@ -128,12 +127,12 @@ class GFrame(SFrame):
             with cython_context():
                 if self._is_vertex_frame():
                     assert name != '__id', 'Cannot remove \"__id\" column'
-                    graph_proxy = self.__graph__.__proxy__.delete_vertex_field(_encode(name))
+                    graph_proxy = self.__graph__.__proxy__.delete_vertex_field(name)
                     self.__graph__.__proxy__ = graph_proxy
                 elif self._is_edge_frame():
                     assert name != '__src_id', 'Cannot remove \"__src_id\" column'
                     assert name != '__dst_id', 'Cannot remove \"__dst_id\" column'
-                    graph_proxy = self.__graph__.__proxy__.delete_edge_field(_encode(name))
+                    graph_proxy = self.__graph__.__proxy__.delete_edge_field(name)
                     self.__graph__.__proxy__ = graph_proxy
         except:
             self.__is_dirty__ = False
@@ -255,9 +254,9 @@ class GFrame(SFrame):
             Column names of the SFrame.
         """
         if self._is_vertex_frame():
-            return _decode(self.__graph__.__proxy__.get_vertex_fields())
+            return self.__graph__.__proxy__.get_vertex_fields()
         elif self._is_edge_frame():
-            return _decode(self.__graph__.__proxy__.get_edge_fields())
+            return self.__graph__.__proxy__.get_edge_fields()
 
     def column_types(self):
         """

@@ -11,7 +11,6 @@ of the BSD license. See the LICENSE file for details.
 '''
 from .. import connect as _mt
 from ..connect import main as glconnect
-from ..cython import _encode
 from ..data_structures.sframe import SFrame as _SFrame
 from ..toolkits._internal_utils import _map_unity_proxy_to_object, \
                                         _toolkit_serialize_summary_struct, \
@@ -48,7 +47,7 @@ def load_model(location):
 
     _internal_url = _make_internal_url(location)
     try:
-        return glconnect.get_unity().load_model(_encode(_internal_url))
+        return glconnect.get_unity().load_model(_internal_url)
     except IOError as e:
         unpickler = _gl_pickle.GLUnpickler(_internal_url)
 
@@ -167,7 +166,7 @@ def _get_default_options_wrapper(unity_server_model_name,
           return response
         else:
           json_list = [{'name': k, '': v} for k,v in response.items()]
-          return _SFrame(json_list).unpack('X1', column_name_prefix='')\
+          return _SFrame(json_list).unpack('X1', column_name_prefix='') \
                                    .unpack('X1', column_name_prefix='')
 
     # Change the doc string before returning.

@@ -22,7 +22,6 @@ from ..connect import main as glconnect
 from .sframe import SFrame
 from .sarray import SArray
 from .gframe import GFrame, VERTEX_GFRAME, EDGE_GFRAME
-from ..cython import _decode, _encode
 from ..cython.cy_graph import UnityGraphProxy
 from ..cython.context import debug_trace as cython_context
 from ..util import _is_non_string_iterable, _make_internal_url
@@ -386,7 +385,7 @@ class SGraph(object):
         0
         """
         _mt._get_metric_tracker().track('sgraph.summary')
-        ret = _decode(self.__proxy__.summary())
+        ret = self.__proxy__.summary()
         return dict(ret.items())
 
     def get_vertices(self, ids=[], fields={}, format='sframe'):
@@ -467,7 +466,7 @@ class SGraph(object):
             raise TypeError('ids must be list or SArray type')
 
         with cython_context():
-            sf = SFrame(_proxy=self.__proxy__.get_vertices(_encode(ids), _encode(fields)))
+            sf = SFrame(_proxy=self.__proxy__.get_vertices(ids, fields))
 
         if (format == 'sframe'):
             return sf
@@ -578,7 +577,7 @@ class SGraph(object):
             dst_ids = [None] * len(src_ids)
 
         with cython_context():
-            sf = SFrame(_proxy=self.__proxy__.get_edges(_encode(src_ids), _encode(dst_ids), _encode(fields)))
+            sf = SFrame(_proxy=self.__proxy__.get_edges(src_ids, dst_ids, fields))
 
         if (format == 'sframe'):
             return sf
@@ -656,7 +655,7 @@ class SGraph(object):
         sf = _vertex_data_to_sframe(vertices, vid_field)
 
         with cython_context():
-            proxy = self.__proxy__.add_vertices(sf.__proxy__, _encode(_VID_COLUMN))
+            proxy = self.__proxy__.add_vertices(sf.__proxy__, _VID_COLUMN)
             return SGraph(_proxy=proxy)
 
     def add_edges(self, edges, src_field=None, dst_field=None):
@@ -729,7 +728,7 @@ class SGraph(object):
         sf = _edge_data_to_sframe(edges, src_field, dst_field)
 
         with cython_context():
-            proxy = self.__proxy__.add_edges(sf.__proxy__, _encode(_SRC_VID_COLUMN), _encode(_DST_VID_COLUMN))
+            proxy = self.__proxy__.add_edges(sf.__proxy__, _SRC_VID_COLUMN, _DST_VID_COLUMN)
             return SGraph(_proxy=proxy)
 
     def get_fields(self):
@@ -789,7 +788,7 @@ class SGraph(object):
         _mt._get_metric_tracker().track('sgraph.')
 
         with cython_context():
-            return _decode(self.__proxy__.get_vertex_fields())
+            return self.__proxy__.get_vertex_fields()
 
     def get_edge_fields(self):
         """
@@ -818,7 +817,7 @@ class SGraph(object):
         _mt._get_metric_tracker().track('sgraph.get_edge_fields')
 
         with cython_context():
-            return _decode(self.__proxy__.get_edge_fields())
+            return self.__proxy__.get_edge_fields()
 
     def select_fields(self, fields):
         """
@@ -857,8 +856,8 @@ class SGraph(object):
         if not isinstance(fields, list) or not all(type(x) is str for x in fields):
             raise TypeError('\"fields\" must be a str or list[str]')
 
-        vfields = _decode(self.__proxy__.get_vertex_fields())
-        efields = _decode(self.__proxy__.get_edge_fields())
+        vfields = self.__proxy__.get_vertex_fields()
+        efields = self.__proxy__.get_edge_fields()
         selected_vfields = []
         selected_efields = []
         for f in fields:
@@ -874,8 +873,8 @@ class SGraph(object):
 
         with cython_context():
             proxy = self.__proxy__
-            proxy = proxy.select_vertex_fields(_encode(selected_vfields))
-            proxy = proxy.select_edge_fields(_encode(selected_efields))
+            proxy = proxy.select_vertex_fields(selected_vfields)
+            proxy = proxy.select_edge_fields(selected_efields)
             return SGraph(_proxy=proxy)
 
     def triple_apply(self, triple_apply_fn, mutated_fields, input_fields=None):
@@ -1020,10 +1019,10 @@ class SGraph(object):
             pass
         if nativefn is not None:
             with cython_context():
-                return SGraph(_proxy=g.__proxy__.lambda_triple_apply_native(nativefn, _encode(mutated_fields)))
+                return SGraph(_proxy=g.__proxy__.lambda_triple_apply_native(nativefn, mutated_fields))
         else:
             with cython_context():
-                return SGraph(_proxy=g.__proxy__.lambda_triple_apply(triple_apply_fn, _encode(mutated_fields)))
+                return SGraph(_proxy=g.__proxy__.lambda_triple_apply(triple_apply_fn, mutated_fields))
 
     def save(self, filename, format='auto'):
         """
@@ -1073,7 +1072,7 @@ class SGraph(object):
             raise ValueError('Invalid format: %s. Supported formats are: %s'
                              % (format, ['binary', 'json', 'csv']))
         with cython_context():
-            self.__proxy__.save_graph(_encode(_make_internal_url(filename)), _encode(format))
+            self.__proxy__.save_graph(_make_internal_url(filename), format)
 
 
     def show(self, vlabel=None, vlabel_hover=False, vcolor=[0.522, 0.741, 0.],
@@ -1343,7 +1342,7 @@ def load_sgraph(filename, format='binary', delimiter='auto'):
     with cython_context():
         g = None
         if format is 'binary':
-            proxy = glconnect.get_unity().load_graph(_encode(_make_internal_url(filename)))
+            proxy = glconnect.get_unity().load_graph(_make_internal_url(filename))
             g = SGraph(_proxy=proxy)
         elif format is 'snap':
             if delimiter == 'auto':

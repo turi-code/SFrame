@@ -27,8 +27,8 @@ class LambdaTests(unittest.TestCase):
         x = 3
         self.assertEqual(glconnect.get_unity().eval_lambda(lambda y: y + x, 0), 3)
         self.assertEqual(glconnect.get_unity().eval_lambda(lambda y: y + x, 1), 4)
-        self.assertEqual(glconnect.get_unity().eval_lambda(lambda x: x.upper(), 'abc'), b'ABC')
-        self.assertEqual(glconnect.get_unity().eval_lambda(lambda x: x.lower(), 'ABC'), b'abc')
+        self.assertEqual(glconnect.get_unity().eval_lambda(lambda x: x.upper(), 'abc'), 'ABC')
+        self.assertEqual(glconnect.get_unity().eval_lambda(lambda x: x.lower(), 'ABC'), 'abc')
         self.assertEqual(glconnect.get_unity().eval_lambda(fib, 1), 1)
 
     def test_exception(self):
