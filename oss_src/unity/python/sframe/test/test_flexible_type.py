@@ -47,10 +47,15 @@ special_types.add(id(IntegerValue))
 FloatValue = [float(0)] + [_dt(0) for _dt in np.sctypes['float']]
 special_types.add(id(FloatValue))
 
-StringValue = ([str('bork'), unicode('bork')]
+StringValue = ([str('bork'), unicode('bork'), b'bork', b'']
                + [_dt('bork') for _dt in
                   [np.unicode, np.unicode_, str, unicode, np.str,
+                   np.str_, np.string_]]
+               + [str(''), unicode('')]
+               + [_dt('') for _dt in
+                  [np.unicode, np.unicode_, str, unicode, np.str,
                    np.str_, np.string_]])
+                   
 special_types.add(id(StringValue))
 
 DictValue = [{'a' : 12}, dict()]

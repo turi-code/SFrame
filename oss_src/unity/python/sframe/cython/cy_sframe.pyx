@@ -79,7 +79,7 @@ cdef class UnitySFrameProxy:
 
     cpdef load_from_csvs(self, _url, object csv_config, dict column_type_hints):
         cdef map[string, flex_type_enum] c_column_type_hints
-        for key, value in column_type_hints:
+        for key, value in column_type_hints.items():
             c_column_type_hints[str_to_cpp(key)] = flex_type_enum_from_pytype(value)
         cdef gl_options_map csv_options = gl_options_map_from_pydict(csv_config)
         cdef gl_error_map errors
@@ -129,7 +129,7 @@ cdef class UnitySFrameProxy:
             lambda_str = fn
         else:
             from .. import util
-            lambda_str = util._pickle_to_temp_location_or_memory(fn)
+            lambda_str = str_to_cpp(util._pickle_to_temp_location_or_memory(fn))
         # skip_undefined options is not used for now.
         skip_undefined = 0
         cdef unity_sarray_base_ptr proxy

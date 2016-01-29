@@ -919,15 +919,15 @@ class SFrame(object):
             elif ((array.array in d) and (list in d)):
               # one is an array , one is a list. its a list
               column_type_hints[j] = list
-            elif types.NoneType in d:
+            elif type(None) in d:
               # one is a NoneType. assign to other type
-              if currow[j] != types.NoneType:
+              if currow[j] != type(None):
                   column_type_hints[j] = currow[j]
             else:
               column_type_hints[j] = str
         # final pass. everything whih is still NoneType is now a str
         for i in range(len(column_type_hints)):
-          if column_type_hints[i] == types.NoneType:
+          if column_type_hints[i] == type(None):
             column_type_hints[i] = str
 
         return column_type_hints

@@ -3,24 +3,29 @@ from libcpp.vector cimport vector
 from libcpp.map cimport map
 from cpython.version cimport PY_MAJOR_VERSION
 
+cdef string _attempt_cast_str_to_cpp(object ) except *
+
 cdef inline string str_to_cpp(py_s) except *:
     """
     Use this function to convert any string-like object to the c++
     string class.
     """
     cdef type t = type(py_s)
+    
     if PY_MAJOR_VERSION >= 3:
         if t is str:
             return (<str>py_s).encode()
         elif t is bytes:
             return (<bytes>py_s)
+        else:
+            return _attempt_cast_str_to_cpp(py_s)
     else:
         if t is str:
             return (<str>py_s)
         elif t is unicode:
             return (<unicode>py_s).encode()
         else:
-            raise TypeError("Cannot interpret type '%s' as native string." % str(t))
+            return _attempt_cast_str_to_cpp(py_s)            
 
 cdef inline string unsafe_str_to_cpp(py_s) except *:
     """
@@ -51,6 +56,9 @@ cdef inline str cpp_to_str(const string& cpp_s):
 
 
 cdef inline vector[string] to_vector_of_strings(object v) except *:
+    """
+    Translate a vector of strings with proper encoding.. 
+    """
     cdef list fl
     cdef tuple ft
     cdef long i
@@ -72,6 +80,9 @@ cdef inline vector[string] to_vector_of_strings(object v) except *:
     return ret
     
 cdef inline list from_vector_of_strings(const vector[string]& sv):
+    """
+    Translate a vector of strings with proper decoding. 
+    """
     cdef list ret = [None]*sv.size()
     cdef long i
 
@@ -81,6 +92,9 @@ cdef inline list from_vector_of_strings(const vector[string]& sv):
     return ret
     
 cdef inline vector[vector[string]] to_nested_vectors_of_strings(object v) except *:
+    """
+    Translate a nested vector of strings with proper encoding. 
+    """
     cdef list fl
     cdef tuple ft
     cdef long i
@@ -105,6 +119,9 @@ cdef inline vector[vector[string]] to_nested_vectors_of_strings(object v) except
     return ret    
         
 cdef inline map[string, string] dict_to_string_string_map(dict d) except *:
+    """
+    Translate a map of strings to strings with proper encoding. 
+    """
     cdef map[string,string] ret
 
     for k, v in d.iteritems():

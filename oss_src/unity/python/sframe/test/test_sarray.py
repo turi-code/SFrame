@@ -313,8 +313,7 @@ class SArrayTest(unittest.TestCase):
         sa_dict = SArray(self.dict_data, dict)
         # Python 3 doesn't return keys in same order from identical dictionaries.
         sort_by_type = lambda x : str(type(x))
-        is_py3 = (sys.version_info.major == 3)
-        sa_list = sa_dict.apply(lambda x: sorted(list(x), key = sort_by_type, reverse=is_py3))
+        sa_list = sa_dict.apply(lambda x: sorted(list(x), key = sort_by_type))
         self.__test_equal(sa_list, [sorted(list(x), key = sort_by_type) for x in self.dict_data], list)
 
     def test_transform_dict(self):

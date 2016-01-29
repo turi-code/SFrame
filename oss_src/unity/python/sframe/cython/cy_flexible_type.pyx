@@ -118,6 +118,8 @@ AnySequence: Any of the above.
 (Note, Adding a None in any of these does not change it.)
 '''
 
+DEF DEBUG_MODE = True
+
 # Turn off a couple things in the code that we don't need here, for
 # performance reasons.
 
@@ -294,12 +296,14 @@ _code_by_map_force[<object_ptr>(none_type)]     = FT_NONE_TYPE
 _code_by_map_force[<object_ptr>(_image_type)]   = FT_IMAGE_TYPE     + FT_SAFE
 
 cdef dict _code_by_name_lookup = {
+    'str'      : FT_STR_TYPE     + FT_SAFE,
+    'str_'     : FT_STR_TYPE     + FT_SAFE,
     'string'   : FT_STR_TYPE     + FT_SAFE,
     'string_'  : FT_STR_TYPE     + FT_SAFE,
     'bytes'    : FT_STR_TYPE     + FT_SAFE,
     'bytes_'   : FT_STR_TYPE     + FT_SAFE,
     'unicode'  : FT_UNICODE_TYPE,
-    'unicode_' : FT_UNICODE_TYPE,
+    'unicode_' : FT_UNICODE_TYPE + FT_SAFE,
     'int'      : FT_INT_TYPE     + FT_SAFE,
     'int_'     : FT_INT_TYPE     + FT_SAFE,
     'long'     : FT_INT_TYPE     + FT_SAFE,
@@ -645,7 +649,7 @@ cdef check_list_to_vector_translation(flexible_type& v):
         try:
             alt_v.soft_assign(v)
         except:
-            assert False, "Cannot convert %s to vector" % (str(pyobject_from_flexible_type(v)))
+            assert False, "Cannot convert flexible_type to vector"
 
         swap(alt_v, v)
 
@@ -1451,6 +1455,8 @@ cdef flexible_type flexible_type_from_pyobject(object v) except *:
     cdef flexible_type ret
 
     cdef int tr_code = get_translation_code(t, v)
+    #print( "type of %s = %s, tr_code = %d." % (repr(v), str(t), tr_code))
+    
     ret = _ft_translate(v, tr_code)
     check_list_to_vector_translation(ret)
     return ret
@@ -1832,6 +1838,7 @@ cdef flex_list flex_list_from_typed_iterable(object v, flex_type_enum common_typ
 
 def _translate_through_flexible_type(object p):
     cdef flexible_type ft = flexible_type_from_pyobject(p)
+    #print("Translated %s into %s" % (repr(p), cpp_to_str(ft.as_string())))
     cdef object pt = pyobject_from_flexible_type(ft)
     return pt
 
