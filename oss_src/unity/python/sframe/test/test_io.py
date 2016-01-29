@@ -5,11 +5,11 @@ All rights reserved.
 This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
+import commands
 import json
 import logging
 import os
 import re
-import subprocess
 import tempfile
 import unittest
 import pandas
@@ -19,21 +19,14 @@ from ..connect import main as glconnect
 from .. import sys_util as _sys_util
 from .. import util
 from .. import SGraph, Model, SFrame, load_graph, load_model, load_sframe
-from .create_server_util import start_test_tcp_server
+from create_server_util import create_server, start_test_tcp_server
 from pandas.util.testing import assert_frame_equal
-
-if sys.version_info.major > 2:
-    unichr = chr
-    unittest.TestCase.assertItemsEqual = unittest.TestCase.assertCountEqual
 
 restricted_place = '/root'
 if sys.platform == 'win32':
     restricted_place = 'C:/Windows/System32/config/RegBack'
-elif sys.platform == 'darwin':
-    restricted_place = '/System'
 
-
-def _test_save_load_object_helper(testcase, obj, path):
+def _test_save_load_object_helper(testcase, obj, url):
     """
     Helper function to test save and load a server side object to a given url.
     """
@@ -41,25 +34,34 @@ def _test_save_load_object_helper(testcase, obj, path):
         """
         Remove the saved file from temp directory.
         """
-        tempdir = tempfile.gettempdir()
-        pattern = path + ".*"
-        for f in os.listdir(tempdir):
-            if re.search(pattern, f):
-                os.remove(os.path.join(tempdir, f))
+        protocol = None
+        path = None
+        splits = url.split("://")
+        if len(splits) > 1:
+            protocol = splits[0]
+            path = splits[1]
+        else:
+            path = url
+        if not protocol or protocol is "local" or protocol is "remote":
+            tempdir = tempfile.gettempdir()
+            pattern = path + ".*"
+            for f in os.listdir(tempdir):
+                if re.search(pattern, f):
+                    os.remove(os.path.join(tempdir, f))
 
     if isinstance(obj, SGraph):
-        obj.save(path + ".graph")
-        newobj = load_graph(path + ".graph")
+        obj.save(url + ".graph")
+        newobj = load_graph(url + ".graph")
         testcase.assertItemsEqual(obj.get_fields(), newobj.get_fields())
         testcase.assertDictEqual(obj.summary(), newobj.summary())
     elif isinstance(obj, Model):
-        obj.save(path + ".model")
-        newobj = load_model(path + ".model")
+        obj.save(url + ".model")
+        newobj = load_model(url + ".model")
         testcase.assertItemsEqual(obj.list_fields(), newobj.list_fields())
         testcase.assertEqual(type(obj), type(newobj))
     elif isinstance(obj, SFrame):
-        obj.save(path + ".frame_idx")
-        newobj = load_sframe(path + ".frame_idx")
+        obj.save(url + ".frame_idx")
+        newobj = load_sframe(url + ".frame_idx")
         testcase.assertEqual(obj.shape, newobj.shape)
         testcase.assertEqual(obj.column_names(), newobj.column_names())
         testcase.assertEqual(obj.column_types(), newobj.column_types())
@@ -67,7 +69,7 @@ def _test_save_load_object_helper(testcase, obj, path):
                            newobj.head(newobj.num_rows()).to_dataframe())
     else:
         raise TypeError
-    cleanup(path)
+    cleanup(url)
 
 
 def create_test_objects():
@@ -99,21 +101,26 @@ class LocalFSConnectorTests(unittest.TestCase):
             os.remove(url)
 
     def test_object_save_load(self):
-        _test_save_load_object_helper(self, self.graph, self.tempfile)
-        _test_save_load_object_helper(self, self.sframe, self.tempfile)
+        for prefix in ['', 'local://', 'remote://']:
+            _test_save_load_object_helper(self, self.graph, prefix + self.tempfile)
+            _test_save_load_object_helper(self, self.sframe, prefix + self.tempfile)
 
     def test_basic(self):
         self._test_read_write_helper(self.tempfile, 'hello world')
+        self._test_read_write_helper("local://" + self.tempfile + ".csv", 'hello,world,woof')
+        self._test_read_write_helper("remote://" + self.tempfile + ".csv", 'hello,world,woof')
 
     def test_gzip(self):
         self._test_read_write_helper(self.tempfile + ".gz", 'hello world')
         self._test_read_write_helper(self.tempfile + ".csv.gz", 'hello world')
+        self._test_read_write_helper("local://" + self.tempfile + ".csv.gz", 'hello world')
+        self._test_read_write_helper("remote://" + self.tempfile + ".csv.gz", 'hello world')
 
     def test_exception(self):
         self.assertRaises(IOError, lambda: glconnect.get_unity().__read__(restricted_place+"/tmp"))
-        self.assertRaises(IOError, lambda: glconnect.get_unity().__write__(restricted_place+"/tmp"), _encode('.....'))
+        self.assertRaises(IOError, lambda: glconnect.get_unity().__write__(restricted_place+"/tmp", '.....'))
         self.assertRaises(IOError, lambda: glconnect.get_unity().__read__(restricted_place+"/tmp"))
-        self.assertRaises(IOError, lambda: glconnect.get_unity().__write__(restricted_place+"/tmp"), _encode('.....'))
+        self.assertRaises(IOError, lambda: glconnect.get_unity().__write__(restricted_place+"/tmp", '.....'))
         self.assertRaises(IOError, lambda: self.graph.save(restricted_place+"/tmp.graph"))
         self.assertRaises(IOError, lambda: self.sframe.save(restricted_place+"/tmp.frame_idx"))
         self.assertRaises(IOError, lambda: load_graph(restricted_place+"/tmp.graph"))
@@ -160,7 +167,7 @@ class RemoteFSConnectorTests(unittest.TestCase):
         self.assertRaises(ValueError, lambda: self._test_read_write_helper("local://" + self.tempfile + ".csv.gz", 'hello,world,woof'))
         self.assertRaises(IOError, lambda: glconnect.get_unity().__read__("remote://"+restricted_place+"/tmp"))
         self.assertRaises(IOError, lambda: glconnect.get_unity().__read__("remote://"+restricted_place+"/tmp"))
-        self.assertRaises(IOError, lambda: glconnect.get_unity().__write__("remote://"+restricted_place+"/tmp"), _encode('.....'))
+        self.assertRaises(IOError, lambda: glconnect.get_unity().__write__("remote://"+restricted_place+"/tmp", '.....'))
         self.assertRaises(IOError, lambda: self.graph.save("remote://"+restricted_place+"/tmp.graph"))
         self.assertRaises(IOError, lambda: self.sframe.save("remote://"+restricted_place+"/tmp.frame_idx"))
         self.assertRaises(IOError, lambda: load_graph("remote://"+restricted_place+"/tmp.graph"))
@@ -176,7 +183,7 @@ class HttpConnectorTests(unittest.TestCase):
 
     def _test_read_helper(self, url, content_expected):
         url = util._make_internal_url(url)
-        content_read = _decode(glconnect.get_unity().__read__(_encode(url)))
+        content_read = glconnect.get_unity().__read__(url)
         self.assertEquals(content_read, content_expected)
 
     def test_read(self):
@@ -185,8 +192,7 @@ class HttpConnectorTests(unittest.TestCase):
         self._test_read_helper(self.url, expected)
 
     def test_exception(self):
-        self.assertRaises(IOError, lambda: glconnect.get_unity().__write__(_encode(self.url), _encode('.....')))
-
+        self.assertRaises(IOError, lambda: glconnect.get_unity().__write__(self.url, '.....'))
 
 @unittest.skip("Disabling HDFS Connector Tests")
 class HDFSConnectorTests(unittest.TestCase):
@@ -204,8 +210,9 @@ class HDFSConnectorTests(unittest.TestCase):
         content_read = glconnect.get_unity().__read__(url)
         self.assertEquals(content_read, content_expected)
         # clean up the file we wrote
-        subprocess.check_output(['hadoop', 'fs', '-test', '-e', 'url'])
-        subprocess.check_output(['hadoop', 'fs', '-rm', url])
+        status, output = commands.getstatusoutput('hadoop fs -test -e ' + url)
+        if status is 0:
+            commands.getstatusoutput('hadoop fs -rm ' + url)
 
     def test_basic(self):
         if self.has_hdfs:
@@ -249,12 +256,8 @@ class S3ConnectorTests(unittest.TestCase):
     # This test requires aws cli to be installed. If not, the tests will be skipped.
     @classmethod
     def setUpClass(self):
-        try:
-            output = subprocess.check_output(['aws', 's3api', 'list-buckets'])
-        except:
-            self.has_s3 = False
-        else:
-            self.has_s3 = True
+        status, output = commands.getstatusoutput('aws s3api list-buckets')
+        self.has_s3 = (status is 0)
         self.standard_bucket = None
         self.regional_bucket = None
         # Use aws cli s3api to find a bucket with "gl-testdata" in the name, and use it as out test bucket.
@@ -278,9 +281,8 @@ class S3ConnectorTests(unittest.TestCase):
         glconnect.get_unity().__write__(s3url, content_expected)
         content_read = glconnect.get_unity().__read__(s3url)
         self.assertEquals(content_read, content_expected)
-        try:
-            subprocess.check_output(['aws', 's3', 'rm', '--region', 'us-west-2', url])
-        except:
+        (status, output) = commands.getstatusoutput('aws s3 rm --region us-west-2 ' + url)
+        if status is not 0:
             logging.getLogger(__name__).warning("Cannot remove file: " + url)
 
     def test_basic(self):
