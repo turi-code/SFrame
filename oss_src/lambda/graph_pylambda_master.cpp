@@ -33,15 +33,10 @@ void graph_pylambda_master::shutdown_instance() {
 } 
 
 graph_pylambda_master::graph_pylambda_master(size_t nworkers) {
-  std::vector<std::string> worker_addresses;
-  for (size_t i = 0; i < nworkers; ++i) {
-    worker_addresses.push_back(std::string("ipc://") + get_temp_name());
-  }
   m_worker_pool.reset(
       new worker_pool<graph_lambda_evaluator_proxy>(
           nworkers,
-          lambda_master::get_lambda_worker_binary(),
-          worker_addresses));
+          lambda_master::get_lambda_worker_binary()));
 
   if (nworkers < thread::cpu_count()) {
     logprogress_stream << "Using default " << nworkers << " lambda workers.\n";

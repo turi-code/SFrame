@@ -41,13 +41,7 @@ static lambda_master* instance_ptr = nullptr;
   }
 
   lambda_master::lambda_master(size_t nworkers) {
-    std::vector<std::string> worker_addresses;
-    for (size_t i = 0; i < nworkers; ++i) {
-      worker_addresses.push_back(std::string("ipc://") + get_temp_name());
-    }
-    m_worker_pool.reset(new worker_pool<lambda_evaluator_proxy>(nworkers,
-                                                                lambda_worker_binary_and_args,
-                                                                worker_addresses));
+    m_worker_pool.reset(new worker_pool<lambda_evaluator_proxy>(nworkers, lambda_worker_binary_and_args));
     if (nworkers < thread::cpu_count()) {
       logprogress_stream << "Using default " << nworkers << " lambda workers.\n";
       logprogress_stream << "To maximize the degree of parallelism, add the following code to the beginning of the program:\n";
@@ -58,7 +52,7 @@ static lambda_master* instance_ptr = nullptr;
     /*
      * Create an interprocess shared memory connection if possible.
      */
-    auto shared_memory_setup = [](std::shared_ptr<lambda_evaluator_proxy> proxy) {
+    auto shared_memory_setup = [](std::unique_ptr<lambda_evaluator_proxy>& proxy) {
       return std::make_pair((void*)(proxy.get()), proxy->initialize_shared_memory_comm());
     };
     std::vector<std::pair<void*, std::string>> shared_memory_addresses = 
@@ -77,14 +71,10 @@ static lambda_master* instance_ptr = nullptr;
 
   size_t lambda_master::make_lambda(const std::string& lambda_str) {
     std::lock_guard<graphlab::mutex> lock(m_mtx);
-    auto make_lambda_fn = [lambda_str](std::shared_ptr<lambda_evaluator_proxy> proxy) {
-      try {
-        auto ret = proxy->make_lambda(lambda_str);
-        logstream(LOG_INFO) << "Lambda worker proxy make lambda: " << ret << std::endl;
-        return ret;
-      } catch (cppipc::ipcexception e) {
-        throw reinterpret_comm_failure(e);
-      }
+    auto make_lambda_fn = [lambda_str](std::unique_ptr<lambda_evaluator_proxy>& proxy) {
+      auto ret = proxy->make_lambda(lambda_str);
+      logstream(LOG_INFO) << "Lambda worker proxy make lambda: " << ret << std::endl;
+      return ret;
     };
     std::vector<size_t> returned_hashes = m_worker_pool->call_all_workers<size_t>(make_lambda_fn);
     // validate all worker returns the same hash
@@ -111,7 +101,7 @@ static lambda_master* instance_ptr = nullptr;
     }
 
     // Ok, the lambda is unique, let's issue a release lambda to all workers
-    auto release_lambda_fn = [lambda_hash](std::shared_ptr<lambda_evaluator_proxy> proxy) {
+    auto release_lambda_fn = [lambda_hash](std::unique_ptr<lambda_evaluator_proxy>& proxy) {
       try {
         proxy->release_lambda(lambda_hash);
       } catch (std::exception e){
@@ -130,15 +120,15 @@ static lambda_master* instance_ptr = nullptr;
 
 
   void lambda_master::bulk_eval(size_t lambda_hash,
-                                  const std::vector<flexible_type>& args,
-                                  std::vector<flexible_type>& out,
-                                  bool skip_undefined, int seed) {
+                                const std::vector<flexible_type>& args,
+                                std::vector<flexible_type>& out,
+                                bool skip_undefined, int seed) {
 
-    auto worker_proxy = m_worker_pool->get_worker();
-    auto worker_guard = m_worker_pool->get_worker_guard(worker_proxy);
+    auto worker = m_worker_pool->get_worker();
+    auto worker_guard = m_worker_pool->get_worker_guard(worker);
     // catch and reinterpret comm failure
     try {
-      out = worker_proxy->bulk_eval(lambda_hash, args, skip_undefined, seed);
+      out = worker->proxy->bulk_eval(lambda_hash, args, skip_undefined, seed);
     } catch (cppipc::ipcexception e) {
       throw reinterpret_comm_failure(e);
     }
@@ -212,12 +202,12 @@ static lambda_master* instance_ptr = nullptr;
                                   bool skip_undefined,
                                   int seed) {
 
-    auto worker_proxy = m_worker_pool->get_worker();
-    auto worker_guard = m_worker_pool->get_worker_guard(worker_proxy);
+    auto worker = m_worker_pool->get_worker();
+    auto worker_guard = m_worker_pool->get_worker_guard(worker);
 
     // catch and reinterpret comm failure
     try {
-      auto shmclient_iter = m_shared_memory_worker_connections.find(worker_proxy.get());
+      auto shmclient_iter = m_shared_memory_worker_connections.find(worker->proxy.get());
       if (shmclient_iter != m_shared_memory_worker_connections.end() &&
           shmclient_iter->second.get() != nullptr) {
         auto& shmclient = shmclient_iter->second;
@@ -240,7 +230,7 @@ static lambda_master* instance_ptr = nullptr;
         shmclient.reset();
         logstream(LOG_WARNING) << "Unexpected SHMIPC failure. Falling back to CPPIPC" << std::endl;
       } 
-      out = worker_proxy->bulk_eval_rows(lambda_hash, args, skip_undefined, seed);
+      out = worker->proxy->bulk_eval_rows(lambda_hash, args, skip_undefined, seed);
     } catch (cppipc::ipcexception e) {
       throw reinterpret_comm_failure(e);
     }
@@ -248,15 +238,15 @@ static lambda_master* instance_ptr = nullptr;
 
 
   void lambda_master::bulk_eval(size_t lambda_hash,
-                                  const std::vector<std::string>& keys,
-                                  const std::vector<std::vector<flexible_type>>& values,
-                                  std::vector<flexible_type>& out,
-                                  bool skip_undefined, int seed) {
-    auto worker_proxy = m_worker_pool->get_worker();
-    auto worker_guard = m_worker_pool->get_worker_guard(worker_proxy);
+                                const std::vector<std::string>& keys,
+                                const std::vector<std::vector<flexible_type>>& values,
+                                std::vector<flexible_type>& out,
+                                bool skip_undefined, int seed) {
+    auto worker = m_worker_pool->get_worker();
+    auto worker_guard = m_worker_pool->get_worker_guard(worker);
     // catch and reinterpret comm failure
     try {
-      out = worker_proxy->bulk_eval_dict(lambda_hash, keys, values, skip_undefined, seed);
+      out = worker->proxy->bulk_eval_dict(lambda_hash, keys, values, skip_undefined, seed);
     } catch (cppipc::ipcexception e) {
       throw reinterpret_comm_failure(e);
     }
@@ -268,11 +258,11 @@ static lambda_master* instance_ptr = nullptr;
                                   const sframe_rows& rows,
                                   std::vector<flexible_type>& out,
                                   bool skip_undefined, int seed) {
-    auto worker_proxy = m_worker_pool->get_worker();
-    auto worker_guard = m_worker_pool->get_worker_guard(worker_proxy);
+    auto worker = m_worker_pool->get_worker();
+    auto worker_guard = m_worker_pool->get_worker_guard(worker);
     // catch and reinterpret comm failure
     try {
-      auto shmclient_iter = m_shared_memory_worker_connections.find(worker_proxy.get());
+      auto shmclient_iter = m_shared_memory_worker_connections.find(worker->proxy.get());
       if (shmclient_iter != m_shared_memory_worker_connections.end() &&
           shmclient_iter->second.get() != nullptr) {
         auto& shmclient = shmclient_iter->second;
@@ -293,7 +283,7 @@ static lambda_master* instance_ptr = nullptr;
         shmclient.reset();
         logstream(LOG_WARNING) << "Unexpected SHMIPC failure. Falling back to CPPIPC" << std::endl;
       } 
-      out = worker_proxy->bulk_eval_dict_rows(lambda_hash, keys, rows, skip_undefined, seed);
+      out = worker->proxy->bulk_eval_dict_rows(lambda_hash, keys, rows, skip_undefined, seed);
     } catch (cppipc::ipcexception e) {
       throw reinterpret_comm_failure(e);
     }
