@@ -62,6 +62,11 @@ class VariantCheckTest(unittest.TestCase):
         self.variant_turnaround([sf,sf])
         self.variant_turnaround({'a':sa, 'b':sf, 'c':['a','b','c','d']})
         self.variant_turnaround({'a':[{'a':1, 'b':2}], 'b':[{'a':3}]})
+        self.variant_turnaround({'a':[{'a':sa, 'b': sa}], 'b':[{'a':sa}]})
+        self.variant_turnaround({'a': [sa, {'c':sa, 'd': sa}], 'e':[{'f':sa}]})
+        self.variant_turnaround({'a':[sa,{'a':sa}]})
+        self.variant_turnaround({'a':[{'a':sa,'b':'c'}]})
+        self.variant_turnaround({'a':[sa,{'a':sa,'b':'c'}]})
         self.variant_turnaround({'a':[sa,sf,{'a':sa,'b':'c'}],
             'b':sf, 'c':['a','b','c','d']})
 

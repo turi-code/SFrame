@@ -133,7 +133,7 @@ cdef int _get_tr_code_by_type_string(object v) except -1:
     the flexible_type translators.
     """
 
-    cdef int ret
+    cdef int ret = -1
 
     if not internal_classes_set:
         import_internal_classes()
@@ -284,12 +284,12 @@ cdef bint _var_set_listlike_internal(variant_vector_type& ret_as_vv,
     # succeeds, then we simply return that.
 
     cdef long i
-    cdef int tr_code
+    cdef int tr_code = 0
 
     cdef int sub_code = 0
     cdef bint value_contained_in_next = False
 
-    cdef bint sub_is_flex_type
+    cdef bint sub_is_flex_type = False
     cdef variant_vector_type sub_vv = variant_vector_type()
     cdef variant_map_type sub_vm = variant_map_type()
 
@@ -358,6 +358,7 @@ cdef bint _var_set_listlike_internal(variant_vector_type& ret_as_vv,
         elif tr_code == VAR_TR_ATTEMPT_OTHER_FLEXIBLE_TYPE:
             ret_as_fl[i] = _translate_to_flexible_type(x)
             element_stored_in_flex_list = True
+            
         else:
             if writing_to_flexible_types:
                 __move_flex_list_to_variant_vector(ret_as_vv, ret_as_fl, i)
@@ -402,9 +403,9 @@ cdef inline bint _var_set_dict_internal(variant_map_type& ret_as_vm, flex_dict& 
     if require_varmap and not output_can_be_varmap:
         raise TypeError("Dictionary cannot be translated into a variant type map (keys not strings)")
 
-    cdef long pos
-    cdef int tr_code
-    cdef bint writing_to_flex_dict
+    cdef long pos = 0
+    cdef int tr_code = 0
+    cdef bint writing_to_flex_dict = True
     
     if output_can_be_varmap:
         # First see if it can be translated as flexible type, which
@@ -419,7 +420,7 @@ cdef inline bint _var_set_dict_internal(variant_map_type& ret_as_vm, flex_dict& 
             for k, v in d.iteritems():
 
                 if writing_to_flex_dict:
-                    ret_as_fd[pos].first.set_string(str_to_cpp(k))
+                    ret_as_fd[pos].first.set_string(unsafe_str_to_cpp(k))
 
                     tr_code = get_var_tr_code(v)
 
@@ -436,19 +437,13 @@ cdef inline bint _var_set_dict_internal(variant_map_type& ret_as_vm, flex_dict& 
                     elif tr_code == VAR_TR_ATTEMPT_OTHER_FLEXIBLE_TYPE:
                         ret_as_fd[pos].second = _translate_to_flexible_type(v)
                     else:                    
-                        # That didn't work -- translate the rest as
-                        # variant type if it can be a varmap.
-                        if not output_can_be_varmap:
-                            raise TypeError("Dictionary cannot be translated to native C++ types: "
-                                            "use string keys or simpler value types.")
 
                         # Move things out of the flex_dict container
                         for i in range(pos):
-                            variant_set_flexible_type(ret_as_vm[ret_as_fd[pos].first.get_string()],
-                                                      ret_as_fd[pos].second)
+                            variant_set_flexible_type(ret_as_vm[ret_as_fd[i].first.get_string()],
+                                                      ret_as_fd[i].second)
 
                         # Convert the current one
-                        tr_code = get_var_tr_code(v)
                         _convert_to_variant_type(ret_as_vm[str_to_cpp(k)], v, tr_code)
 
                         # Make the 
@@ -483,7 +478,6 @@ cdef inline _var_set_dict(variant_type& v, dict d):
     the internal function above.
     """
     cdef variant_map_type vm
-    cdef flex_dict fd
     cdef flexible_type ft
     cdef bint ret_is_fd
 
