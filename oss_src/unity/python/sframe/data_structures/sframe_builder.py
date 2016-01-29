@@ -13,6 +13,9 @@ of the BSD license. See the DATO-PYTHON-LICENSE file for details.
 from ..connect import main as glconnect
 from ..cython.cy_sframe_builder import UnitySFrameBuilderProxy
 from .sframe import SFrame 
+import logging as _logging
+
+__LOGGER__ = _logging.getLogger(__name__)
 
 class SFrameBuilder(object):
     """
@@ -72,7 +75,8 @@ class SFrameBuilder(object):
     [3 rows x 3 columns]
 
     """
-    def __init__(self, column_types, column_names=None, num_segments=1, history_size=10):
+    def __init__(self, column_types, column_names=None, num_segments=1,
+            history_size=10, save_location=None):
         self._column_names = column_names
         self._column_types = column_types
         self._num_segments = num_segments
@@ -88,6 +92,7 @@ class SFrameBuilder(object):
         self._builder = UnitySFrameBuilderProxy(glconnect.get_client())
         self._builder.init(self._column_types, self._column_names, self._num_segments, self._history_size)
         self._block_size = 1024
+        self._save_location = save_location
 
     def _generate_column_names(self, num_columns):
         return ["X"+str(i) for i in range(1,num_columns+1)]
@@ -175,5 +180,11 @@ class SFrameBuilder(object):
         -------
         out : SFrame
         """
-        return SFrame(_proxy=self._builder.close())
+        sf = SFrame(_proxy=self._builder.close())
+        if self._save_location is not None:
+            try:
+                sf.save(self._save_location)
+            except Exception as e:
+                __LOGGER__.warn("Save failed: " + e.message)
+        return sf
 

@@ -89,7 +89,7 @@ std::vector<flexible_type> unity_sarray_builder::read_history(size_t num_elems) 
   if(num_elems == 0)
     return ret_vec;
 
-  std::copy(m_history->rbegin(), m_history->rend(), ret_vec.begin());
+  std::copy_n(m_history->rbegin(), num_elems, ret_vec.rbegin());
 
   return ret_vec;
 }

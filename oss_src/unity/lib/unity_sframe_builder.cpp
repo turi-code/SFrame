@@ -76,11 +76,7 @@ std::vector<std::vector<flexible_type>> unity_sframe_builder::read_history(size_
   if(num_elems == 0)
     return ret_vec;
 
-  auto riter = m_history->rbegin();
-  ssize_t ret_vec_idx = num_elems-1;
-  for(; ((riter != m_history->rend()) && ret_vec_idx >= 0); ++riter, --ret_vec_idx) {
-    ret_vec[ret_vec_idx] = *riter;
-  }
+  std::copy_n(m_history->rbegin(), num_elems, ret_vec.rbegin());
 
   return ret_vec;
 }
