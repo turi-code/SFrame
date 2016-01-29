@@ -191,7 +191,7 @@ cdef class UnityGlobalProxy:
             self.thisptr.list_toolkit_classes_in_dynamic_module(str_to_cpp(soname)))
 
     cpdef get_graphlab_object_type(self, uri):
-        return cpp_to_str(self.thisptr.get_graphlab_object_type(uri))
+        return cpp_to_str(self.thisptr.get_graphlab_object_type(str_to_cpp(uri)))
 
 cdef bint is_function_closure_info(object closure) except *:
     try:
