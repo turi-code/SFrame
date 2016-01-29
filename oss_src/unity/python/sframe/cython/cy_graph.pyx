@@ -17,6 +17,9 @@ from .cy_flexible_type cimport flex_list_from_iterable
 from .cy_sframe import UnitySFrameProxy
 from .cy_sframe cimport create_proxy_wrapper_from_existing_proxy as sframe_proxy
 
+from .cy_cpp_utils cimport str_to_cpp, cpp_to_str
+from .cy_cpp_utils cimport to_vector_of_strings, from_vector_of_strings
+
 from ..util import cloudpickle
 
 GL_VERTEX_ID_COLUMN = "__id" 
@@ -53,7 +56,7 @@ cdef class UnityGraphProxy:
         cdef vector[string] ret
         with nogil:
             ret = self.thisptr.get_vertex_fields(group);
-        return ret
+        return from_vector_of_strings(ret)
 
     cpdef get_vertex_field_types(self, size_t group=0):
         cdef vector[flex_type_enum] flex_types
@@ -65,7 +68,7 @@ cdef class UnityGraphProxy:
         cdef vector[string] ret
         with nogil:
             ret = self.thisptr.get_edge_fields(groupa, groupb);
-        return ret
+        return from_vector_of_strings(ret)
 
     cpdef get_edge_field_types(self, size_t groupa=0, size_t groupb=0):
         cdef vector[flex_type_enum] flex_types
@@ -92,111 +95,138 @@ cdef class UnityGraphProxy:
             result = self.thisptr.get_edges(src_vec, dst_vec, field_map, groupa, groupb)
         return sframe_proxy(self._cli, result)
 
-    cpdef add_vertices(self, UnitySFrameProxy sf, string id_field, size_t group=0):
+    cpdef add_vertices(self, UnitySFrameProxy sf, _id_field, size_t group=0):
+        cdef string id_field = str_to_cpp(_id_field)
         cdef unity_sgraph_base_ptr new_graph 
         with nogil:
             new_graph = self.thisptr.add_vertices(sf._base_ptr, id_field, group)
         return create_proxy_wrapper_from_existing_proxy(self._cli, new_graph)
 
-    cpdef add_edges(self, UnitySFrameProxy sf, string src_id_field, string dst_id_field,
+    cpdef add_edges(self, UnitySFrameProxy sf, _src_id_field, _dst_id_field,
                     size_t groupa=0, size_t groupb=0):
+        cdef string src_id_field = str_to_cpp(_src_id_field)
+        cdef string dst_id_field = str_to_cpp(_dst_id_field)
         cdef unity_sgraph_base_ptr new_graph 
         with nogil:
             new_graph = self.thisptr.add_edges(sf._base_ptr, src_id_field, 
-                                                                   dst_id_field, groupa, groupb)
+                                               dst_id_field, groupa, groupb)
         return create_proxy_wrapper_from_existing_proxy(self._cli, new_graph)
 
-    cpdef select_vertex_fields(self, vector[string] fields, size_t group=0):
+    cpdef select_vertex_fields(self, _fields, size_t group=0):
+        cdef vector[string] fields = to_vector_of_strings(_fields)
         cdef unity_sgraph_base_ptr newgraph 
         with nogil:
             newgraph = self.thisptr.select_vertex_fields(fields, group)
         return create_proxy_wrapper_from_existing_proxy(self._cli, newgraph)
 
-    cpdef copy_vertex_field(self, string src_field, string dst_field, size_t group=0):
+    cpdef copy_vertex_field(self, _src_field, _dst_field, size_t group=0):
+        cdef string src_field = str_to_cpp(_src_field)
+        cdef string dst_field = str_to_cpp(_dst_field)
         cdef unity_sgraph_base_ptr newgraph 
         with nogil:
             newgraph = self.thisptr.copy_vertex_field(src_field, dst_field, group)
         return create_proxy_wrapper_from_existing_proxy(self._cli, newgraph)
 
-    cpdef delete_vertex_field(self, string field, size_t group=0):
+    cpdef delete_vertex_field(self, _field, size_t group=0):
+        cdef string field = str_to_cpp(_field)
         cdef unity_sgraph_base_ptr newgraph 
         with nogil:
             newgraph = self.thisptr.delete_vertex_field(field, group)
         return create_proxy_wrapper_from_existing_proxy(self._cli, newgraph)
 
-    cpdef add_vertex_field(self, UnitySArrayProxy data, string name):
+    cpdef add_vertex_field(self, UnitySArrayProxy data, _name):
+        cdef string name = str_to_cpp(_name)
         cdef unity_sgraph_base_ptr newgraph 
         with nogil:
             newgraph = self.thisptr.add_vertex_field(data._base_ptr, name)
         return create_proxy_wrapper_from_existing_proxy(self._cli, newgraph)
 
-    cpdef swap_vertex_fields(self, string field1, string field2):
+    cpdef swap_vertex_fields(self, _field1, _field2):
+        cdef string field1 = str_to_cpp(_field1)
+        cdef string field2 = str_to_cpp(_field2)
         cdef unity_sgraph_base_ptr newgraph 
         with nogil:
             newgraph = self.thisptr.swap_vertex_fields(field1, field2)
         return create_proxy_wrapper_from_existing_proxy(self._cli, newgraph)
 
-    cpdef rename_vertex_fields(self, vector[string] oldnames, vector[string] newnames):
+    cpdef rename_vertex_fields(self, _oldnames, _newnames):
+        cdef vector[string] oldnames = to_vector_of_strings(_oldnames)
+        cdef vector[string] newnames = to_vector_of_strings(_newnames)
         cdef unity_sgraph_base_ptr newgraph 
         with nogil:
             newgraph = self.thisptr.rename_vertex_fields(oldnames, newnames)
         return create_proxy_wrapper_from_existing_proxy(self._cli, newgraph)
 
-    cpdef select_edge_fields(self, vector[string] fields, size_t groupa=0, size_t groupb=0):
+    cpdef select_edge_fields(self, _fields, size_t groupa=0, size_t groupb=0):
+        cdef vector[string] fields = to_vector_of_strings(_fields)
         cdef unity_sgraph_base_ptr newgraph 
         with nogil:
             newgraph = self.thisptr.select_edge_fields(fields, groupa, groupb)
         return create_proxy_wrapper_from_existing_proxy(self._cli, newgraph)
 
-    cpdef copy_edge_field(self, string src_field, string dst_field, size_t groupa=0, size_t groupb=0):
-        cdef unity_sgraph_base_ptr newgraph = self.thisptr.copy_edge_field(src_field, dst_field, groupa, groupb)
+    cpdef copy_edge_field(self, _src_field, _dst_field, size_t groupa=0, size_t groupb=0):
+        cdef string src_field = str_to_cpp(_src_field)
+        cdef string dst_field = str_to_cpp(_dst_field)
+        cdef unity_sgraph_base_ptr newgraph = \
+          self.thisptr.copy_edge_field(src_field, dst_field, groupa, groupb)
         return create_proxy_wrapper_from_existing_proxy(self._cli, newgraph)
 
-    cpdef delete_edge_field(self, string field, size_t groupa=0, size_t groupb=0):
+    cpdef delete_edge_field(self, _field, size_t groupa=0, size_t groupb=0):
+        cdef string field = str_to_cpp(_field)
         cdef unity_sgraph_base_ptr newgraph 
         with nogil:
             newgraph = self.thisptr.delete_edge_field(field, groupa, groupb)
         return create_proxy_wrapper_from_existing_proxy(self._cli, newgraph)
 
-    cpdef add_edge_field(self, UnitySArrayProxy data, string name):
+    cpdef add_edge_field(self, UnitySArrayProxy data, _name):
+        cdef string name = str_to_cpp(_name)
         cdef unity_sgraph_base_ptr newgraph 
         with nogil:
             newgraph = self.thisptr.add_edge_field(data._base_ptr, name)
         return create_proxy_wrapper_from_existing_proxy(self._cli, newgraph)
 
-    cpdef swap_edge_fields(self, string field1, string field2):
+    cpdef swap_edge_fields(self, _field1, _field2):
+        cdef string field1 = str_to_cpp(_field1)
+        cdef string field2 = str_to_cpp(_field2)
         cdef unity_sgraph_base_ptr newgraph 
         with nogil:
             newgraph = self.thisptr.swap_edge_fields(field1, field2)
         return create_proxy_wrapper_from_existing_proxy(self._cli, newgraph)
 
-    cpdef rename_edge_fields(self, vector[string] oldnames, vector[string] newnames):
+    cpdef rename_edge_fields(self, _oldnames, _newnames):
+        cdef vector[string] oldnames = to_vector_of_strings(_oldnames)
+        cdef vector[string] newnames = to_vector_of_strings(_newnames)
         cdef unity_sgraph_base_ptr newgraph 
         with nogil:
             newgraph = self.thisptr.rename_edge_fields(oldnames, newnames)
         return create_proxy_wrapper_from_existing_proxy(self._cli, newgraph)
 
-    cpdef lambda_triple_apply(self, object fn, vector[string] mutated_fields):
+    cpdef lambda_triple_apply(self, object fn, _mutated_fields):
+        cdef vector[string] mutated_fields = to_vector_of_strings(_mutated_fields)
         cdef string lambda_str = cloudpickle.dumps(fn) 
         cdef unity_sgraph_base_ptr newgraph 
         with nogil:
             newgraph = self.thisptr.lambda_triple_apply(lambda_str, mutated_fields)
         return create_proxy_wrapper_from_existing_proxy(self._cli, newgraph)
 
-    cpdef lambda_triple_apply_native(self, closure, vector[string] mutated_fields):
+    cpdef lambda_triple_apply_native(self, closure, _mutated_fields):
+        cdef vector[string] mutated_fields = to_vector_of_strings(_mutated_fields)
         cl = make_function_closure_info(closure)
         cdef unity_sgraph_base_ptr newgraph 
         with nogil:
             newgraph = self.thisptr.lambda_triple_apply_native(cl, mutated_fields)
         return create_proxy_wrapper_from_existing_proxy(self._cli, newgraph)
 
-    cpdef save_graph(self, string filename, string format):
+    cpdef save_graph(self, _filename, _format):
+        cdef string filename = str_to_cpp(_filename)
+        cdef string format = str_to_cpp(_format)
         cdef bint ret 
         with nogil:
             ret = self.thisptr.save_graph(filename, format)
         return ret
 
-    cpdef load_graph(self, string filename):
+    cpdef load_graph(self, _filename):
+        cdef string filename = str_to_cpp(_filename)
         cdef bint ret
         with nogil:
             ret = self.thisptr.load_graph(filename)

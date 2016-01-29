@@ -76,9 +76,9 @@ cdef class UnityGraphProxy:
 
     cpdef get_edges(self, object src_ids, object dst_ids, object field_constraints, size_t groupa=*, size_t groupb=*) 
 
-    cpdef add_vertices(self, UnitySFrameProxy sframe, string id_field, size_t group=*)
+    cpdef add_vertices(self, UnitySFrameProxy sframe, id_field, size_t group=*)
 
-    cpdef add_edges(self, UnitySFrameProxy sframe, string src_id_field, string dst_id_field, size_t groupa=*, size_t groupb=*)
+    cpdef add_edges(self, UnitySFrameProxy sframe, src_id_field, dst_id_field, size_t groupa=*, size_t groupb=*)
 
     cpdef summary(self)
 
@@ -87,40 +87,40 @@ cdef class UnityGraphProxy:
 
     cpdef get_vertex_field_types(self, size_t group=*)
 
-    cpdef select_vertex_fields(self, vector[string] fields, size_t group=*)
+    cpdef select_vertex_fields(self, field, size_t group=*)
     
-    cpdef copy_vertex_field(self, string src_field, string dst_field, size_t group=*)
+    cpdef copy_vertex_field(self, src_field, dst_field, size_t group=*)
 
-    cpdef delete_vertex_field(self, string field, size_t group=*)
+    cpdef delete_vertex_field(self, field, size_t group=*)
 
-    cpdef add_vertex_field(self, UnitySArrayProxy data, string name)
+    cpdef add_vertex_field(self, UnitySArrayProxy data, name)
 
-    cpdef swap_vertex_fields(self, string field1, string field2)
+    cpdef swap_vertex_fields(self, field1, field2)
 
-    cpdef rename_vertex_fields(self, vector[string] oldnames, vector[string] newnames)
+    cpdef rename_vertex_fields(self, oldnames, newnames)
 
 
     cpdef get_edge_fields(self, size_t groupa=*, size_t groupb=*)
 
     cpdef get_edge_field_types(self, size_t groupa=*, size_t groupb=*)
 
-    cpdef select_edge_fields(self, vector[string] fields, size_t groupa=*, size_t groupb=*)
+    cpdef select_edge_fields(self, fields, size_t groupa=*, size_t groupb=*)
 
-    cpdef copy_edge_field(self, string src_field, string dst_field, size_t groupa=*, size_t groupb=*)
+    cpdef copy_edge_field(self, src_field, dst_field, size_t groupa=*, size_t groupb=*)
 
-    cpdef delete_edge_field(self, string field, size_t groupa=*, size_t groupb=*)
+    cpdef delete_edge_field(self, field, size_t groupa=*, size_t groupb=*)
 
-    cpdef add_edge_field(self, UnitySArrayProxy data, string name)
+    cpdef add_edge_field(self, UnitySArrayProxy data, name)
 
-    cpdef swap_edge_fields(self, string field1, string field2)
+    cpdef swap_edge_fields(self, field1, field2)
 
-    cpdef rename_edge_fields(self, vector[string] oldnames, vector[string] newnames)
+    cpdef rename_edge_fields(self,  oldnames,  newnames)
 
 
-    cpdef lambda_triple_apply(self, object, vector[string])
+    cpdef lambda_triple_apply(self, object, object)
 
-    cpdef lambda_triple_apply_native(self, object, vector[string])
+    cpdef lambda_triple_apply_native(self, object, object)
 
-    cpdef save_graph(self, string filename, string format)
+    cpdef save_graph(self, filename, format)
 
-    cpdef load_graph(self, string filename)
+    cpdef load_graph(self, filename)
