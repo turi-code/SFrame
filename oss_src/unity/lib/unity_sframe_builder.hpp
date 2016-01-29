@@ -18,21 +18,92 @@ typedef boost::circular_buffer<std::vector<graphlab::flexible_type>> row_history
 
 namespace graphlab {
 
+/**
+ * Provides a Python interface to incrementally build an SFrame.
+ *
+ * Unlike most other unity objects, this is not a wrapper of another
+ * "sframe_builder" class, but provides the implementation. This is because it
+ * is a slightly embellished wrapper around the SArray's output iterator, so
+ * there is no further functionality that needs to be available for the C++
+ * side. 
+ *
+ * The unity_sframe_builder is designed to append values until \ref close is
+ * called, which returns the SArray. No "reopening" is allowed, and no
+ * operations in that instance of unity_sframe_builder will work after close is
+ * called.
+ * 
+ * This also doesn't wrap the already existing \ref unity_sarray_builder
+ * despite its similarity, because using the sframe output iterator allows for
+ * multiple columns to be kept in the same file.
+ */
 class unity_sframe_builder: public unity_sframe_builder_base {
  public:
+  /**
+   * Default constructor. Does nothing
+   */
+  unity_sframe_builder() {}
+
+  /**
+   * Initialize the unity_sarray_buidler.
+   *
+   * This essentially opens the output iterator for writing. Column names and
+   * column types are required arguments.
+   */
   void init(size_t num_segments,
       size_t history_size,
       std::vector<std::string> column_names,
       std::vector<flex_type_enum> column_types);
 
+  /**
+   * Add a single row of flexible_types to the SFrame.
+   *
+   * The \p segment number allows the user to use the parallel interface provided
+   * by the underlying output_iterator.
+   *
+   * Throws if: 
+   *  - init hasn't been called or close has been called
+   *  - segment number is invalid
+   *  - the type of \p row differs from the type of the elements already
+   *    appended (except if only UNDEFINED elements have been appended).
+   *
+   */
   void append(const std::vector<flexible_type> &row, size_t segment);
+
+  /**
+   * A wrapper of \ref append which adds multiple rows to SFrame.
+   *
+   * Throws if: 
+   *  - init hasn't been called or close has been called
+   *  - segment number is invalid
+   *  - the type of any values in \p rows differs from the type of the
+   *    elements already appended (except if only UNDEFINED elements have been
+   *    appended).
+   */
   void append_multiple(const std::vector<std::vector<flexible_type>> &rows,
       size_t segment);
 
+  /**
+   * Return the column names of the future SFrame.
+   */
   std::vector<std::string> column_names();
+
+  /**
+   * Return the column types of the future SFrame.
+   */
   std::vector<flex_type_enum> column_types();
+
+  /**
+   * Return the last \p num_elems rows appended.
+   */
   std::vector<std::vector<flexible_type>> read_history(size_t num_elems);
+
+  /**
+   * Finalize SFrame and return it.
+   */
   std::shared_ptr<unity_sframe_base> close();
+
+  unity_sframe_builder(const unity_sframe_builder&) = delete;
+  unity_sframe_builder& operator=(const unity_sframe_builder&) = delete;
  private:
   /// Methods
 

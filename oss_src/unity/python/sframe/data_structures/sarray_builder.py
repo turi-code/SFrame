@@ -102,16 +102,14 @@ class SArrayBuilder(object):
             raise TypeError("append_multiple must be passed an iterable object")
         tmp_list = []
         block_pos = 0
-        first = True
-        while block_pos == self._block_size or first:
-            first = False
-            for i in data:
-                tmp_list.append(i)
-                ++block_pos
-                if block_pos == self._block_size:
-                    break
+
+        for i in data:
+            tmp_list.append(i)
+            if len(tmp_list) >= self._block_size:
+                self._builder.append_multiple(tmp_list, segment)
+                tmp_list = []
+        if len(tmp_list) > 0:
             self._builder.append_multiple(tmp_list, segment)
-            tmp_list = []
 
     def get_type(self):
         """
