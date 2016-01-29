@@ -93,9 +93,6 @@ source ${WORKSPACE}/oss_local_scripts/python_env.sh $build_type
 # Windows specific
 archive_file_ext="tar.gz"
 if [[ $OSTYPE == msys ]]; then
-  # C++ tests are default skipped on windows due to annoying issues around
-  # unable to find libstdc++.dll which are not so easily fixable
-  SKIP_CPP_TEST=1
   archive_file_ext="zip"
   unset PYTHONHOME
 fi
@@ -104,9 +101,17 @@ fi
 ### Build the source with version number ###
 build_source() {
   echo -e "\n\n\n================= Build ${BUILD_NUMBER} ================\n\n\n"
+
   # Configure
   cd ${WORKSPACE}
-  ./configure ${toolchain}
+
+  PY_MAJOR_VERSION=`python -V 2>&1 | perl -ne 'print m/^Python (\d)\.\d/'`
+  if [[ $PY_MAJOR_VERSION == 3 ]]; then
+      ./configure ${toolchain} --python3
+  else
+      ./configure ${toolchain}
+  fi
+
   # Make clean
   cd ${WORKSPACE}/${build_type}/oss_src/unity/python
   make oss_clean_python
@@ -115,8 +120,6 @@ build_source() {
   make -j${NUM_PROCS}
 
   if [[ -z $SKIP_CPP_TEST ]]; then
-      cd ${WORKSPACE}/oss_test
-      touch $(find . -name "*.cxx")
       cd ${WORKSPACE}/${build_type}/oss_test
       make -j${NUM_PROCS}
   fi
@@ -281,6 +284,7 @@ if [[ -z $SKIP_BUILD ]]; then
   build_source
 fi
 
+set_build_number
 
 if [[ -z $SKIP_CPP_TEST ]]; then
   cpp_test 
@@ -289,8 +293,6 @@ fi
 if [[ -z $SKIP_TEST ]]; then
   unit_test
 fi
-
-set_build_number
 
 package_egg
 
