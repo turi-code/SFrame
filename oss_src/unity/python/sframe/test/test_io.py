@@ -5,7 +5,12 @@ All rights reserved.
 This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
-import subprocess
+import sys
+if sys.version_info.major >= 3:
+    import subprocess as commands
+else: 
+    import commands
+    
 import json
 import logging
 import os
@@ -13,7 +18,6 @@ import re
 import tempfile
 import unittest
 import pandas
-import sys
 
 from ..connect import main as glconnect
 from .. import sys_util as _sys_util
@@ -44,15 +48,21 @@ def _test_save_load_object_helper(testcase, obj, path):
             if re.search(pattern, f):
                 os.remove(os.path.join(tempdir, f))
 
+    def assert_same_elements(x, y):
+        if sys.version_info.major >= 3:
+            testcase.assertCountEqual(x, y)
+        else:
+            testcase.assertItemsEqual(x, y)
+                
     if isinstance(obj, SGraph):
         obj.save(path + ".graph")
         newobj = load_graph(path + ".graph")
-        testcase.assertCountEqual(obj.get_fields(), newobj.get_fields())
+        assert_same_elements(obj.get_fields(), newobj.get_fields())
         testcase.assertDictEqual(obj.summary(), newobj.summary())
     elif isinstance(obj, Model):
         obj.save(path + ".model")
         newobj = load_model(path + ".model")
-        testcase.assertCountEqual(obj.list_fields(), newobj.list_fields())
+        assert_same_elements(obj.list_fields(), newobj.list_fields())
         testcase.assertEqual(type(obj), type(newobj))
     elif isinstance(obj, SFrame):
         obj.save(path + ".frame_idx")
@@ -154,9 +164,9 @@ class HDFSConnectorTests(unittest.TestCase):
         content_read = glconnect.get_unity().__read__(url)
         self.assertEquals(content_read, content_expected)
         # clean up the file we wrote
-        status, output = subprocess.getstatusoutput('hadoop fs -test -e ' + url)
+        status, output = commands.getstatusoutput('hadoop fs -test -e ' + url)
         if status is 0:
-            subprocess.getstatusoutput('hadoop fs -rm ' + url)
+            commands.getstatusoutput('hadoop fs -rm ' + url)
 
     def test_basic(self):
         if self.has_hdfs:
@@ -200,7 +210,7 @@ class S3ConnectorTests(unittest.TestCase):
     # This test requires aws cli to be installed. If not, the tests will be skipped.
     @classmethod
     def setUpClass(self):
-        status, output = subprocess.getstatusoutput('aws s3api list-buckets')
+        status, output = commands.getstatusoutput('aws s3api list-buckets')
         self.has_s3 = (status is 0)
         self.standard_bucket = None
         self.regional_bucket = None
@@ -225,7 +235,7 @@ class S3ConnectorTests(unittest.TestCase):
         glconnect.get_unity().__write__(s3url, content_expected)
         content_read = glconnect.get_unity().__read__(s3url)
         self.assertEquals(content_read, content_expected)
-        (status, output) = subprocess.getstatusoutput('aws s3 rm --region us-west-2 ' + url)
+        (status, output) = commands.getstatusoutput('aws s3 rm --region us-west-2 ' + url)
         if status is not 0:
             logging.getLogger(__name__).warning("Cannot remove file: " + url)
 
