@@ -24,7 +24,7 @@ if __name__ == '__main__':
   for root, dirnames, filenames in os.walk('.'):
     for filename in fnmatch.filter(filenames, '*.cxxtest'):
       matches.append(os.path.join(root, filename))
-  print 'Found {} tests.'.format(len(matches))
+  print('Found {} tests.'.format(len(matches)))
 
   # Load the previous cache if it exists
   if os.path.exists(args.cache_file):
@@ -33,10 +33,10 @@ if __name__ == '__main__':
     cache = set()
 
   if type(cache) != set:
-    print "Invalid cache contents. Resetting cache"
+    print("Invalid cache contents. Resetting cache")
     cache = set()
 
-  print 'Found {} files in cache.'.format(len(cache))
+  print('Found {} files in cache.'.format(len(cache)))
 
   # Hash each test binary.
   new_tests = {}
@@ -48,18 +48,18 @@ if __name__ == '__main__':
       hasher.update(buf)
     new_tests[test_file] = hasher.hexdigest()
   elapsed = time.time() - start_time
-  print 'Hashed {0} files in {1} seconds.'.format(len(new_tests), elapsed)
+  print('Hashed {0} files in {1} seconds.'.format(len(new_tests), elapsed))
 
   # Make a list of tests whose hash does not appear in the cache
   tests = []
   for test_file in new_tests.keys():
       if new_tests[test_file] not in cache:
           tests.append(test_file)
-  print 'Ready to test {} files.'.format(len(tests))
+  print('Ready to test {} files.'.format(len(tests)))
 
   # If there are no tests, pick a random one.
   if len(tests) == 0:
-    print "For annoying reasons, we cannot handle running 0 tests because jenkins will complain. So we are running the first test"
+    print("For annoying reasons, we cannot handle running 0 tests because jenkins will complain. So we are running the first test")
     tests = [matches[0]]
 
   # Get basename and use .cxx rather than .cxxtest
@@ -68,16 +68,17 @@ if __name__ == '__main__':
   # Make the command to run
   cmd = 'ctest -j {0} --schedule-random -R "({1})"'.format(args.j, '|'.join(runtests))
   if args.dry_run:
-    print 'Dry run requested! Proposed ctest command:', cmd
+    print('Dry run requested! Proposed ctest command:', cmd)
     exit()
 
   exit_code = 0
   try: 
       ctest_output = subprocess.check_output(cmd, shell=True)
-  except subprocess.CalledProcessError, e:
+  except subprocess.CalledProcessError as e:
       ctest_output = e.output
       exit_code = e.returncode
-  print ctest_output
+  ctest_output = ctest_output.decode()
+  print(ctest_output)
   # get all the lines which say "Passed"
   lines = [line for line in ctest_output.splitlines() if "Passed" in line]
   # go through all the tests and see if we have a "Passed" line matching it
