@@ -143,7 +143,7 @@ def _run_toolkit_function(fnname, arguments, args, kwargs):
         argument_dict[arguments[i]] = args[i]
 
     # now fill with the kwargs.
-    for k in list(kwargs.keys()):
+    for k in kwargs.keys():
         if k in argument_dict:
             raise TypeError("Got multiple values for keyword argument '" + k + "'")
         argument_dict[k] = kwargs[k]
@@ -270,7 +270,7 @@ class _ToolkitClass:
             argument_dict[arguments[i]] = args[i]
 
         # now fill with the kwargs.
-        for k in list(kwargs.keys()):
+        for k in kwargs.keys():
             if k in argument_dict:
                 raise TypeError("Got multiple values for keyword argument '" + k + "'")
             argument_dict[k] = kwargs[k]

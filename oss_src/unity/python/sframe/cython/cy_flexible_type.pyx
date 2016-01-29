@@ -125,7 +125,6 @@ AnySequence: Any of the above.
 #cython: boundscheck=False
 #cython: always_allow_keywords=False
 #cython: c_string_encoding='ascii'
-#cython: c_string_type=bytes
 #cython: wraparound=False
 
 cimport cython
@@ -209,15 +208,11 @@ from cpython.version cimport PY_MAJOR_VERSION
 
 cdef bint is_python_3 = (PY_MAJOR_VERSION >= 3)
 
-cdef type unicode_type, string_type, xrange_type, array_type, datetime_type, none_type
+cdef type xrange_type, array_type, datetime_type, none_type
 
 if is_python_3:
-    unicode_type            = str
-    string_type             = bytes
     xrange_type             = range
 else:
-    unicode_type            = types.UnicodeType
-    string_type             = types.StringType
     xrange_type             = types.XRangeType
 
 array_type    = array.array
@@ -276,9 +271,9 @@ _code_by_type_lookup[<object_ptr>(bool)]                = FT_INT_TYPE  + FT_SAFE
 _code_by_type_lookup[<object_ptr>(list)]                = FT_LIST_TYPE
 _code_by_type_lookup[<object_ptr>(long)]                = FT_INT_TYPE  + FT_SAFE
 _code_by_type_lookup[<object_ptr>(none_type)]           = FT_NONE_TYPE
-_code_by_type_lookup[<object_ptr>(string_type)]         = FT_STR_TYPE
+_code_by_type_lookup[<object_ptr>(str)]                 = FT_STR_TYPE
 _code_by_type_lookup[<object_ptr>(tuple)]               = FT_TUPLE_TYPE
-_code_by_type_lookup[<object_ptr>(unicode_type)]        = FT_UNICODE_TYPE
+_code_by_type_lookup[<object_ptr>(unicode)]             = FT_UNICODE_TYPE
 _code_by_type_lookup[<object_ptr>(array_type)]          = FT_ARRAY_TYPE
 _code_by_type_lookup[<object_ptr>(xrange_type)]         = FT_LIST_TYPE + FT_SAFE
 _code_by_type_lookup[<object_ptr>(datetime_type)]       = FT_DATETIME_TYPE
@@ -301,6 +296,8 @@ _code_by_map_force[<object_ptr>(_image_type)]   = FT_IMAGE_TYPE     + FT_SAFE
 cdef dict _code_by_name_lookup = {
     'string'   : FT_STR_TYPE     + FT_SAFE,
     'string_'  : FT_STR_TYPE     + FT_SAFE,
+    'bytes'    : FT_STR_TYPE     + FT_SAFE,
+    'bytes_'   : FT_STR_TYPE     + FT_SAFE,
     'unicode'  : FT_UNICODE_TYPE,
     'unicode_' : FT_UNICODE_TYPE,
     'int'      : FT_INT_TYPE     + FT_SAFE,
