@@ -27,7 +27,7 @@ cdef inline string unsafe_str_to_cpp(py_s) except *:
     Use this version if you know for sure that type(py_s) is str.
     """
     if PY_MAJOR_VERSION >= 3:
-        (<str>py_s).encode()
+        return (<str>py_s).encode()
     else:
         return (<str>py_s)
 
@@ -37,7 +37,7 @@ cdef inline string unsafe_unicode_to_cpp(py_s) except *:
     (same as str in python 3).
     """
     if PY_MAJOR_VERSION >= 3:
-        (<str>py_s).encode()
+        return (<str>py_s).encode()
     else:
         return (<unicode>py_s).encode()
             
@@ -69,6 +69,8 @@ cdef inline vector[string] to_vector_of_strings(object v) except *:
     else:
         raise TypeError("Cannot interpret type '%s' as list of strings." % str(type(v)))
 
+    return ret
+    
 cdef inline list from_vector_of_strings(const vector[string]& sv):
     cdef list ret = [None]*sv.size()
     cdef long i
@@ -99,6 +101,8 @@ cdef inline vector[vector[string]] to_nested_vectors_of_strings(object v) except
         if len(vs) > 50:
             vs = vs[:50] + "..."
         raise TypeError("Cannot interpret '%s' as nested lists of strings." % vs)
+
+    return ret    
         
 cdef inline map[string, string] dict_to_string_string_map(dict d) except *:
     cdef map[string,string] ret
