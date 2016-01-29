@@ -31,7 +31,7 @@ from .cy_flexible_type cimport check_list_to_vector_translation
 from .cy_dataframe cimport gl_dataframe
 from .cy_dataframe cimport pd_from_gl_dataframe
 
-from .cy_cpp_utils cimport str_to_cpp
+from .cy_cpp_utils cimport str_to_cpp, cpp_to_str, unsafe_str_to_cpp, unsafe_unicode_to_cpp
 
 from cython.operator cimport dereference as deref
 from cython.operator cimport preincrement as inc
@@ -318,10 +318,10 @@ cdef bint _var_set_listlike_internal(variant_vector_type& ret_as_vv,
             ret_as_fl[i].set_double(<double>x)
             element_stored_in_flex_list = True
         elif tr_code == VAR_TR_FT_STR:
-            ret_as_fl[i].set_string(<str>x)
+            ret_as_fl[i].set_string(unsafe_str_to_cpp(x))
             element_stored_in_flex_list = True
         elif tr_code == VAR_TR_FT_UNICODE:
-            ret_as_fl[i].set_string((<unicode>x))
+            ret_as_fl[i].set_string(unsafe_unicode_to_cpp(x))
             element_stored_in_flex_list = True
         elif tr_code == VAR_TR_LIST or tr_code == VAR_TR_TUPLE:
             ret_as_fl[i].set_list(flex_list())
@@ -419,7 +419,7 @@ cdef inline bint _var_set_dict_internal(variant_map_type& ret_as_vm, flex_dict& 
             for k, v in d.iteritems():
 
                 if writing_to_flex_dict:
-                    ret_as_fd[pos].first.set_string(<str>k)
+                    ret_as_fd[pos].first.set_string(str_to_cpp(k))
 
                     tr_code = get_var_tr_code(v)
 
@@ -430,9 +430,9 @@ cdef inline bint _var_set_dict_internal(variant_map_type& ret_as_vm, flex_dict& 
                     elif tr_code == VAR_TR_FT_FLOAT:
                         ret_as_fd[pos].second.set_double(<double>v)
                     elif tr_code == VAR_TR_FT_STR:
-                        ret_as_fd[pos].second.set_string(<str>v)
+                        ret_as_fd[pos].second.set_string(unsafe_str_to_cpp(v))
                     elif tr_code == VAR_TR_FT_UNICODE:
-                        ret_as_fd[pos].second.set_string((<unicode>v))
+                        ret_as_fd[pos].second.set_string(unsafe_unicode_to_cpp(v))
                     elif tr_code == VAR_TR_ATTEMPT_OTHER_FLEXIBLE_TYPE:
                         ret_as_fd[pos].second = _translate_to_flexible_type(v)
                     else:                    
@@ -449,7 +449,7 @@ cdef inline bint _var_set_dict_internal(variant_map_type& ret_as_vm, flex_dict& 
 
                         # Convert the current one
                         tr_code = get_var_tr_code(v)
-                        _convert_to_variant_type(ret_as_vm[<str>k], v, tr_code)
+                        _convert_to_variant_type(ret_as_vm[str_to_cpp(k)], v, tr_code)
 
                         # Make the 
                         writing_to_flex_dict = False
@@ -554,10 +554,10 @@ cdef _convert_to_variant_type(variant_type& ret, object v, int tr_code):
         ft.set_double(<float>v)
         variant_set_flexible_type(ret, ft)
     elif tr_code == VAR_TR_FT_STR:
-        ft.set_string(<str>v)
+        ft.set_string(unsafe_str_to_cpp(v))
         variant_set_flexible_type(ret, ft)
     elif tr_code == VAR_TR_FT_UNICODE:
-        ft.set_string(<unicode>v)
+        ft.set_string(unsafe_unicode_to_cpp(v))
         variant_set_flexible_type(ret, ft)
 
     # Nested container types
@@ -632,7 +632,7 @@ cdef dict to_dict(PyCommClient cli, variant_map_type& d):
     cdef dict ret = {}
     cdef variant_map_type_iterator it = d.begin()
     while (it != d.end()):
-        ret[deref(it).first] = to_value(cli, deref(it).second)
+        ret[cpp_to_str(deref(it).first)] = to_value(cli, deref(it).second)
         inc(it)
     return ret
 
@@ -658,13 +658,13 @@ cdef to_value(PyCommClient cli, variant_type& v):
 
     cdef int var_type = v.which()
 
-    if var_type == VAR_TYPE_GRAPH:
+    if var_type == VAR_TYPE_FLEXIBLE_TYPE:
+        return pyobject_from_flexible_type(variant_get_flexible_type(v))
+    elif var_type == VAR_TYPE_GRAPH:
         return cy_graph.create_proxy_wrapper_from_existing_proxy(
             cli, variant_get_graph(v))
     elif var_type == VAR_TYPE_DATAFRAME:
         return pd_from_gl_dataframe(variant_get_dataframe(v))
-    elif var_type == VAR_TYPE_FLEXIBLE_TYPE:
-        return pyobject_from_flexible_type(variant_get_flexible_type(v))
     elif var_type == VAR_TYPE_MODEL:
         return create_model_from_proxy(cli, variant_get_model(v))
     elif var_type == VAR_TYPE_SFRAME:

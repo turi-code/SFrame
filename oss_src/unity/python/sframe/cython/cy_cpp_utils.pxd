@@ -4,6 +4,10 @@ from libcpp.map cimport map
 from cpython.version cimport PY_MAJOR_VERSION
 
 cdef inline string str_to_cpp(py_s) except *:
+    """
+    Use this function to convert any string-like object to the c++
+    string class.
+    """
     cdef type t = type(py_s)
     if PY_MAJOR_VERSION >= 3:
         if t is str:
@@ -18,6 +22,25 @@ cdef inline string str_to_cpp(py_s) except *:
         else:
             raise TypeError("Cannot interpret type '%s' as native string." % str(t))
 
+cdef inline string unsafe_str_to_cpp(py_s) except *:
+    """
+    Use this version if you know for sure that type(py_s) is str.
+    """
+    if PY_MAJOR_VERSION >= 3:
+        (<str>py_s).encode()
+    else:
+        return (<str>py_s)
+
+cdef inline string unsafe_unicode_to_cpp(py_s) except *:
+    """
+    Use this version if you know for sure that type(py_s) is unicode
+    (same as str in python 3).
+    """
+    if PY_MAJOR_VERSION >= 3:
+        (<str>py_s).encode()
+    else:
+        return (<unicode>py_s).encode()
+            
 cdef inline str cpp_to_str(const string& cpp_s):
     cdef const char* c_s = cpp_s.data()
     

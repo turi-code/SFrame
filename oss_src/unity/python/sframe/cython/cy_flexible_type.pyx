@@ -134,7 +134,7 @@ from cython.operator cimport preincrement as inc
 from libcpp cimport bool as cbool
 from cpython cimport array
 
-from .cy_cpp_utils cimport str_to_cpp, cpp_to_str
+from .cy_cpp_utils cimport str_to_cpp, cpp_to_str, unsafe_str_to_cpp, unsafe_unicode_to_cpp
 
 from cpython.ref cimport PyObject, PyTypeObject
 import itertools
@@ -520,7 +520,6 @@ cdef flex_type_enum flex_type_from_dtype(object dt):
     if ft_type == UNDEFINED and dt == bool:
         ft_type = INTEGER
 
-    # print "Categorizing %s as type %s" % (str(dt), flex_type_enum_to_name(ft_type))
     return ft_type
 
 cpdef type pytype_from_dtype(object dt):
@@ -909,14 +908,12 @@ cdef flex_type_enum _infer_common_type_of_listlike(_listlike vl, bint undefined_
         v = vl[i]
         tr_code = get_translation_code(type(v), v)
         tc = _choose_inference_code(tr_code, v)
-        # print "v = %s; code = %d " % (str(v), tc)
 
         seen_types |= tc
 
         if tr_code_buffer != NULL:
             tr_code_buffer[0][i] = tr_code
 
-    # print "seen_types = %d" % seen_types
     return infer_common_type(seen_types, undefined_on_error)
 
 cdef flex_type_enum infer_common_type_of_flex_list(const flex_list& fl, bint undefined_on_error = False):
@@ -1349,16 +1346,16 @@ cdef flexible_type _ft_translate(object v, int tr_code) except *:
 
     # These are optimized by the cython compiler into a big switch statement.
     if tr_code == FT_INT_TYPE:
-        ret.set_int(<long>v)
+        ret.set_int(v)
         return ret
     elif tr_code == FT_FLOAT_TYPE:
         ret.set_double(<double>v)
         return ret
     elif tr_code == FT_STR_TYPE:
-        ret.set_string(str_to_cpp(v))
+        ret.set_string(unsafe_str_to_cpp(v))
         return ret
     elif tr_code == FT_UNICODE_TYPE:
-        ret.set_string(str_to_cpp(v))
+        ret.set_string(unsafe_unicode_to_cpp(v))
         return ret
     elif tr_code == FT_LIST_TYPE:
         tr_listlike_to_ft(ret, <list>v)
@@ -1538,7 +1535,7 @@ cdef pyobject_from_flexible_type(const flexible_type& v):
     """
 
     cdef flex_type_enum f_type = v.get_type()
-
+    
     if f_type == INTEGER:
         return v.get_int()
     elif f_type == FLOAT:
@@ -1710,8 +1707,6 @@ cdef inline flex_type_enum tr_buffer_to_flex_list(
             return INTEGER
 
         ft_type = flex_type_from_dtype(dt)
-
-        # print "HERE; ft_type = %s" % flex_type_enum_to_name(ft_type)
 
         if ft_type == INTEGER or ft_type == FLOAT:
             ft_rec_type = __tr_numeric_buffer_to_flex_list(retl, v, common_type, True)

@@ -80,13 +80,14 @@ def _wrap_function_return(val):
     converting all occurances of UnityGraphProxy to an SGraph,
     UnitySFrameProxy to SFrame, and UnitySArrayProxy to SArray.
     """
-    if type(val) == _UnityGraphProxy:
+
+    if type(val) is _UnityGraphProxy:
         return _SGraph(_proxy = val)
-    elif type(val) == _UnitySFrameProxy:
+    elif type(val) is _UnitySFrameProxy:
         return _SFrame(_proxy = val)
-    elif type(val) == _UnitySArrayProxy:
+    elif type(val) is _UnitySArrayProxy:
         return _SArray(_proxy = val)
-    elif type(val) == _UnityModel:
+    elif type(val) is _UnityModel:
         # we need to cast it up to the appropriate type
         try:
             if '__uid__' in val.list_fields():
@@ -96,10 +97,10 @@ def _wrap_function_return(val):
         except:
             pass
         return val
-    elif type(val) == list:
+    elif type(val) is list:
         return [_wrap_function_return(i) for i in val]
-    elif type(val) == dict:
-        return {i:_wrap_function_return(val[i]) for i in val}
+    elif type(val) is dict:
+        return dict( (i, _wrap_function_return(val[i])) for i in val)
     else:
         return val
 
@@ -142,7 +143,7 @@ def _run_toolkit_function(fnname, arguments, args, kwargs):
         argument_dict[arguments[i]] = args[i]
 
     # now fill with the kwargs.
-    for k in kwargs.keys():
+    for k in list(kwargs.keys()):
         if k in argument_dict:
             raise TypeError("Got multiple values for keyword argument '" + k + "'")
         argument_dict[k] = kwargs[k]
@@ -158,7 +159,7 @@ def _run_toolkit_function(fnname, arguments, args, kwargs):
             raise _ToolkitError("Toolkit failed with unknown error")
 
     ret = _wrap_function_return(ret[2])
-    if type(ret) == dict and 'return_value' in ret:
+    if type(ret) is dict and 'return_value' in ret:
         return ret['return_value']
     else:
         return ret
@@ -252,7 +253,7 @@ class _ToolkitClass:
         return lambda _proxy: _create_class_instance(gl_meta_value, _proxy)
 
     def __dir__(self):
-        return self._functions.keys() + self._get_properties + self._set_properties
+        return list(self._functions.keys()) + self._get_properties + self._set_properties
 
 
     def __run_class_function(self, fnname, args, kwargs):
@@ -269,7 +270,7 @@ class _ToolkitClass:
             argument_dict[arguments[i]] = args[i]
 
         # now fill with the kwargs.
-        for k in kwargs.keys():
+        for k in list(kwargs.keys()):
             if k in argument_dict:
                 raise TypeError("Got multiple values for keyword argument '" + k + "'")
             argument_dict[k] = kwargs[k]
@@ -379,8 +380,8 @@ def _publish():
             # rewrite the init method to add the toolkit class name so it will
             # default construct correctly
 
-            new_class['__init__'] = _types.FunctionType(new_class['__init__'].func_code,
-                                                        new_class['__init__'].func_globals,
+            new_class['__init__'] = _types.FunctionType(new_class['__init__'].__code__,
+                                                        new_class['__init__'].__globals__,
                                                         name='__init__',
                                                         argdefs=(),
                                                         closure=())
