@@ -35,7 +35,7 @@ struct worker_process {
   // cppipc address
   std::string address;
   // process object
-  std::unique_ptr<process> process;
+  std::unique_ptr<process> process_;
 
   // next avaiable worker id 
   static int get_next_id() {
@@ -56,8 +56,8 @@ struct worker_process {
       proxy.reset();
       client->stop();
       client.reset();
-      process->kill(false);
-      process.reset();
+      process_->kill(false);
+      process_.reset();
     } catch (...) {
       logstream(LOG_ERROR) << "Exception in destroying worker_process " << id << std::endl;
     }
@@ -138,7 +138,7 @@ std::unique_ptr<worker_process<ProxyType>> spawn_worker(std::vector<std::string>
   ret->proxy.swap(new_proxy);
   ret->client.swap(new_client);
   ret->address = worker_address;
-  ret->process.swap(new_process);
+  ret->process_.swap(new_process);
 
   // Done!
   logstream(LOG_INFO) << "Successfully launched lambda worker " << ret->id 
@@ -380,7 +380,7 @@ private:
    * Return true if the worker process is alive.
    */
   bool check_alive(std::unique_ptr<worker_process<ProxyType>>& worker) {
-    return (worker->process != nullptr) && worker->process->exists();
+    return (worker->process_ != nullptr) && worker->process_->exists();
   }
 
   /**
