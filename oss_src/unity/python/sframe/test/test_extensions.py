@@ -13,6 +13,8 @@ import sys
 if sys.version_info.major > 2:
     long = int
 
+import random
+
 class VariantCheckTest(unittest.TestCase):
 
     def identical(self, reference, b):
@@ -69,5 +71,36 @@ class VariantCheckTest(unittest.TestCase):
         self.variant_turnaround({'a':[sa,{'a':sa,'b':'c'}]})
         self.variant_turnaround({'a':[sa,sf,{'a':sa,'b':'c'}],
             'b':sf, 'c':['a','b','c','d']})
-
         
+    def test_stress(self):
+
+        random.seed(0)
+
+        def _make(depth):
+
+            if depth == 0:
+                s = random.randint(0, 3)
+            else:
+                s = random.randint(0, 5)
+
+            if s == 0:
+                return str(random.randint(0, 100))
+            elif s == 1:
+                return random.randint(0,100000)
+            elif s == 2:
+                return SArray([random.randint(0,100000) for i in range(2)])
+            elif s == 3:
+                return SFrame({'a' : [random.randint(0,100000) for i in range(2)],
+                               'b' : [str(random.randint(0,100000)) for i in range(2)]})
+
+            elif s == 4:
+                length = random.randint(3, 8)
+                # The ['a'] needed so it doesn't get translated to a string.
+                return ['a'] + [_make(depth - 1) for i in range(length)]
+            elif s == 5:
+                length = random.randint(3, 8)
+                return {str(random.randint(0, 100)) : _make(depth - 1)
+                        for i in range(length)}
+
+        for i in range(10):
+            self.variant_turnaround(_make(5 + i))

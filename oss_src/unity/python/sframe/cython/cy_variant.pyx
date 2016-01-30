@@ -154,11 +154,11 @@ cdef int _get_tr_code_by_type_string(object v) except -1:
         ret =  VAR_TR_TUPLE
     elif type(v) is dict:
         ret =  VAR_TR_DICT
-    elif v.__class__ is sframe_class:
+    elif type(v) is sframe_class or v.__class__ is sframe_class:
         ret =  VAR_TR_SFRAME
     elif v.__class__ is sgraph_class:
         ret =  VAR_TR_GRAPH
-    elif v.__class__ is sarray_class:
+    elif type(v) is sarray_class or v.__class__ is sarray_class:
         ret =  VAR_TR_SARRAY
     elif type(v) is UnityModel:
         ret =  VAR_TR_UNITY_MODEL
@@ -229,13 +229,8 @@ cdef raise_translation_error(object v):
     """
     Raises an informative translation error.
     """
-    cdef str repr_str = repr(v)
 
-    if len(repr_str) > 100:
-        repr_str = repr_str[:98] + "..."
-
-    raise TypeError("Unable to encode %s typed object as variant type: %s"
-                    % (str(type(v)), repr_str))
+    raise TypeError("Unable to encode object of type '%s' as variant type." % (str(type(v))))
 
 cdef inline flexible_type _translate_to_flexible_type(object x) except *:
     """
@@ -243,6 +238,7 @@ cdef inline flexible_type _translate_to_flexible_type(object x) except *:
     variant type conversions instead of for flexible_types, which
     would be misleading.
     """
+
     try:
         return flexible_type_from_pyobject(x)
     except TypeError:
@@ -370,13 +366,18 @@ cdef bint _var_set_listlike_internal(variant_vector_type& ret_as_vv,
         if element_stored_in_flex_list and not writing_to_flexible_types:
             variant_set_flexible_type(ret_as_vv[i], ret_as_fl[i])
 
-
-    return writing_to_flexible_types
+    if writing_to_flexible_types:
+        ret_as_vv.clear()
+        return True
+    else:
+        ret_as_fl.clear()
+        return False
 
 ############################################################
 # Translation routines for a dict
 
-cdef inline bint _var_set_dict_internal(variant_map_type& ret_as_vm, flex_dict& ret_as_fd, dict d, bint require_varmap) except *:
+cdef inline bint _var_set_dict_internal(variant_map_type& ret_as_vm, flex_dict& ret_as_fd,
+                                        dict d, bint require_varmap) except *:
     """
     Attempts conversion of a dictionary to a flex_dict or
     variant_map_type.
@@ -439,6 +440,7 @@ cdef inline bint _var_set_dict_internal(variant_map_type& ret_as_vm, flex_dict& 
                     else:                    
 
                         # Move things out of the flex_dict container
+                        ret_as_vm.clear()
                         for i in range(pos):
                             variant_set_flexible_type(ret_as_vm[ret_as_fd[i].first.get_string()],
                                                       ret_as_fd[i].second)
@@ -446,7 +448,7 @@ cdef inline bint _var_set_dict_internal(variant_map_type& ret_as_vm, flex_dict& 
                         # Convert the current one
                         _convert_to_variant_type(ret_as_vm[str_to_cpp(k)], v, tr_code)
 
-                        # Make the 
+                        # Make the rest of them write to the variant type map
                         writing_to_flex_dict = False
                         
                     pos += 1
@@ -454,12 +456,19 @@ cdef inline bint _var_set_dict_internal(variant_map_type& ret_as_vm, flex_dict& 
                     tr_code = get_var_tr_code(v)
                     _convert_to_variant_type(ret_as_vm[str_to_cpp(k)], v, tr_code)
 
-            return writing_to_flex_dict
-                
+            if writing_to_flex_dict:
+                ret_as_vm.clear()
+                return True
+            else:
+                ret_as_fd.clear()
+                return False
+
         else: # require_varmap is true, so we're going to do that. 
+            ret_as_vm.clear()
             for k, v in d.iteritems():
                 tr_code = get_var_tr_code(v)
                 _convert_to_variant_type(ret_as_vm[str_to_cpp(k)], v, tr_code)
+            ret_as_fd.clear()
             return False
     else:
         ret_as_fd.resize(len(d))
@@ -470,6 +479,7 @@ cdef inline bint _var_set_dict_internal(variant_map_type& ret_as_vm, flex_dict& 
             ret_as_fd[pos].second = _translate_to_flexible_type(v)
             pos += 1
 
+        ret_as_vm.clear()
         return True
 
 cdef inline _var_set_dict(variant_type& v, dict d):
