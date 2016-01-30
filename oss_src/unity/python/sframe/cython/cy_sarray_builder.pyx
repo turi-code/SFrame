@@ -58,10 +58,10 @@ cdef class UnitySArrayBuilderProxy:
         with nogil:
             self.thisptr.append_multiple(c_vals, segment)
 
-    cpdef read_history(self, size_t num_elems):
+    cpdef read_history(self, size_t num_elems, size_t segment):
         cdef flex_list tmp_history
         with nogil:
-            tmp_history = self.thisptr.read_history(num_elems)
+            tmp_history = self.thisptr.read_history(num_elems, segment)
         return pylist_from_flex_list(tmp_history)
 
     cpdef get_type(self):

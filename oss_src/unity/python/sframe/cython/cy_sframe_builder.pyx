@@ -41,12 +41,12 @@ cdef class UnitySFrameBuilderProxy:
             self.thisptr = new unity_sframe_builder_proxy(deref(cli.thisptr))
             self._base_ptr.reset(<unity_sframe_builder_base*>(self.thisptr))
 
-    cpdef init(self, object column_types, vector[string] column_names, size_t num_segments, size_t history_size):
+    cpdef init(self, object column_types, vector[string] column_names, size_t num_segments, size_t history_size, string save_location):
         cdef vector[flex_type_enum] tmp_column_types
         for i in column_types:
           tmp_column_types.push_back(flex_type_enum_from_pytype(i))
         with nogil:
-            self.thisptr.init(num_segments, history_size, column_names, tmp_column_types)
+            self.thisptr.init(num_segments, history_size, column_names, tmp_column_types, save_location)
 
     cpdef append(self, row, size_t segment):
         cdef flex_list c_row = flex_list_from_iterable(row)
@@ -59,8 +59,8 @@ cdef class UnitySFrameBuilderProxy:
             c_vals.push_back(flex_list_from_iterable(i))
         self.thisptr.append_multiple(c_vals, segment)
 
-    cpdef read_history(self, size_t num_elems):
-        tmp_history = self.thisptr.read_history(num_elems)
+    cpdef read_history(self, size_t num_elems, size_t segment):
+        tmp_history = self.thisptr.read_history(num_elems, segment)
         return [pylist_from_flex_list(i) for i in tmp_history]
 
     cpdef column_names(self):

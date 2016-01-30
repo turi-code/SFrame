@@ -14,17 +14,30 @@ namespace graphlab {
 void unity_sframe_builder::init(size_t num_segments,
                                 size_t history_size,
                                 std::vector<std::string> column_names,
-                                std::vector<flex_type_enum> column_types) {
+                                std::vector<flex_type_enum> column_types,
+                                std::string save_location) {
   if(m_inited)
     log_and_throw("This sframe_builder has already been initialized!");
 
   //m_sframe = std::make_shared<sframe>();
-  m_sframe.open_for_write(column_names, column_types, "", num_segments);
+  if(save_location.size() > 0) {
+    try {
+      m_dirarc.open_directory_for_write(save_location);
+      m_dirarc.set_metadata("contents", "sframe");
+      std::string prefix = m_dirarc.get_next_write_prefix();
+      m_sframe_index_file = prefix + ".frame_idx";
+    } catch(...) {
+      throw;
+    }
+  }
+
+  m_sframe.open_for_write(column_names, column_types, m_sframe_index_file, num_segments);
   m_out_iters.resize(num_segments);
+  m_history.resize(num_segments);
   for(size_t i = 0; i < num_segments; ++i) {
     m_out_iters[i] = m_sframe.get_output_iterator(i);
+    m_history[i] = std::make_shared<row_history_t>(history_size);
   }
-  m_history = std::make_shared<row_history_t>(history_size);
 
   m_inited = true;
 }
@@ -40,7 +53,7 @@ void unity_sframe_builder::append(const std::vector<flexible_type> &row, size_t 
     log_and_throw("Invalid segment number!");
   }
 
-  m_history->push_back(row);
+  m_history[segment]->push_back(row);
 
   *(m_out_iters[segment]) = row;
 }
@@ -59,24 +72,30 @@ std::vector<flex_type_enum> unity_sframe_builder::column_types() {
   return m_sframe.column_types();
 }
 
-std::vector<std::vector<flexible_type>> unity_sframe_builder::read_history(size_t num_elems) {
+std::vector<std::vector<flexible_type>> unity_sframe_builder::read_history(
+    size_t num_elems, size_t segment) {
   if(!m_inited)
     log_and_throw("Must call 'init' first!");
 
   if(m_closed)
     log_and_throw("History is invalid when closed.");
 
-  if(num_elems > m_history->size())
-    num_elems = m_history->size();
+  if(segment >= m_history.size())
+    log_and_throw("Invalid segment.");
+
+  auto history = m_history[segment];
+
+  if(num_elems > history->size())
+    num_elems = history->size();
   if(num_elems == size_t(-1))
-    num_elems = m_history->size();
+    num_elems = history->size();
 
   std::vector<std::vector<flexible_type>> ret_vec(num_elems);
 
   if(num_elems == 0)
     return ret_vec;
 
-  std::copy_n(m_history->rbegin(), num_elems, ret_vec.rbegin());
+  std::copy_n(history->rbegin(), num_elems, ret_vec.rbegin());
 
   return ret_vec;
 }
@@ -89,6 +108,10 @@ std::shared_ptr<unity_sframe_base> unity_sframe_builder::close() {
     log_and_throw("Already closed.");
 
   m_sframe.close();
+  if(m_sframe_index_file.size() > 0) {
+    m_dirarc.close();
+  }
+
   m_closed = true;
   auto ret = std::make_shared<unity_sframe>();
   ret->construct_from_sframe(m_sframe);

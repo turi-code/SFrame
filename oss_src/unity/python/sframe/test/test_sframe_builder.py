@@ -93,6 +93,15 @@ class SFrameBuilderTest(unittest.TestCase):
         sb.append_multiple(([i] for i in xrange(30,40)), segment=3)
         sb.append_multiple(([i] for i in xrange(0,10)), segment=0)
 
+        hist = sb.read_history(3, segment=0)
+        self.assertSequenceEqual(hist, [[7],[8],[9]])
+        hist = sb.read_history(3, segment=1)
+        self.assertSequenceEqual(hist, [[17],[18],[19]])
+        hist = sb.read_history(3, segment=2)
+        self.assertSequenceEqual(hist, [[27],[28],[29]])
+        hist = sb.read_history(3, segment=3)
+        self.assertSequenceEqual(hist, [[37],[38],[39]])
+
         sf = sb.close()
         expected_sf = SFrame({'X1':range(40)})
         _assert_sframe_equal(sf, expected_sf)

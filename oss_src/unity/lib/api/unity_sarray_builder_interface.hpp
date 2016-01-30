@@ -20,7 +20,7 @@ GENERATE_INTERFACE_AND_PROXY(unity_sarray_builder_base, unity_sarray_builder_pro
       (void, append, (const flexible_type&)(size_t))
       (void, append_multiple, (const std::vector<flexible_type>&)(size_t))
       (flex_type_enum, get_type, )
-      (std::vector<flexible_type>, read_history, (size_t))
+      (std::vector<flexible_type>, read_history, (size_t)(size_t))
       (std::shared_ptr<unity_sarray_base>, close, )
     )
 

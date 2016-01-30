@@ -13,6 +13,7 @@ of the BSD license. See the DATO-PYTHON-LICENSE file for details.
 from ..connect import main as glconnect
 from ..cython.cy_sframe_builder import UnitySFrameBuilderProxy
 from .sframe import SFrame 
+from ..util import _make_internal_url
 import logging as _logging
 
 __LOGGER__ = _logging.getLogger(__name__)
@@ -81,6 +82,11 @@ class SFrameBuilder(object):
         self._column_types = column_types
         self._num_segments = num_segments
         self._history_size = history_size
+        if save_location is None:
+            self._save_location = ""
+        else:
+            self._save_location = _make_internal_url(save_location)
+
         if column_names is not None and column_types is not None:
             if len(column_names) != len(column_types):
                 raise AssertionError("There must be same amount of column names as column types.")
@@ -90,9 +96,12 @@ class SFrameBuilder(object):
             raise AssertionError("Column types must be defined!")
 
         self._builder = UnitySFrameBuilderProxy(glconnect.get_client())
-        self._builder.init(self._column_types, self._column_names, self._num_segments, self._history_size)
+        self._builder.init(self._column_types,
+                           self._column_names,
+                           self._num_segments,
+                           self._history_size,
+                           self._save_location)
         self._block_size = 1024
-        self._save_location = save_location
 
     def _generate_column_names(self, num_columns):
         return ["X"+str(i) for i in range(1,num_columns+1)]
@@ -157,7 +166,7 @@ class SFrameBuilder(object):
     def column_types(self):
         return self._builder.column_types()
 
-    def read_history(self, num=10):
+    def read_history(self, num=10, segment=0):
         """
         Outputs the last `num` rows that were appended either by `append` or
         `append_multiple`.
@@ -168,7 +177,7 @@ class SFrameBuilder(object):
         """
         if num < 0:
           num = 0
-        return self._builder.read_history(num)
+        return self._builder.read_history(num, segment)
 
     def close(self):
         """
@@ -180,11 +189,5 @@ class SFrameBuilder(object):
         -------
         out : SFrame
         """
-        sf = SFrame(_proxy=self._builder.close())
-        if self._save_location is not None:
-            try:
-                sf.save(self._save_location)
-            except Exception as e:
-                __LOGGER__.warn("Save failed: " + e.message)
-        return sf
+        return SFrame(_proxy=self._builder.close())
 

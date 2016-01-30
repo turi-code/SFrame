@@ -53,7 +53,7 @@ class SArrayBuilder(object):
     [1, 2, 3]
 
     """
-    def __init__(self, num_segments=1, history_size=10, dtype=None):
+    def __init__(self, dtype, num_segments=1, history_size=10):
         self._builder = UnitySArrayBuilderProxy(glconnect.get_client())
         if dtype is None:
             dtype = type(None)
@@ -117,7 +117,7 @@ class SArrayBuilder(object):
         """
         return self._builder.get_type()
 
-    def read_history(self, num=10):
+    def read_history(self, num=10, segment=0):
         """
         Outputs the last `num` elements that were appended either by `append` or
         `append_multiple`.
@@ -128,8 +128,10 @@ class SArrayBuilder(object):
 
         """
         if num < 0:
-          num = 0
-        return self._builder.read_history(num)
+            num = 0
+        if segment < 0:
+            raise TypeError("segment must be >= 0")
+        return self._builder.read_history(num, segment)
 
     def close(self):
         """

@@ -3171,6 +3171,7 @@ class SFrame(object):
         ## Save the SFrame
         url = _make_internal_url(filename)
 
+        print url
         with cython_context():
             if format is 'binary':
                 self.__proxy__.save(url)

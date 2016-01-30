@@ -52,7 +52,8 @@ class unity_sframe_builder: public unity_sframe_builder_base {
   void init(size_t num_segments,
       size_t history_size,
       std::vector<std::string> column_names,
-      std::vector<flex_type_enum> column_types);
+      std::vector<flex_type_enum> column_types,
+      std::string save_location);
 
   /**
    * Add a single row of flexible_types to the SFrame.
@@ -95,7 +96,8 @@ class unity_sframe_builder: public unity_sframe_builder_base {
   /**
    * Return the last \p num_elems rows appended.
    */
-  std::vector<std::vector<flexible_type>> read_history(size_t num_elems);
+  std::vector<std::vector<flexible_type>> read_history(size_t num_elems,
+      size_t segment);
 
   /**
    * Finalize SFrame and return it.
@@ -113,8 +115,11 @@ class unity_sframe_builder: public unity_sframe_builder_base {
   sframe m_sframe;
   std::vector<sframe::iterator> m_out_iters;
   flex_type_enum m_ary_type = flex_type_enum::UNDEFINED;
+  std::string m_sframe_index_file;
 
-  std::shared_ptr<row_history_t> m_history;
+  std::vector<std::shared_ptr<row_history_t>> m_history;
+
+  dir_archive m_dirarc;
 
 };
 

@@ -18,13 +18,15 @@ void unity_sarray_builder::init(size_t num_segments, size_t history_size, flex_t
   m_sarray = std::make_shared<sarray<flexible_type>>();
   m_sarray->open_for_write(num_segments);
   m_out_iters.resize(num_segments);
+  m_history.resize(num_segments);
   for(size_t i = 0; i < num_segments; ++i) {
     m_out_iters[i] = m_sarray->get_output_iterator(i);
+    m_history[i] = std::make_shared<boost::circular_buffer<flexible_type>>(history_size);
   }
-  m_history = std::make_shared<boost::circular_buffer<flexible_type>>(history_size);
   m_given_dtype = dtype;
-  if(dtype != flex_type_enum::UNDEFINED)
-    m_ary_type = m_given_dtype;
+  if(dtype == flex_type_enum::UNDEFINED)
+      log_and_throw("Must specify a valid type.");
+  m_sarray->set_type(m_given_dtype);
 
   m_inited = true;
 }
@@ -40,23 +42,13 @@ void unity_sarray_builder::append(const flexible_type &val, size_t segment) {
     log_and_throw("Invalid segment number!");
   }
 
-  m_history->push_back(val);
+  m_history[segment]->push_back(val);
+
   auto in_type = val.get_type();
-  // Only care about types if a dtype was not provided
-  if(m_given_dtype == flex_type_enum::UNDEFINED &&
-      in_type != flex_type_enum::UNDEFINED) {
-    auto ins_ret = m_types_inserted.insert(in_type);
-    if(ins_ret.second) {
-      // Not allowed to change types in the middle of appending (except from
-      // UNDEFINED)
-      if(m_types_inserted.size() > 1) {
-        m_types_inserted.erase(ins_ret.first);
-        log_and_throw(std::string("Append failed: ") +
-            flex_type_enum_to_name(in_type) + std::string(" type is "
-              "incompatible with types of existing values in this SArray."));
-      }
-      m_ary_type = in_type;
-    }
+  if(in_type != flex_type_enum::UNDEFINED && in_type != m_given_dtype) {
+    log_and_throw(std::string("Append failed: ") +
+        flex_type_enum_to_name(in_type) + std::string(" type is "
+          "incompatible with type of future SArray."));
   }
 
   *(m_out_iters[segment]) = val;
@@ -69,27 +61,32 @@ void unity_sarray_builder::append_multiple(const std::vector<flexible_type> &val
 }
 
 flex_type_enum unity_sarray_builder::get_type() {
-  return m_ary_type;
+  return m_given_dtype;
 }
 
-std::vector<flexible_type> unity_sarray_builder::read_history(size_t num_elems) {
+std::vector<flexible_type> unity_sarray_builder::read_history(size_t num_elems, size_t segment) {
   if(!m_inited)
     log_and_throw("Must call 'init' first!");
 
   if(m_closed)
     log_and_throw("History is invalid when closed.");
 
-  if(num_elems > m_history->size())
-    num_elems = m_history->size();
+  if(segment >= m_history.size())
+    log_and_throw("Invalid segment.");
+
+  auto history = m_history[segment];
+
+  if(num_elems > history->size())
+    num_elems = history->size();
   if(num_elems == size_t(-1))
-    num_elems = m_history->size();
+    num_elems = history->size();
 
   std::vector<flexible_type> ret_vec(num_elems);
 
   if(num_elems == 0)
     return ret_vec;
 
-  std::copy_n(m_history->rbegin(), num_elems, ret_vec.rbegin());
+  std::copy_n(history->rbegin(), num_elems, ret_vec.rbegin());
 
   return ret_vec;
 }
@@ -100,9 +97,6 @@ std::shared_ptr<unity_sarray_base> unity_sarray_builder::close() {
 
   if(m_closed)
     log_and_throw("Already closed.");
-
-  // This will fail if the user supplied types go against the dtype they provided
-  m_sarray->set_type(m_ary_type);
 
   m_sarray->close();
   m_closed = true;

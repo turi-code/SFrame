@@ -20,7 +20,7 @@ cdef extern from "<unity/lib/api/unity_sarray_builder_interface.hpp>" namespace 
         void append(flexible_type, size_t) except +
         void append_multiple(vector[flexible_type], size_t) except +
         flex_type_enum get_type() except +
-        vector[flexible_type] read_history(size_t) except +
+        vector[flexible_type] read_history(size_t, size_t) except +
         unity_sarray_base_ptr close() except +
 
 cdef create_proxy_wrapper_from_existing_proxy(PyCommClient cli, const unity_sarray_builder_base_ptr& proxy)
@@ -36,7 +36,7 @@ cdef class UnitySArrayBuilderProxy:
 
     cpdef append_multiple(self, vals, size_t segment)
 
-    cpdef read_history(self, size_t num_elems)
+    cpdef read_history(self, size_t num_elems, size_t segment)
 
     cpdef get_type(self)
 
