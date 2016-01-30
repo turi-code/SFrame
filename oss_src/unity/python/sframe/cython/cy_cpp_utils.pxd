@@ -23,7 +23,7 @@ cdef inline string str_to_cpp(py_s) except *:
         if t is str:
             return (<str>py_s)
         elif t is unicode:
-            return (<unicode>py_s).encode()
+            return (<unicode>py_s).encode('UTF-8')
         else:
             return _attempt_cast_str_to_cpp(py_s)            
 
@@ -44,7 +44,7 @@ cdef inline string unsafe_unicode_to_cpp(py_s) except *:
     if PY_MAJOR_VERSION >= 3:
         return (<str>py_s).encode()
     else:
-        return (<unicode>py_s).encode()
+        return (<unicode>py_s).encode('UTF-8')
             
 cdef inline str cpp_to_str(const string& cpp_s):
     cdef const char* c_s = cpp_s.data()
