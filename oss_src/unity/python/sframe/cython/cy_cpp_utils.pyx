@@ -1,4 +1,3 @@
-# cython: c_string_type=bytes, c_string_encoding=utf8
 
 from libcpp.string cimport string
 from cpython.version cimport PY_MAJOR_VERSION

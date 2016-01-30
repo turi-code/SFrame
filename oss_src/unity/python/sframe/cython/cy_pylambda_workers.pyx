@@ -1,4 +1,3 @@
-# cython: c_string_type=bytes, c_string_encoding=utf8
 #cython: boundscheck=False, wraparound=False
 
 from cy_flexible_type cimport flexible_type, flex_type_enum, UNDEFINED, flex_int

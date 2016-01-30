@@ -1,4 +1,3 @@
-# cython: c_string_type=bytes, c_string_encoding=utf8
 '''
 Copyright (C) 2015 Dato, Inc.
 All rights reserved.

@@ -1,4 +1,3 @@
-# cython: c_string_type=bytes, c_string_encoding=utf8
 """
 This module contains the interface for graphlab server, and the
 implementation of a local graphlab server.
