@@ -12,7 +12,6 @@ from ..data_structures.sframe import SFrame
 import sys
 if sys.version_info.major > 2:
     long = int
-
 import random
 
 class VariantCheckTest(unittest.TestCase):

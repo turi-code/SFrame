@@ -91,7 +91,9 @@ bool csv_line_tokenizer::tokenize_line(const char* str, size_t len,
                       }
                       return false;
                     },
-                     [](){}
+                     [&](){
+                       output.pop_back();
+                     }
                      );
 }
 

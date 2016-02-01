@@ -303,6 +303,7 @@ class SArray(object):
     """
 
     __slots__ = ["__proxy__", "_getitem_cache"]
+    __construct_ctr = int(time.time()) % 1000
 
     def __init__(self, data=[], dtype=None, ignore_cast_failure=False, _proxy=None):
         """
@@ -311,7 +312,10 @@ class SArray(object):
         Construct a new SArray. The source of data includes: list,
         numpy.ndarray, pandas.Series, and urls.
         """
-        _mt._get_metric_tracker().track('sarray.init')
+        SArray.__construct_ctr += 1
+        if SArray.__construct_ctr % 1000 == 0:
+            _mt._get_metric_tracker().track('sarray.init1000')
+
         if dtype is not None and type(dtype) != type:
             raise TypeError('dtype must be a type, e.g. use int rather than \'int\'')
 
@@ -543,7 +547,6 @@ class SArray(object):
         ----------
         - `Avro Specification <http://avro.apache.org/docs/1.7.7/spec.html>`_
         """
-        _mt._get_metric_tracker().track('sarray.from_avro')
         proxy = UnitySArrayProxy(glconnect.get_client())
         proxy.load_from_avro(filename)
         return cls(_proxy = proxy)
@@ -1325,7 +1328,6 @@ class SArray(object):
         if (not all([len(delim) == 1 for delim in delimiters])):
             raise ValueError("Delimiters must be single-character strings")
 
-        _mt._get_metric_tracker().track('sarray.count_words')
 
         # construct options, will extend over time
         options = dict()
@@ -1356,7 +1358,6 @@ class SArray(object):
         if (n > 5):
             warnings.warn("It is unusual for n-grams to be of size larger than 5.")
 
-        _mt._get_metric_tracker().track('sarray.count_ngrams', properties={'n':n, 'method':method})
 
         # construct options, will extend over time
         options = dict()
@@ -1410,7 +1411,6 @@ class SArray(object):
         if not _is_non_string_iterable(keys):
             keys = [keys]
 
-        _mt._get_metric_tracker().track('sarray.dict_trim_by_keys')
 
         with cython_context():
             return SArray(_proxy=self.__proxy__.dict_trim_by_keys(keys, exclude))
@@ -1462,7 +1462,6 @@ class SArray(object):
         if not (upper is None or isinstance(upper, numbers.Number)):
             raise TypeError("upper bound has to be a numeric value")
 
-        _mt._get_metric_tracker().track('sarray.dict_trim_by_values')
 
         with cython_context():
             return SArray(_proxy=self.__proxy__.dict_trim_by_values(lower, upper))
@@ -1491,7 +1490,6 @@ class SArray(object):
         Rows: 2
         [['this', 'is', 'dog'], ['this', 'are', 'cat']]
         """
-        _mt._get_metric_tracker().track('sarray.dict_keys')
 
         with cython_context():
             return SArray(_proxy=self.__proxy__.dict_keys())
@@ -1521,7 +1519,6 @@ class SArray(object):
         [[1, 5, 7], [2, 1, 5]]
 
         """
-        _mt._get_metric_tracker().track('sarray.dict_values')
 
         with cython_context():
             return SArray(_proxy=self.__proxy__.dict_values())
@@ -1560,7 +1557,6 @@ class SArray(object):
         if not _is_non_string_iterable(keys):
             keys = [keys]
 
-        _mt._get_metric_tracker().track('sarray.dict_has_any_keys')
 
         with cython_context():
             return SArray(_proxy=self.__proxy__.dict_has_any_keys(keys))
@@ -1599,7 +1595,6 @@ class SArray(object):
         if not _is_non_string_iterable(keys):
             keys = [keys]
 
-        _mt._get_metric_tracker().track('sarray.dict_has_all_keys')
 
         with cython_context():
             return SArray(_proxy=self.__proxy__.dict_has_all_keys(keys))
@@ -1686,7 +1681,6 @@ class SArray(object):
             seed = time.time()
 
         # log metric
-        _mt._get_metric_tracker().track('sarray.apply')
 
         # First phase test if it is a toolkit function
         nativefn = None
@@ -1745,7 +1739,6 @@ class SArray(object):
         if not seed:
             seed = time.time()
 
-        _mt._get_metric_tracker().track('sarray.filter')
 
         with cython_context():
             return SArray(_proxy=self.__proxy__.filter(fn, skip_undefined, seed))
@@ -1783,7 +1776,6 @@ class SArray(object):
         if not seed:
             seed = time.time()
 
-        _mt._get_metric_tracker().track('sarray.sample')
 
         with cython_context():
             return SArray(_proxy=self.__proxy__.sample(fraction, seed))
@@ -2124,7 +2116,6 @@ class SArray(object):
         if(self.dtype() != datetime.datetime):
             raise TypeError("datetime_to_str expects SArray of datetime as input SArray")
 
-        _mt._get_metric_tracker().track('sarray.datetime_to_str')
         with cython_context():
             return SArray(_proxy=self.__proxy__.datetime_to_str(str_format))
 
@@ -2163,7 +2154,6 @@ class SArray(object):
         if(self.dtype() != str):
             raise TypeError("str_to_datetime expects SArray of str as input SArray")
 
-        _mt._get_metric_tracker().track('sarray.str_to_datetime')
         with cython_context():
             return SArray(_proxy=self.__proxy__.str_to_datetime(str_format))
 
@@ -2228,7 +2218,6 @@ class SArray(object):
         if sum(out_of_range_values) != 0:
             raise ValueError("There are values outside the range of 0 to 255. Images only support integer data values between 0 and 255.")
 
-        _mt._get_metric_tracker().track('sarray.pixel_array_to_img')
 
         from .. import extensions
         return extensions.vector_sarray_to_image_sarray(self, width, height, channels, undefined_on_failure)
@@ -2280,7 +2269,6 @@ class SArray(object):
         [{1: 2, 3: 4}, {'a': 'b', 'c': 'd'}]
         """
 
-        _mt._get_metric_tracker().track('sarray.astype.%s' % str(dtype.__name__))
 
         if (dtype == _Image) and (self.dtype() == array.array):
             raise TypeError("Cannot cast from image type to array with sarray.astype(). Please use sarray.pixel_array_to_img() instead.")
@@ -2424,7 +2412,6 @@ class SArray(object):
             The new SArray with missing values removed.
         """
 
-        _mt._get_metric_tracker().track('sarray.dropna')
 
         with cython_context():
             return SArray(_proxy = self.__proxy__.drop_missing_values())
@@ -2449,7 +2436,6 @@ class SArray(object):
         out : SArray
             A new SArray with all missing values filled
         """
-        _mt._get_metric_tracker().track('sarray.fillna')
 
         with cython_context():
             return SArray(_proxy = self.__proxy__.fill_missing_values(value))
@@ -2532,7 +2518,6 @@ class SArray(object):
         else:
             sub_sketch_keys = list()
 
-        _mt._get_metric_tracker().track('sarray.sketch_summary')
         return Sketch(self, background, sub_sketch_keys = sub_sketch_keys)
 
     def append(self, other):
@@ -2564,7 +2549,6 @@ class SArray(object):
         Rows: 6
         [1, 2, 3, 4, 5, 6]
         """
-        _mt._get_metric_tracker().track('sarray.append')
         if type(other) is not SArray:
             raise RuntimeError("SArray append can only work with SArray")
 
@@ -2593,7 +2577,6 @@ class SArray(object):
         """
         from .sframe import SFrame as _SFrame
 
-        _mt._get_metric_tracker().track('sarray.unique')
         tmp_sf = _SFrame()
         tmp_sf.add_column(self, 'X1')
 
@@ -2681,7 +2664,6 @@ class SArray(object):
         if (self.dtype() not in [list, dict, array.array]):
             raise TypeError("item_length() is only applicable for SArray of type list, dict and array.")
 
-        _mt._get_metric_tracker().track('sarray.item_length')
 
         with cython_context():
             return SArray(_proxy = self.__proxy__.item_length())
@@ -2816,7 +2798,6 @@ class SArray(object):
             limit += ['tzone']
             column_types += [float]
 
-        _mt._get_metric_tracker().track('sarray.split_datetime')
 
         with cython_context():
            return _SFrame(_proxy=self.__proxy__.expand(column_name_prefix, limit, column_types))
@@ -3012,7 +2993,6 @@ class SArray(object):
                         t = [(x[i] if ((x is not None) and len(x) > i) else None) for x in head_rows]
                         column_types.append(infer_type_of_list(t))
 
-        _mt._get_metric_tracker().track('sarray.unpack')
 
         with cython_context():
             if (self.dtype() == dict and column_types == None):
@@ -3777,7 +3757,6 @@ class SArray(object):
         [1, 3, 6, 10, 15]
         """
         from .. import extensions
-        _mt._get_metric_tracker().track('sarray.cumulative_sum')
         agg_op = "__builtin__cum_sum__"
         return SArray(_proxy = self.__proxy__.builtin_cumulative_aggregate(agg_op))
 
@@ -3810,7 +3789,6 @@ class SArray(object):
         [1, 1.5, 2, 2.5, 3]
         """
         from .. import extensions
-        _mt._get_metric_tracker().track('sarray.cumulative_mean')
         agg_op = "__builtin__cum_avg__"
         return SArray(_proxy = self.__proxy__.builtin_cumulative_aggregate(agg_op))
 
@@ -3840,7 +3818,6 @@ class SArray(object):
         [1, 1, 1, 1, 0]
         """
         from .. import extensions
-        _mt._get_metric_tracker().track('sarray.cumulative_min')
         agg_op = "__builtin__cum_min__"
         return SArray(_proxy = self.__proxy__.builtin_cumulative_aggregate(agg_op))
 
@@ -3870,7 +3847,6 @@ class SArray(object):
         [1, 1, 3, 4, 4]
         """
         from .. import extensions
-        _mt._get_metric_tracker().track('sarray.cumulative_max')
         agg_op = "__builtin__cum_max__"
         return SArray(_proxy = self.__proxy__.builtin_cumulative_aggregate(agg_op))
 
@@ -3900,7 +3876,6 @@ class SArray(object):
         [0.0, 0.5, 0.816496580927726, 1.118033988749895, 1.4142135623730951]
         """
         from .. import extensions
-        _mt._get_metric_tracker().track('sarray.cumulative_std')
         agg_op = "__builtin__cum_std__"
         return SArray(_proxy = self.__proxy__.builtin_cumulative_aggregate(agg_op))
 
@@ -3930,6 +3905,5 @@ class SArray(object):
         [0.0, 0.25, 0.6666666666666666, 1.25, 2.0]
         """
         from .. import extensions
-        _mt._get_metric_tracker().track('sarray.cumulative_var')
         agg_op = "__builtin__cum_var__"
         return SArray(_proxy = self.__proxy__.builtin_cumulative_aggregate(agg_op))
