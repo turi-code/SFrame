@@ -768,7 +768,7 @@ class SFrame(object):
     2  3   C
     """
 
-    __slots__ = ['shape', '__proxy__', '_proxy', '_cache']
+    __slots__ = ['_proxy', '_cache']
     __construct_ctr = int(time.time()) % 1000
 
     def __init__(self, data=None,
@@ -790,7 +790,7 @@ class SFrame(object):
             if (format == 'auto'):
                 if (HAS_PANDAS and isinstance(data, pandas.DataFrame)):
                     _format = 'dataframe'
-                    tracker.track('sframe.location.memory', value=1)
+                    _mt._get_metric_tracker().track('sframe.location.memory', value=1)
                 elif (isinstance(data, str) or
                       (sys.version_info.major < 3 and isinstance(data, unicode))):
                     if data.find('://') == -1:
