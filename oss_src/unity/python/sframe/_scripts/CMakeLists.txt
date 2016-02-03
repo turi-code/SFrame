@@ -1,5 +1,7 @@
 project(unity_cython_scripts)
 
+if(NOT WIN32)  
+
 set_source_files_properties("pyspark_unity.pyx" PROPERTIES CYTHON_IS_CXX TRUE)
 set_source_files_properties("../cython/cy_flexible_type.pyx" PROPERTIES CYTHON_IS_CXX TRUE)
 set_source_files_properties("../cython/cy_callback.pyx" PROPERTIES CYTHON_IS_CXX TRUE)
@@ -15,3 +17,4 @@ set_property(TARGET pyspark_unity APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-rpath
 target_link_libraries(pyspark_unity python_callbacks spark_unity unity_core)
 add_dependencies(pyspark_unity release_binaries)
 
+endif()
