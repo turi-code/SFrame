@@ -14,6 +14,7 @@
 #include <boost/filesystem.hpp>
 #include <parallel/execute_task_in_native_thread.hpp>
 #include <type_traits>
+#include <process/process.hpp>
 #ifdef HAS_HADOOP
 #ifndef _WIN32
 #include <dlfcn.h>
@@ -389,7 +390,7 @@ extern  "C" {
     std::string libjvm_location = "";
     std::string java_home_cmd = "/usr/libexec/java_home";
     try {
-      process p;
+      graphlab::process p;
       p.popen(java_home_cmd,
               std::vector<std::string>(),
               STDOUT_FILENO);

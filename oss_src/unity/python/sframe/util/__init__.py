@@ -202,8 +202,9 @@ def _make_internal_url(url):
     is_local = False
     if protocol in ['http', 'https']:
         pass
-    elif protocol == 'hdfs' and not sys_util.get_hadoop_class_path():
-        raise ValueError("HDFS URL is not supported because Hadoop not found. Please make hadoop available from PATH or set the environment variable HADOOP_HOME and try again.")
+    elif protocol == 'hdfs':
+        if not sys_util.get_hadoop_class_path():
+            raise ValueError("HDFS URL is not supported because Hadoop not found. Please make hadoop available from PATH or set the environment variable HADOOP_HOME and try again.")
     elif protocol == 's3':
         return _try_inject_s3_credentials(url)
     elif protocol == '' or (protocol == 'local' or protocol == 'remote'):
