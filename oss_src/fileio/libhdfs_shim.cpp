@@ -12,6 +12,7 @@
 #include <vector>
 #include <string>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 #include <parallel/execute_task_in_native_thread.hpp>
 #include <type_traits>
 #include <process/process.hpp>
@@ -396,6 +397,7 @@ extern  "C" {
               STDOUT_FILENO);
       libjvm_location = p.read_from_child();
       logstream(LOG_INFO) << "Obtain JAVA_HOME from " << java_home_cmd << ": " << libjvm_location << std::endl;
+      boost::algorithm::trim(libjvm_location);
     } catch (...) {
       logstream(LOG_WARNING) << "Error running " << java_home_cmd << std::endl;
       libjvm_location = "";
