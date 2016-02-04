@@ -555,7 +555,8 @@ def _assert_sframe_equal(sf1,
                          sf2,
                          check_column_names=True,
                          check_column_order=True,
-                         check_row_order=True):
+                         check_row_order=True,
+                         float_column_delta=None):
     """
     Assert the two SFrames are equal.
 
@@ -565,10 +566,6 @@ def _assert_sframe_equal(sf1,
     stipulations can be relaxed individually and in concert with another, with
     the exception of `check_column_order` and `check_column_names`, we must use
     one of these to determine which columns to compare with one another.
-
-    This function does not attempt to apply a "close enough" definition to
-    float values, and it is not recommended to rely on this function when
-    SFrames may have a column of floats.
 
     Parameters
     ----------
@@ -590,6 +587,12 @@ def _assert_sframe_equal(sf1,
     check_row_order : bool
         If true, assert if all rows in the first SFrame exist in the second
         SFrame, but they are not in the same order.
+
+    float_column_delta : float
+        The acceptable delta that two float values can be and still be
+        considered "equal". When this is None, only exact equality is accepted.
+        This is the default behavior since columns of all Nones are often of
+        float type. Applies to all float columns.
     """
     from .. import SFrame as _SFrame
     if (type(sf1) is not _SFrame) or (type(sf2) is not _SFrame):
@@ -630,10 +633,27 @@ def _assert_sframe_equal(sf1,
     else:
       names_to_check = zip(s1_names, s2_names)
     for i in names_to_check:
-        if sf1[i[0]].dtype() != sf2[i[1]].dtype():
-          raise AssertionError("Columns " + str(i) + " types mismatched.")
-        if not (sf1[i[0]] == sf2[i[1]]).all():
-            raise AssertionError("Columns " + str(i) + " are not equal!")
+        col1 = sf1[i[0]]
+        col2 = sf2[i[1]]
+        if col1.dtype() != col2.dtype():
+            raise AssertionError("Columns " + str(i) + " types mismatched.")
+
+        compare_ary = None
+        if col1.dtype() == float and float_column_delta is not None:
+            dt = float_column_delta
+            compare_ary = ((col1 > col2-dt) & (col1 < col2+dt))
+        else:
+            compare_ary = (sf1[i[0]] == sf2[i[1]])
+        if not compare_ary.all():
+            count = 0
+            for j in compare_ary:
+                if not j:
+                  first_row = count
+                  break
+                count += 1
+            raise AssertionError("Columns " + str(i) +
+                " are not equal! First differing element is at row " +
+                str(first_row) + ": " + str((col1[first_row],col2[first_row])))
 
 def _get_temp_file_location():
     '''
@@ -833,7 +853,7 @@ def infer_dbapi2_types(cursor, mod_info):
     for i in result_set_types:
         type_found = False
         for j in dbapi2_to_python:
-            if i is None:
+            if i is None or j[0] is None:
                 break
             elif i == j[0]:
                 ret_types.append(j[1])
