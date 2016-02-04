@@ -152,6 +152,13 @@ class SFrameBuilder(object):
         tmp_list = []
         block_pos = 0
 
+        # Avoid copy in cases that we are passed materialized data that is
+        # smaller than our block size
+        if hasattr(data, '__len__'):
+            if len(data) <= self._block_size:
+                self._builder.append_multiple(data, segment)
+                return
+
         for i in data:
             tmp_list.append(i)
             if len(tmp_list) >= self._block_size:

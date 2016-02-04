@@ -3021,21 +3021,43 @@ class SFrameTest(unittest.TestCase):
     @mock.patch(__name__+'.sqlite3.Cursor', spec=True)
     @mock.patch(__name__+'.sqlite3.Connection', spec=True)
     def test_from_sql(self, mock_conn, mock_cursor):
+        # Set up mock connection and cursor
         conn = mock_conn('example.db')
-
         curs = mock_cursor()
         conn.cursor.return_value = curs
         sf_type_codes = [44,44,41,22,114,199,43]
+
         sf_data = zip(*self.all_type_cols)
+        sf_iter = sf_data.__iter__()
+
+        def mock_fetchone():
+            try:
+                return sf_iter.next()
+            except StopIteration:
+                return None
+
+        def mock_fetchmany(size=1):
+            count = 0
+            ret_list = []
+            for i in sf_iter:
+                if count == curs.arraysize:
+                    break
+                ret_list.append(i)
+                count += 1
+
+            return ret_list
+
+        curs.fetchone.side_effect = mock_fetchone
+        curs.fetchmany.side_effect = mock_fetchmany
+
         curs.description = [['X'+str(i+1),sf_type_codes[i]]+[None for j in range(5)] for i in range(len(sf_data[0]))]
-        curs.__iter__.return_value = sf_data.__iter__()
 
         # bigger than cache, no Nones
         sf = SFrame.from_sql(conn, "SELECT * FROM test_table", type_inference_rows=5, dbapi_module=dbapi2_mock())
         _assert_sframe_equal(sf, self.sf_all_types)
 
         # smaller than cache, no Nones
-        curs.__iter__.return_value = sf_data.__iter__()
+        sf_iter = sf_data.__iter__()
         sf = SFrame.from_sql(conn, "SELECT * FROM test_table", type_inference_rows=100, dbapi_module=dbapi2_mock())
         _assert_sframe_equal(sf, self.sf_all_types)
 
@@ -3043,7 +3065,7 @@ class SFrameTest(unittest.TestCase):
         nones_in_cache = zip(*[none_col for i in range(len(sf_data[0]))])
         none_sf = SFrame({'X'+str(i):none_col for i in range(1,len(sf_data[0])+1)})
         test_data = (nones_in_cache+sf_data)
-        curs.__iter__.return_value = test_data.__iter__()
+        sf_iter = test_data.__iter__()
 
         # more None rows than cache & types in description
         sf = SFrame.from_sql(conn, "SELECT * FROM test_table", type_inference_rows=5, dbapi_module=dbapi2_mock())
@@ -3058,7 +3080,7 @@ class SFrameTest(unittest.TestCase):
         # more None rows than cache & no type information
         for i in range(len(curs.description)):
             curs.description[i][1] = None
-        curs.__iter__.return_value = test_data.__iter__()
+        sf_iter = test_data.__iter__()
         sf = SFrame.from_sql(conn, "SELECT * FROM test_table", type_inference_rows=5, dbapi_module=dbapi2_mock())
 
         expected_types = [str for i in range(len(sf_data[0]))]
@@ -3067,26 +3089,26 @@ class SFrameTest(unittest.TestCase):
         _assert_sframe_equal(sf, sf_inferred_types)
 
         ### column_type_hints tests
-        curs.__iter__.return_value = test_data.__iter__()
+        sf_iter = test_data.__iter__()
         sf = SFrame.from_sql(conn, "SELECT * FROM test_table", type_inference_rows=5,
             dbapi_module=dbapi2_mock(), column_type_hints=str)
         _assert_sframe_equal(sf, sf_inferred_types)
 
-        curs.__iter__.return_value = test_data.__iter__()
+        sf_iter = test_data.__iter__()
         expected_types = [int,float,str,array.array,list,dict,dt.datetime]
         sf = SFrame.from_sql(conn,
             "SELECT * FROM test_table", type_inference_rows=5,
             dbapi_module=dbapi2_mock(), column_type_hints=expected_types)
         _assert_sframe_equal(sf[5:],self.sf_all_types)
 
-        curs.__iter__.return_value = test_data.__iter__()
+        sf_iter = test_data.__iter__()
         expected_types = {'X'+str(i+1):expected_types[i] for i in range(len(expected_types))}
         sf = SFrame.from_sql(conn,
             "SELECT * FROM test_table", type_inference_rows=5,
             dbapi_module=dbapi2_mock(), column_type_hints=expected_types)
         _assert_sframe_equal(sf[5:],self.sf_all_types)
 
-        curs.__iter__.return_value = test_data.__iter__()
+        sf_iter = test_data.__iter__()
         del expected_types['X2']
         del expected_types['X4']
         self.sf_all_types['X2'] = self.sf_all_types['X2'].astype(str)
@@ -3137,11 +3159,12 @@ class SFrameTest(unittest.TestCase):
             self.sf_all_types.to_sql(conn, "ins_test", dbapi_module=mock_mod)
             conn.cursor.assert_called_once_with()
             calls = []
+            col_names = self.sf_all_types.column_names()
             for j in self.sf_all_types:
                 if i[0] == 'named' or i[0] == 'pyformat':
                     calls.append(mock.call(i[1],j))
                 else:
-                    calls.append(mock.call(i[1],j.values()))
+                    calls.append(mock.call(i[1],[j[k] for k in col_names]))
             curs.execute.assert_has_calls(calls, any_order=False)
             self.assertEquals(curs.execute.call_count, len(self.sf_all_types))
             conn.commit.assert_called_once_with()

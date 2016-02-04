@@ -234,14 +234,19 @@ def _get_global_dbapi_info(dbapi_module, conn):
 
     module_name = dbapi_module.__name__ if hasattr(dbapi_module, '__name__') else None
 
-    needed_vars = ['apilevel','paramstyle','DATETIME','NUMBER','ROWID']
+    needed_vars = ['apilevel','paramstyle','Error','DATETIME','NUMBER','ROWID']
     ret_dict = {}
 
     for i in needed_vars:
+        tmp = None
         try:
             tmp = eval("dbapi_module."+i)
         except AttributeError as e:
-            if module_given:
+            # Some DBs don't actually care about types, so they won't define
+            # the types. These are the ACTUALLY needed variables though
+            if i not in ['apilevel','paramstyle','Error']:
+                pass
+            elif module_given:
                 raise AttributeError(module_given_msg.format(module_name, i))
             else:
                 raise AttributeError(module_not_given_msg.format(module_name, i))
@@ -2095,7 +2100,7 @@ class SFrame(object):
 
     @classmethod
     def from_sql(cls, conn, sql_statement, params=None, type_inference_rows=100,
-        dbapi_module=None, column_type_hints=None):
+        dbapi_module=None, column_type_hints=None, cursor_arraysize=128):
         """
         Convert the result of a SQL database query to an SFrame.
 
@@ -2136,6 +2141,9 @@ class SFrame(object):
           incompatible with the types given in this argument, a casting error
           will occur.
 
+        cursor_arraysize : int, optional
+          The number of rows to fetch from the database at one time.
+
         Returns
         -------
         out : SFrame
@@ -2164,7 +2172,18 @@ class SFrame(object):
         from .sframe_builder import SFrameBuilder
 
         c = conn.cursor()
-        c.execute(sql_statement, params)
+        try:
+            if params is None:
+                c.execute(sql_statement)
+            else:
+                c.execute(sql_statement, params)
+        except mod_info['Error'] as e:
+            if hasattr(conn, 'rollback'):
+                conn.rollback()
+            raise e
+
+        c.arraysize = cursor_arraysize
+
         result_desc = c.description
         result_names = [i[0] for i in result_desc]
         result_types = [None for i in result_desc]
@@ -2190,9 +2209,15 @@ class SFrame(object):
         # Perform type inference by checking to see what python types are
         # returned from the cursor
         if not all(result_types):
-            # Hmm...an iterable cursor is not *technically* required by the
-            # DBAPI2 standard. Consider switching.
-            for row in c:
+            # Only test the first fetch{one,many} command since the only way it
+            # will raise an exception is if execute didn't produce a result set
+            try:
+                row = c.fetchone()
+            except mod_info['Error'] as e:
+                if hasattr(conn, 'rollback'):
+                    conn.rollback()
+                raise e
+            while row is not None:
                 # Assumes that things like dicts are not a "single sequence"
                 temp_vals.append(row)
                 val_count = 0
@@ -2202,6 +2227,7 @@ class SFrame(object):
                     val_count += 1
                 if all(result_types) or len(temp_vals) >= type_inference_rows:
                     break
+                row = c.fetchone()
 
         # This will be true if some columns have all missing values up to this
         # point. Try using DBAPI2 type_codes to pick a suitable type. If this
@@ -2216,9 +2242,18 @@ class SFrame(object):
 
         sb = SFrameBuilder(result_types, column_names=result_names)
         sb.append_multiple(temp_vals)
-        sb.append_multiple(c)
+        rows = c.fetchmany()
+        while len(rows) > 0:
+            sb.append_multiple(rows)
+            rows = c.fetchmany()
         cls = sb.close()
-        c.close()
+
+        try:
+            c.close()
+        except mod_info['Error'] as e:
+            if hasattr(conn, 'rollback'):
+                conn.rollback()
+            raise e
         return cls
 
     def to_sql(self, conn, table_name, dbapi_module=None, use_python_type_specifiers=False):
@@ -2288,10 +2323,16 @@ class SFrame(object):
             mod_info['paramstyle'] == 'pyformat'):
           prepare_sf_row = lambda x:x
         else:
-          prepare_sf_row = lambda x:x.values()
+          col_names = self.column_names()
+          prepare_sf_row = lambda x: [x[i] for i in col_names]
 
         for i in self:
-            c.execute(ins_str, prepare_sf_row(i))
+            try:
+                c.execute(ins_str, prepare_sf_row(i))
+            except mod_info['Error'] as e:
+                if hasattr(conn, 'rollback'):
+                    conn.rollback()
+                raise e
 
         conn.commit()
         c.close()
