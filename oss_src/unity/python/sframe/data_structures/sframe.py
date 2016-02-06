@@ -80,6 +80,7 @@ RDD_SUPPORT = True
 PRODUCTION_RUN = False
 REMOTE_OS = None
 SPARK_SUPPORT_NAMES = {'RDD_JAR_PATH': 'spark_unity.jar'}
+SQL_HAS_BEEN_USED = False
 
 first = True
 for i in SFRAME_ROOTS:
@@ -225,6 +226,15 @@ def _get_global_dbapi_info(dbapi_module, conn):
     "I found '{0}' which doesn't have the global variable '{1}'.\n"+\
     "To avoid this confusion, you can pass the module as a parameter using\n"+\
     "the 'dbapi_module' argument to either from_sql or to_sql."
+    global SQL_HAS_BEEN_USED
+    if not SQL_HAS_BEEN_USED:
+        SQL_HAS_BEEN_USED = True
+        __LOGGER__.warn("SFrame's DBAPI2 support is currently in beta and only"+
+                " known to work with these modules:"+
+                " sqlite3, psycopg2, MySQLdb.\n"+
+                " If you encounter an issue, please let us know by creating a"+
+                " support ticket here:\n"+
+                "https://dato.com/support/create-support-ticket.html")
 
     if dbapi_module is None:
         dbapi_module = get_module_from_object(conn)
@@ -236,6 +246,7 @@ def _get_global_dbapi_info(dbapi_module, conn):
 
     needed_vars = ['apilevel','paramstyle','Error','DATETIME','NUMBER','ROWID']
     ret_dict = {}
+    ret_dict['module_name'] = module_name
 
     for i in needed_vars:
         tmp = None
@@ -2168,6 +2179,8 @@ class SFrame(object):
         [1 rows x 2 columns]
         """
         mod_info = _get_global_dbapi_info(dbapi_module, conn)
+        _mt._get_metric_tracker().track('sframe.from_sql',
+                properties={'module_name':mod_info['module_name']})
 
         from .sframe_builder import SFrameBuilder
 
@@ -2256,7 +2269,8 @@ class SFrame(object):
             raise e
         return cls
 
-    def to_sql(self, conn, table_name, dbapi_module=None, use_python_type_specifiers=False):
+    def to_sql(self, conn, table_name, dbapi_module=None,
+            use_python_type_specifiers=False, use_exact_column_names=True):
         """
         Convert an SFrame to a single table in a SQL database.
 
@@ -2288,8 +2302,17 @@ class SFrame(object):
           ('s' for string, 'd' for integer, etc.). Many DBAPI2 modules simply
           use 's' for all types if they use these parameter markers, so this is
           False by default.
+
+        use_exact_column_names : bool, optional
+          Specify the column names of the SFrame when inserting its contents
+          into the DB. If the specified table does not have the exact same
+          column names as the SFrame, inserting the data will fail. If False,
+          the columns in the SFrame are inserted in order without care of the
+          schema of the DB table. True by default.
         """
         mod_info = _get_global_dbapi_info(dbapi_module, conn)
+        _mt._get_metric_tracker().track('sframe.to_sql',
+                properties={'module_name':mod_info['module_name']})
         c = conn.cursor()
 
         col_info = zip(self.column_names(), self.column_types())
@@ -2309,14 +2332,24 @@ class SFrame(object):
         get_sql_param = sql_param[mod_info['paramstyle']]
         
         # form insert string
-        ins_str = "INSERT INTO " + str(table_name) + " VALUES ("
+        ins_str = "INSERT INTO " + str(table_name)
+        value_str = " VALUES ("
+        col_str = " ("
         count = 0
         for i in col_info:
-            ins_str += get_sql_param(i[0],count,i[1])
+            col_str += i[0]
+            value_str += get_sql_param(i[0],count,i[1])
             if count < len(col_info)-1:
-                ins_str += ","
+                col_str += ","
+                value_str += ","
             count += 1
-        ins_str += ")"
+        col_str += ")"
+        value_str += ")"
+
+        if use_exact_column_names:
+            ins_str += col_str
+
+        ins_str += value_str
 
         # Some formats require values in an iterable, some a dictionary
         if (mod_info['paramstyle'] == 'named' or\

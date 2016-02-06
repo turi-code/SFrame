@@ -3142,7 +3142,7 @@ class SFrameTest(unittest.TestCase):
     def test_to_sql(self, mock_conn, mock_cursor):
         conn = mock_conn('example.db')
         curs = mock_cursor()
-        insert_stmt = "INSERT INTO ins_test VALUES ({0},{1},{2},{3},{4},{5},{6})"
+        insert_stmt = "INSERT INTO ins_test (X1,X2,X3,X4,X5,X6,X7) VALUES ({0},{1},{2},{3},{4},{5},{6})"
         num_cols = len(self.sf_all_types.column_names())
         test_cases = [
             ('qmark',insert_stmt.format(*['?' for i in range(num_cols)])),
