@@ -142,5 +142,16 @@ void unity_server::set_log_progress(bool enable) {
   }
 }
 
+void unity_server::set_log_progress_callback(void (*callback)(std::string)) {
+  if (callback == nullptr) {
+    global_logger().add_observer(LOG_PROGRESS, NULL);
+  } else {
+    global_logger().add_observer(
+        LOG_PROGRESS,
+        [=](int lineloglevel, const char* buf, size_t len){
+          callback(std::string(buf, len));
+        });
+  }
+}
 
 } // end of graphlab

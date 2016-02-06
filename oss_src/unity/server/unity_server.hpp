@@ -42,6 +42,8 @@ class unity_server {
    */
   static void set_log_progress(bool enable);
 
+  static void set_log_progress_callback(void (*callback)(std::string));
+
   inline cppipc::comm_server* get_comm_server() { return server; }
 
   inline std::string get_comm_server_address() { return options.server_address; }

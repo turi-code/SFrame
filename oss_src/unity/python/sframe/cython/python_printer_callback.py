@@ -27,7 +27,7 @@ def print_callback(val):
         # I have to intrude rather deep into IPython to make it behave
         if have_ipython:
             if InteractiveShell.initialized():
-                IPython.display.publish_display_data('graphlab.callback', {'text/plain':val,'text/html':'<pre>' + val + '</pre>'})
+                IPython.display.publish_display_data({'text/plain':val,'text/html':'<pre>' + val + '</pre>'})
                 success = True
     except:
         pass

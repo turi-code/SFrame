@@ -101,5 +101,9 @@ EXPORT void stop_server() {
 EXPORT void set_log_progress(bool enable) {
   graphlab::unity_server::set_log_progress(enable);
 }
+
+EXPORT void set_log_progress_callback(void* callback) {
+  graphlab::unity_server::set_log_progress_callback(reinterpret_cast<void(*)(std::string)>(callback));
+}
 }
  // end of extern "C"
