@@ -8,6 +8,8 @@
 #ifndef SFRAME_UNITY_SERVER_HPP
 #define SFRAME_UNITY_SERVER_HPP
 
+#include <parallel/pthread_tools.hpp>
+#include <util/blocking_queue.hpp>
 #include "unity_server_options.hpp"
 #include "unity_server_init.hpp"
 
@@ -22,6 +24,8 @@ class toolkit_class_registry;
 
 class unity_server {
  public:
+  typedef void(*progress_callback_type)(std::string);
+
   /**
    * Constructor
    */
@@ -40,7 +44,9 @@ class unity_server {
   /**
    * Enable or disable log progress stream.
    */
-  static void set_log_progress(bool enable);
+  void set_log_progress(bool enable);
+
+  void set_log_progress_callback(progress_callback_type callback);
 
   inline cppipc::comm_server* get_comm_server() { return server; }
 
@@ -59,6 +65,12 @@ class unity_server {
   cppipc::comm_server* server;
   toolkit_function_registry* toolkit_functions;
   toolkit_class_registry* toolkit_classes;
+
+ private:
+  volatile progress_callback_type log_progress_callback = nullptr;
+  graphlab::thread log_thread;
+  blocking_queue<std::string> log_queue;
+
 }; // end of class usenity_server
 } // end of namespace graphlab
 

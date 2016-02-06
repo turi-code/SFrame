@@ -13,6 +13,7 @@ of the BSD license. See the LICENSE file for details.
 
 from ..util.config import DEFAULT_CONFIG as default_local_conf
 from ..connect import _get_metric_tracker
+from ..cython.cy_ipc import get_print_status_function_pointer
 from .. import sys_util as _sys_util
 import logging
 import os
@@ -123,7 +124,12 @@ class EmbeddedServer(GraphLabServer):
         return self.logger
 
     def set_log_progress(self, enable):
-        self.dll.set_log_progress(enable)
+        if enable:
+            ptr = get_print_status_function_pointer()
+            ptr = cast(ptr, POINTER(c_void_p))
+            self.dll.set_log_progress_callback(ptr)
+        else:
+            self.dll.set_log_progress(enable)
 
     def _load_dll_ok(self, root_path):
         server_env = _sys_util.make_unity_server_env()
@@ -145,6 +151,7 @@ class EmbeddedServer(GraphLabServer):
             self.dll.start_server.argtypes = [c_char_p, c_char_p, c_char_p, c_ulonglong, c_ulonglong]
             self.dll.get_client.restype = c_void_p
             self.dll.set_log_progress.argtypes = [c_bool]
+            self.dll.set_log_progress_callback.argtypes = [c_void_p]
             self.dll.stop_server
         except Exception as e:
             return (False, str(e))

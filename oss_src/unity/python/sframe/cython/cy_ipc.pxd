@@ -25,3 +25,7 @@ cdef class PyCommClient:
     cdef comm_client *thisptr 
     cpdef stop(self)
     cpdef start(self)
+
+cdef void print_status(string status_string) nogil
+
+cpdef get_print_status_function_pointer()

@@ -99,7 +99,15 @@ EXPORT void stop_server() {
  * Enable or disable log progress stream.
  */
 EXPORT void set_log_progress(bool enable) {
-  graphlab::unity_server::set_log_progress(enable);
+  if (graphlab::SERVER) {
+    graphlab::SERVER->set_log_progress(enable);
+  }
+}
+
+EXPORT void set_log_progress_callback(void* callback) {
+  if (graphlab::SERVER) {
+    graphlab::SERVER->set_log_progress_callback(reinterpret_cast<void(*)(std::string)>(callback));
+  }
 }
 }
  // end of extern "C"
