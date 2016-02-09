@@ -10,6 +10,8 @@ from ..data_structures.sarray import SArray
 from ..data_structures.sframe import SFrame
 import random
 
+from ..cython.cy_variant import _debug_is_flexible_type_encoded
+
 
 class VariantCheckTest(unittest.TestCase):
 
@@ -67,6 +69,10 @@ class VariantCheckTest(unittest.TestCase):
 
         random.seed(0)
 
+
+        class A: pass
+        A.flextype_encodable = True
+
         def _make(depth):
 
             if depth == 0:
@@ -79,8 +85,10 @@ class VariantCheckTest(unittest.TestCase):
             elif s == 1:
                 return random.randint(0,100000)
             elif s == 2:
+                A.flextype_encodable = False
                 return SArray([random.randint(0,100000) for i in range(2)])
             elif s == 3:
+                A.flextype_encodable = False
                 return SFrame({'a' : [random.randint(0,100000) for i in range(2)],
                                'b' : [str(random.randint(0,100000)) for i in range(2)]})
 
@@ -93,5 +101,18 @@ class VariantCheckTest(unittest.TestCase):
                 return {str(random.randint(0, 100)) : _make(depth - 1)
                         for i in range(length)}
 
-        for i in range(10):
-            self.variant_turnaround(_make(5 + i))
+        for depth in [2,3,4,5,10]:
+            for i in range(10):
+                
+                A.flextype_encodable = True
+
+                obj = _make(depth)
+
+                # Test that it's losslessly encoded and decoded
+                self.variant_turnaround(obj)
+
+                # Test that if it can be 
+                if _debug_is_flexible_type_encoded(obj):
+                    self.assertTrue(A.flextype_encodable)
+                else:
+                    self.assertFalse(A.flextype_encodable)
