@@ -29,13 +29,14 @@ make_library(unity_core
     ../extensions/additional_sframe_utilities.cpp
   REQUIRES
     flexible_type
-    pylambda table_printer
-    sframe pylambda cancel_serverside_ops 
+    pylambda 
+    table_printer
+    sframe cancel_serverside_ops 
     sframe_query_engine 
     libjson sgraph 
     image_type image_io
     startup_teardown
-    python_callbacks
+    pylambda_worker
     EXTERNAL_VISIBILITY
 )
 

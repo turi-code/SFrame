@@ -14,9 +14,11 @@ make_library(unity_server
                   unity
                   perf
                   minipsutil_static
-                SHARED)
+                 SHARED)
 
-add_dependencies(unity_server pylambda_worker spark_unity ./oss_src/sframe/spark_unity.jar)
+if(NOT WIN32)
+  add_dependencies(unity_server spark_unity ./oss_src/sframe/spark_unity.jar)
+endif()
 
 get_property(EXTENSIONS_LIST DIRECTORY "../extensions" PROPERTY EXTENSIONS_LIST)
 foreach(loop_var ${EXTENSIONS_LIST})

@@ -21,9 +21,6 @@ foreach(source ${cython_sources})
   add_dependencies(cython_targets ${target})
 endforeach()
 
-target_link_libraries("cy_pylambda_workers" pylambda_worker)
-
-
 ADD_CUSTOM_TARGET (oss_clean_cython)
 ADD_CUSTOM_COMMAND(
   COMMENT "clean cython"

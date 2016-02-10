@@ -465,7 +465,7 @@ set_pylambda_evaluation_functions(&eval_functions)
 # Stuff like this. 
 
 cdef extern from "<lambda/pylambda_worker.hpp>" namespace "graphlab::lambda":
-    int pylambda_worker_main(const char* _root_path, const char* _server_address, int loglevel)
+    int pylambda_worker_main(const string& _root_path, const string& _server_address, int loglevel)
 
 
 def run_pylambda_worker(str root_path, str server_address, int loglevel):

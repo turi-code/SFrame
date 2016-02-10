@@ -583,8 +583,8 @@ ctypedef fused _listlike:
 
 cdef int _listlike_can_be_vector(_listlike v, vector[int]* tr_code_buffer = NULL):
     cdef int tr_code
-    cdef long i
-    cdef long n = len(v)
+    cdef size_t i
+    cdef size_t n = len(v)
 
     if tr_code_buffer != NULL:
         tr_code_buffer[0].assign(n, -1)
@@ -622,8 +622,8 @@ cdef int _listlike_can_be_vector(_listlike v, vector[int]* tr_code_buffer = NULL
     return True
 
 cdef inline bint _flex_list_can_be_vector(const flex_list& v):
-    cdef long i
-    cdef long n = v.size()
+    cdef size_t i
+    cdef size_t n = v.size()
 
     for i in range(n):
         if not flex_type_is_vector_implicit_castable(v[i].get_type()):
@@ -897,7 +897,7 @@ cdef flex_type_enum _infer_common_type_of_listlike(_listlike vl, bint undefined_
     """
 
     cdef size_t seen_types = 0, tc
-    cdef long i
+    cdef size_t i
     cdef int tr_code
 
     if tr_code_buffer != NULL:
@@ -1070,7 +1070,7 @@ cdef inline fill_list(flex_list& retl, _listlike v,
     If tr_code_buffer is not null, then the translation codes are taken from that.
     """
 
-    cdef long i
+    cdef size_t i
     cdef int tr_code = -1
     cdef size_t seen_types = 0
     cdef flexible_type alt_ft
@@ -1129,8 +1129,8 @@ cdef inline long _fill_typed_sequence(flexible_type* retl, _listlike v,
     if len(v) == 0:
         return 0
 
-    cdef long i
-    cdef long write_pos = 0
+    cdef size_t i
+    cdef size_t write_pos = 0
     cdef bint success
     cdef bint error_occured
 
@@ -1233,7 +1233,7 @@ cdef inline tr_datetime64_to_ft(flexible_type& ret, v):
 cdef tr_dict_to_ft(flexible_type& ret, dict d):
     cdef flex_dict _ft_dict
     _ft_dict.resize(len(d))
-    cdef long i = 0
+    cdef size_t i = 0
 
     for k, v in d.iteritems():
         _ft_dict[i].first = flexible_type_from_pyobject(k)
@@ -1268,7 +1268,7 @@ cdef inline bint __try_buffer_type_vec(flex_vec& retv, object v, _numeric t):
     except:
         return False
 
-    cdef long i
+    cdef size_t i
     retv.resize(len(buf))
     for i in range(len(buf)):
         retv[i] = <flex_float>(buf[i])
@@ -1471,7 +1471,7 @@ cdef flexible_type flexible_type_from_pyobject(object v) except *:
 
 @cython.boundscheck(False)
 cdef inline array.array[double] pyvec_from_flex_vec(const flex_vec& fv):
-    cdef long n = fv.size()
+    cdef size_t n = fv.size()
     cdef array.array[double] ret = array.array('d')
     array.extend_buffer(ret, <char*>fv.data(), n)
     return ret
@@ -1482,7 +1482,7 @@ cdef list pylist_from_flex_list(const flex_list& vec):
     Converting vector[flexible_type] to list
     """
     cdef list ret = [None]*vec.size()
-    cdef long i
+    cdef size_t i
 
     for i in range(vec.size()):
         ret[i] = pyobject_from_flexible_type(vec[i])
@@ -1491,9 +1491,9 @@ cdef list pylist_from_flex_list(const flex_list& vec):
 
 
 cdef inline dict pydict_from_flex_dict(const flex_dict& fd):
-    cdef long n = fd.size()
+    cdef size_t n = fd.size()
     cdef dict ret = {}
-    cdef long i
+    cdef size_t i
 
     cdef object first, second
 
@@ -1643,7 +1643,7 @@ cdef inline bint __try_buffer_typed_list(flex_list& retl, object v, _numeric n,
                     raise TypeError("Float type cannot be cast to type "
                                     + flex_type_enum_to_name(common_type))
 
-    cdef long i
+    cdef size_t i
 
     retl.resize(len(buf))
     for i in range(len(buf)):
