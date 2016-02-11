@@ -140,7 +140,7 @@ if __name__ == "__main__":
                 # of a bad file descriptor passed on from a windows
                 # subprocess
                 pass
-
+            
         elif _write_out is not None:
             try:
                 _write_out.write(s)

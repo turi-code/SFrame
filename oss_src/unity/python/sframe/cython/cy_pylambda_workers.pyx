@@ -96,7 +96,7 @@ cdef extern from "<lambda/pylambda.hpp>" namespace "graphlab::lambda":
     # The function to call to set everything up.
     void set_pylambda_evaluation_functions(pylambda_evaluation_functions* eval_function_struct)
 
-
+    
 ################################################################################
 # Lambda evaluation class. 
 
