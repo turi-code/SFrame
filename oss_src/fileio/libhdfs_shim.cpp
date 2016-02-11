@@ -12,8 +12,10 @@
 #include <vector>
 #include <string>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 #include <parallel/execute_task_in_native_thread.hpp>
 #include <type_traits>
+#include <process/process.hpp>
 #ifdef HAS_HADOOP
 #ifndef _WIN32
 #include <dlfcn.h>
@@ -384,6 +386,27 @@ extern  "C" {
     search_prefixes = {""};
     search_suffixes = {""};
     file_name = "libjvm.dylib";
+
+    // Run /usr/libexec/java_home to get the libjvm location
+    std::string libjvm_location = "";
+    std::string java_home_cmd = "/usr/libexec/java_home";
+    try {
+      graphlab::process p;
+      p.popen(java_home_cmd,
+              std::vector<std::string>(),
+              STDOUT_FILENO);
+      libjvm_location = p.read_from_child();
+      logstream(LOG_INFO) << "Obtain JAVA_HOME from " << java_home_cmd << ": " << libjvm_location << std::endl;
+      boost::algorithm::trim(libjvm_location);
+    } catch (...) {
+      logstream(LOG_WARNING) << "Error running " << java_home_cmd << std::endl;
+      libjvm_location = "";
+    }
+    if (!libjvm_location.empty()) {
+      // Make this location to be searched first `/usr/libexec/java_home`/jre/lib/server/libjvm.dylib
+      search_prefixes.insert(search_prefixes.begin(), libjvm_location);
+      search_suffixes.insert(search_suffixes.begin(), "/jre/lib/server");
+    }
 #else
     search_prefixes = {
       "/usr/lib/jvm/default-java",               // ubuntu / debian distros

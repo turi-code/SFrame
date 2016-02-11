@@ -79,6 +79,19 @@ void unity_server::start(const unity_server_initializer& server_initializer) {
   server->start();
   logstream(LOG_EMPH) << "Unity server listening on: " <<  options.server_address << std::endl;
   logstream(LOG_EMPH) << "Total System Memory Detected: " << total_mem() << std::endl;
+  log_thread.launch([=]() {
+                      do {
+                        std::pair<std::string, bool> queueelem = this->log_queue.dequeue();
+                        if (queueelem.second == false) {
+                          break;
+                        } else {
+                          // we need to read it before trying to do the callback
+                          // Otherwise we might accidentally call a null pointer
+                          volatile progress_callback_type cback = this->log_progress_callback;
+                          if (cback != nullptr) cback(queueelem.first);
+                        }
+                      } while(1);
+                    });
 }
 
 /**
@@ -88,6 +101,7 @@ void unity_server::stop() {
   delete server;
   server = nullptr;
   set_log_progress(false);
+  log_queue.stop_blocking();
   graphlab::global_teardown::get_instance().perform_teardown();
 }
 
@@ -142,5 +156,18 @@ EXPORT void unity_server::set_log_progress(bool enable) {
   }
 }
 
+void unity_server::set_log_progress_callback(progress_callback_type callback) {
+  if (callback == nullptr) {
+    log_progress_callback = nullptr;
+    global_logger().add_observer(LOG_PROGRESS, NULL);
+  } else {
+    log_progress_callback = callback;
+    global_logger().add_observer(
+        LOG_PROGRESS,
+        [=](int lineloglevel, const char* buf, size_t len){
+          this->log_queue.enqueue(std::string(buf, len));
+        });
+  }
+}
 
 } // end of graphlab

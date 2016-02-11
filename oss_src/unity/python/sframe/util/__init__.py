@@ -211,8 +211,9 @@ def _make_internal_url(url):
     is_local = False
     if protocol in ['http', 'https']:
         pass
-    elif protocol == 'hdfs' and not sys_util.get_hadoop_class_path():
-        raise ValueError("HDFS URL is not supported because Hadoop not found. Please make hadoop available from PATH or set the environment variable HADOOP_HOME and try again.")
+    elif protocol == 'hdfs':
+        if not sys_util.get_hadoop_class_path():
+            raise ValueError("HDFS URL is not supported because Hadoop not found. Please make hadoop available from PATH or set the environment variable HADOOP_HOME and try again.")
     elif protocol == 's3':
         return _try_inject_s3_credentials(url)
     elif protocol == '' or (protocol == 'local' or protocol == 'remote'):
@@ -563,7 +564,8 @@ def _assert_sframe_equal(sf1,
                          sf2,
                          check_column_names=True,
                          check_column_order=True,
-                         check_row_order=True):
+                         check_row_order=True,
+                         float_column_delta=None):
     """
     Assert the two SFrames are equal.
 
@@ -573,10 +575,6 @@ def _assert_sframe_equal(sf1,
     stipulations can be relaxed individually and in concert with another, with
     the exception of `check_column_order` and `check_column_names`, we must use
     one of these to determine which columns to compare with one another.
-
-    This function does not attempt to apply a "close enough" definition to
-    float values, and it is not recommended to rely on this function when
-    SFrames may have a column of floats.
 
     Parameters
     ----------
@@ -598,6 +596,12 @@ def _assert_sframe_equal(sf1,
     check_row_order : bool
         If true, assert if all rows in the first SFrame exist in the second
         SFrame, but they are not in the same order.
+
+    float_column_delta : float
+        The acceptable delta that two float values can be and still be
+        considered "equal". When this is None, only exact equality is accepted.
+        This is the default behavior since columns of all Nones are often of
+        float type. Applies to all float columns.
     """
     from .. import SFrame as _SFrame
     if (type(sf1) is not _SFrame) or (type(sf2) is not _SFrame):
@@ -638,10 +642,27 @@ def _assert_sframe_equal(sf1,
     else:
       names_to_check = list(zip(s1_names, s2_names))
     for i in names_to_check:
-        if sf1[i[0]].dtype() != sf2[i[1]].dtype():
-          raise AssertionError("Columns " + str(i) + " types mismatched.")
-        if not (sf1[i[0]] == sf2[i[1]]).all():
-            raise AssertionError("Columns " + str(i) + " are not equal!")
+        col1 = sf1[i[0]]
+        col2 = sf2[i[1]]
+        if col1.dtype() != col2.dtype():
+            raise AssertionError("Columns " + str(i) + " types mismatched.")
+
+        compare_ary = None
+        if col1.dtype() == float and float_column_delta is not None:
+            dt = float_column_delta
+            compare_ary = ((col1 > col2-dt) & (col1 < col2+dt))
+        else:
+            compare_ary = (sf1[i[0]] == sf2[i[1]])
+        if not compare_ary.all():
+            count = 0
+            for j in compare_ary:
+                if not j:
+                  first_row = count
+                  break
+                count += 1
+            raise AssertionError("Columns " + str(i) +
+                " are not equal! First differing element is at row " +
+                str(first_row) + ": " + str((col1[first_row],col2[first_row])))
 
 def _get_temp_file_location():
     '''
@@ -823,3 +844,42 @@ def get_server_log_location():
 def _is_non_string_iterable(obj):
     # In Python 3, str implements '__iter__'.
     return (hasattr(obj, '__iter__') and not isinstance(obj, str))
+
+def get_module_from_object(obj):
+    mod_str = obj.__class__.__module__.split('.')[0]
+    return _sys.modules[mod_str]
+
+def infer_dbapi2_types(cursor, mod_info):
+    desc = cursor.description
+    result_set_types = [i[1] for i in desc]
+    dbapi2_to_python = [ # a type code can match more than one, so ordered by
+                         # preference (loop short-circuits when it finds a match
+                        (mod_info['DATETIME'], _datetime.datetime),
+                        (mod_info['ROWID'],int),
+                        (mod_info['NUMBER'],float),
+                       ]
+    ret_types = []
+
+    # Ugly nested loop because the standard only guarantees that a type code
+    # will compare equal to the module-defined types
+    for i in result_set_types:
+        type_found = False
+        for j in dbapi2_to_python:
+            if i is None or j[0] is None:
+                break
+            elif i == j[0]:
+                ret_types.append(j[1])
+                type_found = True
+                break 
+        if not type_found:
+            ret_types.append(str)
+
+    return ret_types
+
+def pytype_to_printf(in_type):
+    if in_type == int:
+        return 'd'
+    elif in_type == float:
+        return 'f'
+    else:
+        return 's'

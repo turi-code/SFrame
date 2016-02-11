@@ -21,6 +21,8 @@ from ..cython.cy_flexible_type import infer_type_of_list
 from ..cython.context import debug_trace as cython_context
 from ..cython.cy_sframe import UnitySFrameProxy
 from ..util import _is_non_string_iterable, _make_internal_url
+from ..util import infer_dbapi2_types
+from ..util import get_module_from_object, pytype_to_printf
 from .sarray import SArray, _create_sequential_sarray
 from .. import aggregate
 from .image import Image as _Image
@@ -82,6 +84,7 @@ RDD_SUPPORT = True
 PRODUCTION_RUN = False
 REMOTE_OS = None
 SPARK_SUPPORT_NAMES = {'RDD_JAR_PATH': 'spark_unity.jar'}
+SQL_HAS_BEEN_USED = False
 
 first = True
 for i in SFRAME_ROOTS:
@@ -215,6 +218,74 @@ def load_sframe(filename):
     sf = SFrame(data=filename)
     return sf
 
+def _get_global_dbapi_info(dbapi_module, conn):
+    """
+    Fetches all needed information from the top-level DBAPI module,
+    guessing at the module if it wasn't passed as a parameter. Returns a
+    dictionary of all the needed variables. This is put in one place to
+    make sure the error message is clear if the module "guess" is wrong.
+    """
+    module_given_msg = "The DBAPI2 module given ({0}) is missing the global\n"+\
+    "variable '{1}'. Please make sure you are supplying a module that\n"+\
+    "conforms to the DBAPI 2.0 standard (PEP 0249)."
+    module_not_given_msg = "Hello! I gave my best effort to find the\n"+\
+    "top-level module that the connection object you gave me came from.\n"+\
+    "I found '{0}' which doesn't have the global variable '{1}'.\n"+\
+    "To avoid this confusion, you can pass the module as a parameter using\n"+\
+    "the 'dbapi_module' argument to either from_sql or to_sql."
+    global SQL_HAS_BEEN_USED
+    if not SQL_HAS_BEEN_USED:
+        SQL_HAS_BEEN_USED = True
+        __LOGGER__.warn("SFrame's DBAPI2 support is currently in beta and only"+
+                " known to work with these modules:"+
+                " sqlite3, psycopg2, MySQLdb.\n"+
+                " If you encounter an issue, please let us know by creating a"+
+                " support ticket here:\n"+
+                "https://dato.com/support/create-support-ticket.html")
+
+    if dbapi_module is None:
+        dbapi_module = get_module_from_object(conn)
+        module_given = False
+    else:
+        module_given = True
+
+    module_name = dbapi_module.__name__ if hasattr(dbapi_module, '__name__') else None
+
+    needed_vars = ['apilevel','paramstyle','Error','DATETIME','NUMBER','ROWID']
+    ret_dict = {}
+    ret_dict['module_name'] = module_name
+
+    for i in needed_vars:
+        tmp = None
+        try:
+            tmp = eval("dbapi_module."+i)
+        except AttributeError as e:
+            # Some DBs don't actually care about types, so they won't define
+            # the types. These are the ACTUALLY needed variables though
+            if i not in ['apilevel','paramstyle','Error']:
+                pass
+            elif module_given:
+                raise AttributeError(module_given_msg.format(module_name, i))
+            else:
+                raise AttributeError(module_not_given_msg.format(module_name, i))
+        ret_dict[i] = tmp
+
+    try:
+        if ret_dict['apilevel'][0:3] != "2.0":
+            raise NotImplementedError("Unsupported API version " +\
+              str(ret_dict['apilevel']) + ". Only DBAPI 2.0 is supported.")
+    except TypeError as e:
+        e.message = "Module's 'apilevel' value is invalid."
+        raise e
+
+    acceptable_paramstyles = ['qmark','numeric','named','format','pyformat']
+    try:
+        if ret_dict['paramstyle'] not in acceptable_paramstyles:
+            raise TypeError("Module's 'paramstyle' value is invalid.")
+    except TypeError as e:
+        raise TypeError("Module's 'paramstyle' value is invalid.")
+
+    return ret_dict
 
 class SFrame(object):
     """
@@ -2046,6 +2117,267 @@ class SFrame(object):
 
         if (not verbose):
             glconnect.get_server().set_log_progress(True)
+
+    @classmethod
+    def from_sql(cls, conn, sql_statement, params=None, type_inference_rows=100,
+        dbapi_module=None, column_type_hints=None, cursor_arraysize=128):
+        """
+        Convert the result of a SQL database query to an SFrame.
+
+        Parameters
+        ----------
+        conn : dbapi2.Connection
+          A DBAPI2 connection object. Any connection object originating from
+          the 'connect' method of a DBAPI2-compliant package can be used.
+
+        sql_statement : str
+          The query to be sent to the database through the given connection.
+          No checks are performed on the `sql_statement`. Any side effects from
+          the query will be reflected on the database.  If no result rows are
+          returned, an empty SFrame is created.
+
+        params : iterable | dict, optional
+          Parameters to substitute for any parameter markers in the
+          `sql_statement`. Be aware that the style of parameters may vary
+          between different DBAPI2 packages.
+
+        type_inference_rows : int, optional
+          The maximum number of rows to use for determining the column types of
+          the SFrame. These rows are held in Python until all column types are
+          determined or the maximum is reached.
+
+        dbapi_module : module | package, optional
+          The top-level DBAPI2 module/package that constructed the given
+          connection object. By default, a best guess of which module the
+          connection came from is made. In the event that this guess is wrong,
+          this will need to be specified.
+
+        column_type_hints : dict | list | type, optional
+          Specifies the types of the output SFrame. If a dict is given, it must
+          have result column names as keys, but need not have all of the result
+          column names. If a list is given, the length of the list must match
+          the number of result columns. If a single type is given, all columns
+          in the output SFrame will be this type. If the result type is
+          incompatible with the types given in this argument, a casting error
+          will occur.
+
+        cursor_arraysize : int, optional
+          The number of rows to fetch from the database at one time.
+
+        Returns
+        -------
+        out : SFrame
+
+        Examples
+        --------
+        >>> import sqlite3
+
+        >>> conn = sqlite3.connect('example.db')
+
+        >>> graphlab.SFrame.from_sql(conn, "SELECT * FROM foo")
+        Columns:
+                a       int
+                b       int
+        Rows: 1
+        Data:
+        +---+---+
+        | a | b |
+        +---+---+
+        | 1 | 2 |
+        +---+---+
+        [1 rows x 2 columns]
+        """
+        mod_info = _get_global_dbapi_info(dbapi_module, conn)
+        _mt._get_metric_tracker().track('sframe.from_sql',
+                properties={'module_name':mod_info['module_name']})
+
+        from .sframe_builder import SFrameBuilder
+
+        c = conn.cursor()
+        try:
+            if params is None:
+                c.execute(sql_statement)
+            else:
+                c.execute(sql_statement, params)
+        except mod_info['Error'] as e:
+            if hasattr(conn, 'rollback'):
+                conn.rollback()
+            raise e
+
+        c.arraysize = cursor_arraysize
+
+        result_desc = c.description
+        result_names = [i[0] for i in result_desc]
+        result_types = [None for i in result_desc]
+
+        # Set any types that are given to us
+        col_name_to_num = {result_names[i]:i for i in range(len(result_names))}
+        if column_type_hints is not None:
+            if type(column_type_hints) is dict:
+                for k,v in column_type_hints.iteritems():
+                    result_types[col_name_to_num[k]] = v
+            elif type(column_type_hints) is list:
+                if len(column_type_hints) != len(result_names):
+                    __LOGGER__.warn("If column_type_hints is specified as a "+\
+                        "list, it must be of the same size as the result "+\
+                        "set's number of columns. Ignoring (use dict instead).")
+                else:
+                    result_types = column_type_hints
+            elif type(column_type_hints) is type:
+                result_types = [column_type_hints for i in result_desc]
+
+        temp_vals = []
+
+        # Perform type inference by checking to see what python types are
+        # returned from the cursor
+        if not all(result_types):
+            # Only test the first fetch{one,many} command since the only way it
+            # will raise an exception is if execute didn't produce a result set
+            try:
+                row = c.fetchone()
+            except mod_info['Error'] as e:
+                if hasattr(conn, 'rollback'):
+                    conn.rollback()
+                raise e
+            while row is not None:
+                # Assumes that things like dicts are not a "single sequence"
+                temp_vals.append(row)
+                val_count = 0
+                for val in row:
+                    if result_types[val_count] is None and val is not None:
+                        result_types[val_count] = type(val)
+                    val_count += 1
+                if all(result_types) or len(temp_vals) >= type_inference_rows:
+                    break
+                row = c.fetchone()
+
+        # This will be true if some columns have all missing values up to this
+        # point. Try using DBAPI2 type_codes to pick a suitable type. If this
+        # doesn't work, fall back to string.
+        if not all(result_types):
+            inferred_types = infer_dbapi2_types(c, mod_info)
+            cnt = 0
+            for i in result_types:
+                if i is None:
+                    result_types[cnt] = inferred_types[cnt]
+                cnt += 1
+
+        sb = SFrameBuilder(result_types, column_names=result_names)
+        sb.append_multiple(temp_vals)
+        rows = c.fetchmany()
+        while len(rows) > 0:
+            sb.append_multiple(rows)
+            rows = c.fetchmany()
+        cls = sb.close()
+
+        try:
+            c.close()
+        except mod_info['Error'] as e:
+            if hasattr(conn, 'rollback'):
+                conn.rollback()
+            raise e
+        return cls
+
+    def to_sql(self, conn, table_name, dbapi_module=None,
+            use_python_type_specifiers=False, use_exact_column_names=True):
+        """
+        Convert an SFrame to a single table in a SQL database.
+
+        This function does not attempt to create the table or check if a table
+        named `table_name` exists in the database. It simply assumes that
+        `table_name` exists in the database and appends to it.
+
+        `to_sql` can be thought of as a convenience wrapper around
+        parameterized SQL insert statements.
+
+        Parameters
+        ----------
+        conn : dbapi2.Connection
+          A DBAPI2 connection object. Any connection object originating from
+          the 'connect' method of a DBAPI2-compliant package can be used.
+
+        table_name : str
+          The name of the table to append the data in this SFrame.
+
+        dbapi_module : module | package, optional
+          The top-level DBAPI2 module/package that constructed the given
+          connection object. By default, a best guess of which module the
+          connection came from is made. In the event that this guess is wrong,
+          this will need to be specified.
+
+        use_python_type_specifiers : bool, optional
+          If the DBAPI2 module's parameter marker style is 'format' or
+          'pyformat', attempt to use accurate type specifiers for each value
+          ('s' for string, 'd' for integer, etc.). Many DBAPI2 modules simply
+          use 's' for all types if they use these parameter markers, so this is
+          False by default.
+
+        use_exact_column_names : bool, optional
+          Specify the column names of the SFrame when inserting its contents
+          into the DB. If the specified table does not have the exact same
+          column names as the SFrame, inserting the data will fail. If False,
+          the columns in the SFrame are inserted in order without care of the
+          schema of the DB table. True by default.
+        """
+        mod_info = _get_global_dbapi_info(dbapi_module, conn)
+        _mt._get_metric_tracker().track('sframe.to_sql',
+                properties={'module_name':mod_info['module_name']})
+        c = conn.cursor()
+
+        col_info = zip(self.column_names(), self.column_types())
+
+        if not use_python_type_specifiers:
+            pytype_to_printf = lambda x: 's'
+
+        # DBAPI2 standard allows for five different ways to specify parameters
+        sql_param = {
+            'qmark'   : lambda name,col_num,col_type: '?',
+            'numeric' : lambda name,col_num,col_type:':'+str(col_num+1),
+            'named'   : lambda name,col_num,col_type:':'+str(name),
+            'format'  : lambda name,col_num,col_type:'%'+pytype_to_printf(col_type),
+            'pyformat': lambda name,col_num,col_type:'%('+str(name)+')'+pytype_to_printf(col_type),
+            }
+
+        get_sql_param = sql_param[mod_info['paramstyle']]
+        
+        # form insert string
+        ins_str = "INSERT INTO " + str(table_name)
+        value_str = " VALUES ("
+        col_str = " ("
+        count = 0
+        for i in col_info:
+            col_str += i[0]
+            value_str += get_sql_param(i[0],count,i[1])
+            if count < len(col_info)-1:
+                col_str += ","
+                value_str += ","
+            count += 1
+        col_str += ")"
+        value_str += ")"
+
+        if use_exact_column_names:
+            ins_str += col_str
+
+        ins_str += value_str
+
+        # Some formats require values in an iterable, some a dictionary
+        if (mod_info['paramstyle'] == 'named' or\
+            mod_info['paramstyle'] == 'pyformat'):
+          prepare_sf_row = lambda x:x
+        else:
+          col_names = self.column_names()
+          prepare_sf_row = lambda x: [x[i] for i in col_names]
+
+        for i in self:
+            try:
+                c.execute(ins_str, prepare_sf_row(i))
+            except mod_info['Error'] as e:
+                if hasattr(conn, 'rollback'):
+                    conn.rollback()
+                raise e
+
+        conn.commit()
+        c.close()
 
     def __repr__(self):
         """

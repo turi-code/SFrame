@@ -17,7 +17,7 @@ import os
 import sys
 from libcpp.string cimport string
 from cy_cpp_utils cimport str_to_cpp, cpp_to_str
-
+from .python_printer_callback import print_callback
 
 cdef extern from "<unity/server/unity_server_capi.hpp>" namespace "graphlab":
 
@@ -36,7 +36,8 @@ cdef extern from "<unity/server/unity_server_capi.hpp>" namespace "graphlab":
     void start_server(const unity_server_options& server_options)
     void* get_client()
     void stop_server()
-    void set_log_progress "graphlab::unity_server::set_log_progress"(bint enable)
+    void set_log_progress "graphlab::set_log_progress"(bint enable)
+    void set_log_progress_callback "graphlab::set_log_progress_callback" ( void (*callback)(const string&) )
         
 class GraphLabServer(object):
     """
@@ -73,6 +74,9 @@ class GraphLabServer(object):
         """ Return the logger object. """
         raise NotImplementedError
 
+cdef void print_status(const string& status_string) nogil:
+    with gil:
+        print_callback(cpp_to_str(status_string).rstrip())
 
 class EmbeddedServer(GraphLabServer):
     """
@@ -147,5 +151,10 @@ class EmbeddedServer(GraphLabServer):
     def get_logger(self):
         return self.logger
 
-    def set_log_progress(self, bint enable):
-        set_log_progress(enable)
+    def set_log_progress(self, enable):
+        if enable:
+            set_log_progress_callback(print_status)
+        else:
+            set_log_progress(False)
+
+            

@@ -50,5 +50,19 @@ EXPORT void stop_server() {
   }
 }
 
-} // end of graphlab
+EXPORT void set_log_progress_callback( void (*callback)(const std::string&) ) {
+  if (SERVER) {
+    SERVER->set_log_progress_callback(callback);
+  }
+}
 
+/**
+ * Enable or disable log progress stream.
+ */
+EXPORT void set_log_progress(bool enable) {
+  if (SERVER) {
+    SERVER->set_log_progress(enable);
+  }
+}
+
+} // end of graphlab

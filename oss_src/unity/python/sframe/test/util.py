@@ -12,6 +12,7 @@ import math
 import string
 import numpy as np
 from pandas.util.testing import assert_frame_equal
+import sqlite3
 
 from .. import SArray
 

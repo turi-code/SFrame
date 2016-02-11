@@ -16,7 +16,8 @@ namespace graphlab {
 void start_server(const unity_server_options& server_options);
 void* get_client();
 void stop_server();
-
+void set_log_progress_callback( void (*callback)(const std::string&));
+void set_log_progress(bool enable);
 } // end of graphlab
 
 

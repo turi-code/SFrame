@@ -9,6 +9,8 @@
 #include <unity/lib/unity_sframe.hpp>
 #include <unity/lib/unity_sgraph.hpp>
 #include <unity/lib/unity_sarray.hpp>
+#include <unity/lib/unity_sarray_builder.hpp>
+#include <unity/lib/unity_sframe_builder.hpp>
 #include <unity/lib/unity_sketch.hpp>
 #include <unity/lib/unity_global.hpp>
 #include <unity/lib/unity_global_singleton.hpp>
@@ -84,6 +86,12 @@ void unity_server_initializer::register_base_classes(cppipc::comm_server* server
                                           });
   server->register_type<unity_sketch_base>([](){ 
                                             return new unity_sketch();
+                                          });
+  server->register_type<unity_sarray_builder_base>([]()->graphlab::unity_sarray_builder_base* { 
+                                            return new graphlab::unity_sarray_builder();
+                                          });
+  server->register_type<graphlab::unity_sframe_builder_base>([]()->graphlab::unity_sframe_builder_base* { 
+                                            return new graphlab::unity_sframe_builder();
                                           });
   // Require unity_global singleton to be created first
   server->register_type<graphlab::unity_global_base>([=]()->std::shared_ptr<graphlab::unity_global_base> {

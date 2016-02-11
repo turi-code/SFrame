@@ -83,7 +83,8 @@ namespace fileio {
     capacity = std::min(FILEIO_INITIAL_CAPACITY_PER_FILE, maximum_capacity);
     size = 0;
     if (capacity > 0) {
-      data = new char[capacity];
+      data = (char*)malloc(capacity * sizeof(char));
+      if(!data) { throw std::bad_alloc(); }
       owning_cache_manager->increment_utilization(capacity);
     } else {
       data = NULL;
@@ -92,7 +93,7 @@ namespace fileio {
 
   void cache_block::release_memory() {
     if (data) {
-      delete[] data;
+      free(data);
       owning_cache_manager->decrement_utilization(capacity);
     }
     data = NULL;
