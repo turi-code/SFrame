@@ -13,7 +13,8 @@
 namespace graphlab {
 
 // defined in group_aggregate_value.hpp
-std::shared_ptr<group_aggregate_value> get_builtin_group_aggregator(const std::string& name) {
+std::shared_ptr<group_aggregate_value> get_builtin_group_aggregator(
+                                                const std::string& name) {
   if (name == "__builtin__sum__") {
     return std::make_shared<groupby_operators::sum>();
   } else if (name == "__builtin__vector__sum__") {
@@ -68,6 +69,10 @@ std::shared_ptr<group_aggregate_value> get_builtin_group_aggregator(const std::s
     return quantile_operator;
   } else if (boost::algorithm::starts_with(name, "__builtin__count__distinct__")) {
     return std::make_shared<groupby_operators::count_distinct>();
+  } else if (boost::algorithm::starts_with(name, "__builtin__distinct__")) {
+    return std::make_shared<groupby_operators::distinct>();
+  } else if (boost::algorithm::starts_with(name, "__builtin__freq_count__")) {
+    return std::make_shared<groupby_operators::frequency_count>();
   } else {
     log_and_throw("Unknown groupby aggregator " + name);
   }
