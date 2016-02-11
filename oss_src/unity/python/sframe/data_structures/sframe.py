@@ -2214,7 +2214,7 @@ class SFrame(object):
         col_name_to_num = {result_names[i]:i for i in range(len(result_names))}
         if column_type_hints is not None:
             if type(column_type_hints) is dict:
-                for k,v in column_type_hints.iteritems():
+                for k,v in column_type_hints.items():
                     result_types[col_name_to_num[k]] = v
             elif type(column_type_hints) is list:
                 if len(column_type_hints) != len(result_names):
@@ -2324,7 +2324,7 @@ class SFrame(object):
                 properties={'module_name':mod_info['module_name']})
         c = conn.cursor()
 
-        col_info = zip(self.column_names(), self.column_types())
+        col_info = list(zip(self.column_names(), self.column_types()))
 
         if not use_python_type_specifiers:
             pytype_to_printf = lambda x: 's'

@@ -31,7 +31,7 @@ cdef class UnitySFrameBuilderProxy:
     cdef unity_sframe_builder_proxy* thisptr
     cdef _cli
 
-    cpdef init(self, object column_types, vector[string] column_names, size_t num_segments, size_t history_size, string save_location)
+    cpdef init(self, list column_types, _column_names, size_t num_segments, size_t history_size, _save_location)
 
     cpdef append(self, row, size_t segment)
 

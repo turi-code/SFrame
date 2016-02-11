@@ -34,7 +34,7 @@ import functools
 import sys
 import mock
 import sqlite3
-from dbapi2_mock import dbapi2_mock
+from .dbapi2_mock import dbapi2_mock
 HAS_PYSPARK = True
 try:
     from pyspark import SparkContext, SQLContext
@@ -3033,12 +3033,12 @@ class SFrameTest(unittest.TestCase):
         conn.cursor.return_value = curs
         sf_type_codes = [44,44,41,22,114,199,43]
 
-        sf_data = zip(*self.all_type_cols)
+        sf_data = list(zip(*self.all_type_cols))
         sf_iter = sf_data.__iter__()
 
         def mock_fetchone():
             try:
-                return sf_iter.next()
+                return next(sf_iter)
             except StopIteration:
                 return None
 
@@ -3068,7 +3068,7 @@ class SFrameTest(unittest.TestCase):
         _assert_sframe_equal(sf, self.sf_all_types)
 
         none_col = [None for i in range(5)]
-        nones_in_cache = zip(*[none_col for i in range(len(sf_data[0]))])
+        nones_in_cache = list(zip(*[none_col for i in range(len(sf_data[0]))]))
         none_sf = SFrame({'X'+str(i):none_col for i in range(1,len(sf_data[0])+1)})
         test_data = (nones_in_cache+sf_data)
         sf_iter = test_data.__iter__()
