@@ -214,7 +214,8 @@ fi
 
 if [[ $run_toolchain_install == 1 ]]; then
         run_cleanup
-        PYTHON_VERSION=${PYTHON_VERSION} ./oss_local_scripts/install_python_toolchain.sh
+        echo `pwd`
+        PYTHON_VERSION=${PYTHON_VERSION} .\\oss_local_scripts\\install_python_toolchain.sh
         REMAINING_OPTIONS=$@
         if [[ $toolchain == default || $toolchain == "" ]]; then
                 if [[ $OSTYPE == darwin* ]]; then
