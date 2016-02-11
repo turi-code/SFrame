@@ -1,24 +1,13 @@
-/**
- * Copyright (C) 2015 Dato, Inc.
- * All rights reserved.
- *
- * This software may be modified and distributed under the terms
- * of the BSD license. See the LICENSE file for details.
- */
-#include <boost/program_options.hpp>
+#include <lambda/pylambda_worker.hpp>
 #include <cppipc/server/comm_server.hpp>
 #include <lambda/pylambda.hpp>
-#include <lambda/python_api.hpp>
 #include <shmipc/shmipc.hpp>
 #include <lambda/graph_pylambda.hpp>
 #include <logger/logger.hpp>
 #include <process/process_util.hpp>
-#include <boost/python.hpp>
 #include <util/try_finally.hpp>
 
-namespace po = boost::program_options;
-
-using namespace graphlab;
+namespace graphlab { namespace lambda {
 
 /** The main function to be called from the python ctypes library to
  *  create a pylambda worker process.
@@ -26,10 +15,11 @@ using namespace graphlab;
  *  Different error routes produce different error codes of 101 and
  *  above.
  */
-int _pylambda_worker_main(const char* _root_path, const char* _server_address, int loglevel) {
+int EXPORT pylambda_worker_main(const std::string& root_path,
+                                const std::string& server_address, int loglevel) {
 
-  /** Set up the debug configuration. 
-   *  
+  /** Set up the debug configuration.
+   *
    *  By default, all LOG_ERROR and LOG_FATAL messages are sent to
    *  stderr, and all messages above loglevel are sent to stdout.
    *
@@ -47,7 +37,7 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address, i
 
   std::string log_file_string = debug_mode_file_str ? *debug_mode_file_str :  "";
   bool log_to_file = (!log_file_string.empty());
-  
+
   bool debug_mode = (bool)(debug_mode_str);
 
   global_logger().set_log_level(loglevel);
@@ -57,7 +47,7 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address, i
   size_t this_pid = get_my_pid();
   global_logger().set_pid(this_pid);
 
-  // Set up the logging to file if needed. 
+  // Set up the logging to file if needed.
   if(log_to_file) {
     // Set up the logging to the file, with any errors being fully logged.
     global_logger().set_log_to_console(true, true);
@@ -66,7 +56,7 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address, i
     global_logger().set_log_to_console(false);
   }
 
-  // Now, set the log mode for debug   
+  // Now, set the log mode for debug
   if(debug_mode) {
     global_logger().set_log_level(LOG_DEBUG);
     if(!log_to_file) {
@@ -76,8 +66,6 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address, i
   }
 
   // Log the basic information about parameters.
-  std::string server_address = _server_address;
-  std::string root_path = _root_path;
   size_t parent_pid = get_parent_pid();
 
   LOG_DEBUG_WITH_PID("root_path = '" << root_path << "'");
@@ -88,43 +76,11 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address, i
 
     LOG_DEBUG_WITH_PID("Library function entered successfully.");
 
-    // Whenever this is set, it must be restored upon return to python. 
-    PyThreadState *python_gil_thread_state = nullptr;
-    scoped_finally gil_restorer([&](){
-        if(python_gil_thread_state != nullptr) {
-          LOG_DEBUG_WITH_PID("Restoring GIL thread state.");
-          PyEval_RestoreThread(python_gil_thread_state);
-          LOG_DEBUG_WITH_PID("GIL thread state restored.");
-          python_gil_thread_state = nullptr;
-        }
-      });
-    
-    try {
-
-      LOG_DEBUG_WITH_PID("Attempting to initialize python.");
-      graphlab::lambda::init_python(root_path);
-      LOG_DEBUG_WITH_PID("Python initialized successfully.");
-    
-    } catch (const std::string& error) {
-      logstream(LOG_ERROR) << this_pid << ": "
-                           << "Failed to initialize python (internal exception): " << error << std::endl;
-      return 101;
-    } catch (const std::exception& e) {
-      logstream(LOG_ERROR) << this_pid << ": "
-                           << "Failed to initialize python: " << e.what() << std::endl;
-      return 102;
-    }
-
     if(server_address == "debug") {
       logstream(LOG_INFO) << "Exiting dry run." << std::endl;
-      return 1; 
+      return 1;
     }
 
-    // Now, release the gil and continue. 
-    python_gil_thread_state = PyEval_SaveThread();
-
-    LOG_DEBUG_WITH_PID("Python GIL released.");
-    
     graphlab::shmipc::server shm_comm_server;
     bool has_shm = shm_comm_server.bind();
 
@@ -171,10 +127,5 @@ int _pylambda_worker_main(const char* _root_path, const char* _server_address, i
   }
 }
 
-// This one has to be accessible from python's ctypes.  
-extern "C" {
-  int EXPORT pylambda_worker_main(const char* _root_path, const char* _server_address, int loglevel) {
-    return _pylambda_worker_main(_root_path, _server_address, loglevel);
-  }
-}
+}}
 

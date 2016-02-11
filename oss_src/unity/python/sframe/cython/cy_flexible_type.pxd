@@ -105,9 +105,7 @@ cpdef type pytype_from_dtype(object dt)
 cdef flex_type_enum flex_type_from_dtype(object dt)
 cpdef type pytype_from_array_typecode(str a)
 
-cdef flex_type_enum infer_common_type_of_flex_list(const flex_list& fl, bint undefined_on_error = ?)
 cpdef type infer_type_of_list(list l)
-cdef flex_type_enum infer_flex_type_of_sequence(object l, bint undefined_on_error = ?) except *
 cpdef type infer_type_of_sequence(object t)
 
 #/**************************************************************************/
@@ -120,6 +118,7 @@ cdef gl_options_map gl_options_map_from_pydict(dict) except *
 cdef flex_list common_typed_flex_list_from_iterable(object, flex_type_enum* common_type) except *
 cdef flex_list flex_list_from_iterable(object) except *
 cdef flex_list flex_list_from_typed_iterable(object, flex_type_enum t, bint ignore_cast_failure) except *
+cdef process_common_typed_list(flexible_type* out_ptr, list v, flex_type_enum common_type)
 
 #/**************************************************************************/
 #/*                                                                        */

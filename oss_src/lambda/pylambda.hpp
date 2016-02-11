@@ -9,25 +9,107 @@
 #define GRAPHLAB_LAMBDA_PYLAMBDA_EVALUATOR_HPP
 #include <lambda/lambda_interface.hpp>
 #include <flexible_type/flexible_type.hpp>
+#include <python_callbacks/python_callbacks.hpp>
 #include <parallel/pthread_tools.hpp>
 #include <string>
 
-// Forward delcaration
-namespace boost {
-  namespace python {
-    namespace api {
-      class object;
-    }
-  }
+namespace graphlab {
+
+namespace shmipc {
+class server;
 }
 
-namespace graphlab {
-namespace shmipc {
-  class server;
-}
 class sframe_rows;
 
 namespace lambda {
+
+/** The data used in the common call type.
+ */
+struct lambda_call_data {
+  flex_type_enum output_enum_type = flex_type_enum::UNDEFINED;
+  bool skip_undefined = false;
+
+  // It's the responsibility of the calling class to make sure these
+  // are valid.  input_values and output_values must point to storage
+  // of at least n_inputs values.
+  const flexible_type* input_values = nullptr;
+  flexible_type* output_values = nullptr;
+  size_t n_inputs = 0;
+};
+
+/** The data used in the call by dict call type.
+ */
+struct lambda_call_by_dict_data {
+  flex_type_enum output_enum_type = flex_type_enum::UNDEFINED;
+  bool skip_undefined = false;
+
+  // It's the responsibility of the calling class to make sure these
+  // are valid.  output_values must point to storage
+  // of at least input_rows->size() values.
+  const std::vector<std::string>* input_keys = nullptr;
+  const std::vector<std::vector<flexible_type> >* input_rows = nullptr;
+  flexible_type* output_values = nullptr;
+};
+
+/** The data used in the call by sframe rows call type.
+ */
+struct lambda_call_by_sframe_rows_data {
+  flex_type_enum output_enum_type = flex_type_enum::UNDEFINED;
+  bool skip_undefined = false;
+
+  const std::vector<std::string>* input_keys = nullptr;
+  const sframe_rows* input_rows = nullptr;
+  flexible_type* output_values = nullptr;
+};
+
+/** The data used in applying a graph triple apply.
+ */
+struct lambda_graph_triple_apply_data {
+
+  const std::vector<std::vector<flexible_type> >* all_edge_data;
+  std::vector<std::vector<flexible_type> >* out_edge_data;
+
+  std::vector<std::vector<flexible_type> >* source_partition;
+  std::vector<std::vector<flexible_type> >* target_partition; 
+
+        
+  const std::vector<std::string>* vertex_keys;
+  const std::vector<std::string>* edge_keys;
+  const std::vector<std::string>* mutated_edge_keys;
+  size_t srcid_column, dstid_column;
+};
+
+
+struct pylambda_evaluation_functions {
+  void (*set_random_seed)(size_t seed);
+  size_t (*init_lambda)(const std::string&);
+  void (*release_lambda)(size_t);
+  void (*eval_lambda)(size_t, lambda_call_data*);
+  void (*eval_lambda_by_dict)(size_t, lambda_call_by_dict_data*);
+  void (*eval_lambda_by_sframe_rows)(size_t, lambda_call_by_sframe_rows_data*);
+  void (*eval_graph_triple_apply)(size_t, lambda_graph_triple_apply_data*);  
+};
+
+/** This is called through the cython functions to set up the
+ *  evaluation function interface.
+ */
+void set_pylambda_evaluation_functions(pylambda_evaluation_functions* eval_function_struct);
+
+extern pylambda_evaluation_functions evaluation_functions;
+  
+/**
+ * Creates a lambda from a pickled lambda string.
+ *
+ * Throws an exception if the construction failed.
+ */
+size_t make_lambda(const std::string& pylambda_str);
+
+/**
+ * Release the cached lambda object
+ */
+void release_lambda(size_t lambda_hash);
+
+
 /**
  * \ingroup lambda
  *
@@ -54,56 +136,10 @@ class pylambda_evaluator : public lambda_evaluator_interface {
    */
   inline pylambda_evaluator(graphlab::shmipc::server* shared_memory_server = nullptr) { 
     m_shared_memory_server = shared_memory_server;
-    m_current_lambda_hash = (size_t)(-1); 
   };
 
   ~pylambda_evaluator();
 
-  /**
-   * Sets the internal lambda from a pickled lambda string.
-   *
-   * Throws an exception if the construction failed.
-   */
-  size_t make_lambda(const std::string& pylambda_str);
-
-  /**
-   * Release the cached lambda object
-   */
-  void release_lambda(size_t lambda_hash);
-
-  /**
-   * Evaluate the lambda function on each argument separately in the args list.
-   */
-  std::vector<flexible_type> bulk_eval(size_t lambda_hash, const std::vector<flexible_type>& args, bool skip_undefined, int seed);
-
-  /**
-   * \overload
-   *
-   * We have to use different function name because
-   * the cppipc interface doesn't support true overload
-   */
-  std::vector<flexible_type> bulk_eval_rows(size_t lambda_hash,
-      const sframe_rows& values, bool skip_undefined, int seed); 
-
-  /**
-   * Evaluate the lambda function on each element separately in the values.
-   * The value element is combined with the keys to form a dictionary argument. 
-   */
-  std::vector<flexible_type> bulk_eval_dict(size_t lambda_hash,
-      const std::vector<std::string>& keys,
-      const std::vector<std::vector<flexible_type>>& values,
-      bool skip_undefined, int seed);
-
-  /**
-   * \overload
-   *
-   * We have to use different function name because
-   * the cppipc interface doesn't support true overload
-   */
-  std::vector<flexible_type> bulk_eval_dict_rows(size_t lambda_hash,
-      const std::vector<std::string>& keys,
-      const sframe_rows& values,
-      bool skip_undefined, int seed);
 
   /**
    * Initializes shared memory communication via SHMIPC.
@@ -117,6 +153,19 @@ class pylambda_evaluator : public lambda_evaluator_interface {
   void set_lambda(size_t lambda_hash);
 
   /**
+   * Creates a lambda from a pickled lambda string.
+   *
+   * Throws an exception if the construction failed.
+   */
+  size_t make_lambda(const std::string& pylambda_str);
+
+  /**
+   * Release the cached lambda object
+   */
+  void release_lambda(size_t lambda_hash);
+
+  
+  /**
    * Apply as a function: flexible_type -> flexible_type,
    *
    * \note: this function does not perform type check and exception could be thrown
@@ -125,6 +174,40 @@ class pylambda_evaluator : public lambda_evaluator_interface {
    */
   flexible_type eval(size_t lambda_hash, const flexible_type& arg);
 
+  /**
+   * Evaluate the lambda function on each argument separately in the args list.
+   */
+  std::vector<flexible_type> bulk_eval(size_t lambda_hash, const std::vector<flexible_type>& args,
+                                       bool skip_undefined, int seed);
+
+  /**
+   * \overload
+   *
+   * We have to use different function name because
+   * the cppipc interface doesn't support true overload
+   */
+  std::vector<flexible_type> bulk_eval_rows(size_t lambda_hash,
+                                            const sframe_rows& values, bool skip_undefined, int seed);
+
+  /**
+   * Evaluate the lambda function on each element separately in the values.
+   * The value element is combined with the keys to form a dictionary argument. 
+   */
+  std::vector<flexible_type> bulk_eval_dict(size_t lambda_hash,
+                                            const std::vector<std::string>& keys,
+                                            const std::vector<std::vector<flexible_type>>& values,
+                                            bool skip_undefined, int seed);
+
+  /**
+   * We have to use different function name because
+   * the cppipc interface doesn't support true overload
+   */
+  std::vector<flexible_type> bulk_eval_dict_rows(size_t lambda_hash,
+                                                 const std::vector<std::string>& keys,
+                                                 const sframe_rows& values,
+                                                 bool skip_undefined, int seed);
+
+  
   /**
    * Redirects to either bulk_eval_rows or bulk_eval_dict_rows.
    * First byte in the string is a bulk_eval_serialized_tag byte to denote
@@ -135,16 +218,14 @@ class pylambda_evaluator : public lambda_evaluator_interface {
    */
   std::vector<flexible_type> bulk_eval_rows_serialized(const char* ptr, size_t len);
 
-  /**
-   * The unpickled python lambda object.
-   */
-  boost::python::api::object* m_current_lambda = NULL;
-  std::map<size_t, boost::python::api::object*> m_lambda_hash;
-  size_t m_current_lambda_hash;
   graphlab::shmipc::server* m_shared_memory_server;
   graphlab::thread m_shared_memory_listener;
   volatile bool m_shared_memory_thread_terminating = false;
 };
 } // end of lambda namespace
 } // end of graphlab namespace
+
+
+
+
 #endif

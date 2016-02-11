@@ -121,8 +121,11 @@ AnySequence: Any of the above.
 # performance reasons.
 
 #!python
-#cython: boundscheck=False cython:
+#cython: boundscheck=False
 #cython: always_allow_keywords=False
+#cython: c_string_encoding='ascii'
+#cython: c_string_type=str
+#cython: wraparound=False
 
 cimport cython
 from cython.operator cimport dereference as deref
@@ -130,11 +133,8 @@ from cython.operator cimport preincrement as inc
 from libcpp cimport bool as cbool
 from cpython cimport array
 
-from ..data_structures import image
-
 from cpython.ref cimport PyObject, PyTypeObject
 import itertools
-from ..util import timezone
 import datetime
 import calendar
 import collections
@@ -160,8 +160,6 @@ ctypedef unsigned long ulong
 ctypedef long long longlong
 ctypedef unsigned long long ulonglong
 ctypedef PyObject* object_ptr
-cdef type array_type = array.array
-cdef type datetime_type = datetime.datetime
 
 # For fast checking of, e.g. numpy buffers or the like
 cdef extern from "Python.h":
@@ -171,14 +169,78 @@ cdef extern from "Python.h":
 cdef extern from "math.h":
     double NAN
 
-###### Enum stuff
+###### Date time stuff
 DEF _NUM_FLEX_TYPES = 9
 
-# Have to explicitly init the cython datetime support at module load.
-# import_datetime()
+from datetime import tzinfo
+from datetime import timedelta
 
-# A few types that are hard-bound here.
-cdef object _image_type = image.Image
+class GMT(tzinfo):
+    __slots__ = ['offset']
+
+    def __init__(self,ofs=None):
+        if(ofs is None):
+          self.offset = 0;
+        else:
+          self.offset = ofs
+    def utcoffset(self, dt):
+        return timedelta(minutes=self.offset * 60)
+    def dst(self, dt):
+        return timedelta(seconds=0)
+    def tzname(self,dt):
+        if(self.offset >= 0):
+            return "GMT +"+str(self.offset)
+        elif(self.offset < 0):
+            return "GMT "+str(self.offset)
+    def __str__(self):
+        return self.tzname(self.offset)
+    def  __repr__(self):
+        return self.tzname(self.offset)
+
+
+################################################################################
+# Some specific types require specific handling between python 2 and
+# python 3, namely string and unicode types.
+
+from cpython.version cimport PY_MAJOR_VERSION
+
+cdef bint is_python_3 = (PY_MAJOR_VERSION >= 3)
+
+cdef type unicode_type, string_type, xrange_type, array_type, datetime_type, none_type
+
+if is_python_3:
+    unicode_type            = str
+    string_type             = bytes
+    xrange_type             = range
+else:
+    unicode_type            = types.UnicodeType
+    string_type             = types.StringType
+    xrange_type             = types.XRangeType
+
+array_type    = array.array
+datetime_type = datetime.datetime
+none_type     = type(None)
+
+
+################################################################################
+# In some contexts, we need to be able to use the
+
+cdef object _image_type
+cdef bint have_imagetype
+
+class __bad_image(object):
+    def __init__(*args, **kwargs):
+        raise TypeError("Image type not supported outside of full sframe/graphlab package.")
+
+try:
+    from ..data_structures import image
+    _image_type = image.Image
+    have_imagetype = True
+except Exception:  # relative import can raise ValueError or
+                   #ImportError, so catch anything
+    have_imagetype = False
+    _image_type = __bad_image
+
 
 # Get the appropriate type mappings of things
 DEF FT_INT_TYPE       = 0
@@ -204,36 +266,35 @@ DEF FT_FAILURE = 2*FT_LARGEST + 1
 cdef map[object_ptr, int] _code_by_type_lookup = map[object_ptr, int]()
 
 # Ids in this case are known to be unique
-_code_by_type_lookup[<object_ptr>(types.DictType)]          = FT_DICT_TYPE
-_code_by_type_lookup[<object_ptr>(types.DictProxyType)]     = FT_DICT_TYPE + FT_SAFE
-_code_by_type_lookup[<object_ptr>(types.FloatType)]         = FT_FLOAT_TYPE
-_code_by_type_lookup[<object_ptr>(types.GeneratorType)]     = FT_LIST_TYPE + FT_SAFE
-_code_by_type_lookup[<object_ptr>(types.IntType)]           = FT_INT_TYPE
-_code_by_type_lookup[<object_ptr>(types.BooleanType)]       = FT_INT_TYPE  + FT_SAFE
-_code_by_type_lookup[<object_ptr>(types.ListType)]          = FT_LIST_TYPE
-_code_by_type_lookup[<object_ptr>(types.LongType)]          = FT_INT_TYPE  + FT_SAFE
-_code_by_type_lookup[<object_ptr>(types.NoneType)]          = FT_NONE_TYPE
-_code_by_type_lookup[<object_ptr>(types.StringType)]        = FT_STR_TYPE
-_code_by_type_lookup[<object_ptr>(types.TupleType)]         = FT_TUPLE_TYPE
-_code_by_type_lookup[<object_ptr>(types.UnicodeType)]       = FT_UNICODE_TYPE
-_code_by_type_lookup[<object_ptr>(array_type)]              = FT_ARRAY_TYPE
-_code_by_type_lookup[<object_ptr>(types.XRangeType)]        = FT_LIST_TYPE + FT_SAFE
-_code_by_type_lookup[<object_ptr>(datetime_type)]           = FT_DATETIME_TYPE
-_code_by_type_lookup[<object_ptr>(_image_type)]             = FT_IMAGE_TYPE
+_code_by_type_lookup[<object_ptr>(dict)]                = FT_DICT_TYPE
+_code_by_type_lookup[<object_ptr>(float)]               = FT_FLOAT_TYPE
+_code_by_type_lookup[<object_ptr>(types.GeneratorType)] = FT_LIST_TYPE + FT_SAFE
+_code_by_type_lookup[<object_ptr>(int)]                 = FT_INT_TYPE
+_code_by_type_lookup[<object_ptr>(bool)]                = FT_INT_TYPE  + FT_SAFE
+_code_by_type_lookup[<object_ptr>(list)]                = FT_LIST_TYPE
+_code_by_type_lookup[<object_ptr>(long)]                = FT_INT_TYPE  + FT_SAFE
+_code_by_type_lookup[<object_ptr>(none_type)]           = FT_NONE_TYPE
+_code_by_type_lookup[<object_ptr>(string_type)]         = FT_STR_TYPE
+_code_by_type_lookup[<object_ptr>(tuple)]               = FT_TUPLE_TYPE
+_code_by_type_lookup[<object_ptr>(unicode_type)]        = FT_UNICODE_TYPE
+_code_by_type_lookup[<object_ptr>(array_type)]          = FT_ARRAY_TYPE
+_code_by_type_lookup[<object_ptr>(xrange_type)]         = FT_LIST_TYPE + FT_SAFE
+_code_by_type_lookup[<object_ptr>(datetime_type)]       = FT_DATETIME_TYPE
+_code_by_type_lookup[<object_ptr>(_image_type)]         = FT_IMAGE_TYPE
 
 
 cdef map[object_ptr, int] _code_by_map_force = map[object_ptr, int]()
 
-_code_by_map_force[<object_ptr>(types.IntType)]    = FT_INT_TYPE       + FT_SAFE
-_code_by_map_force[<object_ptr>(types.LongType)]   = FT_INT_TYPE       + FT_SAFE
-_code_by_map_force[<object_ptr>(types.FloatType)]  = FT_FLOAT_TYPE     + FT_SAFE
-_code_by_map_force[<object_ptr>(types.StringType)] = FT_STR_TYPE       + FT_SAFE
-_code_by_map_force[<object_ptr>(array_type)]       = FT_ARRAY_TYPE     + FT_SAFE
-_code_by_map_force[<object_ptr>(types.ListType)]   = FT_LIST_TYPE      + FT_SAFE
-_code_by_map_force[<object_ptr>(types.DictType)]   = FT_DICT_TYPE      + FT_SAFE
-_code_by_map_force[<object_ptr>(datetime_type)]    = FT_DATETIME_TYPE  + FT_SAFE
-_code_by_map_force[<object_ptr>(types.NoneType)]   = FT_NONE_TYPE
-_code_by_map_force[<object_ptr>(_image_type)]      = FT_IMAGE_TYPE     + FT_SAFE
+_code_by_map_force[<object_ptr>(int)]           = FT_INT_TYPE       + FT_SAFE
+_code_by_map_force[<object_ptr>(long)]          = FT_INT_TYPE       + FT_SAFE
+_code_by_map_force[<object_ptr>(float)]         = FT_FLOAT_TYPE     + FT_SAFE
+_code_by_map_force[<object_ptr>(str)]           = FT_STR_TYPE       + FT_SAFE
+_code_by_map_force[<object_ptr>(array_type)]    = FT_ARRAY_TYPE     + FT_SAFE
+_code_by_map_force[<object_ptr>(list)]          = FT_LIST_TYPE      + FT_SAFE
+_code_by_map_force[<object_ptr>(dict)]          = FT_DICT_TYPE      + FT_SAFE
+_code_by_map_force[<object_ptr>(datetime_type)] = FT_DATETIME_TYPE  + FT_SAFE
+_code_by_map_force[<object_ptr>(none_type)]     = FT_NONE_TYPE
+_code_by_map_force[<object_ptr>(_image_type)]   = FT_IMAGE_TYPE     + FT_SAFE
 
 cdef dict _code_by_name_lookup = {
     'string'   : FT_STR_TYPE     + FT_SAFE,
@@ -334,7 +395,7 @@ cdef map[object_ptr, int] _code_by_forced_type = map[object_ptr, int]()
 # These ids are unique
 _code_by_forced_type[<object_ptr>(dict)]           = FT_DICT_TYPE     + FT_SAFE
 _code_by_forced_type[<object_ptr>(list)]           = FT_LIST_TYPE     + FT_SAFE
-_code_by_forced_type[<object_ptr>(types.NoneType)] = FT_NONE_TYPE     + FT_SAFE
+_code_by_forced_type[<object_ptr>(none_type)]      = FT_NONE_TYPE     + FT_SAFE
 _code_by_forced_type[<object_ptr>(datetime_type)]  = FT_DATETIME_TYPE + FT_SAFE
 _code_by_forced_type[<object_ptr>(array_type)]     = FT_BUFFER_TYPE
 _code_by_forced_type[<object_ptr>(str)]            = FT_STR_TYPE      + FT_SAFE
@@ -343,14 +404,14 @@ _code_by_forced_type[<object_ptr>(str)]            = FT_STR_TYPE      + FT_SAFE
 # Enum type only.
 
 cdef list _type_lookup_by_type_enum = [None] * (_NUM_FLEX_TYPES)
-_type_lookup_by_type_enum[<int>INTEGER]   = types.IntType
-_type_lookup_by_type_enum[<int>FLOAT]     = types.FloatType
-_type_lookup_by_type_enum[<int>STRING]    = types.StringType
+_type_lookup_by_type_enum[<int>INTEGER]   = int
+_type_lookup_by_type_enum[<int>FLOAT]     = float
+_type_lookup_by_type_enum[<int>STRING]    = str
 _type_lookup_by_type_enum[<int>VECTOR]    = array_type
-_type_lookup_by_type_enum[<int>LIST]      = types.ListType
-_type_lookup_by_type_enum[<int>DICT]      = types.DictType
+_type_lookup_by_type_enum[<int>LIST]      = list
+_type_lookup_by_type_enum[<int>DICT]      = dict
 _type_lookup_by_type_enum[<int>DATETIME]  = datetime_type
-_type_lookup_by_type_enum[<int>UNDEFINED] = types.NoneType
+_type_lookup_by_type_enum[<int>UNDEFINED] = none_type
 _type_lookup_by_type_enum[<int>IMAGE]     = _image_type
 
 cdef type pytype_from_flex_type_enum(flex_type_enum e):
@@ -522,8 +583,8 @@ ctypedef fused _listlike:
 
 cdef int _listlike_can_be_vector(_listlike v, vector[int]* tr_code_buffer = NULL):
     cdef int tr_code
-    cdef long i
-    cdef long n = len(v)
+    cdef size_t i
+    cdef size_t n = len(v)
 
     if tr_code_buffer != NULL:
         tr_code_buffer[0].assign(n, -1)
@@ -561,8 +622,8 @@ cdef int _listlike_can_be_vector(_listlike v, vector[int]* tr_code_buffer = NULL
     return True
 
 cdef inline bint _flex_list_can_be_vector(const flex_list& v):
-    cdef long i
-    cdef long n = v.size()
+    cdef size_t i
+    cdef size_t n = v.size()
 
     for i in range(n):
         if not flex_type_is_vector_implicit_castable(v[i].get_type()):
@@ -836,7 +897,7 @@ cdef flex_type_enum _infer_common_type_of_listlike(_listlike vl, bint undefined_
     """
 
     cdef size_t seen_types = 0, tc
-    cdef long i
+    cdef size_t i
     cdef int tr_code
 
     if tr_code_buffer != NULL:
@@ -1006,10 +1067,10 @@ cdef inline fill_list(flex_list& retl, _listlike v,
     """
     Fills a list.  If common_type is not NULL, then a common type
     for the list is expected, and the result is stored in common_type[0].
-    If tr_code_buffer is not null, then common types are taken from that
+    If tr_code_buffer is not null, then the translation codes are taken from that.
     """
 
-    cdef long i
+    cdef size_t i
     cdef int tr_code = -1
     cdef size_t seen_types = 0
     cdef flexible_type alt_ft
@@ -1057,41 +1118,32 @@ cdef inline fill_list(flex_list& retl, _listlike v,
 
 
 @cython.boundscheck(False)
-cdef inline fill_typed_list(flex_list& retl, _listlike v,
-                            flex_type_enum common_type,
-                            bint ignore_translation_errors):
-    """
-    Fills a list, casting all elements to the common type.  Anything that
-    cannot be losslessly translated is ignored.
-    """
+cdef inline long _fill_typed_sequence(flexible_type* retl, _listlike v,
+                                 flex_type_enum common_type,
+                                 bint ignore_translation_errors) except -1:
 
-    assert common_type != UNDEFINED
 
     cdef int tr_code = -1
-    cdef size_t seen_types
     cdef flexible_type ft
 
     if len(v) == 0:
-        retl.clear()
-        return
+        return 0
 
-    retl.resize(len(v))
-
-    cdef long i
-    cdef long write_pos = 0
+    cdef size_t i
+    cdef size_t write_pos = 0
     cdef bint success
     cdef bint error_occured
 
     for i in range(len(v)):
-        ft = _ft_translate(v[i], get_translation_code(type(v[i]), v[i]))
+        retl[write_pos] = _ft_translate(v[i], get_translation_code(type(v[i]), v[i]))
 
-        if ft.get_type() != common_type:
+        if common_type != UNDEFINED and retl[write_pos].get_type() != common_type:
 
             # UNDEFINED gets a free pass.
-            if ft.get_type() == UNDEFINED:
-                retl[write_pos] = FLEX_UNDEFINED
+            if retl[write_pos].get_type() == UNDEFINED:
                 success = True
             else:
+                ft = retl[write_pos]
                 retl[write_pos] = flexible_type(common_type)
 
                 try:
@@ -1108,13 +1160,38 @@ cdef inline fill_typed_list(flex_list& retl, _listlike v,
                         "Type " + flex_type_enum_to_name(ft.get_type())
                          + " cannot be cast to type " + flex_type_enum_to_name(common_type))
 
-        else:
-            retl[write_pos] = ft
-
         write_pos += 1
 
-    if write_pos != len(v):
-        retl.resize(write_pos)
+    return write_pos
+
+
+@cython.boundscheck(False)
+cdef inline fill_typed_list(flex_list& retl, _listlike v,
+                            flex_type_enum common_type,
+                            bint ignore_translation_errors):
+    """
+    Fills a list, casting all elements to the common type.  Anything that
+    cannot be losslessly translated is ignored.
+    """
+
+    cdef size_t out_len = len(v)
+    retl.resize(out_len)
+
+    cdef size_t new_size = _fill_typed_sequence(&(retl[0]), v, common_type, ignore_translation_errors)
+
+    if new_size != out_len:
+        retl.resize(new_size)
+
+
+
+cdef process_common_typed_list(flexible_type* out_ptr, list v, flex_type_enum common_type):
+    """
+    External wrapper to the list filling function.
+
+    If common_type is UNDEFINED, then no processing is done.
+    """
+    _fill_typed_sequence(out_ptr, v, common_type, False);
+
 
 @cython.boundscheck(False)
 cdef inline tr_listlike_to_ft(flexible_type& ret, _listlike v, flex_type_enum* common_type = NULL):
@@ -1146,7 +1223,7 @@ cdef inline tr_datetime64_to_ft(flexible_type& ret, v):
     # Since flexible type datetime only goes down to microseconds, convert to
     # this. If higher resolution, this will truncate values
     cdef object as_py_datetime = v.astype('M8[us]').astype('O')
-    as_py_datetime = as_py_datetime.replace(tzinfo=timezone.GMT(0))
+    as_py_datetime = as_py_datetime.replace(tzinfo=GMT(0))
     tr_datetime_to_ft(ret, as_py_datetime)
 
 
@@ -1156,7 +1233,7 @@ cdef inline tr_datetime64_to_ft(flexible_type& ret, v):
 cdef tr_dict_to_ft(flexible_type& ret, dict d):
     cdef flex_dict _ft_dict
     _ft_dict.resize(len(d))
-    cdef long i = 0
+    cdef size_t i = 0
 
     for k, v in d.iteritems():
         _ft_dict[i].first = flexible_type_from_pyobject(k)
@@ -1191,7 +1268,7 @@ cdef inline bint __try_buffer_type_vec(flex_vec& retv, object v, _numeric t):
     except:
         return False
 
-    cdef long i
+    cdef size_t i
     retv.resize(len(buf))
     for i in range(len(buf)):
         retv[i] = <flex_float>(buf[i])
@@ -1314,7 +1391,7 @@ cdef flexible_type _ft_translate(object v, int tr_code) except *:
         if type(v) is str:
             ret.set_string(<str>v)
         else:
-            ret.set_string(str(v))
+            ret.set_string(v)
         return ret
     elif tr_code == (FT_UNICODE_TYPE + FT_SAFE):
         if type(v) is unicode:
@@ -1394,7 +1471,7 @@ cdef flexible_type flexible_type_from_pyobject(object v) except *:
 
 @cython.boundscheck(False)
 cdef inline array.array[double] pyvec_from_flex_vec(const flex_vec& fv):
-    cdef long n = fv.size()
+    cdef size_t n = fv.size()
     cdef array.array[double] ret = array.array('d')
     array.extend_buffer(ret, <char*>fv.data(), n)
     return ret
@@ -1405,7 +1482,7 @@ cdef list pylist_from_flex_list(const flex_list& vec):
     Converting vector[flexible_type] to list
     """
     cdef list ret = [None]*vec.size()
-    cdef long i
+    cdef size_t i
 
     for i in range(vec.size()):
         ret[i] = pyobject_from_flexible_type(vec[i])
@@ -1414,9 +1491,9 @@ cdef list pylist_from_flex_list(const flex_list& vec):
 
 
 cdef inline dict pydict_from_flex_dict(const flex_dict& fd):
-    cdef long n = fd.size()
+    cdef size_t n = fd.size()
     cdef dict ret = {}
-    cdef long i
+    cdef size_t i
 
     cdef object first, second
 
@@ -1439,7 +1516,7 @@ cdef inline pyimage_from_image(const flex_image& c_image):
         assert c_image_data != NULL, "image_data is Null"
         image_data =  <bytearray> c_image_data[:c_image.m_image_data_size]
 
-    ret = image.Image(_image_data = image_data, _height = c_image.m_height,
+    ret = _image_type(_image_data = image_data, _height = c_image.m_height,
                       _width = c_image.m_width, _channels = c_image.m_channels,
                       _image_data_size = c_image.m_image_data_size,
                       _version = <int>c_image.m_version, _format_enum = <int>c_image.m_format)
@@ -1449,8 +1526,8 @@ cdef inline pyimage_from_image(const flex_image& c_image):
 cdef inline pydatetime_from_flex_datetime(const pflex_date_time& dt, int us):
     utc = datetime.datetime(1970,1,1) + datetime.timedelta(seconds=dt.first, microseconds=us)
     if dt.second != EMPTY_TIMEZONE:
-        to_zone = timezone.GMT(dt.second * TIMEZONE_RESOLUTION_IN_HOURS)
-        utc = utc.replace(tzinfo=timezone.GMT(0))
+        to_zone = GMT(dt.second * TIMEZONE_RESOLUTION_IN_HOURS)
+        utc = utc.replace(tzinfo=GMT(0))
         return utc.astimezone(to_zone)
     else:
         return utc
@@ -1499,11 +1576,10 @@ cdef dict pydict_from_gl_options_map(const gl_options_map& m):
     Converting  map[string, flexible_type] into python dict
     """
     cdef dict ret = {}
-
     cdef options_map_iter it = <options_map_iter>m.begin()
 
     while it != <options_map_iter>m.end():
-        ret[deref(it).first] = pyobject_from_flexible_type(deref(it).second)
+        ret[deref(it).first.decode()] = pyobject_from_flexible_type(deref(it).second)
         inc(it)
 
     return ret
@@ -1516,7 +1592,9 @@ cdef gl_options_map gl_options_map_from_pydict(dict d) except *:
     cdef gl_options_map ret
 
     for k,v in d.iteritems():
-        ret[str(k)] = flexible_type_from_pyobject(v)
+        if PY_MAJOR_VERSION <= 2 and type(k) is not str:
+            k = str(k)
+        ret[k] = flexible_type_from_pyobject(v)
 
     return ret
 
@@ -1565,7 +1643,7 @@ cdef inline bint __try_buffer_typed_list(flex_list& retl, object v, _numeric n,
                     raise TypeError("Float type cannot be cast to type "
                                     + flex_type_enum_to_name(common_type))
 
-    cdef long i
+    cdef size_t i
 
     retl.resize(len(buf))
     for i in range(len(buf)):
@@ -1804,7 +1882,7 @@ def _get_inferred_column_type(list v):
 
         return pytype_from_flex_type_enum(ft), pylist_from_flex_list(vl)
     else:
-        return type(None), None
+        return none_type, None
 
 
 def _all_convertable(type t, list v):

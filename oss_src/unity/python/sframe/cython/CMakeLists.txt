@@ -13,13 +13,13 @@ endfunction()
 
 add_custom_target(cython_targets ALL)
 file(GLOB cython_sources RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.pyx")
+
 foreach(source ${cython_sources})
   set(target "")
   string(REPLACE ".pyx" "" target ${source})
   cython_add_graphlab_module2(${target} ${source})
   add_dependencies(cython_targets ${target})
 endforeach()
-
 
 ADD_CUSTOM_TARGET (oss_clean_cython)
 ADD_CUSTOM_COMMAND(

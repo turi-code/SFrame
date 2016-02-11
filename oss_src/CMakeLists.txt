@@ -32,6 +32,7 @@ subdirs(
   sframe
   sgraph
   luastate
+  python_callbacks
   lambda
   graph
   lazy_eval
