@@ -14,7 +14,7 @@ else:
 import json
 import logging
 import os
-import re
+import fnmatch
 import tempfile
 import unittest
 import pandas
@@ -43,9 +43,9 @@ def _test_save_load_object_helper(testcase, obj, path):
         Remove the saved file from temp directory.
         """
         tempdir = tempfile.gettempdir()
-        pattern = path + ".*"
+        pattern = path + "*"
         for f in os.listdir(tempdir):
-            if re.search(pattern, f):
+            if fnmatch.fnmatch(pattern, f):
                 os.remove(os.path.join(tempdir, f))
 
     def assert_same_elements(x, y):
