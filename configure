@@ -4,7 +4,7 @@
 set -e
 RELEASE_DIR=release
 DEBUG_DIR=debug
-GRAPHLAB_HOME=$PWD
+GRAPHLAB_HOME=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 DEPS_PREFIX=$PWD/deps/local
 
 if [[ $OSTYPE == linux* ]]; then
@@ -215,8 +215,7 @@ fi
 if [[ $run_toolchain_install == 1 ]]; then
         run_cleanup
 
-        SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-        cd ${SCRIPT_DIR}
+        cd ${GRAPHLAB_HOME}
         PYTHON_VERSION=${PYTHON_VERSION} ./oss_local_scripts/install_python_toolchain.sh
 
         REMAINING_OPTIONS=$@
