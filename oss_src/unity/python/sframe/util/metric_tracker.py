@@ -7,31 +7,20 @@ of the BSD license. See the LICENSE file for details.
 '''
 from config import DEFAULT_CONFIG as CONFIG
 from metric_mock import MetricMock
+from sys_info import get_distinct_id, get_sys_info, get_version, get_isgpu, get_build_number
 
 # metrics libraries
 import mixpanel
 
 import Queue
 import logging
-import os
-import platform
 import pprint
 import threading
-import uuid
 import copy as _copy
 import requests as _requests
-import sys
 import urllib as _urllib
-from ..version_info import *
 __ALL__ = [ 'MetricTracker' ]
 
-try:
-  from .. import minipsutil
-  TOTAL_PHYMEM = minipsutil.total_memory()
-  NUM_CPUS = minipsutil.cpu_count()
-except ImportError:
-  TOTAL_PHYMEM = 0
-  NUM_CPUS = 0
 
 # global objects for producer/consumer for background metrics publishing
 METRICS_QUEUE = Queue.Queue(maxsize=100)
@@ -46,14 +35,9 @@ class _MetricsWorkerThread(threading.Thread):
   def __init__(self, mode, source):
     threading.Thread.__init__(self, name='metrics-worker')
     # version and is_gpu from version_info
-    self._version = version
-
-    if build_number.endswith('.gpu'):
-        self._build_number= build_number.split('.gpu')[0]
-        self._isgpu = True
-    else:
-        self._build_number= build_number
-        self._isgpu = False
+    self._version = get_version()
+    self._build_number = get_build_number()
+    self._isgpu = get_isgpu()
 
     self._mode = mode
     self._source = source
@@ -90,7 +74,7 @@ class _MetricsWorkerThread(threading.Thread):
       self._usable = True
 
     self._distinct_id = 'unknown'
-    self._distinct_id = self._get_distinct_id()
+    self._distinct_id = get_distinct_id(self._distinct_id)
 
 
   def run(self):
@@ -108,41 +92,6 @@ class _MetricsWorkerThread(threading.Thread):
 
       except Exception as e:
         pass
-
-
-  def _get_distinct_id(self):
-    if self._distinct_id == 'unknown':
-      poss_id = 'unknown'
-      gldir = os.path.join(os.path.expanduser('~'),'.graphlab')
-      try:
-          if not os.path.isdir(gldir):
-              os.makedirs(gldir)
-      except:
-          pass
-
-      id_file_path = os.path.join(gldir, "id")
-
-      if os.path.isfile(id_file_path):
-        try:
-          with open(id_file_path, 'r') as f:
-            poss_id = f.readline()
-        except:
-          return "session-" + str(uuid.uuid4())
-      else:
-        # no distinct id found from installation,
-        # try to create one and write it to the appropriate location
-        # if not able to write to appropriate location, then create temp one
-        new_id = str(uuid.uuid4())
-        try:
-          with open(id_file_path, "w") as id_file:
-            id_file.write(new_id)
-        except:
-          return "session-" + str(uuid.uuid4())
-        return new_id
-      return poss_id.strip()
-    else:
-      return self._distinct_id
-
 
   @staticmethod
   def _get_bucket_name_suffix(buckets, value):
@@ -193,60 +142,12 @@ class _MetricsWorkerThread(threading.Thread):
     # Don't do this if system info has been set
     if self._sys_info_set:
       return
-
-    self._sys_info = {}
-
-    # Get OS-specific info
-    self._sys_info['system'] = platform.system()
-
-    if self._sys_info['system'] == 'Linux':
-      self._sys_info['os_version'] = self._tup_to_flat_str(platform.linux_distribution())
-      self._sys_info['libc_version'] = self._tup_to_flat_str(platform.libc_ver())
-    elif self._sys_info['system'] == 'Darwin':
-      self._sys_info['os_version'] = self._tup_to_flat_str(platform.mac_ver())
-    elif self._sys_info['system'] == 'Windows':
-      self._sys_info['os_version'] = self._tup_to_flat_str(platform.win32_ver())
-    elif self._sys_info['system'] == 'Java':
-      self._sys_info['os_version'] = self._tup_to_flat_str(platform.java_ver())
-
-    # Python specific stuff
-    self._sys_info['python_implementation'] = platform.python_implementation()
-    self._sys_info['python_version'] = platform.python_version()
-    self._sys_info['python_build'] = self._tup_to_flat_str(platform.python_build())
-    self._sys_info['python_executable'] = sys.executable
-
-    # Dato specific stuff
-    self._sys_info['dato_launcher'] = 'DATO_LAUNCHER' in os.environ
-
-    # Get architecture info
-    self._sys_info['architecture'] = self._tup_to_flat_str(platform.architecture())
-    self._sys_info['platform'] = platform.platform()
-    self._sys_info['num_cpus'] = NUM_CPUS
-
-    # Get RAM size
-    self._sys_info['total_mem'] = TOTAL_PHYMEM
-
+    self._sys_info = get_sys_info()
     self._sys_info_set = True
 
   def _print_sys_info(self):
     pp = pprint.PrettyPrinter(indent=2)
     pp.pprint(self._sys_info)
-
-  def _tup_to_flat_str(self, tup):
-    tmp_list = []
-    for t in tup:
-      if isinstance(t, tuple):
-        tmp_str =self._tup_to_flat_str(t)
-        tmp_list.append(tmp_str)
-      elif isinstance(t, str):
-        tmp_list.append(t)
-      else:
-        # UNEXPECTED! Just don't crash
-        try:
-          tmp_list.append(str(t))
-        except:
-          pass
-    return " ".join(tmp_list)
 
   def _send_mixpanel(self, event_name, value, properties, meta):
     # Only send 'engine-started' events to Mixpanel. All other events are not sent to Mixpanel.
@@ -322,7 +223,7 @@ class MetricTracker:
 
     self._queue = METRICS_QUEUE
 
-    self._source = ("%s-%s" % (self._mode, version))
+    self._source = ("%s-%s" % (self._mode, get_version()))
     self.logger.debug("Running with metric source: %s" % self._source)
 
     # background thread for metrics
