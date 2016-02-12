@@ -216,8 +216,7 @@ if [[ $run_toolchain_install == 1 ]]; then
         run_cleanup
 
         SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-        WORKSPACE=${SCRIPT_DIR}/..
-        PYTHON_VERSION=${PYTHON_VERSION} ${WORKSPACE}/oss_local_scripts/install_python_toolchain.sh
+        PYTHON_VERSION=${PYTHON_VERSION} ${SCRIPT_DIR}/oss_local_scripts/install_python_toolchain.sh
 
         REMAINING_OPTIONS=$@
         if [[ $toolchain == default || $toolchain == "" ]]; then
