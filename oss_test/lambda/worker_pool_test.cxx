@@ -16,7 +16,7 @@
 */
 #include <iostream>
 #include <cxxtest/TestSuite.h>
-#include <lambda/worker_pool.hpp>
+#include <lambda/worker_pool2.hpp>
 #include <parallel/lambda_omp.hpp>
 #include <fileio/fs_utils.hpp>
 #include "dummy_worker_interface.hpp"
@@ -25,72 +25,112 @@ using namespace graphlab;
 
 class worker_pool_test: public CxxTest::TestSuite {
  public:
+  worker_pool_test() { global_logger().set_log_level(LOG_INFO); }
   void test_spawn_workers() {
-    size_t nworkers = 3;
     auto wk_pool = get_worker_pool(nworkers);
     TS_ASSERT_EQUALS(wk_pool->num_workers(), nworkers);
     TS_ASSERT_EQUALS(wk_pool->num_available_workers(), nworkers);
   }
 
   void test_get_and_release_worker() {
-    size_t nworkers = 3;
     auto wk_pool = get_worker_pool(nworkers);
     parallel_for(0, (size_t)16, [&](size_t i) {
       std::string message = std::to_string(i);
-      auto proxy = wk_pool->get_worker();
-      TS_ASSERT(proxy->echo(message).compare(message) == 0);
-      wk_pool->release_worker(proxy);
+      auto worker = wk_pool->get_worker();
+      TS_ASSERT(worker->proxy->echo(message).compare(message) == 0);
+      wk_pool->release_worker(worker);
     });
   }
 
   void test_worker_guard() {
-    size_t nworkers = 3;
     auto wk_pool = get_worker_pool(nworkers);
-    parallel_for(0, (size_t)16, [&](size_t i) {
+    parallel_for(0, nworkers * 4, [&](size_t i) {
       std::string message = std::to_string(i);
-      auto proxy = wk_pool->get_worker();
-      auto guard = wk_pool->get_worker_guard(proxy);
-      TS_ASSERT(proxy->echo(message).compare(message) == 0);
-      TS_ASSERT_THROWS_ANYTHING(proxy->throw_error());
+      auto worker = wk_pool->get_worker();
+      auto guard = wk_pool->get_worker_guard(worker);
+      TS_ASSERT(worker->proxy->echo(message).compare(message) == 0);
+      TS_ASSERT_THROWS_ANYTHING(worker->proxy->throw_error());
     });
   }
 
   void test_worker_crash_and_restart() {
-    size_t nworkers = 3;
     auto wk_pool = get_worker_pool(nworkers);
     {
-      auto proxy = wk_pool->get_worker();
-      auto guard = wk_pool->get_worker_guard(proxy);
-      TS_ASSERT_THROWS(proxy->quit(0), cppipc::ipcexception);
+      auto worker = wk_pool->get_worker();
+      auto guard = wk_pool->get_worker_guard(worker);
+      TS_ASSERT_THROWS(worker->proxy->quit(0), cppipc::ipcexception);
     }
-    parallel_for(0, (size_t)6, [&](size_t i) {
+    TS_ASSERT_EQUALS(wk_pool->num_workers(), nworkers);
+
+    parallel_for(0, nworkers, [&](size_t i) {
       std::string message = std::to_string(i);
-      auto proxy = wk_pool->get_worker();
-      auto guard = wk_pool->get_worker_guard(proxy);
-      TS_ASSERT(proxy->echo(message).compare(message) == 0);
-      TS_ASSERT_THROWS(proxy->quit(0), cppipc::ipcexception);
+      auto worker = wk_pool->get_worker();
+      auto guard = wk_pool->get_worker_guard(worker);
+      TS_ASSERT(worker->proxy->echo(message).compare(message) == 0);
+      TS_ASSERT_THROWS(worker->proxy->quit(0), cppipc::ipcexception);
     });
 
     TS_ASSERT_EQUALS(wk_pool->num_workers(), nworkers);
     TS_ASSERT_EQUALS(wk_pool->num_available_workers(), nworkers);
 
-    parallel_for(0, (size_t)6, [&](size_t i) {
+    parallel_for(0, nworkers, [&](size_t i) {
        std::string message = std::to_string(i);
-       auto proxy = wk_pool->get_worker();
-       auto guard = wk_pool->get_worker_guard(proxy);
-       TS_ASSERT(proxy->echo(message).compare(message) == 0);
+       auto worker = wk_pool->get_worker();
+       auto guard = wk_pool->get_worker_guard(worker);
+       TS_ASSERT(worker->proxy->echo(message).compare(message) == 0);
      });
+  }
+
+  void test_call_all_workers() {
+    auto wk_pool = get_worker_pool(nworkers);
+    auto f = [](std::unique_ptr<dummy_worker_proxy>& proxy) {
+      proxy->echo("");
+      return 0;
+    };
+    auto ret = wk_pool->call_all_workers<int>(f);
+    TS_ASSERT_EQUALS(ret.size(), nworkers);
+  }
+
+  void test_call_all_workers_with_exception() {
+    auto wk_pool = get_worker_pool(nworkers);
+    auto f = [](std::unique_ptr<dummy_worker_proxy>& proxy) {
+      proxy->throw_error();
+      return 0;
+    };
+    TS_ASSERT_THROWS_ANYTHING(wk_pool->call_all_workers<int>(f));
+    TS_ASSERT_EQUALS(wk_pool->num_workers(), nworkers);
+    TS_ASSERT_EQUALS(wk_pool->num_available_workers(), nworkers);
+  }
+
+  void test_call_all_workers_with_crash_recovery() {
+    auto wk_pool = get_worker_pool(nworkers);
+    auto bad_fun = [](std::unique_ptr<dummy_worker_proxy>& proxy) {
+      proxy->quit(0);
+      return 0;
+    };
+    TS_ASSERT_THROWS(wk_pool->call_all_workers<int>(bad_fun), cppipc::ipcexception);
+
+    // call_all_worker should recover after crash
+    TS_ASSERT_EQUALS(wk_pool->num_workers(), nworkers);
+    TS_ASSERT_EQUALS(wk_pool->num_available_workers(), nworkers);
+
+    auto good_fun = [](std::unique_ptr<dummy_worker_proxy>& proxy) {
+      proxy->echo("");
+      return 0;
+    };
+    TS_ASSERT_EQUALS(wk_pool->call_all_workers<int>(good_fun).size(), nworkers);
   }
 
  private:
   std::shared_ptr<lambda::worker_pool<dummy_worker_proxy>> get_worker_pool(size_t poolsize) {
     int timeout = 1;
-    return std::make_shared<lambda::worker_pool<dummy_worker_proxy>>(
-        poolsize, worker_binary,
-        std::vector<std::string>(), timeout);
+    std::shared_ptr<lambda::worker_pool<dummy_worker_proxy>> ret;
+    ret.reset(new lambda::worker_pool<dummy_worker_proxy>(poolsize, {worker_binary}, timeout));
+    return ret;
   };
 
  private:
+  size_t nworkers = 3;
 #ifndef _WIN32
   const std::string worker_binary = "./dummy_worker";
 #else
