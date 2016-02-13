@@ -239,7 +239,7 @@ package_egg() {
     mv ${EGG_PATH} ${NEW_EGG_PATH}
     EGG_PATH=${NEW_EGG_PATH}
   elif [[ $OSTYPE == msys ]]; then
-    EGG_PATH=${WORKSPACE}/${build_type}/oss_src/unity/python/dist/SFrame-${VERSION_NUMBER}-cp27-none-win_amd64.whl
+    EGG_PATH=`ls ${WORKSPACE}/${build_type}/oss_src/unity/python/dist/SFrame-${VERSION_NUMBER}-*-none-win_amd64.whl`
   elif [[ $OSTYPE == linux-* ]]; then
     PYTHON_VERSION=`$PYTHON_EXECUTABLE -V 2>&1 | perl -ne 'print m/^Python (\d\.\d)/'`
     NEW_EGG_PATH=${WORKSPACE}/${build_type}/oss_src/unity/python/dist/SFrame-${VERSION_NUMBER}-py${PYTHON_VERSION}.${archive_file_ext}
