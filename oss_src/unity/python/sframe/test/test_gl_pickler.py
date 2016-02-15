@@ -4,6 +4,8 @@ import unittest
 import os
 import uuid
 import shutil
+import sys
+import time
 
 import pickle
 from ..util import cloudpickle
@@ -22,6 +24,9 @@ class GLPicklingTest(unittest.TestCase):
         self.dir_mode = False
 
     def tearDown(self):
+        if sys.platform == 'win32':
+            time.sleep(1)   # Allow other process to release file lock
+
         if os.path.isdir(self.filename):
             shutil.rmtree(self.filename)
         elif os.path.exists(self.filename):
