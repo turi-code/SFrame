@@ -27,6 +27,17 @@ class GLPicklingTest(unittest.TestCase):
         elif os.path.exists(self.filename):
             os.remove(self.filename)
 
+    def _dump(self, obj):
+        pickler = gl_pickle.GLPickler(self.filename)
+        pickler.dump(obj)
+        pickler.close()
+
+    def _load(self):
+        unpickler = gl_pickle.GLUnpickler(self.filename)
+        obj_ret = unpickler.load()
+        unpickler.close()
+        return obj_ret
+
     def test_pickling_simple_types(self):
 
         obj_list = [
@@ -36,10 +47,8 @@ class GLPicklingTest(unittest.TestCase):
             {"cricket": "best-sport", "test": [1,2,3]}, {"foo": 1.3},
         ]
         for obj in obj_list:
-            pickler = gl_pickle.GLPickler(self.filename)
-            pickler.dump(obj)
-            pickler.close()
-            obj_ret = gl_pickle.GLUnpickler(self.filename).load()
+            self._dump(obj)
+            obj_ret = self._load()
             self.assertEqual(obj, obj_ret)
 
     def test_pickling_sarray_types(self):
@@ -50,10 +59,8 @@ class GLPicklingTest(unittest.TestCase):
             SArray(["foo", "bar"]),
         ]
         for obj in sarray_list:
-            pickler = gl_pickle.GLPickler(self.filename)
-            pickler.dump(obj)
-            pickler.close()
-            obj_ret = gl_pickle.GLUnpickler(self.filename).load()
+            pickler = self._dump(obj)
+            obj_ret = self._load()
             self.assertEqual(list(obj), list(obj_ret))
 
     def test_pickling_sframe_types(self):
@@ -64,10 +71,8 @@ class GLPicklingTest(unittest.TestCase):
             SFrame(["foo", "bar"]),
         ]
         for obj in sarray_list:
-            pickler = gl_pickle.GLPickler(self.filename)
-            pickler.dump(obj)
-            pickler.close()
-            obj_ret = gl_pickle.GLUnpickler(self.filename).load()
+            self._dump(obj)
+            obj_ret = self._load()
             assert_sframe_equal(obj, obj_ret)
 
     def test_pickling_sgraph_types(self):
@@ -90,10 +95,8 @@ class GLPicklingTest(unittest.TestCase):
             sg_test_2
         ]
         for obj in sarray_list:
-            pickler = gl_pickle.GLPickler(self.filename)
-            pickler.dump(obj)
-            pickler.close()
-            obj_ret = gl_pickle.GLUnpickler(self.filename).load()
+            self._dump(obj)
+            obj_ret = self._load()
             assert_sframe_equal(obj.get_vertices(), obj_ret.get_vertices())
             assert_sframe_equal(obj.get_edges(), obj_ret.get_edges())
 
@@ -112,10 +115,8 @@ class GLPicklingTest(unittest.TestCase):
         ]
 
         for obj in obj_list:
-            pickler = gl_pickle.GLPickler(self.filename)
-            pickler.dump(obj)
-            pickler.close()
-            obj_ret = gl_pickle.GLUnpickler(self.filename).load()
+            self._dump(obj)
+            obj_ret = self._load()
             assert_sframe_equal(obj[0].get_vertices(), obj_ret[0].get_vertices())
             assert_sframe_equal(obj[0].get_edges(), obj_ret[0].get_edges())
             assert_sframe_equal(obj[1], obj_ret[1])
@@ -129,11 +130,8 @@ class GLPicklingTest(unittest.TestCase):
             {"cricket": "best-sport", "test": [1,2,3]}, {"foo": 1.3},
         ]
         for obj in obj_list:
-            file = open(self.filename, 'wb')
-            pickler = pickle.Pickler(file)
-            pickler.dump(obj)
-            file.close()
-            obj_ret = gl_pickle.GLUnpickler(self.filename).load()
+            self._dump(obj)
+            obj_ret = self._load()
             self.assertTrue(obj, obj_ret)
 
     def test_cloud_pickle_compatibility(self):
@@ -144,11 +142,8 @@ class GLPicklingTest(unittest.TestCase):
             {"cricket": "best-sport", "test": [1,2,3]}, {"foo": 1.3},
         ]
         for obj in obj_list:
-            file = open(self.filename, 'wb')
-            pickler = cloudpickle.CloudPickler(file)
-            pickler.dump(obj)
-            file.close()
-            obj_ret = gl_pickle.GLUnpickler(self.filename).load()
+            self._dump(obj)
+            obj_ret = self._load()
             self.assertTrue(obj, obj_ret)
 
     def test_relative_path(self):
@@ -160,7 +155,9 @@ class GLPicklingTest(unittest.TestCase):
         pickler = gl_pickle.GLPickler(relative_path)
         pickler.dump(sf1)
         pickler.close()
-        sf2 = gl_pickle.GLUnpickler(relative_path).load()
+        unpickler = gl_pickle.GLUnpickler(relative_path)
+        sf2 = unpickler.load()
+        unpickler.close()
 
         # Assert
         assert_sframe_equal(sf1, sf2)
@@ -178,7 +175,9 @@ class GLPicklingTest(unittest.TestCase):
         pickler = gl_pickle.GLPickler(relative_path)
         pickler.dump(sf1)
         pickler.close()
-        sf2 = gl_pickle.GLUnpickler(relative_path).load()
+        unpickler = gl_pickle.GLUnpickler(relative_path)
+        sf2 = unpickler.load()
+        unpickler.close()
 
         # Assert
         abs_path = os.path.expanduser(relative_path)
@@ -198,7 +197,9 @@ class GLPicklingTest(unittest.TestCase):
         pickler = gl_pickle.GLPickler(relative_path)
         pickler.dump(sf1)
         pickler.close()
-        sf2 = gl_pickle.GLUnpickler(relative_path).load()
+        unpickler = gl_pickle.GLUnpickler(relative_path)
+        sf2 = unpickler.load()
+        unpickler.close()
 
         # Assert
         abs_path = os.path.expanduser(os.path.expandvars(relative_path))
@@ -224,7 +225,9 @@ class GLPicklingTest(unittest.TestCase):
         pickler = gl_pickle.GLPickler(S3_PATH)
         pickler.dump(sf1)
         pickler.close()
-        sf2 = gl_pickle.GLUnpickler(S3_PATH).load()
+        unpickler = gl_pickle.GLUnpickler(S3_PATH)
+        sf2 = unpickler.load()
+        unpickler.close()
 
         # Assert
         assert_sframe_equal(sf1, sf2)
@@ -257,11 +260,9 @@ class GLPicklingTest(unittest.TestCase):
             SFrame(["foo", "bar"]),
         ]
         for obj in sarray_list:
-            pickler = gl_pickle.GLPickler(self.filename)
-            pickler.dump(obj)
-            pickler.close()
+            self._dump(obj)
+            obj_ret = self._load()
 
-            obj_ret = gl_pickle.GLUnpickler(self.filename).load()
             assert_sframe_equal(obj, obj_ret)
 
             pickler = gl_pickle.GLPickler(self.filename)

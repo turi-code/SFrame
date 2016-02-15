@@ -299,5 +299,3 @@ package_egg
 if [[ -z $SKIP_DOC ]]; then
   generate_docs
 fi
-
-
