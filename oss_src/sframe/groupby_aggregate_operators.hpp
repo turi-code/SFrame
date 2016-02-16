@@ -979,7 +979,8 @@ class quantile : public group_aggregate_value {
 
 
 /**
- * Implements an aggregator that convert two values from two column into a key/value
+ * Implements an aggregator that convert two values from two column 
+ * into a key/value
  * value inside a dictionary
  */
 class zip_dict : public group_aggregate_value {
@@ -1255,9 +1256,103 @@ class count_distinct: public group_aggregate_value {
     iarc >> m_values;
   }
 
- private:
+ protected:
   std::unordered_set<flexible_type> m_values;
 };
+
+/**
+ * Implements an aggregator that keeps track of the unique elements
+ */
+class distinct: public count_distinct {
+ public:
+  
+  group_aggregate_value* new_instance() const override {
+    distinct* ret = new distinct;
+    return ret;
+  }
+
+  /// Emits the zip result
+  flexible_type emit() const override {
+    flex_list ret(m_values.size());
+    size_t i = 0;
+    for (const auto& k: m_values) {
+      ret[i] = k;
+      i++;
+    }
+    return ret;
+  }
+  
+  flex_type_enum set_input_type(flex_type_enum type) override {
+    return flex_type_enum::LIST;
+  }
+
+  /// Name of the class
+  std::string name() const override {
+    return "Distinct";
+  }
+
+};
+
+/**
+ * Implements an aggregator that computes frequncies for each unique value. 
+ */
+class frequency_count: public group_aggregate_value {
+ public:
+  /// Returns a new empty instance of sum with the same type
+  group_aggregate_value* new_instance() const {
+    frequency_count* ret = new frequency_count;
+    return ret;
+  }
+
+  void add_element_simple(const flexible_type& flex) {
+    m_values[flex] += 1;
+  }
+
+  /// combines two partial zip
+  void combine(const group_aggregate_value& other) {
+    auto& v = dynamic_cast<const frequency_count&>(other);
+    m_values.insert(v.m_values.begin(), v.m_values.end());
+  }
+
+  /// Emits the zip result
+  flexible_type emit() const {
+    flex_dict ret(m_values.size());
+    size_t i = 0;
+    for (const auto& kvp: m_values) {
+      ret[i] = {kvp.first, flex_int(kvp.second)};
+      i++;
+    }
+    return ret; 
+  }
+
+  bool support_type(flex_type_enum type) const {
+    return (type == flex_type_enum::INTEGER||
+            type == flex_type_enum::STRING);
+  }
+
+  flex_type_enum set_input_type(flex_type_enum type) {
+    return flex_type_enum::DICT;
+  }
+
+  /// Name of the class
+  std::string name() const {
+    return "Frequency Count";
+  }
+
+  /// Serializer
+  void save(oarchive& oarc) const {
+    oarc << m_values;
+  }
+
+  /// Deserializer
+  void load(iarchive& iarc) {
+    iarc >> m_values;
+  }
+
+ protected:
+  std::unordered_map<flexible_type, size_t> m_values;
+};
+
 } // namespace groupby_operators
 } // namespace graphlab
 #endif //GRAPHLAB_SFRAME_GROUPBY_AGGREGATE_OPERATORS_HPP
