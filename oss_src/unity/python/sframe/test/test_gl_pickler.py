@@ -5,7 +5,6 @@ import os
 import uuid
 import shutil
 import sys
-import time
 
 import pickle
 from ..util import cloudpickle
@@ -21,12 +20,8 @@ class GLPicklingTest(unittest.TestCase):
 
     def setUp(self):
         self.filename = str(uuid.uuid4())
-        self.dir_mode = False
 
     def tearDown(self):
-        if sys.platform == 'win32':
-            time.sleep(1)   # Allow other process to release file lock
-
         if os.path.isdir(self.filename):
             shutil.rmtree(self.filename)
         elif os.path.exists(self.filename):
@@ -56,6 +51,8 @@ class GLPicklingTest(unittest.TestCase):
             obj_ret = self._load()
             self.assertEqual(obj, obj_ret)
 
+    @unittest.skipIf(sys.platform == 'win32' and sys.version_info.major == 3,
+                     'See: https://github.com/dato-code/SFrame/issues/176')
     def test_pickling_sarray_types(self):
 
         sarray_list = [
@@ -105,6 +102,8 @@ class GLPicklingTest(unittest.TestCase):
             assert_sframe_equal(obj.get_vertices(), obj_ret.get_vertices())
             assert_sframe_equal(obj.get_edges(), obj_ret.get_edges())
 
+    @unittest.skipIf(sys.platform == 'win32' and sys.version_info.major == 3,
+                     'See: https://github.com/dato-code/SFrame/issues/176')
     def test_combination_gl_python_types(self):
 
         sg_test_1 = SGraph().add_vertices([
