@@ -1305,11 +1305,7 @@ class frequency_count: public group_aggregate_value {
   }
 
   void add_element_simple(const flexible_type& flex) {
-    if (m_values.find(flex) == m_values.end()) {
-      m_values[flex] = 1;
-    } else {
-      m_values[flex] += 1;
-    }
+    m_values[flex] += 1;
   }
 
   /// combines two partial zip
