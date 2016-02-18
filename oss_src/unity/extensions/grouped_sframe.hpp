@@ -11,6 +11,8 @@
 #include <unity/lib/toolkit_class_macros.hpp>
 #include <unity/lib/gl_sframe.hpp>
 #include <export.hpp>
+#include <parallel/lambda_omp.hpp>
+
 namespace graphlab {
 std::vector<graphlab::toolkit_class_specification> get_toolkit_class_registration();
 
@@ -43,7 +45,8 @@ class EXPORT grouped_sframe: public graphlab::toolkit_class_base {
    * Throws if group has already been called on this object, or the column
    * names are not valid.
    */
-  void group(const gl_sframe &sf, const std::vector<std::string> column_names, bool is_grouped);
+  void group(const gl_sframe &sf, const std::vector<std::string> column_names,
+      bool is_grouped);
 
 
   /**
@@ -107,6 +110,19 @@ class EXPORT grouped_sframe: public graphlab::toolkit_class_base {
    */
   std::vector<std::pair<flexible_type,gl_sframe>> iterator_get_next(size_t len);
 
+  /**
+   * Returns a single SFrame which contains all the data. 
+   */
+  gl_sframe get_sframe() const {
+    return m_grouped_sf;
+  }
+  
+  /**
+   * Return an SFrame with group_info i.e key columns + number of rows in each
+   * key column. 
+   */
+  gl_sframe group_info() const;
+
  protected:
  private:
   /// Methods
@@ -127,32 +143,30 @@ class EXPORT grouped_sframe: public graphlab::toolkit_class_base {
   // exists to preserve the ORDER of groups: the order the SFrame is sorted in.
   // This may have some significance.
   std::vector<size_t> m_range_directory;
-
+  std::vector<std::string> m_key_col_names;
   std::vector<flexible_type> m_group_names;
 
   // Key: Hash value of "group" key
   // Value: Index of m_range_directory
   //TODO: This is what will run out of memory first when scaling up
-  std::unordered_map<std::vector<flexible_type>,size_t,GroupKeyHash> m_key2range;
-
+  std::unordered_map<std::vector<flexible_type>, size_t, GroupKeyHash> m_key2range;
   gl_sarray m_groups_sa;
-
   bool m_inited = false;
-
   flex_type_enum m_group_type = flex_type_enum::UNDEFINED;
-
   bool m_iterating = false;
-
   size_t m_cur_iterator_idx = 0;
 
  public:
   BEGIN_CLASS_MEMBER_REGISTRATION("grouped_sframe")
-  REGISTER_CLASS_MEMBER_FUNCTION(grouped_sframe::group, "data", "column_names", "is_grouped")
+  REGISTER_CLASS_MEMBER_FUNCTION(grouped_sframe::group, "data", "column_names",
+      "is_grouped")
   REGISTER_CLASS_MEMBER_FUNCTION(grouped_sframe::get_group, "key")
   REGISTER_CLASS_MEMBER_FUNCTION(grouped_sframe::num_groups)
   REGISTER_CLASS_MEMBER_FUNCTION(grouped_sframe::groups)
   REGISTER_CLASS_MEMBER_FUNCTION(grouped_sframe::begin_iterator)
   REGISTER_CLASS_MEMBER_FUNCTION(grouped_sframe::iterator_get_next, "num_items")
+  
+  REGISTER_GETTER("sframe", grouped_sframe::get_sframe)
   END_CLASS_MEMBER_REGISTRATION
 };
 
