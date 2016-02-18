@@ -8,6 +8,10 @@ of the BSD license. See the LICENSE file for details.
 import unittest
 from ..data_structures.sarray import SArray
 from ..data_structures.sframe import SFrame
+
+import sys
+if sys.version_info.major > 2:
+    long = int
 import random
 
 from ..cython.cy_variant import _debug_is_flexible_type_encoded
@@ -17,7 +21,7 @@ class VariantCheckTest(unittest.TestCase):
 
     def identical(self, reference, b):
         if type(reference) in [int, long]:
-            self.assertTrue(type(b) in [int, long])
+            self.assertIn(type(b), [int, long])
         else:
             self.assertEquals(type(reference), type(b))
         if isinstance(reference, list):
@@ -25,7 +29,7 @@ class VariantCheckTest(unittest.TestCase):
             for i in range(len(reference)):
                 self.identical(reference[i], b[i])
         if isinstance(reference, dict):
-            self.assertEqual(sorted(reference.iterkeys()), sorted(b.iterkeys()))
+            self.assertEqual(sorted(reference.keys()), sorted(b.keys()))
             for i in reference:
                 self.identical(reference[i], b[i])
         if isinstance(reference, SArray):
@@ -61,9 +65,14 @@ class VariantCheckTest(unittest.TestCase):
         self.variant_turnaround([sa,sa])
         self.variant_turnaround([sf,sf])
         self.variant_turnaround({'a':sa, 'b':sf, 'c':['a','b','c','d']})
+        self.variant_turnaround({'a':[{'a':1, 'b':2}], 'b':[{'a':3}]})
+        self.variant_turnaround({'a':[{'a':sa, 'b': sa}], 'b':[{'a':sa}]})
+        self.variant_turnaround({'a': [sa, {'c':sa, 'd': sa}], 'e':[{'f':sa}]})
+        self.variant_turnaround({'a':[sa,{'a':sa}]})
+        self.variant_turnaround({'a':[{'a':sa,'b':'c'}]})
+        self.variant_turnaround({'a':[sa,{'a':sa,'b':'c'}]})
         self.variant_turnaround({'a':[sa,sf,{'a':sa,'b':'c'}],
             'b':sf, 'c':['a','b','c','d']})
-
         
     def test_stress(self):
 

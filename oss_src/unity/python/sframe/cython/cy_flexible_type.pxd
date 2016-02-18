@@ -75,6 +75,7 @@ cdef extern from "<flexible_type/flexible_type.hpp>" namespace "graphlab":
 
         flex_float as_double "to<graphlab::flex_float>"()
         flex_list as_list "to<graphlab::flex_list>"()
+        flex_string as_string "to<graphlab::flex_string>"()
 
         flexible_type& set_int "operator=<int64_t>"(const flex_int& other)
         flexible_type& set_date_time "set_date_time_from_timestamp_and_offset"(const pflex_date_time& other, int)

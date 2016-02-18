@@ -12,7 +12,7 @@ from distutils.util import get_platform as _get_platform
 import ctypes
 import glob as _glob
 import subprocess as _subprocess
-import _scripts._pylambda_worker as _pylambda_worker
+from ._scripts import _pylambda_worker
 from copy import copy
 
 
@@ -98,7 +98,7 @@ def set_windows_dll_path():
         kernel32.SetDllDirectoryW.errcheck = errcheck_bool
         kernel32.SetDllDirectoryW.argtypes = (wintypes.LPCWSTR,)
         kernel32.SetDllDirectoryW(lib_path)
-    except Exception, e:
+    except Exception as e:
         logging.getLogger(__name__).warning(
             "Error setting DLL load orders: %s (things should still work)." % str(e))
 
@@ -122,7 +122,7 @@ def test_pylambda_worker():
     in case there is an error.
     """
 
-    print "\nLaunch pylambda_worker process with simulated unity_server environment."
+    print("\nLaunch pylambda_worker process with simulated unity_server environment.")
 
     import subprocess
 
@@ -167,8 +167,8 @@ def dump_directory_structure():
         else:
             return n
 
-    print "\n".join( ("  %s: %s" % (strip_name(name), stats))
-                     for name, stats in sorted(visited_files))
+    print("\n".join( ("  %s: %s" % (strip_name(name), stats))
+                     for name, stats in sorted(visited_files)))
 
 __hadoop_class_warned = False
 

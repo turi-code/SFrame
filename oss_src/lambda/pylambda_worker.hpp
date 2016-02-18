@@ -10,7 +10,7 @@
 
 #include <string> 
 
-namespace graphlab { namespace lambda { 
+namespace graphlab { namespace lambda {
 
 /** The main function to be called from the python ctypes library to
  *  create a pylambda worker process.

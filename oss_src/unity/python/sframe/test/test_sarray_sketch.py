@@ -15,9 +15,7 @@ import random
 import copy
 import os
 import math
-import shutil
 import array
-import util
 import time
 import itertools
 
@@ -26,8 +24,6 @@ import itertools
 #######################################################
 
 class SArraySketchTest(unittest.TestCase):
-    def setUp(self):
-        pass
 
     def __validate_sketch_result(self, sketch, sa, delta = 1E-7):
         df = pd.DataFrame(list(sa.dropna()))
@@ -89,7 +85,7 @@ class SArraySketchTest(unittest.TestCase):
         vector_data = [[], [1,2], [3], [4,5,6,7], [8,9,10], None]
         sa = SArray(data=vector_data)
 
-        sketch = sa.sketch_summary();
+        sketch = sa.sketch_summary()
         self.__validate_sketch_result(sketch, sa)
         self.__validate_sketch_result(sketch.element_length_summary(), sa.dropna().item_length())
 
@@ -111,7 +107,7 @@ class SArraySketchTest(unittest.TestCase):
         s = sa.sketch_summary(sub_sketch_keys = keys).element_sub_sketch(keys)
         self.assertEqual(len(s), len(keys))
         for key in keys:
-            self.assertTrue(s.has_key(key))
+            self.assertTrue(key in s)
             expected = sa.vector_slice(key)
             self.__validate_sketch_result(s[key], expected)
 
@@ -123,7 +119,7 @@ class SArraySketchTest(unittest.TestCase):
         list_data = [[], [1,2],[1,2], ['a', 'a', 'a', 'b'], [ 1 ,1 , 2], None]
         sa = SArray(list_data)
         self.__validate_nested_sketch_result(sa)
-        sketch = sa.sketch_summary();
+        sketch = sa.sketch_summary()
 
         self.assertEqual(sketch.num_unique(), 4)
         element_summary = sketch.element_summary()
@@ -144,8 +140,14 @@ class SArraySketchTest(unittest.TestCase):
         self.assertEqual(sketch.num_unique(), 4)
         fi = sketch.frequent_items()
         self.assertEqual(len(fi), 4)
-        self.assertEqual((fi['{"a":1, "b":2}']), 2)
-        self.assertEqual((fi['{"a":3, "c":1}']), 1)
+
+        # The order in which keys are reported is different in python2 vs python3.
+        # So when the dictionary is converted to a string, it results in different
+        # strings. Try both possible combinations for dictionary.
+        v = fi['{"a":1, "b":2}'] if '{"a":1, "b":2}' in fi else fi['{"b":2, "a":1}']
+        self.assertEqual(v, 2)
+        v = fi['{"a":3, "c":1}'] if '{"a":3, "c":1}' in fi else fi['{"c":1, "a":3}']
+        self.assertEqual(v, 1)
 
         # Get dict key sketch
         key_summary = sketch.dict_key_summary()
@@ -170,7 +172,7 @@ class SArraySketchTest(unittest.TestCase):
         s = sa.sketch_summary(sub_sketch_keys =keys).element_sub_sketch(keys)
         self.assertEqual(len(s), len(keys))
         for key in keys:
-            self.assertTrue(s.has_key(key))
+            self.assertTrue(key in s)
             expected = sa.unpack(column_name_prefix="")[key]
             self.__validate_sketch_result(s[key], expected)
 
@@ -183,8 +185,14 @@ class SArraySketchTest(unittest.TestCase):
         sketch = sa.sketch_summary()
         fi = sketch.frequent_items()
         self.assertEqual(len(fi), 2)
-        self.assertEqual(fi['{"a":"b", "b":"c"}'], 2)
-        self.assertEqual(fi['{"a":"d", "b":"4"}'], 1)
+
+        # The order in which keys are reported is different in python2 vs python3.
+        # So when the dictionary is converted to a string, it results in different
+        # strings. Try both possible combinations for dictionary.
+        v = fi['{"b":"c", "a":"b"}'] if '{"b":"c", "a":"b"}' in fi else fi['{"a":"b", "b":"c"}']
+        self.assertEqual(v, 2)
+        v = fi['{"a":"d", "b":"4"}'] if '{"a":"d", "b":"4"}' in fi else fi['{"b":"4", "a":"d"}']
+        self.assertEqual(v, 1)
 
         # Get dict key sketch
         key_summary = sketch.dict_key_summary()
@@ -209,7 +217,7 @@ class SArraySketchTest(unittest.TestCase):
         s = sa.sketch_summary(sub_sketch_keys =keys).element_sub_sketch(keys)
         self.assertEqual(len(s), len(keys))
         for key in keys:
-            self.assertTrue(s.has_key(key))
+            self.assertTrue(key in s)
             expected = sa.unpack(column_name_prefix="")[key]
             self.__validate_sketch_result(s[key], expected)
 
@@ -217,7 +225,7 @@ class SArraySketchTest(unittest.TestCase):
         s = sa.sketch_summary(sub_sketch_keys =keys).element_sub_sketch()
         self.assertEqual(len(s), len(keys))
         for key in keys:
-            self.assertTrue(s.has_key(key))
+            self.assertTrue(key in s)
             expected = sa.unpack(column_name_prefix="")[key]
             self.__validate_sketch_result(s[key], expected)
 
@@ -274,7 +282,7 @@ class SArraySketchTest(unittest.TestCase):
 
     def test_large_value_sketch(self):
         sa = SArray([1234567890 for i in range(100)])
-        sk = sa.sketch_summary();
+        sk = sa.sketch_summary()
         self.__validate_sketch_result(sa.sketch_summary(), sa, 1E-5)
 
     def test_cancelation(self):

@@ -51,7 +51,7 @@ class SArrayBuilderTest(unittest.TestCase):
 
     def test_history(self):
         sb = SArrayBuilder(int, history_size=10)
-        sb.append_multiple((i for i in xrange(8)))
+        sb.append_multiple((i for i in range(8)))
         hist = sb.read_history(3)
         self.assertEquals(hist,[5,6,7])
 
@@ -60,7 +60,7 @@ class SArrayBuilderTest(unittest.TestCase):
         hist = sb.read_history()
         self.assertEquals(hist, [i for i in range(8)])
 
-        sb.append_multiple((i for i in xrange(5)))
+        sb.append_multiple((i for i in range(5)))
         hist = sb.read_history(10)
         self.assertEquals(hist, [3,4,5,6,7,0,1,2,3,4])
 
@@ -79,10 +79,10 @@ class SArrayBuilderTest(unittest.TestCase):
     def test_segments(self):
         sb = SArrayBuilder(int, num_segments=4)
 
-        sb.append_multiple((i for i in xrange(20,30)), segment=2)
-        sb.append_multiple((i for i in xrange(10,20)), segment=1)
-        sb.append_multiple((i for i in xrange(30,40)), segment=3)
-        sb.append_multiple((i for i in xrange(0,10)), segment=0)
+        sb.append_multiple((i for i in range(20,30)), segment=2)
+        sb.append_multiple((i for i in range(10,20)), segment=1)
+        sb.append_multiple((i for i in range(30,40)), segment=3)
+        sb.append_multiple((i for i in range(0,10)), segment=0)
 
         hist = sb.read_history(3, segment=0)
         self.assertSequenceEqual(hist, [7,8,9])

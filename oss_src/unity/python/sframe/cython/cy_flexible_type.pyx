@@ -117,6 +117,8 @@ AnySequence: Any of the above.
 (Note, Adding a None in any of these does not change it.)
 '''
 
+DEF DEBUG_MODE = True
+
 # Turn off a couple things in the code that we don't need here, for
 # performance reasons.
 
@@ -124,7 +126,6 @@ AnySequence: Any of the above.
 #cython: boundscheck=False
 #cython: always_allow_keywords=False
 #cython: c_string_encoding='ascii'
-#cython: c_string_type=str
 #cython: wraparound=False
 
 cimport cython
@@ -132,6 +133,8 @@ from cython.operator cimport dereference as deref
 from cython.operator cimport preincrement as inc
 from libcpp cimport bool as cbool
 from cpython cimport array
+
+from .cy_cpp_utils cimport str_to_cpp, cpp_to_str, unsafe_str_to_cpp, unsafe_unicode_to_cpp
 
 from cpython.ref cimport PyObject, PyTypeObject
 import itertools
@@ -206,15 +209,11 @@ from cpython.version cimport PY_MAJOR_VERSION
 
 cdef bint is_python_3 = (PY_MAJOR_VERSION >= 3)
 
-cdef type unicode_type, string_type, xrange_type, array_type, datetime_type, none_type
+cdef type xrange_type, array_type, datetime_type, none_type
 
 if is_python_3:
-    unicode_type            = str
-    string_type             = bytes
     xrange_type             = range
 else:
-    unicode_type            = types.UnicodeType
-    string_type             = types.StringType
     xrange_type             = types.XRangeType
 
 array_type    = array.array
@@ -274,9 +273,9 @@ _code_by_type_lookup[<object_ptr>(bool)]                = FT_INT_TYPE  + FT_SAFE
 _code_by_type_lookup[<object_ptr>(list)]                = FT_LIST_TYPE
 _code_by_type_lookup[<object_ptr>(long)]                = FT_INT_TYPE  + FT_SAFE
 _code_by_type_lookup[<object_ptr>(none_type)]           = FT_NONE_TYPE
-_code_by_type_lookup[<object_ptr>(string_type)]         = FT_STR_TYPE
+_code_by_type_lookup[<object_ptr>(str)]                 = FT_STR_TYPE
 _code_by_type_lookup[<object_ptr>(tuple)]               = FT_TUPLE_TYPE
-_code_by_type_lookup[<object_ptr>(unicode_type)]        = FT_UNICODE_TYPE
+_code_by_type_lookup[<object_ptr>(unicode)]             = FT_UNICODE_TYPE
 _code_by_type_lookup[<object_ptr>(array_type)]          = FT_ARRAY_TYPE
 _code_by_type_lookup[<object_ptr>(xrange_type)]         = FT_LIST_TYPE + FT_SAFE
 _code_by_type_lookup[<object_ptr>(datetime_type)]       = FT_DATETIME_TYPE
@@ -297,10 +296,14 @@ _code_by_map_force[<object_ptr>(none_type)]     = FT_NONE_TYPE
 _code_by_map_force[<object_ptr>(_image_type)]   = FT_IMAGE_TYPE     + FT_SAFE
 
 cdef dict _code_by_name_lookup = {
+    'str'      : FT_STR_TYPE     + FT_SAFE,
+    'str_'     : FT_STR_TYPE     + FT_SAFE,
     'string'   : FT_STR_TYPE     + FT_SAFE,
     'string_'  : FT_STR_TYPE     + FT_SAFE,
+    'bytes'    : FT_STR_TYPE     + FT_SAFE,
+    'bytes_'   : FT_STR_TYPE     + FT_SAFE,
     'unicode'  : FT_UNICODE_TYPE,
-    'unicode_' : FT_UNICODE_TYPE,
+    'unicode_' : FT_UNICODE_TYPE + FT_SAFE,
     'int'      : FT_INT_TYPE     + FT_SAFE,
     'int_'     : FT_INT_TYPE     + FT_SAFE,
     'long'     : FT_INT_TYPE     + FT_SAFE,
@@ -518,7 +521,6 @@ cdef flex_type_enum flex_type_from_dtype(object dt):
     if ft_type == UNDEFINED and dt == bool:
         ft_type = INTEGER
 
-    # print "Categorizing %s as type %s" % (str(dt), flex_type_enum_to_name(ft_type))
     return ft_type
 
 cpdef type pytype_from_dtype(object dt):
@@ -647,7 +649,7 @@ cdef check_list_to_vector_translation(flexible_type& v):
         try:
             alt_v.soft_assign(v)
         except:
-            assert False, "Cannot convert %s to vector" % (str(pyobject_from_flexible_type(v)))
+            assert False, "Cannot convert flexible_type to vector"
 
         swap(alt_v, v)
 
@@ -907,14 +909,12 @@ cdef flex_type_enum _infer_common_type_of_listlike(_listlike vl, bint undefined_
         v = vl[i]
         tr_code = get_translation_code(type(v), v)
         tc = _choose_inference_code(tr_code, v)
-        # print "v = %s; code = %d " % (str(v), tc)
 
         seen_types |= tc
 
         if tr_code_buffer != NULL:
             tr_code_buffer[0][i] = tr_code
 
-    # print "seen_types = %d" % seen_types
     return infer_common_type(seen_types, undefined_on_error)
 
 cdef flex_type_enum infer_common_type_of_flex_list(const flex_list& fl, bint undefined_on_error = False):
@@ -1353,10 +1353,10 @@ cdef flexible_type _ft_translate(object v, int tr_code) except *:
         ret.set_double(<double>v)
         return ret
     elif tr_code == FT_STR_TYPE:
-        ret.set_string(<str>v)
+        ret.set_string(unsafe_str_to_cpp(v))
         return ret
     elif tr_code == FT_UNICODE_TYPE:
-        ret.set_string(<str>(v.encode('utf-8')))
+        ret.set_string(unsafe_unicode_to_cpp(v))
         return ret
     elif tr_code == FT_LIST_TYPE:
         tr_listlike_to_ft(ret, <list>v)
@@ -1388,16 +1388,10 @@ cdef flexible_type _ft_translate(object v, int tr_code) except *:
         ret.set_double(v)
         return ret
     elif tr_code == (FT_STR_TYPE + FT_SAFE):
-        if type(v) is str:
-            ret.set_string(<str>v)
-        else:
-            ret.set_string(v)
+        ret.set_string(str_to_cpp(v))
         return ret
     elif tr_code == (FT_UNICODE_TYPE + FT_SAFE):
-        if type(v) is unicode:
-            ret.set_string(<str>(v.encode('utf-8')))
-        else:
-            ret.set_string(<str>(unicode(v).encode('utf-8')))
+        ret.set_string(str_to_cpp(v))
         return ret
     elif tr_code == (FT_LIST_TYPE + FT_SAFE):
         if type(v) is list:
@@ -1461,6 +1455,8 @@ cdef flexible_type flexible_type_from_pyobject(object v) except *:
     cdef flexible_type ret
 
     cdef int tr_code = get_translation_code(t, v)
+    #print( "type of %s = %s, tr_code = %d." % (repr(v), str(t), tr_code))
+    
     ret = _ft_translate(v, tr_code)
     check_list_to_vector_translation(ret)
     return ret
@@ -1542,13 +1538,13 @@ cdef pyobject_from_flexible_type(const flexible_type& v):
     """
 
     cdef flex_type_enum f_type = v.get_type()
-
+    
     if f_type == INTEGER:
         return v.get_int()
     elif f_type == FLOAT:
         return v.get_double()
     elif f_type == STRING:
-        return v.get_string()
+        return cpp_to_str(v.get_string())
     elif f_type == LIST:
         return pylist_from_flex_list(v.get_list())
     elif f_type == VECTOR:
@@ -1579,7 +1575,7 @@ cdef dict pydict_from_gl_options_map(const gl_options_map& m):
     cdef options_map_iter it = <options_map_iter>m.begin()
 
     while it != <options_map_iter>m.end():
-        ret[deref(it).first.decode()] = pyobject_from_flexible_type(deref(it).second)
+        ret[cpp_to_str(deref(it).first)] = pyobject_from_flexible_type(deref(it).second)
         inc(it)
 
     return ret
@@ -1592,9 +1588,7 @@ cdef gl_options_map gl_options_map_from_pydict(dict d) except *:
     cdef gl_options_map ret
 
     for k,v in d.iteritems():
-        if PY_MAJOR_VERSION <= 2 and type(k) is not str:
-            k = str(k)
-        ret[k] = flexible_type_from_pyobject(v)
+        ret[str_to_cpp(k)] = flexible_type_from_pyobject(v)
 
     return ret
 
@@ -1716,8 +1710,6 @@ cdef inline flex_type_enum tr_buffer_to_flex_list(
             return INTEGER
 
         ft_type = flex_type_from_dtype(dt)
-
-        # print "HERE; ft_type = %s" % flex_type_enum_to_name(ft_type)
 
         if ft_type == INTEGER or ft_type == FLOAT:
             ft_rec_type = __tr_numeric_buffer_to_flex_list(retl, v, common_type, True)
@@ -1846,6 +1838,7 @@ cdef flex_list flex_list_from_typed_iterable(object v, flex_type_enum common_typ
 
 def _translate_through_flexible_type(object p):
     cdef flexible_type ft = flexible_type_from_pyobject(p)
+    #print("Translated %s into %s" % (repr(p), cpp_to_str(ft.as_string())))
     cdef object pt = pyobject_from_flexible_type(ft)
     return pt
 

@@ -122,7 +122,7 @@ std::string read_string_msg(const char * & iter) {
   return text;
 }
 
-              
+
 /**
  * Write a message to standard out in binary format encoded in the format:
  * message length (4 bytes) followed by bytes

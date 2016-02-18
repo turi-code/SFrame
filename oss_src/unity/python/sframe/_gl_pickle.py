@@ -8,15 +8,15 @@ of the BSD license. See the LICENSE file for details.
 from . import util as _util, toolkits as _toolkits, SFrame as _SFrame, SArray as _SArray, \
     SGraph as _SGraph, load_graph as _load_graph
 
-from util import _get_aws_credentials as _util_get_aws_credentials
-import util.cloudpickle as _cloudpickle
+from .util import _get_aws_credentials as _util_get_aws_credentials, \
+    cloudpickle as _cloudpickle, file_util as _file_util
+
 import pickle as _pickle
 import uuid as _uuid
 import os as _os
 import zipfile as _zipfile
 import shutil as _shutil
 import atexit as _atexit
-from util import file_util as _file_util
 import glob as _glob
 
 def _get_aws_credentials():
@@ -285,7 +285,7 @@ class GLPickler(_cloudpickle.CloudPickler):
             self.file = open(pickle_filename, 'wb')
             _cloudpickle.CloudPickler.__init__(self, self.file, protocol)
         except IOError as err:
-            print "GraphLab create pickling error: %s" % err
+            print("GraphLab create pickling error: %s" % err)
 
         # Write the version number.
         with open(_os.path.join(self.gl_temp_storage_path, 'version'), 'w') as f:
@@ -485,7 +485,7 @@ class GLUnpickler(_pickle.Unpickler):
                 outpath = self.gl_temp_storage_path
                 zf.extractall(outpath)
             except IOError as err:
-                print "Graphlab pickle extraction error: %s " % err
+                print("Graphlab pickle extraction error: %s " % err)
 
             self.pickle_filename = _os.path.join(self.gl_temp_storage_path,
                                                  pickle_filename)

@@ -4,7 +4,7 @@ Decompiler module.
 This module can decompile arbitrary code objects into a python ast. 
 '''
 
-from instructions import make_module, make_function
+from .instructions import make_module, make_function
 
 import _ast
 import struct

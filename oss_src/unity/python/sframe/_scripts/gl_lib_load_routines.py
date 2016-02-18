@@ -46,20 +46,20 @@ def setup_environment(info_log_function = None, error_log_function = None):
     def _write_log(s, error = False):
         if error:
             if error_log_function is None:
-                print s
+                print(s)
             else:
                 try:
                     error_log_function(s)
                 except Exception as e:
-                    print "Error setting exception: repr(e)"
-                    print "Error: ", s
+                    print("Error setting exception: repr(e)")
+                    print("Error: %s" % str(s))
         else:
             if info_log_function is not None:
                 try:
                     info_log_function(s)            
                 except Exception as e:
-                    print "Error logging info: %s." % repr(e)
-                    print "Message: ", s
+                    print("Error logging info: %s." % repr(e))
+                    print("Message: %s" % str(s))
     
     ########################################
     # Set up the system path. 

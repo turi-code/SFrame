@@ -16,7 +16,7 @@
 */
 #include <iostream>
 #include <cxxtest/TestSuite.h>
-#include <lambda/worker_pool2.hpp>
+#include <lambda/worker_pool.hpp>
 #include <parallel/lambda_omp.hpp>
 #include <fileio/fs_utils.hpp>
 #include "dummy_worker_interface.hpp"

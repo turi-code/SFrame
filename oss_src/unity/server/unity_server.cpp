@@ -144,7 +144,7 @@ std::string unity_server::parse_server_address(std::string server_address) {
   return server_address;
 }
 
-void unity_server::set_log_progress(bool enable) {
+EXPORT void unity_server::set_log_progress(bool enable) {
   global_logger().add_observer(LOG_PROGRESS, NULL);
   if (enable == true) {
     // set the progress observer
@@ -156,7 +156,7 @@ void unity_server::set_log_progress(bool enable) {
   }
 }
 
-void unity_server::set_log_progress_callback(void (*callback)(std::string)) {
+void unity_server::set_log_progress_callback(progress_callback_type callback) {
   if (callback == nullptr) {
     log_progress_callback = nullptr;
     global_logger().add_observer(LOG_PROGRESS, NULL);

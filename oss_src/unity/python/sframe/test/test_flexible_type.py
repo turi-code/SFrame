@@ -22,6 +22,11 @@ import datetime
 from itertools import product
 from copy import copy
 
+import sys
+if sys.version_info.major > 2:
+    long = int
+    unicode = str
+
 NoneType = type(None)
 
 current_file_dir = os.path.dirname(os.path.realpath(__file__))
@@ -42,10 +47,15 @@ special_types.add(id(IntegerValue))
 FloatValue = [float(0)] + [_dt(0) for _dt in np.sctypes['float']]
 special_types.add(id(FloatValue))
 
-StringValue = ([str('bork'), unicode('bork')]
+StringValue = ([str('bork'), unicode('bork'), b'bork', b'']
                + [_dt('bork') for _dt in
                   [np.unicode, np.unicode_, str, unicode, np.str,
+                   np.str_, np.string_]]
+               + [str(''), unicode('')]
+               + [_dt('') for _dt in
+                  [np.unicode, np.unicode_, str, unicode, np.str,
                    np.str_, np.string_]])
+                   
 special_types.add(id(StringValue))
 
 DictValue = [{'a' : 12}, dict()]
@@ -121,8 +131,11 @@ EmptyFloatArray = (
 special_types.add(id(EmptyFloatArray))
 
 # Empty but typed integer arrays
+type_codes = 'bBhHiIlL'
+if sys.version_info.major == 2:
+    type_codes += 'c'
 EmptyIntegerArray = (
-    [array.array(c, []) for c in 'cbBhHiIlL']
+    [array.array(c, []) for c in type_codes]
     + [np.array([], dtype= _dt) for _dt in np.sctypes['int']]
     + [np.array([], dtype= _dt) for _dt in np.sctypes['uint']])
 special_types.add(id(EmptyIntegerArray))
@@ -315,7 +328,7 @@ class FlexibleTypeTest(unittest.TestCase):
         self.assert_equal_with_lambda_check(_flexible_type(d),d)
     def test_int(self):
         self.assert_equal_with_lambda_check(_flexible_type(1), 1)
-        self.assert_equal_with_lambda_check(_flexible_type(1L), 1)
+        self.assert_equal_with_lambda_check(_flexible_type(long(1)), 1)
         self.assert_equal_with_lambda_check(_flexible_type(True), 1)
         self.assert_equal_with_lambda_check(_flexible_type(False), 0)
         # numpy types
@@ -344,7 +357,8 @@ class FlexibleTypeTest(unittest.TestCase):
 
     def test_string(self):
         self.assert_equal_with_lambda_check(_flexible_type("a"), "a")
-        self.assert_equal_with_lambda_check(_flexible_type(unicode("a")), "a")
+        if sys.version_info.major == 2:
+            self.assert_equal_with_lambda_check(_flexible_type(unicode("a")), "a")
         # numpy types
         self.assert_equal_with_lambda_check(_flexible_type(np.string_("a")), "a")
         self.assert_equal_with_lambda_check(_flexible_type(np.unicode_("a")), "a")
@@ -451,7 +465,7 @@ class FlexibleTypeTest(unittest.TestCase):
 
         # test int array
         expected = array.array('d', range(5))
-        self.assert_equal_with_lambda_check(_tr_flex_list(expected), range(5))
+        self.assert_equal_with_lambda_check(_tr_flex_list(expected), list(range(5)))
 
         expected = [1, 1.0, '1', [1., 1., 1.], ['a', 'b', 'c'], {}, {'a': 1}, None]
         self.assert_equal_with_lambda_check(_tr_flex_list(expected, int, ignore_cast_failure=True), [1, 1, None])
@@ -459,8 +473,10 @@ class FlexibleTypeTest(unittest.TestCase):
         # Anything can be cast to a string
         # self.assert_equal_with_lambda_check(_tr_flex_list(expected, str, ignore_cast_failure=True), ['1', '1', None])
         self.assert_equal_with_lambda_check(_tr_flex_list(expected, array.array, ignore_cast_failure=True), [array.array('d', [1., 1., 1.]), None])
-        self.assert_equal_with_lambda_check(_tr_flex_list(expected, list, ignore_cast_failure=True), [[1., 1., 1.], ['a', 'b', 'c'], None])
-        self.assert_equal_with_lambda_check(_tr_flex_list(expected, dict, ignore_cast_failure=True), [{}, {'a': 1}, None])
+        self.assert_equal_with_lambda_check(_tr_flex_list(expected, list, ignore_cast_failure=True),
+                                            [[1., 1., 1.], ['a', 'b', 'c'], None])
+        self.assert_equal_with_lambda_check(_tr_flex_list(expected, dict, ignore_cast_failure=True),
+                                            [{}, {'a': 1}, None])
 
     def test_infer_list_type(self):
         self.assertEquals(infer_type_of_list([image.Image(current_file_dir + "/images/nested/sample_grey.png"), image.Image(current_file_dir + "/images/sample.jpg","JPG"), image.Image(current_file_dir + "/images/sample.png")

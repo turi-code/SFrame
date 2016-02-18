@@ -96,17 +96,17 @@ cdef class UnitySArrayProxy:
 
     cpdef load_from_iterable(self, object d, type t, bint ignore_cast_failure=*)
 
-    cpdef load_from_url(self, string url, type t)
+    cpdef load_from_url(self, url, type t)
 
-    cpdef load_from_sarray_index(self, string index_file)
+    cpdef load_from_sarray_index(self, index_file)
 
     cpdef load_from_const(self, object value, size_t size)
 
-    cpdef load_autodetect(self, string url, type t)
+    cpdef load_autodetect(self, url, type t)
 
-    cpdef load_from_avro(self, string url)
+    cpdef load_from_avro(self, url)
 
-    cpdef save(self, string index_file)
+    cpdef save(self, index_file)
 
     cpdef size(self)
 
@@ -148,9 +148,9 @@ cdef class UnitySArrayProxy:
 
     cpdef nnz(self)
   
-    cpdef str_to_datetime(self, string str_format)
+    cpdef str_to_datetime(self, str_format)
 
-    cpdef datetime_to_str(self, string str_format)
+    cpdef datetime_to_str(self, str_format)
 
     cpdef astype(self, type dtype, bint undefined_on_failure)
 
@@ -162,11 +162,11 @@ cdef class UnitySArrayProxy:
 
     cpdef iterator_get_next(self, size_t length)
 
-    cpdef left_scalar_operator(self, object other, string op)
+    cpdef left_scalar_operator(self, object other, op)
 
-    cpdef right_scalar_operator(self, object other, string op)
+    cpdef right_scalar_operator(self, object other, op)
 
-    cpdef vector_operator(self, UnitySArrayProxy other, string op)
+    cpdef vector_operator(self, UnitySArrayProxy other, op)
 
     cpdef drop_missing_values(self)
 
@@ -200,11 +200,11 @@ cdef class UnitySArrayProxy:
 
     cpdef item_length(self)
 
-    cpdef unpack_dict(self, string column_name_prefix, object, na_value)
+    cpdef unpack_dict(self, column_name_prefix, object, na_value)
   
-    cpdef expand(self, string column_name_prefix, object, value_types)
+    cpdef expand(self, column_name_prefix, object, value_types)
 
-    cpdef unpack(self, string column_name_prefix, object, value_types, na_value)
+    cpdef unpack(self, column_name_prefix, object, value_types, na_value)
 
     cpdef __get_object_id(self)
 
@@ -212,6 +212,6 @@ cdef class UnitySArrayProxy:
 
     cpdef copy_range(self, size_t start, size_t step, size_t end)
 
-    cpdef builtin_rolling_apply(self, string fn_name, ssize_t before, ssize_t after, size_t min_observations)
+    cpdef builtin_rolling_apply(self, fn_name, ssize_t before, ssize_t after, size_t min_observations)
 
-    cpdef builtin_cumulative_aggregate(self, string fn_name)
+    cpdef builtin_cumulative_aggregate(self, fn_name)

@@ -30,6 +30,7 @@ from .cython.cy_graph import UnityGraphProxy as _UnityGraphProxy
 from .cython.cy_model import UnityModel as _UnityModel
 from .toolkits._main import ToolkitError as _ToolkitError
 from .cython.context import debug_trace as cython_context
+from sys import version_info as _version_info
 import types as _types
 
 
@@ -79,13 +80,14 @@ def _wrap_function_return(val):
     converting all occurances of UnityGraphProxy to an SGraph,
     UnitySFrameProxy to SFrame, and UnitySArrayProxy to SArray.
     """
-    if type(val) == _UnityGraphProxy:
+
+    if type(val) is _UnityGraphProxy:
         return _SGraph(_proxy = val)
-    elif type(val) == _UnitySFrameProxy:
+    elif type(val) is _UnitySFrameProxy:
         return _SFrame(_proxy = val)
-    elif type(val) == _UnitySArrayProxy:
+    elif type(val) is _UnitySArrayProxy:
         return _SArray(_proxy = val)
-    elif type(val) == _UnityModel:
+    elif type(val) is _UnityModel:
         # we need to cast it up to the appropriate type
         try:
             if '__uid__' in val.list_fields():
@@ -95,10 +97,10 @@ def _wrap_function_return(val):
         except:
             pass
         return val
-    elif type(val) == list:
+    elif type(val) is list:
         return [_wrap_function_return(i) for i in val]
-    elif type(val) == dict:
-        return {i:_wrap_function_return(val[i]) for i in val}
+    elif type(val) is dict:
+        return dict( (i, _wrap_function_return(val[i])) for i in val)
     else:
         return val
 
@@ -110,10 +112,6 @@ def _setattr_wrapper(mod, key, value):
     setattr(mod, key, value)
     if mod == _thismodule:
         setattr(_sys.modules[__name__], key, value)
-
-
-import types
-
 
 def _run_toolkit_function(fnname, arguments, args, kwargs):
     """
@@ -161,7 +159,7 @@ def _run_toolkit_function(fnname, arguments, args, kwargs):
             raise _ToolkitError("Toolkit failed with unknown error")
 
     ret = _wrap_function_return(ret[2])
-    if type(ret) == dict and 'return_value' in ret:
+    if type(ret) is dict and 'return_value' in ret:
         return ret['return_value']
     else:
         return ret
@@ -255,7 +253,7 @@ class _ToolkitClass:
         return lambda _proxy: _create_class_instance(gl_meta_value, _proxy)
 
     def __dir__(self):
-        return self._functions.keys() + self._get_properties + self._set_properties
+        return list(self._functions.keys()) + self._get_properties + self._set_properties
 
 
     def __run_class_function(self, fnname, args, kwargs):
@@ -369,16 +367,26 @@ def _publish():
             continue
 
         # create a new class
-        new_class = copy.deepcopy(_ToolkitClass.__dict__)
-        # rewrite the init method to add the toolkit class name so it will
-        # default construct correctly
-
-        new_class['__init__'] = _types.FunctionType(new_class['__init__'].func_code,
-                                     new_class['__init__'].func_globals,
+        if _version_info.major == 3:
+            new_class = _ToolkitClass.__dict__.copy()
+            new_class['__init__'] = _types.FunctionType(new_class['__init__'].__code__,
+                                     new_class['__init__'].__globals__,
                                      name='__init__',
                                      argdefs=(),
                                      closure=())
+        else:
+            new_class = copy.deepcopy(_ToolkitClass.__dict__)
+
+            # rewrite the init method to add the toolkit class name so it will
+            # default construct correctly
+
+            new_class['__init__'] = _types.FunctionType(new_class['__init__'].__code__,
+                                                        new_class['__init__'].__globals__,
+                                                        name='__init__',
+                                                        argdefs=(),
+                                                        closure=())
         new_class['__init__'].tkclass_name = tkclass
+
         newclass = _types.ClassType(tkclass, (), new_class)
         setattr(newclass, '__glmeta__', {'extension_name':tkclass})
         class_uid_to_class[m['uid']] = newclass

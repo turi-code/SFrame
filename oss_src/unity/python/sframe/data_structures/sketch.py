@@ -211,7 +211,7 @@ class Sketch(object):
           else:
               frequent_strkeys[strkey] = frequent[key]
 
-      sorted_freq = sorted(frequent_strkeys.iteritems(), key=operator.itemgetter(1), reverse=True)
+      sorted_freq = sorted(frequent_strkeys.items(), key=operator.itemgetter(1), reverse=True)
       if len(sorted_freq) == 0:
           s += " -- All elements appear with less than 0.01% frequency -- \n"
       else:
@@ -488,7 +488,7 @@ class Sketch(object):
 
     def sketch_ready(self):
         """
-        Returns true if the sketch has been executed on all the data.
+        Returns True if the sketch has been executed on all the data.
         If the sketch is created with background == False (default), this will
         always return True. Otherwise, this will return False until the sketch
         is ready.
@@ -719,7 +719,7 @@ class Sketch(object):
         if keys == None:
             keys = []
         else:
-            if not hasattr(keys, "__iter__"):
+            if not isinstance(keys, list):
                 single_val = True
                 keys = [keys]
             value_types = set([type(i) for i in keys])

@@ -21,7 +21,6 @@ from .cy_flexible_type cimport pylist_from_flex_list
 from .cy_flexible_type cimport pydict_from_gl_options_map
 
 #### dataframe utils ####
-from .cy_dataframe cimport gl_dataframe_from_pd
 from .cy_dataframe cimport gl_dataframe_from_dict_of_arrays
 from .cy_dataframe cimport pd_from_gl_dataframe
 from .cy_dataframe cimport is_pandas_dataframe
@@ -30,6 +29,10 @@ from .cy_dataframe cimport is_pandas_dataframe
 from .cy_sarray cimport create_proxy_wrapper_from_existing_proxy as sarray_proxy
 from .cy_sarray cimport unity_sarray_proxy
 from .cy_sarray cimport UnitySArrayProxy
+
+from .cy_cpp_utils cimport str_to_cpp, cpp_to_str
+from .cy_cpp_utils cimport to_vector_of_strings, from_vector_of_strings
+from .cy_cpp_utils cimport to_nested_vectors_of_strings, dict_to_string_string_map
 
 cdef create_proxy_wrapper_from_existing_proxy(PyCommClient cli, const unity_sframe_base_ptr& proxy):
     if proxy.get() == NULL:
@@ -44,12 +47,10 @@ cdef pydict_from_gl_error_map(PyCommClient cli, gl_error_map& d):
     Converting map[string, sarray] to dict
     """
     cdef unity_sarray_base_ptr proxy 
-    ret = {}
-    it = d.begin()
-    cdef pair[string, unity_sarray_base_ptr] entry
+    cdef dict ret = {}
+    cdef map[string, unity_sarray_base_ptr].iterator it = d.begin()
     while (it != d.end()):
-        entry = deref(it)
-        ret[entry.first] = sarray_proxy(cli, (entry.second))
+        ret[cpp_to_str(deref(it).first)] = sarray_proxy(cli, deref(it).second)
         inc(it)
     return ret
 
@@ -66,34 +67,33 @@ cdef class UnitySFrameProxy:
             self._base_ptr.reset(<unity_sframe_base*>(self.thisptr))
 
     cpdef load_from_dataframe(self, dataframe):
-        cdef gl_dataframe gldf
-        if is_pandas_dataframe(dataframe):
-            gldf = gl_dataframe_from_pd(dataframe)
-        else:
-            gldf = gl_dataframe_from_dict_of_arrays(dataframe)
+        cdef gl_dataframe gldf = gl_dataframe_from_dict_of_arrays(dataframe)
         with nogil:
             self.thisptr.construct_from_dataframe(gldf)
 
     cpdef load_from_sframe_index(self, index_file):
-        cdef string str_index_file = index_file
+        cdef string str_index_file = str_to_cpp(index_file)
         with nogil:
             self.thisptr.construct_from_sframe_index(str_index_file)
 
-    cpdef load_from_csvs(self, string url, object csv_config, object column_type_hints):
+    cpdef load_from_csvs(self, _url, object csv_config, dict column_type_hints):
         cdef map[string, flex_type_enum] c_column_type_hints
-        for key in column_type_hints:
-            c_column_type_hints[key] = flex_type_enum_from_pytype(column_type_hints[key])
+        for key, value in column_type_hints.items():
+            c_column_type_hints[str_to_cpp(key)] = flex_type_enum_from_pytype(value)
         cdef gl_options_map csv_options = gl_options_map_from_pydict(csv_config)
         cdef gl_error_map errors
+        cdef string url = str_to_cpp(_url)
         with nogil:
             errors = self.thisptr.construct_from_csvs(url, csv_options, c_column_type_hints)
         return pydict_from_gl_error_map(self._cli, errors)
 
-    cpdef save(self, string index_file):
+    cpdef save(self, _index_file):
+        cdef string index_file = str_to_cpp(_index_file)
         with nogil:
             self.thisptr.save_frame(index_file)
 
-    cpdef save_reference(self, string index_file):
+    cpdef save_reference(self, _index_file):
+        cdef string index_file = str_to_cpp(_index_file)
         with nogil:
             self.thisptr.save_frame_reference(index_file)
 
@@ -107,7 +107,7 @@ cdef class UnitySFrameProxy:
         return [pytype_from_flex_type_enum(t) for t in self.thisptr.dtype()]
 
     cpdef column_names(self):
-        return self.thisptr.column_names()
+        return from_vector_of_strings(self.thisptr.column_names())
 
     cpdef head(self, size_t n):
         cdef unity_sframe_base_ptr proxy
@@ -128,7 +128,7 @@ cdef class UnitySFrameProxy:
             lambda_str = fn
         else:
             from .. import util
-            lambda_str = util._pickle_to_temp_location_or_memory(fn)
+            lambda_str = str_to_cpp(util._pickle_to_temp_location_or_memory(fn))
         # skip_undefined options is not used for now.
         skip_undefined = 0
         cdef unity_sarray_base_ptr proxy
@@ -146,7 +146,8 @@ cdef class UnitySFrameProxy:
             proxy = (self.thisptr.transform_native(cl, flex_type_en, skip_undefined, seed))
         return sarray_proxy(self._cli, proxy)
 
-    cpdef flat_map(self, object fn, vector[string] column_names, object py_column_types, int seed):
+    cpdef flat_map(self, object fn, _column_names, object py_column_types, int seed):
+        cdef vector[string] column_names = to_vector_of_strings(_column_names)
         cdef vector[flex_type_enum] column_types
         cdef string lambda_str
         for t in py_column_types:
@@ -169,23 +170,27 @@ cdef class UnitySFrameProxy:
             proxy = (self.thisptr.logical_filter(other._base_ptr))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
-    cpdef select_columns(self, vector[string] keylist):
+    cpdef select_columns(self, _keylist):
+        cdef vector[string] keylist = to_vector_of_strings(_keylist)
         cdef unity_sframe_base_ptr proxy
         with nogil:
             proxy = (self.thisptr.select_columns(keylist))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
-    cpdef select_column(self, string key):
+    cpdef select_column(self, _key):
+        cdef string key = str_to_cpp(_key)
         cdef unity_sarray_base_ptr proxy
         with nogil:
             proxy = (self.thisptr.select_column(key))
         return sarray_proxy(self._cli, proxy)
 
-    cpdef add_column(self, UnitySArrayProxy data, string name):
+    cpdef add_column(self, UnitySArrayProxy data, _name):
+        cdef string name = str_to_cpp(_name)
         with nogil:
             self.thisptr.add_column(data._base_ptr, name)
 
-    cpdef add_columns(self, object datalist, vector[string] namelist):
+    cpdef add_columns(self, object datalist, _namelist):
+        cdef vector[string] namelist = to_vector_of_strings(_namelist)
         cdef cpplist[unity_sarray_base_ptr] proxies
         cdef UnitySArrayProxy proxy
         for i in datalist:
@@ -203,7 +208,8 @@ cdef class UnitySFrameProxy:
         with nogil:
             self.thisptr.swap_columns(i, j)
 
-    cpdef set_column_name(self, size_t i, string name):
+    cpdef set_column_name(self, size_t i, _name):
+        cdef string name = str_to_cpp(_name)
         with nogil:
             self.thisptr.set_column_name(i, name)
 
@@ -214,7 +220,8 @@ cdef class UnitySFrameProxy:
         tmp = self.thisptr.iterator_get_next(length)
         return [pylist_from_flex_list(x) for x in tmp]
 
-    cpdef save_as_csv(self, string url, object csv_config):
+    cpdef save_as_csv(self, _url, object csv_config):
+        cdef string url = str_to_cpp(_url)
         cdef gl_options_map csv_options = gl_options_map_from_pydict(csv_config)
         with nogil:
             self.thisptr.save_as_csv(url, csv_options)
@@ -236,10 +243,16 @@ cdef class UnitySFrameProxy:
         second = create_proxy_wrapper_from_existing_proxy(self._cli, proxy_second)
         return (first, second)
 
-    cpdef groupby_aggregate(self, vector[string] key_columns, vector[vector[string]] group_column, vector[string] group_output_columns, vector[string] column_ops):
+    cpdef groupby_aggregate(self, _key_columns, _group_column, _group_output_columns, _column_ops):
+        cdef vector[string] key_columns          = to_vector_of_strings(_key_columns)
+        cdef vector[vector[string]] group_column = to_nested_vectors_of_strings(_group_column)
+        cdef vector[string] group_output_columns = to_vector_of_strings(_group_output_columns)
+        cdef vector[string] column_ops           = to_vector_of_strings(_column_ops)
+        
         cdef unity_sframe_base_ptr proxy
         with nogil:
-            proxy = self.thisptr.groupby_aggregate(key_columns, group_column, group_output_columns, column_ops)
+            proxy = self.thisptr.groupby_aggregate(key_columns, group_column,
+                                                   group_output_columns, column_ops)
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
     cpdef append(self, UnitySFrameProxy other):
@@ -258,16 +271,20 @@ cdef class UnitySFrameProxy:
         return self.thisptr.has_size()
 
     cpdef query_plan_string(self):
-        return self.thisptr.query_plan_string()
+        return cpp_to_str(self.thisptr.query_plan_string())
 
-    cpdef join(self, UnitySFrameProxy right, string how, map[string,string] on):
+    cpdef join(self, UnitySFrameProxy right, _how, dict _on):
         cdef unity_sframe_base_ptr proxy
+        cdef map[string,string] on = dict_to_string_string_map(_on)
+        cdef string how = str_to_cpp(_how)
         with nogil:
             proxy = (self.thisptr.join(right._base_ptr, how, on))
 
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
-    cpdef pack_columns(self, vector[string] column_names, vector[string] key_names, dtype, fill_na):
+    cpdef pack_columns(self, _column_names, _key_names, dtype, fill_na):
+        cdef vector[string] column_names = to_vector_of_strings(_column_names)
+        cdef vector[string] key_names = to_vector_of_strings(_key_names)
         cdef unity_sarray_base_ptr proxy
         cdef flex_type_enum fl_type = flex_type_enum_from_pytype(dtype)
         cdef flexible_type na_val = flexible_type_from_pyobject(fill_na)
@@ -275,7 +292,9 @@ cdef class UnitySFrameProxy:
             proxy = self.thisptr.pack_columns(column_names, key_names, fl_type, na_val)
         return sarray_proxy(self._cli, proxy)
 
-    cpdef stack(self, string column_name, vector[string] new_column_names, new_column_types, drop_na):
+    cpdef stack(self, _column_name, _new_column_names, new_column_types, drop_na):
+        cdef string column_name = str_to_cpp(_column_name)
+        cdef vector[string] new_column_names = to_vector_of_strings(_new_column_names)
         cdef vector[flex_type_enum] column_types
         cdef bint b_drop_na = drop_na
         for t in new_column_types:
@@ -286,7 +305,8 @@ cdef class UnitySFrameProxy:
             proxy = self.thisptr.stack(column_name, new_column_names, column_types, b_drop_na)
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
-    cpdef sort(self, vector[string] sort_columns, vector[int] sort_orders):
+    cpdef sort(self, _sort_columns, vector[int] sort_orders):
+        cdef vector[string] sort_columns = to_vector_of_strings(_sort_columns)
         cdef unity_sframe_base_ptr proxy
         # some how c++ side doesn't support vector[bool], using vector[int] here
         cdef vector[int] orders = [int(i) for i in sort_orders]
@@ -295,7 +315,8 @@ cdef class UnitySFrameProxy:
 
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
-    cpdef drop_missing_values(self, vector[string] columns, bint is_all, bint split):
+    cpdef drop_missing_values(self, _columns, bint is_all, bint split):
+        cdef vector[string] columns = to_vector_of_strings(_columns)
         cdef cpplist[unity_sframe_base_ptr] sf_array
         with nogil:
             sf_array = self.thisptr.drop_missing_values(columns, is_all, split)

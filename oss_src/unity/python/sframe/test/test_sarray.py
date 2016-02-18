@@ -8,8 +8,9 @@ of the BSD license. See the LICENSE file for details.
 '''
 from ..data_structures.sarray import SArray
 from ..util.timezone import GMT
-from ..toolkits._main import ToolkitError
+from . import util
 
+import binascii
 import pandas as pd
 import numpy as np
 import unittest
@@ -20,7 +21,6 @@ import os
 import math
 import shutil
 import array
-import util
 import time
 import itertools
 import warnings
@@ -267,7 +267,7 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(sa2_int, expected_output, int)
 
     def test_transform_with_exception(self):
-        sa_char = SArray(['a' for i in xrange(10000)], str)
+        sa_char = SArray(['a' for i in range(10000)], str)
         # # type mismatch exception
         self.assertRaises(TypeError, lambda: sa_char.apply(lambda char: char, int).head(1))
         # # divide by 0 exception
@@ -312,13 +312,15 @@ class SArrayTest(unittest.TestCase):
 
         # transform dict to list
         sa_dict = SArray(self.dict_data, dict)
-        sa_list = sa_dict.apply(lambda x: x.keys())
-        self.__test_equal(sa_list, [x.keys() for x in self.dict_data], list)
+        # Python 3 doesn't return keys in same order from identical dictionaries.
+        sort_by_type = lambda x : str(type(x))
+        sa_list = sa_dict.apply(lambda x: sorted(list(x), key = sort_by_type))
+        self.__test_equal(sa_list, [sorted(list(x), key = sort_by_type) for x in self.dict_data], list)
 
     def test_transform_dict(self):
         # lambda accesses dict
         sa_dict = SArray([{'a':1}, {1:2}, {'c': 'a'}, None], dict)
-        sa_bool_r = sa_dict.apply(lambda x: x.has_key('a') if x != None else None, skip_undefined=False)
+        sa_bool_r = sa_dict.apply(lambda x: 'a' in x if x != None else None, skip_undefined=False)
         expected_output = [1, 0, 0, None]
         self.__test_equal(sa_bool_r, expected_output, int)
 
@@ -329,16 +331,15 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(lambda_out, expected_output, dict)
 
     def test_filter_dict(self):
-        data = [{'a':1}, {1:2}, None, {'c': 'a'}]
         expected_output = [{'a':1}]
         sa_dict = SArray(expected_output, dict)
-        ret = sa_dict.filter(lambda x: x.has_key('a'))
+        ret = sa_dict.filter(lambda x: 'a' in x)
         self.__test_equal(ret, expected_output, dict)
 
         # try second time to make sure the lambda system still works
         expected_output = [{1:2}]
         sa_dict = SArray(expected_output, dict)
-        lambda_out = sa_dict.filter(lambda x: x.has_key(1))
+        lambda_out = sa_dict.filter(lambda x: 1 in x)
         self.__test_equal(lambda_out, expected_output, dict)
 
     def test_filter(self):
@@ -420,14 +421,14 @@ class SArrayTest(unittest.TestCase):
         self.assertEqual(as_out.dtype(), float)
 
         # test float -> int
-        s = SArray(map(lambda x: x+0.2, self.float_data), float)
+        s = SArray(list(map(lambda x: x+0.2, self.float_data)), float)
         as_out = s.astype(int)
         self.assertEqual(list(as_out.head(10)), self.int_data)
 
         # test int->string
         s = SArray(self.int_data, int)
         as_out = s.astype(str)
-        self.assertEqual(list(as_out.head(10)), map(lambda x: str(x), self.int_data))
+        self.assertEqual(list(as_out.head(10)), list(map(lambda x: str(x), self.int_data)))
 
         i_out = as_out.astype(int)
         self.assertEqual(list(i_out.head(10)), list(s.head(10)))
@@ -673,7 +674,7 @@ class SArrayTest(unittest.TestCase):
         self.assertAlmostEqual(s.mean(), 5.5)
 
         # test all negative
-        s = SArray(map(lambda x: x*-1, self.int_data), int)
+        s = SArray(list(map(lambda x: x*-1, self.int_data)), int)
         self.assertEqual(s.max(), -1)
         self.assertEqual(s.min(), -10)
         self.assertEqual(s.sum(), -55)
@@ -1005,7 +1006,7 @@ class SArrayTest(unittest.TestCase):
 
     def test_append(self):
         n = len(self.int_data)
-        m = n / 2
+        m = n // 2
 
         self.__test_append(self.int_data[0:m], self.int_data[m:n], int)
         self.__test_append(self.bool_data[0:m], self.bool_data[m:n], int)
@@ -1048,11 +1049,11 @@ class SArrayTest(unittest.TestCase):
     def test_word_count2(self):
         sa = SArray(["This is some url http://www.someurl.com!!", "Should we? Yes, we should."])
         #TODO: Get some weird unicode whitespace in the Chinese and Russian tests
-	expected1 = [{"this": 1, "is": 1, "some": 1, "url": 1, "http://www.someurl.com!!": 1},
+        expected1 = [{"this": 1, "is": 1, "some": 1, "url": 1, "http://www.someurl.com!!": 1},
                      {"should": 1, "we?": 1, "we": 1, "yes,": 1, "should.": 1}]
-	expected2 = [{"this is some url http://www.someurl.com": 1},
+        expected2 = [{"this is some url http://www.someurl.com": 1},
                      {"should we": 1, " yes": 1, " we should.": 1}]
-	word_counts1 = sa._count_words()
+        word_counts1 = sa._count_words()
         word_counts2 = sa._count_words(delimiters=["?", "!", ","])
 
         self.assertEquals(word_counts1.dtype(), dict)
@@ -1143,7 +1144,7 @@ class SArrayTest(unittest.TestCase):
             sa_word._count_ngrams(0)
 
 
-        with warnings.catch_warnings(True) as context:
+        with warnings.catch_warnings(record=True) as context:
              sa_word._count_ngrams(10)
              assert len(context) == 1
 
@@ -1455,9 +1456,10 @@ class SArrayTest(unittest.TestCase):
         g=SArray(['123',u'\u2019'])
 
     def test_read_from_avro(self):
-        data = """Obj\x01\x04\x16avro.schema\xec\x05{"fields": [{"type": "string", "name": "business_id"}, {"type": "string", "name": "date"}, {"type": "string", "name": "review_id"}, {"type": "int", "name": "stars"}, {"type": "string", "name": "text"}, {"type": "string", "name": "type"}, {"type": "string", "name": "user_id"}, {"type": {"type": "map", "values": "int"}, "name": "votes"}], "type": "record", "name": "review"}\x14avro.codec\x08null\x00\x0e7\x91\x0b#.\x8f\xa2H%<G\x9c\x89\x93\xfb\x04\xe8 ,sgBl3UDEcNYKwuUb92CYdA\x142009-01-25,Zj-R0ZZqIKFx56LY2su1iQ\x08\x80\x19The owner of China King had never heard of Yelp...until Jim W rolled up on China King!\n\nThe owner of China King, Michael, is very friendly and chatty.  Be Prepared to chat for a few minutes if you strike up a conversation.\n\nThe service here was terrific.  We had several people fussing over us but the primary server, Maggie was a gem.  \n\nMy wife and the kids opted for the Americanized menu and went with specials like sweet and sour chicken, shrimp in white sauce and garlic beef.  Each came came with soup, egg roll and rice.  I sampled the garlic beef which they prepared with a kung pao brown sauce (a decision Maggie and my wife arrived at after several minutes of discussion) it had a nice robust flavor and the veggies were fresh and flavorful.  I  also sampled the shrimp which were succulent and the white sauce had a little more distinctiveness to it than the same sauce at many Chinese restaurants.\n\nI ordered from the traditional menu but went not too adventurous with sizzling plate with scallops and shrimp in black pepper sauce.  Very enjoyable.  Again, succulent shrimp.  The scallops were tasty as well.  Realizing that I moved here from Boston and I go into any seafood experience with diminished expectations now that I live in the west, I have to say the scallops are among the fresher and judiciously prepared that I have had in Phoenix.\n\nOverall China King delivered a very tasty and very fresh meal.  They have a fairly extensive traditional menu which I look forward to exploring further.\n\nThanks to Christine O for her review...after reading that I knew China King was A-OK.\x0creview,P2kVk4cIWyK4e4h14RhK-Q\x06\nfunny\x08\x0cuseful\x12\x08cool\x0e\x00,arKckMf7lGNYjXjKo6DXcA\x142012-05-05,EyVfhRDlyip2ErKMOHEA-A\x08\xa4\x04We\'ve been here a few times and we love all the fresh ingredients. The pizza is good when you eat it fresh but if you like to eat your pizza cold then you\'ll be biting into hard dough. Their Nutella pizza is good. Take a menu and check out their menu and hours for specials.\x0creview,x1Yl1dpNcWCCEdpME9dg0g\x06\nfunny\x02\x0cuseful\x02\x08cool\x00\x00\x0e7\x91\x0b#.\x8f\xa2H%<G\x9c\x89\x93\xfb"""
+        encoded_data = 'T2JqAQQWYXZyby5zY2hlbWHsBXsiZmllbGRzIjogW3sidHlwZSI6ICJzdHJpbmciLCAibmFtZSI6ICJidXNpbmVzc19pZCJ9LCB7InR5cGUiOiAic3RyaW5nIiwgIm5hbWUiOiAiZGF0ZSJ9LCB7InR5cGUiOiAic3RyaW5nIiwgIm5hbWUiOiAicmV2aWV3X2lkIn0sIHsidHlwZSI6ICJpbnQiLCAibmFtZSI6ICJzdGFycyJ9LCB7InR5cGUiOiAic3RyaW5nIiwgIm5hbWUiOiAidGV4dCJ9LCB7InR5cGUiOiAic3RyaW5nIiwgIm5hbWUiOiAidHlwZSJ9LCB7InR5cGUiOiAic3RyaW5nIiwgIm5hbWUiOiAidXNlcl9pZCJ9LCB7InR5cGUiOiB7InR5cGUiOiAibWFwIiwgInZhbHVlcyI6ICJpbnQifSwgIm5hbWUiOiAidm90ZXMifV0sICJ0eXBlIjogInJlY29yZCIsICJuYW1lIjogInJldmlldyJ9FGF2cm8uY29kZWMIbnVsbAAON5ELIy6PokglPEeciZP7BOggLHNnQmwzVURFY05ZS3d1VWI5MkNZZEEUMjAwOS0wMS0yNSxaai1SMFpacUlLRng1NkxZMnN1MWlRCIAZVGhlIG93bmVyIG9mIENoaW5hIEtpbmcgaGFkIG5ldmVyIGhlYXJkIG9mIFllbHAuLi51bnRpbCBKaW0gVyByb2xsZWQgdXAgb24gQ2hpbmEgS2luZyEKClRoZSBvd25lciBvZiBDaGluYSBLaW5nLCBNaWNoYWVsLCBpcyB2ZXJ5IGZyaWVuZGx5IGFuZCBjaGF0dHkuICBCZSBQcmVwYXJlZCB0byBjaGF0IGZvciBhIGZldyBtaW51dGVzIGlmIHlvdSBzdHJpa2UgdXAgYSBjb252ZXJzYXRpb24uCgpUaGUgc2VydmljZSBoZXJlIHdhcyB0ZXJyaWZpYy4gIFdlIGhhZCBzZXZlcmFsIHBlb3BsZSBmdXNzaW5nIG92ZXIgdXMgYnV0IHRoZSBwcmltYXJ5IHNlcnZlciwgTWFnZ2llIHdhcyBhIGdlbS4gIAoKTXkgd2lmZSBhbmQgdGhlIGtpZHMgb3B0ZWQgZm9yIHRoZSBBbWVyaWNhbml6ZWQgbWVudSBhbmQgd2VudCB3aXRoIHNwZWNpYWxzIGxpa2Ugc3dlZXQgYW5kIHNvdXIgY2hpY2tlbiwgc2hyaW1wIGluIHdoaXRlIHNhdWNlIGFuZCBnYXJsaWMgYmVlZi4gIEVhY2ggY2FtZSBjYW1lIHdpdGggc291cCwgZWdnIHJvbGwgYW5kIHJpY2UuICBJIHNhbXBsZWQgdGhlIGdhcmxpYyBiZWVmIHdoaWNoIHRoZXkgcHJlcGFyZWQgd2l0aCBhIGt1bmcgcGFvIGJyb3duIHNhdWNlIChhIGRlY2lzaW9uIE1hZ2dpZSBhbmQgbXkgd2lmZSBhcnJpdmVkIGF0IGFmdGVyIHNldmVyYWwgbWludXRlcyBvZiBkaXNjdXNzaW9uKSBpdCBoYWQgYSBuaWNlIHJvYnVzdCBmbGF2b3IgYW5kIHRoZSB2ZWdnaWVzIHdlcmUgZnJlc2ggYW5kIGZsYXZvcmZ1bC4gIEkgIGFsc28gc2FtcGxlZCB0aGUgc2hyaW1wIHdoaWNoIHdlcmUgc3VjY3VsZW50IGFuZCB0aGUgd2hpdGUgc2F1Y2UgaGFkIGEgbGl0dGxlIG1vcmUgZGlzdGluY3RpdmVuZXNzIHRvIGl0IHRoYW4gdGhlIHNhbWUgc2F1Y2UgYXQgbWFueSBDaGluZXNlIHJlc3RhdXJhbnRzLgoKSSBvcmRlcmVkIGZyb20gdGhlIHRyYWRpdGlvbmFsIG1lbnUgYnV0IHdlbnQgbm90IHRvbyBhZHZlbnR1cm91cyB3aXRoIHNpenpsaW5nIHBsYXRlIHdpdGggc2NhbGxvcHMgYW5kIHNocmltcCBpbiBibGFjayBwZXBwZXIgc2F1Y2UuICBWZXJ5IGVuam95YWJsZS4gIEFnYWluLCBzdWNjdWxlbnQgc2hyaW1wLiAgVGhlIHNjYWxsb3BzIHdlcmUgdGFzdHkgYXMgd2VsbC4gIFJlYWxpemluZyB0aGF0IEkgbW92ZWQgaGVyZSBmcm9tIEJvc3RvbiBhbmQgSSBnbyBpbnRvIGFueSBzZWFmb29kIGV4cGVyaWVuY2Ugd2l0aCBkaW1pbmlzaGVkIGV4cGVjdGF0aW9ucyBub3cgdGhhdCBJIGxpdmUgaW4gdGhlIHdlc3QsIEkgaGF2ZSB0byBzYXkgdGhlIHNjYWxsb3BzIGFyZSBhbW9uZyB0aGUgZnJlc2hlciBhbmQganVkaWNpb3VzbHkgcHJlcGFyZWQgdGhhdCBJIGhhdmUgaGFkIGluIFBob2VuaXguCgpPdmVyYWxsIENoaW5hIEtpbmcgZGVsaXZlcmVkIGEgdmVyeSB0YXN0eSBhbmQgdmVyeSBmcmVzaCBtZWFsLiAgVGhleSBoYXZlIGEgZmFpcmx5IGV4dGVuc2l2ZSB0cmFkaXRpb25hbCBtZW51IHdoaWNoIEkgbG9vayBmb3J3YXJkIHRvIGV4cGxvcmluZyBmdXJ0aGVyLgoKVGhhbmtzIHRvIENocmlzdGluZSBPIGZvciBoZXIgcmV2aWV3Li4uYWZ0ZXIgcmVhZGluZyB0aGF0IEkga25ldyBDaGluYSBLaW5nIHdhcyBBLU9LLgxyZXZpZXcsUDJrVms0Y0lXeUs0ZTRoMTRSaEstUQYKZnVubnkIDHVzZWZ1bBIIY29vbA4ALGFyS2NrTWY3bEdOWWpYaktvNkRYY0EUMjAxMi0wNS0wNSxFeVZmaFJEbHlpcDJFcktNT0hFQS1BCKQEV2UndmUgYmVlbiBoZXJlIGEgZmV3IHRpbWVzIGFuZCB3ZSBsb3ZlIGFsbCB0aGUgZnJlc2ggaW5ncmVkaWVudHMuIFRoZSBwaXp6YSBpcyBnb29kIHdoZW4geW91IGVhdCBpdCBmcmVzaCBidXQgaWYgeW91IGxpa2UgdG8gZWF0IHlvdXIgcGl6emEgY29sZCB0aGVuIHlvdSdsbCBiZSBiaXRpbmcgaW50byBoYXJkIGRvdWdoLiBUaGVpciBOdXRlbGxhIHBpenphIGlzIGdvb2QuIFRha2UgYSBtZW51IGFuZCBjaGVjayBvdXQgdGhlaXIgbWVudSBhbmQgaG91cnMgZm9yIHNwZWNpYWxzLgxyZXZpZXcseDFZbDFkcE5jV0NDRWRwTUU5ZGcwZwYKZnVubnkCDHVzZWZ1bAIIY29vbAAADjeRCyMuj6JIJTxHnImT+w=='
+ 
         test_avro_file = open("test.avro", "wb")
-        test_avro_file.write(data)
+        test_avro_file.write(binascii.a2b_base64(encoded_data))
         test_avro_file.close()
         sa = SArray.from_avro("test.avro")
         self.assertEqual(sa.dtype(), dict)
@@ -1481,11 +1483,11 @@ class SArrayTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             g = SArray.from_sequence()
         g = SArray.from_sequence(100)
-        self.assertEqual(list(g), range(100))
+        self.assertEqual(list(g), list(range(100)))
         g = SArray.from_sequence(10, 100)
-        self.assertEqual(list(g), range(10, 100))
+        self.assertEqual(list(g), list(range(10, 100)))
         g = SArray.from_sequence(100, 10)
-        self.assertEqual(list(g), range(100, 10))
+        self.assertEqual(list(g), list(range(100, 10)))
 
     def test_datetime(self):
         sa = SArray(self.datetime_data)
@@ -1582,7 +1584,7 @@ class SArrayTest(unittest.TestCase):
         # another without delimiter test
         sa = SArray(['20110623T191001'])
         sa = sa.str_to_datetime("%Y%m%dT%H%M%S%F%q")
-        expected = [dt.datetime(2011, 06, 23, 19, 10, 1)]
+        expected = [dt.datetime(2011, 6, 23, 19, 10, 1)]
         self.__test_equal(sa,expected,dt.datetime)
 
         # am pm
@@ -1684,7 +1686,7 @@ class SArrayTest(unittest.TestCase):
         tmp_dir = tempfile.mkdtemp()
         data.save(tmp_dir)
         shutil.rmtree(tmp_dir)
-        print data
+        print(data)
 
     def test_to_numpy(self):
         X = SArray(range(100))

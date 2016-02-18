@@ -7,6 +7,7 @@ of the BSD license. See the LICENSE file for details.
 '''
 from .sframe import SFrame
 from ..cython.context import debug_trace as cython_context
+from ..util import _is_non_string_iterable
 from .sarray import SArray, _create_sequential_sarray
 import copy
 
@@ -98,9 +99,9 @@ class GFrame(SFrame):
         namelist : list of string
             A list of column names. All names must be specified.
         """
-        if not hasattr(datalist, '__iter__'):
+        if not _is_non_string_iterable(datalist):
             raise TypeError("datalist must be an iterable")
-        if not hasattr(namelist, '__iter__'):
+        if not _is_non_string_iterable(namelist):
             raise TypeError("namelist must be an iterable")
 
         if not all([isinstance(x, SArray) for x in datalist]):

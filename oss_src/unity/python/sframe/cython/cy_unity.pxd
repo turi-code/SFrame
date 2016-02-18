@@ -103,23 +103,23 @@ cdef class UnityGlobalProxy:
 
     cpdef get_graph_dag(self)
 
-    cpdef load_graph(self, string fname)
+    cpdef load_graph(self, fname)
 
     cpdef list_toolkit_functions(self)
 
     cpdef list_toolkit_classes(self)
 
-    cpdef describe_toolkit_function(self, string fname)
+    cpdef describe_toolkit_function(self, fname)
 
-    cpdef describe_toolkit_class(self, string model)
+    cpdef describe_toolkit_class(self, model)
 
-    cpdef create_toolkit_class(self, string model)
+    cpdef create_toolkit_class(self, model)
 
-    cpdef run_toolkit(self, string toolkit_name, object arguments)
+    cpdef run_toolkit(self, toolkit_name, object arguments)
 
-    cpdef save_model(self, model, string url, object explicit_model_wrapper=*)
+    cpdef save_model(self, model, url, object explicit_model_wrapper=*)
 
-    cpdef load_model(self, string url)
+    cpdef load_model(self, url)
 
     cpdef eval_lambda(self, object fn, object argument)
 
@@ -143,15 +143,15 @@ cdef class UnityGlobalProxy:
 
     cpdef list_globals(self, bint runtime_modifiable)
 
-    cpdef set_global(self, string key, object value)
+    cpdef set_global(self, key, object value)
 
     cpdef create_sequential_sarray(self, ssize_t size, ssize_t start, bint reverse)
 
-    cpdef load_toolkit(self, string soname, string module_subpath)
+    cpdef load_toolkit(self, soname, module_subpath)
 
-    cpdef list_toolkit_functions_in_dynamic_module(self, string soname)
+    cpdef list_toolkit_functions_in_dynamic_module(self, soname)
 
-    cpdef list_toolkit_classes_in_dynamic_module(self, string soname)
+    cpdef list_toolkit_classes_in_dynamic_module(self, soname)
 
     cpdef get_current_cache_file_location(self)
 

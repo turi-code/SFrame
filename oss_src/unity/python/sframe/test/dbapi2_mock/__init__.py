@@ -17,4 +17,4 @@ class dbapi2_mock(object):
         self.DATETIME = 43
         self.NUMBER = 44
         self.ROWID = 45
-        self.Error = StandardError
+        self.Error = Exception # StandardError not in python 3
