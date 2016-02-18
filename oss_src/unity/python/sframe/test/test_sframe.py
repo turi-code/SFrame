@@ -1151,8 +1151,8 @@ class SFrameTest(unittest.TestCase):
         self.assertEqual(sf2['Var of value'], [1, 0])
         self.assertEqual(sf2['Stdv of value'], [1, 0])
         self.assertEqual(sf2['Count Distinct of value'], [2, 1])
-        self.assertEqual(sorted(sf2['Distinct of value'][0]), sorted([1, None]))
-        self.assertEqual(sorted(sf2['Distinct of value'][1]), sorted([None]))
+        self.assertEqual(set(sf2['Distinct of value'][0]), set([1, None]))
+        self.assertEqual(set(sf2['Distinct of value'][1]), set([None]))
         self.assertEqual(sf2['Frequency Count of value'][0], {1:1, None:5})
         self.assertEqual(sf2['Frequency Count of value'][1], {None:4})
 
