@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 class ByteCodePrinter(ByteCodeConsumer):
     
     def generic_consume(self, instr):
-        print instr
+        print(instr)
 
 def main():
     parser = ArgumentParser()

@@ -24,7 +24,7 @@ class toolkit_class_registry;
 
 class unity_server {
  public:
-  typedef void(*progress_callback_type)(std::string);
+  typedef void(*progress_callback_type)(const std::string&);
 
   /**
    * Constructor

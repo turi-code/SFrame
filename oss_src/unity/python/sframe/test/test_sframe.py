@@ -10,9 +10,10 @@ from ..data_structures.sframe import SFrame
 from ..data_structures.sarray import SArray
 from ..data_structures.image import Image
 from ..connect import main as glconnect
-from ..connect import server
 from ..util import _assert_sframe_equal
-from ..import _launch, load_sframe, aggregate
+from .. import _launch, load_sframe, aggregate
+from . import util
+
 import pandas as pd
 from ..util.timezone import GMT
 from pandas.util.testing import assert_frame_equal
@@ -22,7 +23,6 @@ import tempfile
 import os
 import csv
 import gzip
-import util
 import string
 import time
 import numpy as np
@@ -34,7 +34,7 @@ import functools
 import sys
 import mock
 import sqlite3
-from dbapi2_mock import dbapi2_mock
+from .dbapi2_mock import dbapi2_mock
 HAS_PYSPARK = True
 try:
     from pyspark import SparkContext, SQLContext
@@ -59,7 +59,7 @@ class SFrameTest(unittest.TestCase):
         self.int_data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         self.float_data = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]
         self.string_data = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
-        self.a_to_z = [str(unichr(97 + i)) for i in range(0, 26)]
+        self.a_to_z = [str(chr(97 + i)) for i in range(0, 26)]
         self.dataframe = pd.DataFrame({'int_data': self.int_data, 'float_data': self.float_data, 'string_data': self.string_data})
         self.url = "http://s3-us-west-2.amazonaws.com/testdatasets/a_to_z.txt.gz"
 
@@ -86,6 +86,8 @@ class SFrameTest(unittest.TestCase):
         self.employees_sf = SFrame()
         self.employees_sf.add_column(SArray(['Rafferty','Jones','Heisenberg','Robinson','Smith','John']), 'last_name')
         self.employees_sf.add_column(SArray([31,33,33,34,34,None]), 'dep_id')
+
+        # XXX: below are only used by one test!
         self.departments_sf = SFrame()
         self.departments_sf.add_column(SArray([31,33,34,35]), 'dep_id')
         self.departments_sf.add_column(SArray(['Sales','Engineering','Clerical','Marketing']), 'dep_name')
@@ -103,7 +105,7 @@ class SFrameTest(unittest.TestCase):
                 if type(v1) == dict:
                     self.assertEquals(len(v1), len(v2))
                     for key in v1:
-                        self.assertTrue(v1.has_key(key))
+                        self.assertTrue(key in v1)
                         self.assertEqual(v1[key], v2[key])
 
                 elif (hasattr(v1, "__iter__")):
@@ -195,13 +197,12 @@ class SFrameTest(unittest.TestCase):
         sf = SFrame(data=original_p)
         self.__test_equal(sf, effective_p)
 
-        original_p = pd.DataFrame({'a':['a',None,'b',float('nan')]})
-        effective_p = pd.DataFrame({'a':['a',None,'b',None]})
+        original_p = pd.DataFrame({'a':['a',None,'b']})
         sf = SFrame(data=original_p)
-        self.__test_equal(sf, effective_p)
+        self.__test_equal(sf, original_p)
 
     def test_auto_parse_csv(self):
-        with tempfile.NamedTemporaryFile(delete=False) as csvfile:
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as csvfile:
             df = pd.DataFrame({'float_data': self.float_data,
                                'int_data': self.int_data,
                                'string_data': self.a_to_z[:len(self.int_data)]})
@@ -215,7 +216,7 @@ class SFrameTest(unittest.TestCase):
 
 
     def test_parse_csv(self):
-        with tempfile.NamedTemporaryFile(delete=False) as csvfile:
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as csvfile:
             self.dataframe.to_csv(csvfile, index=False)
             csvfile.close()
 
@@ -695,7 +696,7 @@ class SFrameTest(unittest.TestCase):
         self.__assert_sarray_equal(sf['int_data'] + sf['float_data'], sa)
 
     def test_transform_with_recursion(self):
-        sf = SFrame(data={'a':[0, 1,2,3,4],'b':['0', '1','2','3','4']})
+        sf = SFrame(data={'a':[0,1,2,3,4], 'b':['0','1','2','3','4']})
         # this should be the equivalent to sf.apply(lambda x:x since a is
         # equivalent to range(4)
         sa = sf.apply(lambda x: sf[x['a']])
@@ -721,7 +722,7 @@ class SFrameTest(unittest.TestCase):
         self.assertRaises(KeyError, lambda: sf.apply(lambda x: x['some random key']))  # cannot find the key
         self.assertRaises(TypeError, lambda: sf.apply(lambda x: sum(x.values())))  # lambda cannot sum int and str
         self.assertRaises(ZeroDivisionError, lambda: sf.apply(lambda x: x['int_data'] / 0))  # divide by 0 error
-        self.assertRaises(IndexError, lambda: sf.apply(lambda x: x.values()[10]))  # index out of bound error
+        self.assertRaises(IndexError, lambda: sf.apply(lambda x: list(x.values())[10]))  # index out of bound error
 
     def test_empty_transform(self):
         sf = SFrame()
@@ -1092,15 +1093,21 @@ class SFrameTest(unittest.TestCase):
         """
         for m in [1, 10, 20, 50, 100]:
             values = range(m)
-            vector_values = [[random.randint(1,100) for num in range(10)] for y in range(m)]
+            vector_values = [[random.randint(1,100) for num in range(10)] \
+                                                          for y in range(m)]
             sf = SFrame()
             sf['key'] = [1] * m
             sf['value'] = values
             sf['vector_values'] = vector_values
             sf.__materialize__()
             built_ins = [aggregate.COUNT(), aggregate.SUM('value'),
-                aggregate.AVG('value'), aggregate.MIN('value'), aggregate.MAX('value'),
-                aggregate.VAR('value'), aggregate.STDV('value'), aggregate.SUM('vector_values'), aggregate.MEAN('vector_values'), aggregate.COUNT_DISTINCT('value')]
+                    aggregate.AVG('value'), aggregate.MIN('value'),
+                    aggregate.MAX('value'), aggregate.VAR('value'),
+                    aggregate.STDV('value'), aggregate.SUM('vector_values'),
+                    aggregate.MEAN('vector_values'),
+                    aggregate.COUNT_DISTINCT('value'),
+                    aggregate.DISTINCT('value'),
+                    aggregate.FREQ_COUNT('value')]
             sf2 = sf.groupby('key', built_ins)
             self.assertEqual(sf2['Count'], m)
             self.assertEqual(sf2['Sum of value'], sum(values))
@@ -1109,9 +1116,16 @@ class SFrameTest(unittest.TestCase):
             self.assertEqual(sf2['Max of value'], max(values))
             self.assertEqual(sf2['Var of value'], np.var(values))
             self.assertEqual(sf2['Stdv of value'], np.std(values))
-            self.assertEqual(sf2['Vector Sum of vector_values'], np.sum(vector_values, axis=0))
-            self.assertEqual(sf2['Vector Avg of vector_values'], np.mean(vector_values, axis=0))
-            self.assertEqual(sf2['Count Distinct of value'], len(np.unique(values)))
+            self.assertEqual(sf2['Vector Sum of vector_values'],
+                    np.sum(vector_values, axis=0))
+            self.assertEqual(sf2['Vector Avg of vector_values'],
+                    np.mean(vector_values, axis=0))
+            self.assertEqual(sf2['Count Distinct of value'],
+                    len(np.unique(values)))
+            self.assertEqual(sorted(sf2['Distinct of value'][0]),
+                    sorted(list(np.unique(values))))
+            self.assertEqual(sf2['Frequency Count of value'][0],
+                    {k:1 for k in np.unique(values)})
 
         # For vectors
 
@@ -1124,8 +1138,10 @@ class SFrameTest(unittest.TestCase):
         sf['key'] = [1,1,1,1,1,1,2,2,2,2]
         sf['value'] = [1,None,None,None,None,None, None,None,None,None]
         built_ins = [aggregate.COUNT(), aggregate.SUM('value'),
-                aggregate.AVG('value'), aggregate.MIN('value'), aggregate.MAX('value'),
-                aggregate.VAR('value'), aggregate.STDV('value'), aggregate.COUNT_DISTINCT('value')]
+                aggregate.AVG('value'), aggregate.MIN('value'),
+                aggregate.MAX('value'), aggregate.VAR('value'),
+                aggregate.STDV('value'), aggregate.COUNT_DISTINCT('value'),
+                aggregate.DISTINCT('value'), aggregate.FREQ_COUNT('value')]
         sf2 = sf.groupby('key', built_ins).sort('key')
         self.assertEqual(sf2['Count'], [6,4])
         self.assertEqual(sf2['Sum of value'], [1, 0])
@@ -1134,7 +1150,11 @@ class SFrameTest(unittest.TestCase):
         self.assertEqual(sf2['Max of value'],  [1, None])
         self.assertEqual(sf2['Var of value'], [1, 0])
         self.assertEqual(sf2['Stdv of value'], [1, 0])
-
+        self.assertEqual(sf2['Count Distinct of value'], [2, 1])
+        self.assertEqual(set(sf2['Distinct of value'][0]), set([1, None]))
+        self.assertEqual(set(sf2['Distinct of value'][1]), set([None]))
+        self.assertEqual(sf2['Frequency Count of value'][0], {1:1, None:5})
+        self.assertEqual(sf2['Frequency Count of value'][1], {None:4})
 
 
     def test_aggregate_ops_on_lazy_frame(self):
@@ -1143,15 +1163,20 @@ class SFrameTest(unittest.TestCase):
         """
         for m in [1, 10, 20, 50, 100]:
             values = range(m)
-            vector_values = [[random.randint(1,100) for num in range(10)] for y in range(m)]
+            vector_values = [[random.randint(1,100) for num in range(10)] \
+                                                          for y in range(m)]
             sf = SFrame()
             sf['key'] = [1] * m
             sf['value'] = values
             sf['vector_values'] = vector_values
             sf['value'] = sf['value'] + 0
             built_ins = [aggregate.COUNT(), aggregate.SUM('value'),
-                aggregate.AVG('value'), aggregate.MIN('value'), aggregate.MAX('value'),
-                aggregate.VAR('value'), aggregate.STDV('value'), aggregate.SUM('vector_values'), aggregate.MEAN('vector_values'), aggregate.COUNT_DISTINCT('value')]
+                    aggregate.AVG('value'), aggregate.MIN('value'),
+                    aggregate.MAX('value'), aggregate.VAR('value'),
+                    aggregate.STDV('value'), aggregate.SUM('vector_values'),
+                    aggregate.MEAN('vector_values'),
+                    aggregate.COUNT_DISTINCT('value'),
+                    aggregate.DISTINCT('value')]
             sf2 = sf.groupby('key', built_ins)
             self.assertEqual(sf2['Count'], m)
             self.assertEqual(sf2['Sum of value'], sum(values))
@@ -1160,9 +1185,14 @@ class SFrameTest(unittest.TestCase):
             self.assertEqual(sf2['Max of value'], max(values))
             self.assertEqual(sf2['Var of value'], np.var(values))
             self.assertEqual(sf2['Stdv of value'], np.std(values))
-            self.assertEqual(sf2['Vector Sum of vector_values'], np.sum(vector_values, axis=0))
-            self.assertEqual(sf2['Vector Avg of vector_values'], np.mean(vector_values, axis=0))
-            self.assertEqual(sf2['Count Distinct of value'], len(np.unique(values)))
+            self.assertEqual(sf2['Vector Sum of vector_values'],
+                    np.sum(vector_values, axis=0))
+            self.assertEqual(sf2['Vector Avg of vector_values'],
+                    np.mean(vector_values, axis=0))
+            self.assertEqual(sf2['Count Distinct of value'],
+                    len(np.unique(values)))
+            self.assertEqual(sorted(sf2['Distinct of value'][0]),
+                    sorted(np.unique(values)))
 
     def test_aggregate_ops2(self):
         """
@@ -1170,16 +1200,27 @@ class SFrameTest(unittest.TestCase):
         """
         for m in [1, 10, 20, 50, 100]:
             values = range(m)
-            vector_values = [[random.randint(1,100) for num in range(10)] for y in range(m)]
+            vector_values = [[random.randint(1,100) for num in range(10)] \
+                                                           for y in range(m)]
             sf = SFrame()
             sf['key'] = [1] * m
             sf['value'] = values
             sf['vector_values'] = vector_values
-            built_ins = {'count':aggregate.COUNT, 'sum':aggregate.SUM('value'),
-                'avg':aggregate.AVG('value'),
-                'avg2':aggregate.MEAN('value'), 'min':aggregate.MIN('value'), 'max':aggregate.MAX('value'),
-                'var':aggregate.VAR('value'), 'var2':aggregate.VARIANCE('value'),
-                'stdv':aggregate.STD('value'), 'stdv2':aggregate.STDV('value'),'vector_sum': aggregate.SUM('vector_values'),'vector_mean': aggregate.MEAN('vector_values'), 'unique':aggregate.COUNT_DISTINCT('value')}
+            built_ins = {'count':aggregate.COUNT,
+                    'sum':aggregate.SUM('value'),
+                    'avg':aggregate.AVG('value'),
+                    'avg2':aggregate.MEAN('value'),
+                    'min':aggregate.MIN('value'),
+                    'max':aggregate.MAX('value'),
+                    'var':aggregate.VAR('value'),
+                    'var2':aggregate.VARIANCE('value'),
+                    'stdv':aggregate.STD('value'),
+                    'stdv2':aggregate.STDV('value'),
+                    'vector_sum': aggregate.SUM('vector_values'),
+                    'vector_mean': aggregate.MEAN('vector_values'),
+                    'count_unique':aggregate.COUNT_DISTINCT('value'),
+                    'unique':aggregate.DISTINCT('value'),
+                    'frequency':aggregate.FREQ_COUNT('value')}
             sf2 = sf.groupby('key', built_ins)
             self.assertEqual(sf2['count'], m)
             self.assertEqual(sf2['sum'], sum(values))
@@ -1193,7 +1234,11 @@ class SFrameTest(unittest.TestCase):
             self.assertEqual(sf2['stdv2'], np.std(values))
             self.assertEqual(sf2['vector_sum'], np.sum(vector_values, axis=0))
             self.assertEqual(sf2['vector_mean'], np.mean(vector_values, axis=0))
-            self.assertEqual(sf2['unique'], len(np.unique(values)))
+            self.assertEqual(sf2['count_unique'], len(np.unique(values)))
+            self.assertEqual(sorted(sf2['unique'][0]),
+                             sorted(np.unique(values)))
+            self.assertEqual(sf2['frequency'][0],
+                    {k:1 for k in np.unique(values)})
 
     def test_groupby(self):
         """
@@ -1203,8 +1248,9 @@ class SFrameTest(unittest.TestCase):
         sf = self.__generate_synthetic_sframe__(num_users=num_users)
 
         built_ins = [aggregate.COUNT(), aggregate.SUM('rating'),
-                     aggregate.AVG('rating'), aggregate.MIN('rating'), aggregate.MAX('rating'),
-                     aggregate.VAR('rating'), aggregate.STDV('rating')]
+                aggregate.AVG('rating'), aggregate.MIN('rating'),
+                aggregate.MAX('rating'), aggregate.VAR('rating'),
+                aggregate.STDV('rating')]
 
         built_in_names = ['Sum', 'Avg', 'Min', 'Max', 'Var', 'Stdv']
 
@@ -1213,14 +1259,18 @@ class SFrameTest(unittest.TestCase):
         """
         sf_user_rating = sf.groupby('user_id', built_ins)
         actual = sf_user_rating.column_names()
-        expected = ['%s of rating' % v for v in built_in_names] + ['user_id'] + ['Count']
+        expected = ['%s of rating' % v for v in built_in_names] \
+                                        + ['user_id'] + ['Count']
         self.assertSetEqual(set(actual), set(expected))
         for row in sf_user_rating:
             uid = row['user_id']
             mids = range(1, uid + 1)
             ratings = [uid + i for i in mids]
-            expected = [len(ratings), sum(ratings), np.mean(ratings), min(ratings), max(ratings), np.var(ratings), np.sqrt(np.var(ratings))]
-            actual = [row['Count']] + [row['%s of rating' % op] for op in built_in_names]
+            expected = [len(ratings), sum(ratings), np.mean(ratings),
+                    min(ratings), max(ratings), np.var(ratings),
+                    np.sqrt(np.var(ratings))]
+            actual = [row['Count']] + [row['%s of rating' % op] \
+                                             for op in built_in_names]
             for i in range(len(actual)):
                 self.assertAlmostEqual(actual[i], expected[i])
 
@@ -1236,18 +1286,22 @@ class SFrameTest(unittest.TestCase):
         Test groupby movie_id and aggregate on length_of_watching
         """
         built_ins = [aggregate.COUNT(), aggregate.SUM('length'),
-                     aggregate.AVG('length'), aggregate.MIN('length'), aggregate.MAX('length'),
-                     aggregate.VAR('length'), aggregate.STDV('length')]
+                aggregate.AVG('length'), aggregate.MIN('length'),
+                aggregate.MAX('length'), aggregate.VAR('length'),
+                aggregate.STDV('length')]
         sf_movie_length = sf.groupby('movie_id', built_ins)
         actual = sf_movie_length.column_names()
-        expected = ['%s of length' % v for v in built_in_names] + ['movie_id'] + ['Count']
+        expected = ['%s of length' % v for v in built_in_names] \
+                                            + ['movie_id'] + ['Count']
         self.assertSetEqual(set(actual), set(expected))
         for row in sf_movie_length:
             mid = row['movie_id']
             uids = range(int(mid), num_users + 1)
             values = [i - int(mid) for i in uids]
-            expected = [len(values), sum(values), np.mean(values), min(values), max(values), np.var(values), np.std(values)]
-            actual = [row['Count']] + [row['%s of length' % op] for op in built_in_names]
+            expected = [len(values), sum(values), np.mean(values), min(values),
+                    max(values), np.var(values), np.std(values)]
+            actual = [row['Count']] + [row['%s of length' % op] \
+                                                for op in built_in_names]
             for i in range(len(actual)):
                 self.assertAlmostEqual(actual[i], expected[i])
 
@@ -1268,8 +1322,9 @@ class SFrameTest(unittest.TestCase):
 
     def test_argmax_argmin_groupby(self):
         sf = self.__generate_synthetic_sframe__(num_users=500)
-        sf_ret = sf.groupby('user_id', {'movie with max rating':aggregate.ARGMAX('rating','movie_id'),
-                                           'movie with min rating':aggregate.ARGMIN('rating','movie_id')})
+        sf_ret = sf.groupby('user_id',
+          {'movie with max rating' : aggregate.ARGMAX('rating','movie_id'),
+           'movie with min rating' : aggregate.ARGMIN('rating','movie_id')})
         self.assertEquals(len(sf_ret), 500)
         self.assertEqual(sf_ret["movie with max rating"].dtype(), str)
         self.assertEqual(sf_ret["movie with min rating"].dtype(), str)
@@ -1368,7 +1423,7 @@ class SFrameTest(unittest.TestCase):
         sf['d'] = [1.0,2.0,1.0,2.0,      3.0,3.0,1.0,    4.0,   None, 2.0,  None]
         sf['e'] = [{'x': 1}] * len(sf['a'])
 
-        print sf['b'].dtype()
+        print(sf['b'].dtype())
 
         result = sf.groupby('a', aggregate.CONCAT('b'))
         expected_result = SFrame({
@@ -1441,12 +1496,13 @@ class SFrameTest(unittest.TestCase):
     def test_unique(self):
         sf = SFrame({'a':[1,1,2,2,3,3,4,4,5,5],'b':[1,2,3,4,5,6,7,8,9,10]})
         self.assertEqual(len(sf.unique()), 10)
+
         vals = [1,1,2,2,3,3,4,4, None, None]
         sf = SFrame({'a':vals,'b':vals})
         res = sf.unique()
         self.assertEqual(len(res), 5)
-        self.assertEqual(sorted(list(res['a'])), sorted([1,2,3,4,None]))
-        self.assertEqual(sorted(list(res['b'])), sorted([1,2,3,4,None]))
+        self.assertEqual(set(res['a']), set([1,2,3,4,None]))
+        self.assertEqual(set(res['b']), set([1,2,3,4,None]))
 
     def test_append_empty(self):
         sf_with_data = SFrame(data=self.dataframe)
@@ -1499,8 +1555,11 @@ class SFrameTest(unittest.TestCase):
         def _test_print():
             sf.__repr__()
             sf._repr_html_()
-            import StringIO
-            output = StringIO.StringIO()
+            try:
+                from StringIO import StringIO
+            except ImportError:
+                from io import StringIO
+            output = StringIO()
             sf.print_rows(output_file=output)
 
         n = 20
@@ -1585,7 +1644,7 @@ class SFrameTest(unittest.TestCase):
         beg = time.time()
         res = self.employees_sf.join(self.departments_sf)
         end = time.time()
-        print "Really small join: " + str(end-beg) + " s"
+        print("Really small join: " + str(end-beg) + " s")
 
         self.__assert_join_results_equal(res, inner_expected)
 
@@ -1712,7 +1771,7 @@ class SFrameTest(unittest.TestCase):
         beg = time.time()
         res = pk_gibberish.join(join_with_gibberish, on={'letter':'a_letter','number':'a_number'})
         end = time.time()
-        print "Join took " + str(end-beg) + " seconds"
+        print("Join took " + str(end-beg) + " seconds")
         self.__assert_join_results_equal(res, expected_answer)
 
     def test_convert_dataframe_empty(self):
@@ -1838,6 +1897,7 @@ class SFrameTest(unittest.TestCase):
         res = sf.filter_by([5,6], "id", exclude=True)
         self.__assert_join_results_equal(res, exp_opposite)
 
+    # XXXXXX: should be inner function
     def __test_to_from_dataframe(self, data, type):
         sf = SFrame()
         sf['a'] = data
@@ -2824,16 +2884,16 @@ class SFrameTest(unittest.TestCase):
         sf = SFrame(self.__create_test_df(400000))
 
         sf = sf.add_row_number('id')
-        self.assertEquals(list(sf['id']), range(0,400000))
+        self.assertEquals(list(sf['id']), list(range(0,400000)))
 
         del sf['id']
 
         sf = sf.add_row_number('id', -20000)
-        self.assertEquals(list(sf['id']), range(-20000,380000))
+        self.assertEquals(list(sf['id']), list(range(-20000,380000)))
         del sf['id']
 
         sf = sf.add_row_number('id', 40000)
-        self.assertEquals(list(sf['id']), range(40000,440000))
+        self.assertEquals(list(sf['id']), list(range(40000,440000)))
 
         with self.assertRaises(RuntimeError):
             sf.add_row_number('id')
@@ -2866,7 +2926,7 @@ class SFrameTest(unittest.TestCase):
 
     def test_sframe_to_rdd(self):
         if not HAS_PYSPARK:
-            print "Did not run Pyspark unit tests!"
+            print("Did not run Pyspark unit tests!")
             return
         sc = SparkContext('local')
         # Easiest case: single column of integers
@@ -2882,7 +2942,7 @@ class SFrameTest(unittest.TestCase):
 
     def test_rdd_to_sframe(self):
         if not HAS_PYSPARK:
-            print "Did not run Pyspark unit tests!"
+            print("Did not run Pyspark unit tests!")
             return
 
         sc = SparkContext('local')
@@ -2967,7 +3027,7 @@ class SFrameTest(unittest.TestCase):
         tmp_dir = tempfile.mkdtemp()
         data.save(tmp_dir)
         shutil.rmtree(tmp_dir)
-        print data
+        print(data)
 
     def test_empty_argmax_does_not_fail(self):
         # an empty argmax should not result in a crash
@@ -3027,12 +3087,12 @@ class SFrameTest(unittest.TestCase):
         conn.cursor.return_value = curs
         sf_type_codes = [44,44,41,22,114,199,43]
 
-        sf_data = zip(*self.all_type_cols)
+        sf_data = list(zip(*self.all_type_cols))
         sf_iter = sf_data.__iter__()
 
         def mock_fetchone():
             try:
-                return sf_iter.next()
+                return next(sf_iter)
             except StopIteration:
                 return None
 
@@ -3062,7 +3122,7 @@ class SFrameTest(unittest.TestCase):
         _assert_sframe_equal(sf, self.sf_all_types)
 
         none_col = [None for i in range(5)]
-        nones_in_cache = zip(*[none_col for i in range(len(sf_data[0]))])
+        nones_in_cache = list(zip(*[none_col for i in range(len(sf_data[0]))]))
         none_sf = SFrame({'X'+str(i):none_col for i in range(1,len(sf_data[0])+1)})
         test_data = (nones_in_cache+sf_data)
         sf_iter = test_data.__iter__()

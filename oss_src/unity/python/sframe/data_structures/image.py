@@ -5,7 +5,11 @@ All rights reserved.
 This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
-import StringIO as _StringIO
+try:
+    import io as _StringIO
+except ImportError:
+    import StringIO as _StringIO
+
 from ..deps import numpy as _np, HAS_NUMPY as _HAS_NUMPY
 import array as _array
 
@@ -66,10 +70,10 @@ class Image(object):
             from ..util import _make_internal_url
             from .. import extensions as _extensions
             img = _extensions.load_image(_make_internal_url(path), format)
-            for key, value in img.__dict__.iteritems():
+            for key, value in list(img.__dict__.items()):
                 setattr(self, key, value)
         else:
-            for key, value in __internal_kw_args.items():
+            for key, value in list(__internal_kw_args.items()):
                 setattr(self, key, value)
 
     @property
@@ -184,7 +188,7 @@ class Image(object):
                     ret.fromlist([z for i in pil_img.getdata() for z in i])
                 return ret
         except ImportError:
-            print "Install pillow to get the pixel_data property"
+            print("Install pillow to get the pixel_data property")
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -249,4 +253,4 @@ def show(obj):
         img = obj._to_pil_image()
         img.show()
     except ImportError:
-        print "Install pillow to use the .show() method."
+        print("Install pillow to use the .show() method.")

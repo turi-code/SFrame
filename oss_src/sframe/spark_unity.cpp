@@ -14,7 +14,6 @@
 * You should have received a copy of the GNU Affero General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include <Python.h>
 #include <logger/logger.hpp>
 #include <fileio/general_fstream.hpp>
 #include <fileio/fs_utils.hpp>
@@ -27,16 +26,14 @@
 #include <sframe/sframe_iterators.hpp>
 #include <sframe/csv_writer.hpp>
 #include <sframe/comma_escape_string.hpp>
-#include <lambda/pyflexible_type.hpp>
 #include <boost/iostreams/device/file.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
-#include <boost/python.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/program_options.hpp>
-
+#include <python_callbacks/python_callbacks.hpp>
 
 #include <string>
 #include <iostream> 
@@ -48,10 +45,12 @@
 #include <iterator>
 #include <climits>
 
-using namespace graphlab;
-namespace python = boost::python;
+namespace graphlab { namespace spark_interface {
+
 namespace bpo = boost::program_options;
 
+flexible_type (*read_flex_obj)(const std::string& s); 
+void (*write_all_rows)(const sframe& sf, size_t row_start, size_t row_end);
 
 /**
  * Read a binary encoded integer from standard in.
@@ -84,7 +83,7 @@ int read_int(const char * & iter) {
  * Note the buffer is automatically resized to store the exact length
  * of the message
  */
-bool read_msg(std::vector<char>& buffer) {
+bool read_msg(std::string& buffer) {
   const int msgLen = read_int();
   //std::cerr << "Reading message of length: " << msgLen << std::endl;
   if (msgLen >= 0) {
@@ -104,7 +103,7 @@ bool read_msg(std::vector<char>& buffer) {
 //  * Read a string message from binary standard in
 //  */
 // std::string read_string_msg() {
-//   std::vector<char> buffer;
+//   std::string buffer;
 //   read_msg(buffer);
 //   std::string text(&buffer[0], buffer.size());
 //   return text;
@@ -125,29 +124,15 @@ std::string read_string_msg(const char * & iter) {
 
 
 /**
- * Read a batch of flexible objects.
- */
-flexible_type read_flex_obj(const std::vector<char> & buffer, 
-                            const python::object & pickle) {
-  // Make a python string corresponding to the first object
-  python::object python_string = 
-    python::object(python::handle<>(PyString_FromStringAndSize(&buffer[0],buffer.size())));
-  // Unpickle the first object
-  python::object unpickle_obj = python::object(pickle.attr("loads")(python_string));
-  // get the flexible type corresponding to the python object
-  return lambda::PyObject_AsFlex(unpickle_obj);
-}
-
-
-/**
  * Write a message to standard out in binary format encoded in the format:
  * message length (4 bytes) followed by bytes
  */
 void write_msg(const char* buffer, size_t bufferLen) {
   // Write the message length as a signed int
-  assert(bufferLen <= INT_MAX); // guard against integer wrap around for large arrays
-  int msgLen(bufferLen);
-  std::cout.write(reinterpret_cast<char*>(&msgLen), sizeof(int));
+  // guard against integer wrap around for large arrays
+  assert(bufferLen <= std::numeric_limits<uint32_t>::max()); 
+  uint32_t msgLen = bufferLen;
+  std::cout.write(reinterpret_cast<char*>(&msgLen), sizeof(uint32_t));
   // Write the message bytes
   std::cout.write(buffer, msgLen);
   if (!std::cout.good()) {
@@ -160,7 +145,7 @@ void write_msg(const char* buffer, size_t bufferLen) {
  * Write a message to standard out in binary format encoded in the format:
  * message length (4 bytes) followed by bytes
  */
-void write_msg(const std::vector<char> & buffer) {
+void write_msg(const std::string & buffer) {
   write_msg(&buffer[0], buffer.size());
 }
 
@@ -169,7 +154,7 @@ void write_msg(const std::vector<char> & buffer) {
  * These type signatures are defined in the Spark class:
  *  org.apache.spark.sql.types.DataTypes
  */
-size_t parse_schema(const std::vector<char> & buffer,
+size_t parse_schema(const std::string & buffer,
   std::vector<std::string> & column_names, 
   std::vector<flex_type_enum> & column_types)  {
   const char* iter = &buffer[0];
@@ -235,27 +220,6 @@ void initialize_row_buffer(const std::vector<flex_type_enum> & column_types,
     // std::cerr << "Tokens: " << flex_type_enum_to_name(column_types[i]) << std::endl;
   }
 }
-
-std::string handle_pyerror() {
-  using namespace boost::python;
-  using namespace boost;
-
-  PyObject *exc,*val,*tb;
-  object formatted_list, formatted;
-  PyErr_Fetch(&exc,&val,&tb);
-  handle<> hexc(exc),hval(allow_null(val)),htb(allow_null(tb)); 
-  object traceback(import("traceback"));
-  if (!tb) {
-    object format_exception_only(traceback.attr("format_exception_only"));
-    formatted_list = format_exception_only(hexc,hval);
-  } else {
-    object format_exception(traceback.attr("format_exception"));
-    formatted_list = format_exception(hexc,hval,htb);
-  }
-  formatted = boost::python::str("\n").join(formatted_list);
-  return extract<std::string>(formatted);
-}
-
 
 /**
  * Infer the ouput sframe schema from the input row. 
@@ -373,8 +337,7 @@ void populate_row_buffer(const flexible_type & row,
  */
 void initialize_schema_variables(const bool is_dataframe,
                                  const bool is_batch_mode,
-                                 const std::vector<char> & buffer,
-                                 const python::object & pickle,
+                                 const std::string & buffer,
                                  std::vector<std::string> & column_names,
                                  std::vector<flex_type_enum> & column_types,
                                  std::vector<flexible_type> & row_buffer,
@@ -389,7 +352,8 @@ void initialize_schema_variables(const bool is_dataframe,
     if (is_utf8_string) { 
       flex_obj = flex_string(&buffer[0],buffer.size());
     } else {
-      flex_obj = read_flex_obj(buffer, pickle);
+      flex_obj = read_flex_obj(buffer);
+      python::check_for_python_exception();
     }
     flexible_type first_row;
     // @todo: document this code (it makes no sense).
@@ -459,136 +423,119 @@ void initialize_schema_variables(const bool is_dataframe,
 int tosframe_main(const std::string & _output_directory, 
                   const std::string & _encoding, 
                   const std::string & _type) {
-  try {
-    bool is_batch_mode = false;
-    bool is_dataframe = false;
-    bool is_utf8_string = false;
+  bool is_batch_mode = false;
+  bool is_dataframe = false;
+  bool is_utf8_string = false;
 
-    // Process the arguments
-    if (_encoding == "batch") { // batch is the standard mode
-      is_batch_mode = true;
-    } else if (_encoding == "utf8" || _encoding == "pickle") {
-      is_batch_mode = false;
+  // Process the arguments
+  if (_encoding == "batch") { // batch is the standard mode
+    is_batch_mode = true;
+  } else if (_encoding == "utf8" || _encoding == "pickle") {
+    is_batch_mode = false;
+  } else {
+    std::cerr << "Unsupported encoding: " << _encoding << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  if(_encoding == "utf8") { 
+    is_utf8_string = true;
+  }
+    
+  if (_type == "dataframe" || _type == "DataFrame") { 
+    is_dataframe = true;
+  } else if (_type == "rdd" || _type == "RDD") {
+    is_dataframe = false;
+  } else  {
+    std::cerr << "Unsupported rdd type: " << _type << std::endl;
+    return EXIT_FAILURE;
+  }    
+
+  // Read the first line from the RDD
+  std::string buffer;
+  bool read_successful = read_msg(buffer);        
+  if (!read_successful) {
+    //std::cerr << "Empty RDD not supported!" << std::endl; 
+    return 0;
+  }
+
+  // Compute the schema and initialize all the varialbes 
+  std::vector<std::string> column_names;
+  std::vector<flex_type_enum> column_types;
+  std::vector<flexible_type> row_buffer;
+  initialize_schema_variables(is_dataframe, is_batch_mode, buffer, 
+                              column_names, column_types, row_buffer,is_utf8_string);
+
+  // Open the sframe and initialize the output iterator
+  sframe frame;
+  sframe_output_iterator it_out;
+
+  // Compute the final filename
+  boost::uuids::uuid file_prefix = boost::uuids::random_generator()();
+  std::stringstream ss;
+  std::string output_directory = fileio::convert_to_generic(_output_directory);
+
+  // @todo: make this a platform independent path.
+  ss << output_directory << "/" << file_prefix << ".frame_idx";
+  std::string sframe_idx_filename = fileio::convert_to_generic(ss.str());
+  frame.open_for_write(column_names, column_types, sframe_idx_filename, 1, false);
+  it_out = frame.get_output_iterator(0);
+
+  // Dataframes contain an extra row of column information so read
+  if (is_dataframe) {
+    read_successful = read_msg(buffer);
+  }
+    
+  // loop over messages writing to the sframe
+  while (read_successful) {
+    // Read the batch of rows into a flex type.
+    flexible_type val;
+    if (is_utf8_string) { 
+      val = flex_string(&buffer[0],buffer.size());
+    }
+    else {
+      val = read_flex_obj(buffer);
+      python::check_for_python_exception();
+    }
+    // @todo: document this code it makes no sense.      
+    if (is_batch_mode && val.get_type() == flex_type_enum::VECTOR) {
+      const flex_vec & vect_batch = val.get<flex_vec>();
+      for(size_t index = 0 ; index < vect_batch.size() ; index++) { 
+        row_buffer[0] = vect_batch[index];
+        *it_out = row_buffer;
+        ++it_out;
+      }
     } else {
-      std::cerr << "Unsupported encoding: " << _encoding << std::endl;
-      return EXIT_FAILURE;
-    }
-
-    if(_encoding == "utf8") { 
-      is_utf8_string = true;
-    }
-    
-    if (_type == "dataframe" || _type == "DataFrame") { 
-      is_dataframe = true;
-    } else if (_type == "rdd" || _type == "RDD") {
-      is_dataframe = false;
-    } else  {
-      std::cerr << "Unsupported rdd type: " << _type << std::endl;
-      return EXIT_FAILURE;
-    }    
-
-    /// Initialze the boost.python and import necessary modules.  
-    Py_NoSiteFlag=1;
-    //logprogress_stream << "Py_Initialize called" << std::endl;
-    Py_Initialize(); 
-    lambda::import_modules();
-    python::object pickle = python::import("cPickle");
-
-    // Read the first line from the RDD
-    std::vector<char> buffer;
-    bool read_successful = read_msg(buffer);        
-    if (!read_successful) {
-      //std::cerr << "Empty RDD not supported!" << std::endl; 
-      return 0;
-    }
-
-    // Compute the schema and initialize all the varialbes 
-    std::vector<std::string> column_names;
-    std::vector<flex_type_enum> column_types;
-    std::vector<flexible_type> row_buffer;
-    initialize_schema_variables(is_dataframe, is_batch_mode, buffer, pickle, 
-                                column_names, column_types, row_buffer,is_utf8_string);
-
-    // Open the sframe and initialize the output iterator
-    sframe frame;
-    sframe_output_iterator it_out;
-
-    // Compute the final filename
-    boost::uuids::uuid file_prefix = boost::uuids::random_generator()();
-    std::stringstream ss;
-    std::string output_directory = fileio::convert_to_generic(_output_directory);
-
-    // @todo: make this a platform independent path.
-    ss << output_directory << "/" << file_prefix << ".frame_idx";
-    std::string sframe_idx_filename = fileio::convert_to_generic(ss.str());
-    frame.open_for_write(column_names, column_types, sframe_idx_filename, 1, false);
-    it_out = frame.get_output_iterator(0);
-
-    // Dataframes contain an extra row of column information so read
-    if (is_dataframe) {
-      read_successful = read_msg(buffer);
-    }
-    
-    // loop over messages writing to the sframe
-    while (read_successful) {
-      // Read the batch of rows into a flex type.
-      flexible_type val;
-      if (is_utf8_string) { 
-        val = flex_string(&buffer[0],buffer.size());
-      }
-      else {
-        val = read_flex_obj(buffer, pickle);
-      }
-      // @todo: document this code it makes no sense.      
-      if (is_batch_mode && val.get_type() == flex_type_enum::VECTOR) {
-        const flex_vec & vect_batch = val.get<flex_vec>();
-        for(size_t index = 0 ; index < vect_batch.size() ; index++) { 
-          row_buffer[0] = vect_batch[index];
-          *it_out = row_buffer;
-          ++it_out;
-        }
-      } else {
-        // The standard case is batch mode and a list of rows
-        if(is_batch_mode && val.get_type() == flex_type_enum::LIST) {
-          const flex_list & batch = val.get<flex_list>();
-          // Loop through the batch and copy to the sframe
-          for(size_t index = 0 ; index < batch.size() ; index++) {  
-            const flexible_type & row = batch[index];
-            populate_row_buffer(row, is_dataframe, row_buffer);
-            *it_out = row_buffer;
-            ++it_out;
-          }
-        } else {
-          // each record is a single row
-          const flexible_type & row = val;
+      // The standard case is batch mode and a list of rows
+      if(is_batch_mode && val.get_type() == flex_type_enum::LIST) {
+        const flex_list & batch = val.get<flex_list>();
+        // Loop through the batch and copy to the sframe
+        for(size_t index = 0 ; index < batch.size() ; index++) {  
+          const flexible_type & row = batch[index];
           populate_row_buffer(row, is_dataframe, row_buffer);
           *it_out = row_buffer;
           ++it_out;
         }
+      } else {
+        // each record is a single row
+        const flexible_type & row = val;
+        populate_row_buffer(row, is_dataframe, row_buffer);
+        *it_out = row_buffer;
+        ++it_out;
       }
-      // Read the next buffer:
-      read_successful = read_msg(buffer);
-    } // end of while loop
-    
-    // Assert: we have read all the input from the RDD into the SFrame.
-    // if we successfully opened the frame close
-    if(frame.is_opened_for_write()) { // This should always be true?
-      frame.close();
     }
+    // Read the next buffer:
+    read_successful = read_msg(buffer);
+  } // end of while loop
     
-    // print the final filename back to the calling process 
-    std::cout << sframe_idx_filename << std::endl;
-  
-  } catch (python::error_already_set const& e) {
-    if (PyErr_Occurred()) {
-      std::string msg = handle_pyerror(); 
-      std::cerr << "GRAPHLAB PYTHON-ERROR: " << msg << std::endl;
-      //throw(msg);
-    }
-    //bool py_exception = true;
-    python::handle_exception();
-    PyErr_Clear();
+  // Assert: we have read all the input from the RDD into the SFrame.
+  // if we successfully opened the frame close
+  if(frame.is_opened_for_write()) { // This should always be true?
+    frame.close();
   }
+    
+  // print the final filename back to the calling process 
+  std::cout << sframe_idx_filename << std::endl;
+    
   return 0;
 } // end of tosframe_main
 
@@ -674,42 +621,10 @@ int tordd_main(std::string & _output_directory, size_t & numPartitions, size_t &
   size_t row_end = row_start + partition_size;
   if(row_end > sframe_len)
     row_end = sframe_len;
- 
-  Py_Initialize(); 
-  lambda::import_modules();
-  python::object pickle = python::import("cPickle");
-  python::object base64 = python::import("base64");
+
+  write_all_rows(*sframe_ptr, row_start, row_end);
+  python::check_for_python_exception();
   
-  csv_writer writer;
-  parallel_sframe_iterator_initializer it_init(*sframe_ptr,row_start,row_end);
-  size_t n_threads = graphlab::thread_pool::get_instance().size();
-  for(size_t i = 0; i < n_threads; ++i) {
-    for(parallel_sframe_iterator it(it_init, i, n_threads); !it.done(); ++it) {
-      std::vector<flexible_type> row;
-      it.fill(row);
-      python::dict d;
-      for (size_t i = 0;i < row.size(); ++i) {
-        //if (row[i].get_type() == flex_type_enum::DATETIME) { 
-        //  d[lambda::PyObject_FromFlex(flex_string(column_names[i]))] = lambda::PyObject_FromFlex(flex_string(row[i]));
-        //}
-        //else { 
-          d[lambda::PyObject_FromFlex(flex_string(column_names[i]))] = lambda::PyObject_FromFlex(row[i]);
-        //} 
-      } 
-      python::object pickle_dict = python::object(pickle.attr("dumps")(d,python::object(python::handle<>(PyLong_FromLong(2)))));
-      
-      //python::object encoded_obj = python::object(base64.attr("b64encode")(pickle_dict));
-      std::string stringPickle =  python::extract<std::string>(pickle_dict);
-      write_msg(stringPickle.c_str(),stringPickle.size());
-      /// good for debugging 
-      /*std::cout << stringPickle.length() << "\n";
-      for (char c: stringPickle) {
-        std::cout << int(c) << "\t";
-      }
-      std::cout << "\n";*/
-      //std::cout << stringPickle << std::endl; 
-    }
-  }
   return 0;
 }
 
@@ -719,8 +634,7 @@ void print_help(std::string program_name, bpo::options_description& desc) {
             << desc << std::endl;
 }
 
-
-int main(int argc, char **argv) {
+int _spark_unity_main(int argc, const char **argv) {
   std::string program_name = argv[0];
   std::string output_directory;
   std::string prefix;
@@ -808,3 +722,5 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 }
+
+}}

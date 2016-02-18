@@ -12,7 +12,7 @@ of the BSD license. See the LICENSE file for details.
 
 from ..cython.cy_unity import UnityGlobalProxy
 from ..cython import cy_ipc
-from ..connect.server import EmbeddedServer
+from ..cython.cy_server import EmbeddedServer
 from ..connect import __SERVER__, __CLIENT__
 
 import decorator
@@ -31,10 +31,11 @@ ENGINE_START_ERROR_MESSAGE = 'Cannot connect to SFrame engine. ' + \
 # Decorator which catch the exception and output to log error.
 @decorator.decorator
 def __catch_and_log__(func, *args, **kargs):
-        try:
-            return func(*args, **kargs)
-        except Exception, error:
-            logging.getLogger(__name__).error(error)
+    try:
+        return func(*args, **kargs)
+    except Exception as error:
+        logging.getLogger(__name__).error(error)
+        raise
 
 
 @__catch_and_log__

@@ -66,6 +66,9 @@ class union_fstream {
 
   std::shared_ptr<std::istream> input_stream;
   std::shared_ptr<std::ostream> output_stream;
+
+  // Hold the input stream from cache or s3 stream.
+  std::shared_ptr<std::istream> original_input_stream_handle;
 };
 
 } // namespace graphlab

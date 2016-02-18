@@ -8,14 +8,20 @@ of the BSD license. See the LICENSE file for details.
 import unittest
 from ..data_structures.sarray import SArray
 from ..data_structures.sframe import SFrame
+
+import sys
+if sys.version_info.major > 2:
+    long = int
 import random
+
+from ..cython.cy_variant import _debug_is_flexible_type_encoded
 
 
 class VariantCheckTest(unittest.TestCase):
 
     def identical(self, reference, b):
         if type(reference) in [int, long]:
-            self.assertTrue(type(b) in [int, long])
+            self.assertIn(type(b), [int, long])
         else:
             self.assertEquals(type(reference), type(b))
         if isinstance(reference, list):
@@ -23,7 +29,7 @@ class VariantCheckTest(unittest.TestCase):
             for i in range(len(reference)):
                 self.identical(reference[i], b[i])
         if isinstance(reference, dict):
-            self.assertEqual(sorted(reference.iterkeys()), sorted(b.iterkeys()))
+            self.assertEqual(sorted(reference.keys()), sorted(b.keys()))
             for i in reference:
                 self.identical(reference[i], b[i])
         if isinstance(reference, SArray):
@@ -59,13 +65,22 @@ class VariantCheckTest(unittest.TestCase):
         self.variant_turnaround([sa,sa])
         self.variant_turnaround([sf,sf])
         self.variant_turnaround({'a':sa, 'b':sf, 'c':['a','b','c','d']})
+        self.variant_turnaround({'a':[{'a':1, 'b':2}], 'b':[{'a':3}]})
+        self.variant_turnaround({'a':[{'a':sa, 'b': sa}], 'b':[{'a':sa}]})
+        self.variant_turnaround({'a': [sa, {'c':sa, 'd': sa}], 'e':[{'f':sa}]})
+        self.variant_turnaround({'a':[sa,{'a':sa}]})
+        self.variant_turnaround({'a':[{'a':sa,'b':'c'}]})
+        self.variant_turnaround({'a':[sa,{'a':sa,'b':'c'}]})
         self.variant_turnaround({'a':[sa,sf,{'a':sa,'b':'c'}],
             'b':sf, 'c':['a','b','c','d']})
-
         
     def test_stress(self):
 
         random.seed(0)
+
+
+        class A: pass
+        A.flextype_encodable = True
 
         def _make(depth):
 
@@ -79,8 +94,10 @@ class VariantCheckTest(unittest.TestCase):
             elif s == 1:
                 return random.randint(0,100000)
             elif s == 2:
+                A.flextype_encodable = False
                 return SArray([random.randint(0,100000) for i in range(2)])
             elif s == 3:
+                A.flextype_encodable = False
                 return SFrame({'a' : [random.randint(0,100000) for i in range(2)],
                                'b' : [str(random.randint(0,100000)) for i in range(2)]})
 
@@ -93,5 +110,18 @@ class VariantCheckTest(unittest.TestCase):
                 return {str(random.randint(0, 100)) : _make(depth - 1)
                         for i in range(length)}
 
-        for i in range(10):
-            self.variant_turnaround(_make(5 + i))
+        for depth in [2,3,4,5,10]:
+            for i in range(10):
+                
+                A.flextype_encodable = True
+
+                obj = _make(depth)
+
+                # Test that it's losslessly encoded and decoded
+                self.variant_turnaround(obj)
+
+                # Test that if it can be 
+                if _debug_is_flexible_type_encoded(obj):
+                    self.assertTrue(A.flextype_encodable)
+                else:
+                    self.assertFalse(A.flextype_encodable)

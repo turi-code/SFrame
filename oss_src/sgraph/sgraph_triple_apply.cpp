@@ -808,6 +808,12 @@ namespace {
         m_evaluator_guard = NULL;
       }
 
+    // Copy constructor: only copies lambda_str and worker pool, default initialize the rest
+    lambda_triple_apply_visitor(const lambda_triple_apply_visitor& other) : batch_edge_triple_apply_visitor(other) {
+       m_lambda_str = other.m_lambda_str;
+       m_worker_pool = other.m_worker_pool;
+    }
+
     /**
      * Overwrite parent's method, because we need to initialize the lambda evaluator
      * with the block formation.
@@ -836,14 +842,14 @@ namespace {
       // Ask for an evaluator from pylambda_master
       m_evaluator = m_worker_pool->get_worker();
       m_evaluator_guard = m_worker_pool->get_worker_guard(m_evaluator);
-      logstream(LOG_INFO) << "Acquire worker " << m_evaluator << " on partition " << _src_partition << ", " << _dst_partition << std::endl;
+      logstream(LOG_INFO) << "Acquire worker " << m_evaluator->id << " on partition " << _src_partition << ", " << _dst_partition << std::endl;
 
       // Initialize evaluator graph compute with the graph information.
       try {
-        m_evaluator->init(m_lambda_str, g.get_num_partitions(),
-                          g.get_vertex_fields(),
-                          g.get_edge_fields(),
-                          m_srcid_column, m_dstid_column);
+        m_evaluator->proxy->init(m_lambda_str, g.get_num_partitions(),
+                                 g.get_vertex_fields(),
+                                 g.get_edge_fields(),
+                                 m_srcid_column, m_dstid_column);
       } catch (cppipc::ipcexception e) {
         throw(lambda::reinterpret_comm_failure(e));
       }
@@ -851,9 +857,9 @@ namespace {
       // Load the vertex partitions for remote sgraph sync.
       logstream(LOG_INFO) << "Lambda worker load partition "
                           << m_src_partition << ", " << m_dst_partition << std::endl;
-      m_evaluator->load_vertex_partition(m_src_partition, source_vertex_block.m_vertices);
+      m_evaluator->proxy->load_vertex_partition(m_src_partition, source_vertex_block.m_vertices);
       if (m_src_partition != m_dst_partition)
-        m_evaluator->load_vertex_partition(m_dst_partition, target_vertex_block.m_vertices);
+        m_evaluator->proxy->load_vertex_partition(m_dst_partition, target_vertex_block.m_vertices);
 
       // Load the vertex partitions for local sgraph sync.
       m_graph_sync.load_vertex_partition(m_src_partition, source_vertex_block.m_vertices);
@@ -861,16 +867,16 @@ namespace {
         m_graph_sync.load_vertex_partition(m_dst_partition, target_vertex_block.m_vertices);
 
       // Set the parent batch apply function.
-      DASSERT_TRUE(m_evaluator->is_loaded(m_src_partition));
-      DASSERT_TRUE(m_evaluator->is_loaded(m_dst_partition));
+      DASSERT_TRUE(m_evaluator->proxy->is_loaded(m_src_partition));
+      DASSERT_TRUE(m_evaluator->proxy->is_loaded(m_dst_partition));
       set_apply_fn(boost::bind(&lambda_triple_apply_visitor::apply_lambda, this, _1));
     }
 
     void finalize() {
       batch_edge_triple_apply_visitor::finalize();
-      m_evaluator->clear();
-      m_evaluator.reset();
+      m_evaluator->proxy->clear();
       m_evaluator_guard.reset();
+      m_evaluator.reset();
     }
 
     /**
@@ -901,20 +907,20 @@ namespace {
         all_edge_data.push_back(edata);
       }
 
-      DASSERT_TRUE(m_evaluator->is_loaded(m_src_partition));
-      DASSERT_TRUE(m_evaluator->is_loaded(m_dst_partition));
+      DASSERT_TRUE(m_evaluator->proxy->is_loaded(m_src_partition));
+      DASSERT_TRUE(m_evaluator->proxy->is_loaded(m_dst_partition));
 
       // Update the evaluator with the latest vertex data.
       if (!m_mutated_vertex_field_ids.empty()) {
         {
           auto partition_exchange = m_graph_sync.get_vertex_partition_exchange(
               m_src_partition, srcid_set, m_mutated_vertex_field_ids);
-          m_evaluator->update_vertex_partition(partition_exchange);
+          m_evaluator->proxy->update_vertex_partition(partition_exchange);
         }
         if (m_src_partition != m_dst_partition) {
           auto partition_exchange = m_graph_sync.get_vertex_partition_exchange(
               m_dst_partition, dstid_set, m_mutated_vertex_field_ids);
-          m_evaluator->update_vertex_partition(partition_exchange);
+          m_evaluator->proxy->update_vertex_partition(partition_exchange);
         }
       }
 
@@ -931,8 +937,8 @@ namespace {
       }
       std::vector<sgraph_edge_data> mutated_edge_data;
       try {
-        mutated_edge_data = m_evaluator->eval_triple_apply(all_edge_data, m_src_partition,
-                                                           m_dst_partition, mutated_edge_field_ids);
+        mutated_edge_data = m_evaluator->proxy->eval_triple_apply(all_edge_data, m_src_partition,
+                                                                  m_dst_partition, mutated_edge_field_ids);
       } catch (cppipc::ipcexception e) {
         throw(lambda::reinterpret_comm_failure(e));
       }
@@ -948,12 +954,12 @@ namespace {
       // Update the graph_sync after m_evaluator has changed the vertices.
       if (!m_mutated_vertex_field_ids.empty()) {
         {
-          auto partition_exchange = m_evaluator->get_vertex_partition_exchange(
+          auto partition_exchange = m_evaluator->proxy->get_vertex_partition_exchange(
               m_src_partition, srcid_set, m_mutated_vertex_field_ids);
           m_graph_sync.update_vertex_partition(partition_exchange);
         }
         if (m_src_partition != m_dst_partition) {
-          auto partition_exchange = m_evaluator->get_vertex_partition_exchange(
+          auto partition_exchange = m_evaluator->proxy->get_vertex_partition_exchange(
               m_dst_partition, dstid_set, m_mutated_vertex_field_ids);
           m_graph_sync.update_vertex_partition(partition_exchange);
         }
@@ -965,7 +971,7 @@ namespace {
     std::vector<size_t> m_mutated_vertex_field_ids;
 
     std::shared_ptr<lambda::worker_pool<lambda::graph_lambda_evaluator_proxy>> m_worker_pool;
-    std::shared_ptr<lambda::graph_lambda_evaluator_proxy> m_evaluator;
+    std::unique_ptr<lambda::worker_process<lambda::graph_lambda_evaluator_proxy>> m_evaluator;
     std::shared_ptr<lambda::worker_guard<lambda::graph_lambda_evaluator_proxy>> m_evaluator_guard;
 
     sgraph_synchronize m_graph_sync;

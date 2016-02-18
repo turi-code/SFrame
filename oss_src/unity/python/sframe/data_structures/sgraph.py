@@ -24,12 +24,16 @@ from .sarray import SArray
 from .gframe import GFrame, VERTEX_GFRAME, EDGE_GFRAME
 from ..cython.cy_graph import UnityGraphProxy
 from ..cython.context import debug_trace as cython_context
-from ..util import _make_internal_url
+from ..util import _is_non_string_iterable, _make_internal_url
 from ..deps import pandas as pd
 from ..deps import HAS_PANDAS
 
 import inspect
 import copy
+
+import sys
+if sys.version_info.major > 2:
+    from functools import reduce
 
 ## \internal Default column name for vertex id.
 _VID_COLUMN = '__id'
@@ -451,7 +455,7 @@ class SGraph(object):
         +------+--------+
         """
 
-        if not hasattr(ids, '__iter__'):
+        if not _is_non_string_iterable(ids):
             ids = [ids]
 
         if type(ids) not in (list, SArray):
@@ -550,9 +554,9 @@ class SGraph(object):
         +----------+----------+--------+
         """
 
-        if not hasattr(src_ids, '__iter__'):
+        if not _is_non_string_iterable(src_ids):
             src_ids = [src_ids]
-        if not hasattr(dst_ids, '__iter__'):
+        if not _is_non_string_iterable(dst_ids):
             dst_ids = [dst_ids]
 
         if type(src_ids) not in (list, SArray):
@@ -854,7 +858,7 @@ class SGraph(object):
                 selected_efields.append(f)
                 found = True
             if not found:
-                raise ValueError('Field %s not in graph' % f)
+                raise ValueError('Field \'%s\' not in graph' % f)
 
         with cython_context():
             proxy = self.__proxy__

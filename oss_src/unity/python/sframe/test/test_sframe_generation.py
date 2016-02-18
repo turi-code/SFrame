@@ -51,7 +51,7 @@ class SFrameGeneration(unittest.TestCase):
 
         for L in range(1, 10):
             X = generate_random_regression_sframe(100, 'n' * L, target_noise_level=0)
-            X["target_2"] = X.apply(lambda d: sum(v for k, v in d.iteritems() if k != "target"))
+            X["target_2"] = X.apply(lambda d: sum(v for k, v in d.items() if k != "target"))
             X["target_2"] = X["target_2"] - X["target_2"].min()
             X["target_2"] = X["target_2"] / X["target_2"].max()
             
@@ -62,7 +62,7 @@ class SFrameGeneration(unittest.TestCase):
         for L in range(1, 10):
             X = generate_random_classification_sframe(100, 'n' * L, misclassification_spread=0,
                                                       num_classes = 2, num_extra_class_bins = 0)
-            X["target_2"] = X.apply(lambda d: sum(v for k, v in d.iteritems() if k != "target"))
+            X["target_2"] = X.apply(lambda d: sum(v for k, v in d.items() if k != "target"))
             X["target_2"] = X["target_2"] - X["target_2"].min()
             X["target_2"] = X["target_2"] / X["target_2"].max()
 

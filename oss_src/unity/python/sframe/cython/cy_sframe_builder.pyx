@@ -18,6 +18,8 @@ from .cy_flexible_type cimport pytype_from_flex_type_enum
 from .cy_flexible_type cimport flex_list_from_iterable
 from .cy_flexible_type cimport pylist_from_flex_list
 
+from .cy_cpp_utils cimport str_to_cpp, to_vector_of_strings, from_vector_of_strings
+
 ### sframe ###
 from .cy_sframe cimport create_proxy_wrapper_from_existing_proxy as sframe_proxy
 
@@ -41,10 +43,16 @@ cdef class UnitySFrameBuilderProxy:
             self.thisptr = new unity_sframe_builder_proxy(deref(cli.thisptr))
             self._base_ptr.reset(<unity_sframe_builder_base*>(self.thisptr))
 
-    cpdef init(self, object column_types, vector[string] column_names, size_t num_segments, size_t history_size, string save_location):
+    cpdef init(self, list column_types, _column_names, size_t num_segments,
+               size_t history_size, _save_location):
+
+        cdef vector[string] column_names = to_vector_of_strings(_column_names)
+        cdef string save_location = str_to_cpp(_save_location)
+    
         cdef vector[flex_type_enum] tmp_column_types
+        tmp_column_types.reserve(len(column_types))
         for i in column_types:
-          tmp_column_types.push_back(flex_type_enum_from_pytype(i))
+            tmp_column_types.push_back(flex_type_enum_from_pytype(i))
         with nogil:
             self.thisptr.init(num_segments, history_size, column_names, tmp_column_types, save_location)
 
@@ -64,7 +72,7 @@ cdef class UnitySFrameBuilderProxy:
         return [pylist_from_flex_list(i) for i in tmp_history]
 
     cpdef column_names(self):
-        return self.thisptr.column_names()
+        return from_vector_of_strings(self.thisptr.column_names())
 
     cpdef column_types(self):
         return [pytype_from_flex_type_enum(t) for t in self.thisptr.column_types()]

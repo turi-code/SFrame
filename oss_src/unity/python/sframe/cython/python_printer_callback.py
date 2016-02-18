@@ -33,5 +33,5 @@ def print_callback(val):
         pass
 
     if not success:
-        print val
+        print(val)
         sys.stdout.flush()

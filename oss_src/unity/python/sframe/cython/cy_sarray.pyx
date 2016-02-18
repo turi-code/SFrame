@@ -20,6 +20,8 @@ from .cy_flexible_type cimport pyobject_from_flexible_type
 from .cy_flexible_type cimport pylist_from_flex_list
 from .cy_flexible_type cimport pydict_from_gl_options_map
 
+from .cy_cpp_utils cimport str_to_cpp, cpp_to_str
+
 ### sframe ###
 from .cy_sframe cimport create_proxy_wrapper_from_existing_proxy as sframe_proxy
 
@@ -62,21 +64,25 @@ cdef class UnitySArrayProxy:
         with nogil:
             self.thisptr.construct_from_vector(data, datatype)
 
-    cpdef load_from_url(self, string url, type t):
+    cpdef load_from_url(self, _url, type t):
+        cdef string url = str_to_cpp(_url)
         cdef flex_type_enum datatype = flex_type_enum_from_pytype(t)
         with nogil:
             self.thisptr.construct_from_files(url, datatype)
 
-    cpdef load_from_sarray_index(self, string index_file):
+    cpdef load_from_sarray_index(self, _index_file):
+        cdef string index_file = str_to_cpp(_index_file)
         with nogil:
             self.thisptr.construct_from_sarray_index(index_file)
 
-    cpdef load_autodetect(self, string url, type t):
+    cpdef load_autodetect(self, _url, type t):
+        cdef string url = str_to_cpp(_url)
         cdef flex_type_enum datatype = flex_type_enum_from_pytype(t)
         with nogil:
             self.thisptr.construct_from_autodetect(url, datatype)
 
-    cpdef load_from_avro(self, string url):
+    cpdef load_from_avro(self, _url):
+        cdef string url = str_to_cpp(_url)
         with nogil:
             self.thisptr.construct_from_avro(url)
 
@@ -85,7 +91,8 @@ cdef class UnitySArrayProxy:
         with nogil:
             self.thisptr.construct_from_const(val, size)
     
-    cpdef save(self, string index_file):
+    cpdef save(self, _index_file):
+        cdef string index_file = str_to_cpp(_index_file)
         with nogil:
             self.thisptr.save_array(index_file)
 
@@ -116,11 +123,11 @@ cdef class UnitySArrayProxy:
     cpdef transform(self, fn, t, bint skip_undefined, int seed):
         cdef flex_type_enum datatype = flex_type_enum_from_pytype(t)
         cdef string lambda_str
-        if type(fn) == str:
-            lambda_str = fn
+        if type(fn) == str or type(fn) == bytes:
+            lambda_str = bytes(fn)
         else:
             from .. import util
-            lambda_str = util._pickle_to_temp_location_or_memory(fn)
+            lambda_str = str_to_cpp(util._pickle_to_temp_location_or_memory(fn))
 
         cdef unity_sarray_base_ptr proxy
         with nogil:
@@ -138,8 +145,8 @@ cdef class UnitySArrayProxy:
 
     cpdef filter(self, fn, bint skip_undefined, int seed):
         cdef string lambda_str 
-        if type(fn) == str:
-            lambda_str = fn
+        if type(fn) == str or type(fn) == bytes:
+            lambda_str = bytes(fn)  # We don't want to decode or encode here
         else:
             from .. import util
             lambda_str = util._pickle_to_temp_location_or_memory(fn)
@@ -225,14 +232,16 @@ cdef class UnitySArrayProxy:
             proxy = (self.thisptr.astype(datatype, undefined_on_failure))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
-    cpdef str_to_datetime(self,string str_format):
+    cpdef str_to_datetime(self, _str_format):
         cdef unity_sarray_base_ptr proxy
+        cdef string str_format = str_to_cpp(_str_format)        
         with nogil:
             proxy = (self.thisptr.str_to_datetime(str_format))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
-    cpdef datetime_to_str(self,string str_format):
+    cpdef datetime_to_str(self, _str_format):
         cdef unity_sarray_base_ptr proxy
+        cdef string str_format = str_to_cpp(_str_format)        
         with nogil:
             proxy = (self.thisptr.datetime_to_str(str_format))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
@@ -259,25 +268,28 @@ cdef class UnitySArrayProxy:
         tmp = self.thisptr.iterator_get_next(length)
         return pylist_from_flex_list(tmp)
 
-    cpdef left_scalar_operator(self, object other, string op):
+    cpdef left_scalar_operator(self, object other, op):
         cdef unity_sarray_base_ptr proxy
         cdef flexible_type val = flexible_type_from_pyobject(other)
+        cdef string cpp_op = str_to_cpp(op)
         with nogil:
-            proxy = (self.thisptr.left_scalar_operator(val, op))
+            proxy = (self.thisptr.left_scalar_operator(val, cpp_op))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
 
-    cpdef right_scalar_operator(self, object other, string op):
+    cpdef right_scalar_operator(self, object other, op):
         cdef unity_sarray_base_ptr proxy
         cdef flexible_type val = flexible_type_from_pyobject(other)
+        cdef string cpp_op = str_to_cpp(op)
         with nogil:
-            proxy = (self.thisptr.right_scalar_operator(val, op))
+            proxy = (self.thisptr.right_scalar_operator(val, cpp_op))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
-    cpdef vector_operator(self, UnitySArrayProxy other, string op):
+    cpdef vector_operator(self, UnitySArrayProxy other, op):
         cdef unity_sarray_base_ptr proxy
+        cdef string cpp_op = str_to_cpp(op)        
         with nogil:
-            proxy = (self.thisptr.vector_operator(other._base_ptr, op))
+            proxy = (self.thisptr.vector_operator(other._base_ptr, cpp_op))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
     cpdef drop_missing_values(self):
@@ -378,7 +390,8 @@ cdef class UnitySArrayProxy:
         cdef unity_sarray_base_ptr proxy = (self.thisptr.item_length())
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
-    cpdef unpack_dict(self, string column_name_prefix, object limit, na_value):
+    cpdef unpack_dict(self, _column_name_prefix, object limit, na_value):
+        cdef string column_name_prefix = str_to_cpp(_column_name_prefix)
         cdef unity_sframe_base_ptr proxy
         cdef flexible_type gl_na_value = flexible_type_from_pyobject(na_value)
         cdef vector[flexible_type] sub_keys
@@ -389,7 +402,8 @@ cdef class UnitySArrayProxy:
             proxy = self.thisptr.unpack_dict(column_name_prefix, sub_keys, gl_na_value)
         return sframe_proxy(self._cli, proxy)
 
-    cpdef unpack(self, string column_name_prefix, object limit, value_types, na_value):
+    cpdef unpack(self, _column_name_prefix, object limit, value_types, na_value):
+        cdef string column_name_prefix = str_to_cpp(_column_name_prefix)
         cdef vector[flex_type_enum] column_types
         for t in value_types:
             column_types.push_back(flex_type_enum_from_pytype(t))
@@ -404,7 +418,8 @@ cdef class UnitySArrayProxy:
             proxy = self.thisptr.unpack(column_name_prefix, sub_keys, column_types, gl_na_value)
         return sframe_proxy(self._cli, proxy)
 
-    cpdef expand(self, string column_name_prefix, object limit, value_types):
+    cpdef expand(self, _column_name_prefix, object limit, value_types):
+        cdef string column_name_prefix = str_to_cpp(_column_name_prefix)
         cdef vector[flex_type_enum] column_types
         for t in value_types:
             column_types.push_back(flex_type_enum_from_pytype(t))
@@ -430,14 +445,16 @@ cdef class UnitySArrayProxy:
             proxy = (self.thisptr.copy_range(start, step, end))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
     
-    cpdef builtin_rolling_apply(self, string fn_name, ssize_t before, ssize_t after, size_t min_observations):
+    cpdef builtin_rolling_apply(self, _fn_name, ssize_t before, ssize_t after, size_t min_observations):
+        cdef string fn_name = str_to_cpp(_fn_name)
         cdef unity_sarray_base_ptr proxy
         with nogil:
             proxy = (self.thisptr.builtin_rolling_apply(fn_name, before, after, min_observations))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
-    cpdef builtin_cumulative_aggregate(self, string fn_name):
+    cpdef builtin_cumulative_aggregate(self, _fn_name):
         cdef unity_sarray_base_ptr proxy
+        cdef string fn_name = str_to_cpp(_fn_name)
         with nogil:
             proxy = (self.thisptr.builtin_cumulative_aggregate(fn_name))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)

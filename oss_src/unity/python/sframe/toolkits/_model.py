@@ -166,7 +166,7 @@ def _get_default_options_wrapper(unity_server_model_name,
           return response
         else:
           json_list = [{'name': k, '': v} for k,v in response.items()]
-          return _SFrame(json_list).unpack('X1', column_name_prefix='')\
+          return _SFrame(json_list).unpack('X1', column_name_prefix='') \
                                    .unpack('X1', column_name_prefix='')
 
     # Change the doc string before returning.
@@ -366,7 +366,7 @@ class CustomModel(object):
                                             *self._get_summary_struct() )
         _mt._get_metric_tracker().track(self.__class__.__module__ + '.summary')
         try:
-            print self.__repr__()
+            print(self.__repr__())
         except:
             return self.__class__.__name__
 

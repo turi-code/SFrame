@@ -3,34 +3,25 @@ project(lambda)
 make_library(pylambda
   SOURCES
     lambda_constants.cpp
-    pylambda_function.cpp
     lambda_master.cpp
+    pylambda_function.cpp
     graph_pylambda_master.cpp
     # lualambda_master.cpp
   REQUIRES
-    flexible_type cppipc sframe shmipc
+    flexible_type cppipc sframe shmipc python_callbacks process
     # luastate luajit
     EXTERNAL_VISIBILITY
 )
 
 
-make_library(pylambda_worker_lib
-  SOURCES
-  python_api.cpp
-  python_import_modules.cpp
-  pyflexible_type.cpp
-  pylambda.cpp
-  graph_pylambda.cpp
-  REQUIRES
-    flexible_type cppipc sframe shmipc python_header_only boost_python
-)
-
 make_library(pylambda_worker
   SOURCES
+  pylambda.cpp
   pylambda_worker.cpp
+  graph_pylambda.cpp
   REQUIRES
-    logger process pylambda_worker_lib python_header_only
-  SHARED
+    flexible_type cppipc sframe shmipc python_callbacks process
+    EXTERNAL_VISIBILITY
 )
 
 

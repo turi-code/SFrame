@@ -20,13 +20,14 @@ from ..cython.cy_flexible_type import pytype_from_dtype, pytype_from_array_typec
 from ..cython.cy_flexible_type import infer_type_of_list, infer_type_of_sequence
 from ..cython.cy_sarray import UnitySArrayProxy
 from ..cython.context import debug_trace as cython_context
-from ..util import _make_internal_url
+from ..util import _is_non_string_iterable, _make_internal_url
 from .image import Image as _Image
 from .. import aggregate as _aggregate
 from ..deps import numpy, HAS_NUMPY
 from ..deps import pandas, HAS_PANDAS
 
 import time
+import sys
 import array
 import collections
 import datetime
@@ -34,6 +35,9 @@ import warnings
 import numbers
 
 __all__ = ['SArray']
+
+if sys.version_info.major > 2:
+    long = int
 
 def _create_sequential_sarray(size, start=0, reverse=False):
     if type(size) is not int:
@@ -360,7 +364,8 @@ class SArray(object):
                     elif len(data.shape) > 2:
                         raise TypeError("Cannot convert Numpy arrays of greater than 2 dimensions")
 
-                elif (isinstance(data, str) or isinstance(data, unicode)):
+                elif (isinstance(data, str) or
+                      (sys.version_info.major < 3 and isinstance(data, unicode))):
                     # if it is a file, we default to string
                     dtype = str
                 elif isinstance(data, array.array):
@@ -375,7 +380,7 @@ class SArray(object):
             if HAS_PANDAS and isinstance(data, pandas.Series):
                 with cython_context():
                     self.__proxy__.load_from_iterable(data.values, dtype, ignore_cast_failure)
-            elif (isinstance(data, str) or isinstance(data, unicode)):
+            elif (isinstance(data, str) or (sys.version_info.major <= 2 and isinstance(data, unicode))):
                 internal_url = _make_internal_url(data)
                 with cython_context():
                     self.__proxy__.load_autodetect(internal_url, dtype)
@@ -614,9 +619,6 @@ class SArray(object):
         else:
             raise ValueError("Unsupported format: {}".format(format))
 
-    def _escape_space(self,s):
-            return "".join([ch.encode('string_escape') if ch.isspace() else ch for ch in s])
-
     def __repr__(self):
         """
         Returns a string description of the SArray.
@@ -639,9 +641,12 @@ class SArray(object):
         if self.dtype() == _Image:
             headln = str(list(self.astype(str).head(100)))
         else:
-            headln = self._escape_space(str(list(self.head(100))))
-            headln = unicode(headln.decode('string_escape'),'utf-8',errors='replace').encode('utf-8')
-        if (self.__has_size__() == False or self.size() > 100):
+            if sys.version_info.major < 3:
+                headln = str(list(self.head(100)))
+                headln = unicode(headln.decode('string_escape'),'utf-8',errors='replace').encode('utf-8')
+            else:
+                headln = str(list(self.head(100)))
+        if (self.__proxy__.has_size() == False or self.size() > 100):
             # cut the last close bracket
             # and replace it with ...
             headln = headln[0:-1] + ", ... ]"
@@ -722,6 +727,7 @@ class SArray(object):
         """
         return SArray(_proxy = self.__proxy__.left_scalar_operator(item, 'in'))
 
+    # XXX: all of these functions are highly repetitive
     def __add__(self, other):
         """
         If other is a scalar value, adds it to the current array, returning
@@ -1327,7 +1333,7 @@ class SArray(object):
         options = dict()
         options["to_lower"] = to_lower == True
         # defaults to std::isspace whitespace delimiters if no others passed in
-    	options["delimiters"] = delimiters
+        options["delimiters"] = delimiters
 
         with cython_context():
             return SArray(_proxy=self.__proxy__.count_bag_of_words(options))
@@ -1361,10 +1367,10 @@ class SArray(object):
 
         if method == "word":
             with cython_context():
-                return SArray(_proxy=self.__proxy__.count_ngrams(n, options ))
+                return SArray(_proxy=self.__proxy__.count_ngrams(n, options))
         elif method == "character" :
             with cython_context():
-                return SArray(_proxy=self.__proxy__.count_character_ngrams(n, options ))
+                return SArray(_proxy=self.__proxy__.count_character_ngrams(n, options))
         else:
             raise ValueError("Invalid 'method' input  value. Please input either 'word' or 'character' ")
 
@@ -1402,7 +1408,7 @@ class SArray(object):
         Rows: 2
         [{'dog': 2}, {'cat': 1}]
         """
-        if isinstance(keys, str) or (not hasattr(keys, "__iter__")):
+        if not _is_non_string_iterable(keys):
             keys = [keys]
 
 
@@ -1546,9 +1552,9 @@ class SArray(object):
         >>> sa.dict_has_any_keys(["is", "this", "are"])
         dtype: int
         Rows: 3
-        [1, 1, 0]
+        [1, 0, 1]
         """
-        if isinstance(keys, str) or (not hasattr(keys, "__iter__")):
+        if not _is_non_string_iterable(keys):
             keys = [keys]
 
 
@@ -1586,7 +1592,7 @@ class SArray(object):
         Rows: 2
         [1, 0]
         """
-        if isinstance(keys, str) or (not hasattr(keys, "__iter__")):
+        if not _is_non_string_iterable(keys):
             keys = [keys]
 
 
@@ -1687,6 +1693,7 @@ class SArray(object):
 
         if nativefn is not None:
             # this is a toolkit lambda. We can do something about it
+            nativefn.native_fn_name = nativefn.native_fn_name.encode()
             with cython_context():
                 return SArray(_proxy=self.__proxy__.transform_native(nativefn, dtype, skip_undefined, seed))
 
@@ -2497,7 +2504,7 @@ class SArray(object):
         if (sub_sketch_keys != None):
             if (self.dtype() != dict and self.dtype() != array.array):
                 raise TypeError("sub_sketch_keys is only supported for SArray of dictionary or array type")
-            if not hasattr(sub_sketch_keys, "__iter__"):
+            if not _is_non_string_iterable(sub_sketch_keys):
                 sub_sketch_keys = [sub_sketch_keys]
             value_types = set([type(i) for i in sub_sketch_keys])
             if (len(value_types) != 1):
@@ -2767,7 +2774,7 @@ class SArray(object):
 
         # convert limit to column_keys
         if limit != None:
-            if (not hasattr(limit, '__iter__')):
+            if not _is_non_string_iterable(limit):
                 raise TypeError("'limit' must be a list");
 
             name_types = set([type(i) for i in limit])
@@ -2933,7 +2940,7 @@ class SArray(object):
 
         # validdate 'limit'
         if limit != None:
-            if (not hasattr(limit, '__iter__')):
+            if (not _is_non_string_iterable(limit)):
                 raise TypeError("'limit' must be a list");
 
             name_types = set([type(i) for i in limit])
@@ -2948,7 +2955,7 @@ class SArray(object):
                 raise ValueError("'limit' contains duplicate values")
 
         if (column_types != None):
-            if not hasattr(column_types, '__iter__'):
+            if not _is_non_string_iterable(column_types):
                 raise TypeError("column_types must be a list");
 
             for column_type in column_types:
@@ -2990,9 +2997,9 @@ class SArray(object):
         with cython_context():
             if (self.dtype() == dict and column_types == None):
                 limit = limit if limit != None else []
-                return _SFrame(_proxy=self.__proxy__.unpack_dict(column_name_prefix, limit, na_value))
+                return _SFrame(_proxy=self.__proxy__.unpack_dict(column_name_prefix.encode(), limit, na_value))
             else:
-                return _SFrame(_proxy=self.__proxy__.unpack(column_name_prefix, limit, column_types, na_value))
+                return _SFrame(_proxy=self.__proxy__.unpack(column_name_prefix.encode(), limit, column_types, na_value))
 
     def sort(self, ascending=True):
         """

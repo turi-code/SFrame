@@ -27,42 +27,16 @@ cdef bint is_pandas_dataframe(object v):
         return isinstance(v, pd.core.frame.DataFrame)
     else:
         return False
-
-cdef gl_dataframe gl_dataframe_from_pd(object df) except *:
-    cdef gl_dataframe ret
-    cdef flex_type_enum ftype = UNDEFINED
-    cdef flex_list fl
-
-    assert is_pandas_dataframe(df), 'Cannot convert object of type %s to gl_dataframe' % str(type(df))
-    if len(set(df.columns.values)) != len(df.columns.values):
-        raise ValueError('Input pandas dataframe column names must be unique')
-    for colname in df.columns.values:
-
-        ft_type = flex_type_from_dtype(df[colname].values.dtype)
-        if ft_type == FLOAT or ft_type == INTEGER:
-            fl = common_typed_flex_list_from_iterable(df[colname].values, &ftype)
-        else:
-            colcopy = [None if isinstance(x, float) and isnan(x) else x for x in df[colname].values]
-            fl = common_typed_flex_list_from_iterable(colcopy, &ftype)
-
-
-        # convert all NaNs to None
-        ret.names.push_back(str(colname))
-        ret.types[str(colname)] = ftype
-        ret.values[str(colname)] = fl
-
-    return ret
-
-
+    
 cdef gl_dataframe gl_dataframe_from_dict_of_arrays(dict df) except *:
     cdef gl_dataframe ret
     cdef flex_type_enum ftype
     cdef flex_list fl
 
     for key, value in sorted(df.iteritems()):
-        ret.names.push_back(key)
-        ret.values[str(key)] = common_typed_flex_list_from_iterable(value, &ftype)
-        ret.types[str(key)] = ftype
+        ret.names.push_back(key.encode())
+        ret.values[key.encode()] = common_typed_flex_list_from_iterable(value, &ftype)
+        ret.types[key.encode()] = ftype
 
     return ret
 
@@ -77,7 +51,3 @@ cdef pd_from_gl_dataframe(gl_dataframe& df):
             ret[_name] = ret[_name].astype(_type)
     return ret 
 
-
-### Test Util: convert dataframe to gl_dataframe and back ###
-def _dataframe(object df):
-    return pd_from_gl_dataframe(gl_dataframe_from_pd(df))

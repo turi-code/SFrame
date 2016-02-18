@@ -5,15 +5,19 @@ All rights reserved.
 This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
-import commands
+import sys
+if sys.version_info.major >= 3:
+    import subprocess as commands
+else: 
+    import commands
+    
 import json
 import logging
 import os
-import re
+import fnmatch
 import tempfile
 import unittest
 import pandas
-import sys
 
 from ..connect import main as glconnect
 from .. import sys_util as _sys_util
@@ -27,6 +31,8 @@ if sys.platform == 'win32':
 elif sys.platform == 'darwin':
     restricted_place = '/System'
 
+if sys.version_info.major >= 3:
+    unichr = chr    
 
 def _test_save_load_object_helper(testcase, obj, path):
     """
@@ -37,20 +43,26 @@ def _test_save_load_object_helper(testcase, obj, path):
         Remove the saved file from temp directory.
         """
         tempdir = tempfile.gettempdir()
-        pattern = path + ".*"
+        pattern = path + "*"
         for f in os.listdir(tempdir):
-            if re.search(pattern, f):
+            if fnmatch.fnmatch(pattern, f):
                 os.remove(os.path.join(tempdir, f))
 
+    def assert_same_elements(x, y):
+        if sys.version_info.major >= 3:
+            testcase.assertCountEqual(x, y)
+        else:
+            testcase.assertItemsEqual(x, y)
+                
     if isinstance(obj, SGraph):
         obj.save(path + ".graph")
         newobj = load_graph(path + ".graph")
-        testcase.assertItemsEqual(obj.get_fields(), newobj.get_fields())
+        assert_same_elements(obj.get_fields(), newobj.get_fields())
         testcase.assertDictEqual(obj.summary(), newobj.summary())
     elif isinstance(obj, Model):
         obj.save(path + ".model")
         newobj = load_model(path + ".model")
-        testcase.assertItemsEqual(obj.list_fields(), newobj.list_fields())
+        assert_same_elements(obj.list_fields(), newobj.list_fields())
         testcase.assertEqual(type(obj), type(newobj))
     elif isinstance(obj, SFrame):
         obj.save(path + ".frame_idx")

@@ -20,8 +20,8 @@ of the BSD license. See the LICENSE file for details.
 
 __all__ = ['sframe', 'sarray', 'sgraph', 'sketch', 'image']
 
-import image
-import sframe
-import sarray
-import sgraph
-import sketch
+from . import image
+from . import sframe
+from . import sarray
+from . import sgraph
+from . import sketch
