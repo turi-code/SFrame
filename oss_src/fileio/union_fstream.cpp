@@ -68,6 +68,7 @@ union_fstream::union_fstream(std::string url,
       input_stream = (*cachestream)->get_underlying_stream();
       if (input_stream == nullptr) input_stream = cachestream;
       m_file_size = (*cachestream)->file_size();
+      original_input_stream_handle = std::static_pointer_cast<std::istream>(cachestream);
     }
   } else if (boost::starts_with(url, "s3://")) {
     // the S3 file type currently works by download/uploading a local file
@@ -80,6 +81,7 @@ union_fstream::union_fstream(std::string url,
       input_stream = (*s3stream)->get_underlying_stream();
       if (input_stream == nullptr) input_stream = s3stream;
       m_file_size = (*s3stream)->file_size();
+      original_input_stream_handle = std::static_pointer_cast<std::istream>(s3stream);
     }
   } else {
     // must be local file
