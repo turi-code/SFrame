@@ -1270,7 +1270,7 @@ cdef flexible_type _ft_translate(object v, int tr_code) except *:
 
     # These are optimized by the cython compiler into a big switch statement.
     if tr_code == FT_INT_TYPE:
-        ret.set_int(<long>v)
+        ret.set_int(<flex_int>v)
         return ret
     elif tr_code == FT_FLOAT_TYPE:
         ret.set_double(<double>v)

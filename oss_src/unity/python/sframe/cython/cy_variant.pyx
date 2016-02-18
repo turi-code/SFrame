@@ -22,10 +22,11 @@ from .cy_model cimport UnityModel
 from .cy_sframe cimport UnitySFrameProxy
 from .cy_sarray cimport UnitySArrayProxy
 
-from .cy_flexible_type cimport flexible_type, flex_list, flex_dict
+from .cy_flexible_type cimport flexible_type, flex_list, flex_dict, flex_int
 from .cy_flexible_type cimport flexible_type_from_pyobject
 from .cy_flexible_type cimport pyobject_from_flexible_type
 from .cy_flexible_type cimport check_list_to_vector_translation
+from .cy_flexible_type cimport flex_type_enum, UNDEFINED
 
 from .cy_dataframe cimport gl_dataframe
 from .cy_dataframe cimport is_pandas_dataframe
@@ -53,10 +54,10 @@ from libcpp.map cimport map
 
 # Fast track simple flexible types
 DEF VAR_TR_FT_INT                      = 0
-DEF VAR_TR_FT_LONG                     = 1
-DEF VAR_TR_FT_FLOAT                    = 2
-DEF VAR_TR_FT_STR                      = 3
-DEF VAR_TR_FT_UNICODE                  = 4
+DEF VAR_TR_FT_FLOAT                    = 1
+DEF VAR_TR_FT_STR                      = 2
+DEF VAR_TR_FT_UNICODE                  = 3
+DEF VAR_TR_FT_NONE                     = 4
 
 # Nested types
 DEF VAR_TR_DICT                        = 5
@@ -103,6 +104,8 @@ cdef bint internal_classes_set = False
 cdef object sframe_class = None
 cdef object sarray_class = None
 cdef object sgraph_class = None
+cdef object gframe_class = None
+
 cdef object build_native_function_call = None
 
 # Load all the internal classes
@@ -119,6 +122,10 @@ cdef import_internal_classes():
     global sgraph_class
     from ..data_structures.sgraph import SGraph
     sgraph_class = SGraph
+
+    global gframe_class
+    from ..data_structures.gframe import GFrame
+    gframe_class = GFrame
 
     global build_native_function_call
     from ..extensions import _build_native_function_call
@@ -139,16 +146,18 @@ cdef int _get_tr_code_by_type_string(object v) except -1:
     if not internal_classes_set:
         import_internal_classes()
 
-    if type(v) is int:
+    if type(v) is int or type(v) is long:
         ret =  VAR_TR_FT_INT
-    elif type(v) is long:
-        ret =  VAR_TR_FT_LONG
     elif type(v) is float:
         ret =  VAR_TR_FT_FLOAT
     elif type(v) is str:
         ret =  VAR_TR_FT_STR
     elif type(v) is unicode_type:
         ret =  VAR_TR_FT_UNICODE
+    elif type(v) is bool:
+        ret =  VAR_TR_FT_INT
+    elif v is None:
+        ret =  VAR_TR_FT_NONE
     elif type(v) is list:
         ret =  VAR_TR_LIST
     elif type(v) is tuple:
@@ -156,6 +165,8 @@ cdef int _get_tr_code_by_type_string(object v) except -1:
     elif type(v) is dict:
         ret =  VAR_TR_DICT
     elif type(v) is sframe_class or v.__class__ is sframe_class:
+        ret =  VAR_TR_SFRAME
+    elif type(v) is gframe_class or v.__class__ is gframe_class:
         ret =  VAR_TR_SFRAME
     elif v.__class__ is sgraph_class:
         ret =  VAR_TR_GRAPH
@@ -306,10 +317,7 @@ cdef bint _var_set_listlike_internal(variant_vector_type& ret_as_vv,
         element_stored_in_flex_list = False
 
         if tr_code == VAR_TR_FT_INT:
-            ret_as_fl[i].set_int(<int>x)
-            element_stored_in_flex_list = True
-        elif tr_code == VAR_TR_FT_LONG:
-            ret_as_fl[i].set_int(<long>x)
+            ret_as_fl[i].set_int(<flex_int>x)
             element_stored_in_flex_list = True
         elif tr_code == VAR_TR_FT_FLOAT:
             ret_as_fl[i].set_double(<double>x)
@@ -319,6 +327,9 @@ cdef bint _var_set_listlike_internal(variant_vector_type& ret_as_vv,
             element_stored_in_flex_list = True
         elif tr_code == VAR_TR_FT_UNICODE:
             ret_as_fl[i].set_string((<unicode>x))
+            element_stored_in_flex_list = True
+        elif tr_code == VAR_TR_FT_NONE:
+            ret_as_fl[i] = flexible_type(UNDEFINED)
             element_stored_in_flex_list = True
         elif tr_code == VAR_TR_LIST or tr_code == VAR_TR_TUPLE:
             ret_as_fl[i].set_list(flex_list())
@@ -406,8 +417,10 @@ cdef inline bint _var_set_dict_internal(variant_map_type& ret_as_vm, flex_dict& 
 
     cdef long pos
     cdef int tr_code
-    cdef bint writing_to_flex_dict
-    
+    cdef bint writing_to_flex_dict, sub_is_flex_type
+    cdef variant_vector_type sub_vv = variant_vector_type()
+    cdef variant_map_type sub_vm = variant_map_type()
+
     if output_can_be_varmap:
         # First see if it can be translated as flexible type, which
         # would be great.
@@ -426,17 +439,65 @@ cdef inline bint _var_set_dict_internal(variant_map_type& ret_as_vm, flex_dict& 
                     tr_code = get_var_tr_code(v)
 
                     if tr_code == VAR_TR_FT_INT:
-                        ret_as_fd[pos].second.set_int(<int>v)
-                    elif tr_code == VAR_TR_FT_LONG:
-                        ret_as_fd[pos].second.set_int(<long>v)
+                        ret_as_fd[pos].second.set_int(<flex_int>v)
                     elif tr_code == VAR_TR_FT_FLOAT:
                         ret_as_fd[pos].second.set_double(<double>v)
                     elif tr_code == VAR_TR_FT_STR:
                         ret_as_fd[pos].second.set_string(<str>v)
                     elif tr_code == VAR_TR_FT_UNICODE:
                         ret_as_fd[pos].second.set_string((<unicode>v))
+                    elif tr_code == VAR_TR_FT_NONE:
+                        ret_as_fd[pos].second = flexible_type(UNDEFINED)
                     elif tr_code == VAR_TR_ATTEMPT_OTHER_FLEXIBLE_TYPE:
                         ret_as_fd[pos].second = _translate_to_flexible_type(v)
+                    elif tr_code == VAR_TR_LIST or tr_code == VAR_TR_TUPLE:
+                        ret_as_fd[pos].second.set_list(flex_list())
+
+                        if tr_code == VAR_TR_LIST:
+                            sub_is_flex_type = _var_set_listlike_internal(
+                                sub_vv, ret_as_fd[pos].second.get_list_m(), <list>v, False)
+                        else:
+                            sub_is_flex_type = _var_set_listlike_internal(
+                                sub_vv, ret_as_fd[pos].second.get_list_m(), <tuple>v, False)
+
+                        if sub_is_flex_type:
+                            check_list_to_vector_translation(ret_as_fd[pos].second)
+
+                            if not writing_to_flex_dict:
+                                variant_set_flexible_type(ret_as_vm[ret_as_fd[pos].first.get_string()], 
+                                                          ret_as_fd[pos].second)
+                        else:                                                            
+                            if writing_to_flex_dict:
+                                ret_as_vm.clear()
+                                for i in range(pos):
+                                    variant_set_flexible_type(ret_as_vm[ret_as_fd[i].first.get_string()],
+                                                              ret_as_fd[i].second)
+
+                                writing_to_flex_dict = False
+
+                                
+                            variant_set_variant_vector(ret_as_vm[ret_as_fd[pos].first.get_string()], sub_vv)
+
+                    elif tr_code == VAR_TR_DICT:
+                        ret_as_fd[pos].second.set_dict(flex_dict())
+
+                        sub_is_flex_type = _var_set_dict_internal(sub_vm, ret_as_fd[pos].second.get_dict_m(), <dict>v, False)
+
+                        if sub_is_flex_type:
+                            if not writing_to_flex_dict:
+                                variant_set_flexible_type(ret_as_vm[ret_as_fd[pos].first.get_string()], 
+                                                          ret_as_fd[pos].second)
+                        else:
+                            if writing_to_flex_dict:
+                                ret_as_vm.clear()
+                                for i in range(pos):
+                                    variant_set_flexible_type(ret_as_vm[ret_as_fd[i].first.get_string()],
+                                                              ret_as_fd[i].second)
+
+                                writing_to_flex_dict = False
+
+                            variant_set_variant_map(ret_as_vm[ret_as_fd[pos].first.get_string()], sub_vm)
+                        
                     else:                    
                         # That didn't work -- translate the rest as
                         # variant type if it can be a varmap.
@@ -530,8 +591,10 @@ cdef variant_map_type from_dict(dict d) except *:
     """
     cdef variant_map_type ret
     cdef flex_dict fd
-
-    _var_set_dict_internal(ret, fd, d, True)
+    if d is None:
+        return ret
+    else:
+        _var_set_dict_internal(ret, fd, d, True)
     return ret
 
 
@@ -542,7 +605,10 @@ cdef variant_vector_type from_list(list v) except *:
     cdef variant_vector_type ret
     cdef flex_list fl
 
-    _var_set_listlike_internal(ret, fl, v, True)
+    if v is None:
+        return ret
+    else:
+        _var_set_listlike_internal(ret, fl, v, True)
     return ret
 
 
@@ -555,13 +621,10 @@ cdef _convert_to_variant_type(variant_type& ret, object v, int tr_code):
 
     # Fast-tracked flexible type versions
     if tr_code == VAR_TR_FT_INT:
-        ft.set_int(<int>v)
-        variant_set_flexible_type(ret, ft)
-    elif tr_code == VAR_TR_FT_LONG:
-        ft.set_int(<long>v)
+        ft.set_int(<flex_int>v)
         variant_set_flexible_type(ret, ft)
     elif tr_code == VAR_TR_FT_FLOAT:
-        ft.set_double(<float>v)
+        ft.set_double(<double>v)
         variant_set_flexible_type(ret, ft)
     elif tr_code == VAR_TR_FT_STR:
         ft.set_string(<str>v)
@@ -569,6 +632,8 @@ cdef _convert_to_variant_type(variant_type& ret, object v, int tr_code):
     elif tr_code == VAR_TR_FT_UNICODE:
         ft.set_string(<unicode>v)
         variant_set_flexible_type(ret, ft)
+    elif tr_code == VAR_TR_FT_NONE:
+        variant_set_flexible_type(ret, flexible_type(UNDEFINED))
 
     # Nested container types
     elif tr_code == VAR_TR_DICT:
