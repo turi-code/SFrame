@@ -10,7 +10,8 @@
 namespace graphlab {
 
 /// Public methods
-void grouped_sframe::group(const gl_sframe &sf, const std::vector<std::string> column_names, bool is_grouped) {
+void grouped_sframe::group(const gl_sframe &sf, const std::vector<std::string>
+    column_names, bool is_grouped) {
   if(m_inited)
     log_and_throw("Group has already been called on this object!");
 
@@ -20,6 +21,7 @@ void grouped_sframe::group(const gl_sframe &sf, const std::vector<std::string> c
   } else {
     m_grouped_sf = sf;
   }
+  m_key_col_names = column_names;
 
   // Get indices from column names
   std::vector<size_t> col_ids;
@@ -146,6 +148,60 @@ grouped_sframe::iterator_get_next(size_t len) {
   }
 
   return ret;
+}
+  
+gl_sframe grouped_sframe::group_info() const {
+  if (m_group_names.size() == 0) {
+    log_and_throw("No groups present. Cannot obtain group info.");
+  }
+ 
+  // Return column names. 
+  std::vector<std::string> ret_column_names = m_key_col_names;
+  ret_column_names.push_back("group_size");
+  DASSERT_EQ(ret_column_names.size(), m_key_col_names.size() + 1);
+
+  // Return column types from the first group info. 
+  DASSERT_TRUE(m_group_names.size() > 1);
+  std::vector<flex_type_enum> ret_column_types;
+  flexible_type first_key = m_group_names[0];
+  flex_type_enum key_type = first_key.get_type();
+  if (key_type == flex_type_enum::LIST) {
+    for (size_t k = 0; k < first_key.size(); k++) {
+      ret_column_types.push_back(first_key.array_at(k).get_type());
+    }
+  } else {
+    ret_column_types.push_back(key_type);
+  }
+  ret_column_types.push_back(flex_type_enum::INTEGER);
+  DASSERT_EQ(ret_column_types.size(), ret_column_names.size());
+  
+  // Prepare for writing.
+  size_t num_segments = thread::cpu_count();
+  gl_sframe_writer writer(ret_column_names, ret_column_types, num_segments);
+  size_t range_dir_size = m_range_directory.size();
+
+  // Write the group info.
+  in_parallel([&](size_t thread_idx, size_t num_threads) {
+
+    size_t start_idx = range_dir_size * thread_idx / num_threads;
+    size_t end_idx = range_dir_size * (thread_idx + 1) / num_threads;
+
+    for (size_t i = start_idx; i < end_idx; i++) { 
+      size_t range_start = m_range_directory[i];
+      size_t range_end = 0;
+      if((i + 1) == m_range_directory.size()) {
+        range_end = m_grouped_sf.size();
+      } else {
+        range_end = m_range_directory[i + 1];
+      }
+      size_t num_rows = range_end - range_start;
+      std::vector<flexible_type> vals = m_group_names[i];
+      vals.push_back(num_rows);
+      DASSERT_EQ(vals.size(), ret_column_names.size());
+      writer.write(vals, thread_idx);
+    }
+    return writer.close(); 
+  });
 }
 
 /// Private methods
