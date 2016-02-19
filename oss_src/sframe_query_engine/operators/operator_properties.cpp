@@ -343,6 +343,15 @@ struct length_info {
   void* source_node; // if length is unknown this contains a unique descriptor
                      // of the length
 };
+/*
+ * This function returns for a given node, a "length_info" attribute.
+ *  - length_info.source_length: The length of the node if known. -1 if not known
+ *  - source_node: If the length is unkonwn, this contains a unique descriptor
+ *                 of the length. i.e. if two differet nodes have the same
+ *                 descriptor, they have the same length. But if they have
+ *                 different descriptors, there is nothing we can say about
+ *                 their lengths.
+ */
 static length_info propagate_length(
     const pnode_ptr& n, std::map<pnode_ptr, length_info>& visited) {
   auto it = visited.find(n);
@@ -373,7 +382,10 @@ std::pair<bool, bool> prove_equal_length(const std::shared_ptr<planner_node>& a,
   if (la.source_length != -1 &&  lb.source_length != -1) {
     return {true, la.source_length == lb.source_length};
   } else if (la.source_length == -1 && lb.source_length == -1) {
-    return {true, la.source_node == lb.source_node};
+    // if the source id is the same, we have proved they have
+    // the same length. Otherwise, we can't really say if they are the same
+    // length. (could be two different sources of the same size)
+    return {la.source_node == lb.source_node, la.source_node == lb.source_node};
   } else {
     return {false, false};
   }
