@@ -90,7 +90,7 @@ class countmin {
  /**
    * Returns the estimate of the frequency for a given object.
    */
-  inline size_t estimate(const T& t) {
+  inline size_t estimate(const T& t) const {
 
     size_t E = std::numeric_limits<size_t>::max();
     size_t i = hash64(std::hash<T>()(t));
@@ -124,7 +124,7 @@ class countmin {
   /**
    * Prints the internal matrix containing the current counts.
    */
-  inline void print() {
+  inline void print() const {
     for (size_t j = 0; j < num_hash; ++j) {
       std::cout << ">>> ";
       for (size_t b = 0; b < num_bins; ++b) {
@@ -137,7 +137,7 @@ class countmin {
   /**
    * Computes the density of the internal counts matrix.
    */
-  inline double density() {
+  inline double density() const {
     size_t count = 0;
     for (size_t j = 0; j < num_hash; ++j) {
       for (size_t b = 0; b < num_bins; ++b) {
