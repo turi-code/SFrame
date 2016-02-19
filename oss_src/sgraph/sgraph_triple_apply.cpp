@@ -84,7 +84,7 @@ namespace {
      */
     virtual void finalize () = 0;
 
-    virtual ~edge_visitor_interface() {}
+    virtual ~edge_visitor_interface() {};
   };
 
 
@@ -553,6 +553,8 @@ namespace {
       m_srcid_column(srcid_column),
       m_dstid_column(dstid_column) { }
 
+    virtual ~batch_edge_triple_apply_visitor() override { }
+
     /**
      * Sets the batch apply function.
      */
@@ -812,7 +814,11 @@ namespace {
     lambda_triple_apply_visitor(const lambda_triple_apply_visitor& other) : batch_edge_triple_apply_visitor(other) {
        m_lambda_str = other.m_lambda_str;
        m_worker_pool = other.m_worker_pool;
+       m_evaluator = NULL;
+       m_evaluator_guard = NULL;
     }
+
+    ~lambda_triple_apply_visitor() override { }
 
     /**
      * Overwrite parent's method, because we need to initialize the lambda evaluator
