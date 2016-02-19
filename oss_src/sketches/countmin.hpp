@@ -13,6 +13,7 @@
 #include <random/random.hpp>
 #include <util/cityhash_gl.hpp>
 #include <logger/assertions.hpp>
+#include <serialization/serialization_includes.hpp>
 namespace graphlab {
 namespace sketches {
 
@@ -62,13 +63,15 @@ class countmin {
    * \param depth The "depth" of the sketch is the number of hash functions
    * that will be used on each item. 
    */
-  explicit inline countmin(size_t bits = 16, size_t depth = 4):
+  explicit inline countmin(size_t bits = 16, size_t depth = 4, size_t seed=1000):
     num_hash(depth), num_bits(bits), num_bins(1 << num_bits) {
       ASSERT_GE(num_bins, 16);
 
+      random::generator gen;
+      gen.seed(seed);
       // Initialize hash functions and count matrix
       for (size_t j = 0; j < num_hash; ++j) {
-        seeds.push_back(random::fast_uniform<size_t>(0, std::numeric_limits<size_t>::max()));
+        seeds.push_back(gen.fast_uniform<size_t>(0, std::numeric_limits<size_t>::max()));
         counts.push_back(std::vector<size_t>(num_bins));
       }
    }
@@ -90,7 +93,7 @@ class countmin {
  /**
    * Returns the estimate of the frequency for a given object.
    */
-  inline size_t estimate(const T& t) {
+  inline size_t estimate(const T& t) const {
 
     size_t E = std::numeric_limits<size_t>::max();
     size_t i = hash64(std::hash<T>()(t));
@@ -124,7 +127,7 @@ class countmin {
   /**
    * Prints the internal matrix containing the current counts.
    */
-  inline void print() {
+  inline void print() const {
     for (size_t j = 0; j < num_hash; ++j) {
       std::cout << ">>> ";
       for (size_t b = 0; b < num_bins; ++b) {
@@ -137,7 +140,7 @@ class countmin {
   /**
    * Computes the density of the internal counts matrix.
    */
-  inline double density() {
+  inline double density() const {
     size_t count = 0;
     for (size_t j = 0; j < num_hash; ++j) {
       for (size_t b = 0; b < num_bins; ++b) {
@@ -147,6 +150,20 @@ class countmin {
     return (double) count / (double) (num_hash * num_bins);
   } 
 
+  void save(oarchive& oarc) const {
+    oarc << num_hash
+         << num_bits
+         << num_bins
+         << seeds
+         << counts;
+  }
+  void load(iarchive& iarc) {
+    iarc >> num_hash
+         >> num_bits
+         >> num_bins
+         >> seeds
+         >> counts;
+  }
 }; // countmin 
 } // namespace sketches
 } // namespace graphlab
