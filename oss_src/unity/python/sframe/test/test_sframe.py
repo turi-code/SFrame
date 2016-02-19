@@ -2924,6 +2924,23 @@ class SFrameTest(unittest.TestCase):
         self.assertFalse(sf.__is_materialized__())
         self.assertFalse(sf.__has_size__())
 
+    def test_lazy_logical_filter_sarray(self):
+        g=SArray(range(10000))
+        g2=SArray(range(10000))
+        a=g[g>10]
+        a2=g2[g>10]
+        z=a[a2>20]
+        self.assertEqual(len(z), 9979)
+
+    def test_lazy_logical_filter_sframe(self):
+        g=SFrame({'a':range(10000)})
+        g2=SFrame({'a':range(10000)})
+        a=g[g['a']>10]
+        a2=g2[g['a']>10]
+        z=a[a2['a']>20]
+        self.assertEqual(len(z), 9979)
+
+
     def test_sframe_to_rdd(self):
         if not HAS_PYSPARK:
             print("Did not run Pyspark unit tests!")
