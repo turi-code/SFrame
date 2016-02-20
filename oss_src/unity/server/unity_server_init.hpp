@@ -23,7 +23,7 @@ static void register_model_helper(graphlab::toolkit_class_registry& g_toolkit_cl
   g_toolkit_classes.register_toolkit_class(name, [](){return new Model;});
 }
 
-class unity_server_initializer {
+class EXPORT unity_server_initializer {
  public:
   /**
    * Fill the registry of internal toolkits
