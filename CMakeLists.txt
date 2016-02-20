@@ -25,6 +25,11 @@ set(CMAKE_MODULE_PATH ${DATO_DEPS_LOCAL_CMAKE};${DATO_DEPS_OVERRIDE_CMAKE};${DAT
 set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/deps/local)
 set(ENV{PYTHONHOME} ${CMAKE_SOURCE_DIR}/deps/conda)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+if (PYTHON_VERSION)
+        set(PYTHON_VERSION ${PYTHON_VERSION} CACHE STRING "Target Python Version")
+else()
+        set(PYTHON_VERSION "python2.7")
+endif()
 
 include(CheckLibraryExists)
 include(CheckFunctionExists)

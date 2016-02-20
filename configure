@@ -8,11 +8,11 @@ GRAPHLAB_HOME=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 DEPS_PREFIX=$PWD/deps/local
 
 if [[ $OSTYPE == linux* ]]; then
-        DEFAULT_DATO_DEPS_VERSION=3
+        DEFAULT_DATO_DEPS_VERSION=5
 elif [[ $OSTYPE == darwin* ]]; then
-        DEFAULT_DATO_DEPS_VERSION=2
+        DEFAULT_DATO_DEPS_VERSION=5
 elif [[ $OSTYPE == msys ]]; then
-        DEFAULT_DATO_DEPS_VERSION=3
+        DEFAULT_DATO_DEPS_VERSION=5
 fi
 
 
@@ -314,6 +314,8 @@ if [[ $OSTYPE == msys ]]; then
 fi
 ## ============================================================================
 # Run Cmake
+export LD_LIBRARY_PATH=${PWD}/deps/local/lib:${PWD}/deps/local/lib64:$PWD
+
 
 
 set -e
