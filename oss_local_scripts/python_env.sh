@@ -35,6 +35,8 @@ else
 fi
 # Graphlab project root
 ROOT_DIR=$SCRIPT_DIR/..
+
+export LD_LIBRARY_PATH=${ROOT_DIR}/deps/local/lib:${ROOT_DIR}/deps/local/lib64:$LD_LIBRARY_PATH
 PYTHON_SCRIPTS=deps/conda/bin
 if [[ $OSTYPE == msys ]]; then
   PYTHON_SCRIPTS=deps/conda/bin/Scripts
