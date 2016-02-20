@@ -61,6 +61,7 @@ class LambdaTests(unittest.TestCase):
         for a in ans_list:
             self.assertEqual(a, ans)
 
+    @unittest.skip("Disabling crash recovery test")
     def test_crash_recovery(self):
         import time, sys
         ls = range(1000)
