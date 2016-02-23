@@ -129,3 +129,23 @@ cdef inline map[string, string] dict_to_string_string_map(dict d) except *:
 
     return ret
 
+def str_to_char_p_castable(s):
+    """
+    Use this function to convert any string-like object to something that can be converted to a 
+    """
+    cdef type t = type(py_s)
+    
+    if PY_MAJOR_VERSION >= 3:
+        if t is str:
+            return (<str>py_s).encode()
+        elif t is bytes:
+            return (<bytes>py_s)
+        else:
+            return bytes(py_s)
+    else:
+        if t is str:
+            return (<str>py_s)
+        elif t is unicode:
+            return (<unicode>py_s).encode('UTF-8')
+        else:
+            return str(py_s)
