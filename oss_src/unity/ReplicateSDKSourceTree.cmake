@@ -25,6 +25,7 @@ foreach(item ${sdkfiles})
   endif()
 endforeach()
 
+
 ## Copy sdk examples, and patch the source code include path
 file(COPY sdk/sdk_example DESTINATION "${CMAKE_ARGV3}/sdk" )
 execute_process(COMMAND find ./graphlab \( -name "*.cpp" -or -name "*.hpp" \) -exec ${CMAKE_ARGV4}/oss_local_scripts/patch_sdk.py {} \; WORKING_DIRECTORY ${CMAKE_ARGV3}/sdk)
@@ -47,3 +48,8 @@ execute_process(COMMAND ${bcp} --boost=${CMAKE_ARGV4}/deps/local/include ${boost
 
 ## Copy doxygen files
 file(COPY sdk/doxygen DESTINATION "${CMAKE_ARGV3}/sdk")
+
+#FIXME: The 'process' directory has to be included to make sure SDK works with 
+# SFrame 1.8. This has to be fixed soon.
+execute_process(COMMAND mkdir -p ${CMAKE_ARGV3}/sdk/process)
+execute_process(COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/../process/process_util.hpp ${CMAKE_ARGV3}/sdk/process)
