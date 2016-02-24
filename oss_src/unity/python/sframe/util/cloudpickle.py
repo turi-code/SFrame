@@ -233,13 +233,14 @@ class CloudPickler(Pickler):
 
         # create a skeleton function object and memoize it
         save(_make_skel_func)
-        save((code, closure, base_globals))
+        save((code, len(closure), base_globals))
         write(pickle.REDUCE)
         self.memoize(func)
 
         # save the rest of the func data needed by _fill_function
         save(f_globals)
         save(defaults)
+        save(closure) # maintains backcompat
         save(dct)
         write(pickle.TUPLE)
         write(pickle.REDUCE)  # applies _fill_function on the tuple
@@ -720,14 +721,16 @@ def _genpartial(func, args, kwds):
     return partial(func, *args, **kwds)
 
 
-def _fill_function(func, globals, defaults, dict):
+def _fill_function(func, globals, defaults, closures, dict):
     """ Fills in the rest of function data into the skeleton function object
         that were created via _make_skel_func().
          """
-    func.__globals__.update(globals)
-    func.__defaults__ = defaults
-    func.__dict__ = dict
-
+    closure = _reconstruct_closure(closures) if closures else None
+    func = types.FunctionType(func.__code__, func.func_globals,
+            None, None, closure)
+    func.func_globals.update(globals)
+    func.func_defaults = defaults
+    func.func_dict = dict
     return func
 
 
@@ -739,19 +742,19 @@ def _reconstruct_closure(values):
     return tuple([_make_cell(v) for v in values])
 
 
-def _make_skel_func(code, closures, base_globals = None):
+def _make_skel_func(code, num_closures, base_globals = None):
     """ Creates a skeleton function object that contains just the provided
         code and the correct number of cells in func_closure.  All other
         func attributes (e.g. func_globals) are empty.
     """
-    closure = _reconstruct_closure(closures) if closures else None
+    dummy_closure = tuple(map(lambda i:_make_cell(None), range(num_closures)))
 
     if base_globals is None:
         base_globals = {}
     base_globals['__builtins__'] = __builtins__
 
     return types.FunctionType(code, base_globals,
-                              None, None, closure)
+                              None, None, dummy_closure)
 
 
 def _load_class(cls, d):
