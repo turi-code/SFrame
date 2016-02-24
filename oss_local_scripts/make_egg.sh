@@ -99,7 +99,7 @@ fi
 
 push_ld_library_path() {
   OLD_LIBRARY_PATH=$LD_LIBRARY_PATH
-  export LD_LIBRARY_PATH=${ROOT_DIR}/deps/local/lib:${ROOT_DIR}/deps/local/lib64:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH=${WORKSPACE}/deps/local/lib:${WORKSPACE}/deps/local/lib64:$LD_LIBRARY_PATH
 }
 
 pop_ld_library_path() {
