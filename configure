@@ -274,6 +274,7 @@ fi
 
 mkdir -p doc
 
+export LD_LIBRARY_PATH=${PWD}/deps/local/lib:${PWD}/deps/local/lib64:$PWD
 echo "======================= BUILD CONFIGURATION ========================"
 echo "System Information: " 
 uname -v
@@ -314,7 +315,6 @@ if [[ $OSTYPE == msys ]]; then
 fi
 ## ============================================================================
 # Run Cmake
-export LD_LIBRARY_PATH=${PWD}/deps/local/lib:${PWD}/deps/local/lib64:$PWD
 
 
 
