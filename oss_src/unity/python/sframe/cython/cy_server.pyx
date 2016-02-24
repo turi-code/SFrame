@@ -105,9 +105,12 @@ class EmbeddedServer(GraphLabServer):
     def get_server_addr(self):
         return self.server_addr
 
-    def start(self):
+    def send_engine_start_metrics(self):
         _get_metric_tracker().track('engine-started', value=1, send_sys_info=True)
         _get_metric_tracker().track('engine-started-local', value=1, send_sys_info=True)
+
+    def start(self):
+        self.send_engine_start_metrics()
 
         if sys.platform == 'win32':
             self.unity_log += ".0"

@@ -11,7 +11,6 @@ SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 WORKSPACE=${SCRIPT_DIR}/..
 ABS_WORKSPACE=`dirname $SCRIPT_DIR`
 build_type="release"
-export LD_LIBRARY_PATH=${ROOT_DIR}/deps/local/lib:${ROOT_DIR}/deps/local/lib64:$LD_LIBRARY_PATH
 
 print_help() {
   echo "Builds the release branch and produce an egg to the targets directory "
@@ -98,9 +97,18 @@ if [[ $OSTYPE == msys ]]; then
   unset PYTHONHOME
 fi
 
+push_ld_library_path() {
+  OLD_LIBRARY_PATH=$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH=${WORKSPACE}/deps/local/lib:${WORKSPACE}/deps/local/lib64:$LD_LIBRARY_PATH
+}
+
+pop_ld_library_path() {
+  export LD_LIBRARY_PATH=$OLD_LIBRARY_PATH
+}
 
 ### Build the source with version number ###
 build_source() {
+
   echo -e "\n\n\n================= Build ${BUILD_NUMBER} ================\n\n\n"
 
   # Configure
@@ -113,6 +121,8 @@ build_source() {
       ./configure ${toolchain}
   fi
 
+  push_ld_library_path
+
   # Make clean
   cd ${WORKSPACE}/${build_type}/oss_src/unity/python
   make oss_clean_python
@@ -124,7 +134,9 @@ build_source() {
       cd ${WORKSPACE}/${build_type}/oss_test
       make -j${NUM_PROCS}
   fi
+  pop_ld_library_path
   echo -e "\n\n================= Done Build Source ================\n\n"
+
 }
 
 # Run all unit test
@@ -269,8 +281,10 @@ generate_docs() {
   SPHINXBUILD=${WORKSPACE}/$PYTHON_SCRIPTS/sphinx-build
 
   cd ${WORKSPACE}/oss_src/unity/python/doc
+  push_ld_library_path
   make clean SPHINXBUILD=${SPHINXBUILD}
   make html SPHINXBUILD=${SPHINXBUILD}
+  pop_ld_library_path
   tar -czvf ${TARGET_DIR}/sframe_python_sphinx_docs.${archive_file_ext} *
 }
 

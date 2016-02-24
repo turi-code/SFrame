@@ -166,13 +166,13 @@ class operator_impl<planner_node_type::LAMBDA_TRANSFORM_NODE> : public query_ope
       flexible_type res(type);
       res.soft_assign(val);
       return res;
-    } else if (( (val.get_type() == flex_type_enum::VECTOR && 
-                  type == flex_type_enum::LIST) 
-                || (val.get_type() == flex_type_enum::LIST && 
-                  type == flex_type_enum::VECTOR)) 
-               && val.size() == 0) { 
+    } else if ( (val.get_type() == flex_type_enum::VECTOR && 
+                 type == flex_type_enum::LIST) 
+               || (val.get_type() == flex_type_enum::LIST && 
+                   type == flex_type_enum::VECTOR)) {
       // empty lists / vectors cast between each other.
       flexible_type res(type);
+      res.soft_assign(val);
       return res;
     } else {
       std::string message = "Cannot convert " + std::string(val) + 

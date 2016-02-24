@@ -901,7 +901,7 @@ class SFrame(object):
             with cython_context():
                 if (_format == 'dataframe'):
                     for c in data.columns.values:
-                        self.add_column(SArray(data[c].values), c)
+                        self.add_column(SArray(data[c].values), str(c))
                 elif (_format == 'sframe_obj'):
                     for col in data.column_names():
                         self.__proxy__.add_column(data[col].__proxy__, col)

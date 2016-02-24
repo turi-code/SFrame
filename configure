@@ -63,7 +63,9 @@ function print_help {
   echo "                          or a URL to a toolchain. If toolchain is"
   echo "                          \"default\", a default one is selected"
   echo
-  echo "  --no_cuda               Selects a Cuda-less toolchain if available"
+  echo "  --cuda                  Selects a Cuda toolchain if available"
+  echo
+  echo "  --no_cuda               Selects a Cuda-less toolchain if available (default)"
   echo 
   echo "  -D var=value            Specify CFLAGS definitions to be passed on to cmake."
   echo 
@@ -153,11 +155,12 @@ cleanup_option=0
 cleanup_if_invalid_option=0
 toolchain=""
 default_yes=0
-no_cuda=0
+no_cuda=1
 # Parse command line configure flags ------------------------------------------
 while [ $# -gt 0 ]
   do case $1 in
     --toolchain=*)          toolchain=${1##--toolchain=} ;;
+    --cuda)                 no_cuda=0;;
     --no_cuda)              no_cuda=1;;
     --cleanup)              cleanup_option=1;;
     --cleanup_if_invalid)   cleanup_if_invalid_option=1;;
@@ -274,6 +277,7 @@ fi
 
 mkdir -p doc
 
+export LD_LIBRARY_PATH=${PWD}/deps/local/lib:${PWD}/deps/local/lib64:$PWD
 echo "======================= BUILD CONFIGURATION ========================"
 echo "System Information: " 
 uname -v
@@ -314,7 +318,6 @@ if [[ $OSTYPE == msys ]]; then
 fi
 ## ============================================================================
 # Run Cmake
-export LD_LIBRARY_PATH=${PWD}/deps/local/lib:${PWD}/deps/local/lib64:$PWD
 
 
 
