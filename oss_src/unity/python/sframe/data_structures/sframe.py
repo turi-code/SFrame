@@ -287,6 +287,23 @@ def _get_global_dbapi_info(dbapi_module, conn):
 
     return ret_dict
 
+# Expects list of tuples
+def _force_cast_sql_types(data, result_types, force_cast_cols):
+    if len(force_cast_cols) == 0:
+        return data
+
+    ret_data = []
+    for row in data:
+        row = list(row)
+        for idx in force_cast_cols:
+            if row[idx] is not None and result_types[idx] != datetime.datetime:
+                row[idx] = result_types[idx](row[idx])
+
+        ret_data.append(row)
+
+    return ret_data
+
+
 class SFrame(object):
     """
     A tabular, column-mutable dataframe object that can scale to big data. The
@@ -2187,6 +2204,43 @@ class SFrame(object):
         +---+---+
         [1 rows x 2 columns]
         """
+        # Mapping types is always the trickiest part about reading from a
+        # database, so the main complexity of this function concerns types.
+        # Much of the heavy-lifting of this is done by the DBAPI2 module, which
+        # holds the burden of the actual mapping from the database-specific
+        # type to a suitable Python type. The problem is that the type that the
+        # module chooses may not be supported by SFrame, and SFrame needs a
+        # list of types to be created, so we must resort to guessing the type
+        # of a column if the query result returns lots of NULL values. The goal
+        # of these steps is to fail as little as possible first, and then
+        # preserve data as much as we can.
+        #
+        # Here is how the type for an SFrame column is chosen:
+        #
+        # 1. The column_type_hints parameter is checked.
+        #
+        #    Each column specified in the parameter will be forced to the
+        #    hinted type via a Python-side cast before it is given to the
+        #    SFrame. Only int, float, and str are allowed to be hints.
+        #
+        # 2. The types returned from the cursor are checked.
+        #
+        #    The first non-None result for each column is taken to be the type
+        #    of that column. The type is checked for whether SFrame supports
+        #    it, or whether it can convert to a supported type. If the type is
+        #    supported, no Python-side cast takes place. If unsupported, the
+        #    SFrame column is set to str and the values are casted in Python to
+        #    str before being added to the SFrame.
+        #
+        # 3. DB type codes provided by module are checked
+        #
+        #    This case happens for any column that only had None values in the
+        #    first `type_inference_rows` rows. In this case we check the
+        #    type_code in the cursor description for the columns missing types.
+        #    These types often do not match up with an SFrame-supported Python
+        #    type, so the utility of this step is limited. It can only result
+        #    in labeling datetime.datetime, float, or str. If a suitable
+        #    mapping isn't found, we fall back to str.
         mod_info = _get_global_dbapi_info(dbapi_module, conn)
         _mt._get_metric_tracker().track('sframe.from_sql',
                 properties={'module_name':mod_info['module_name']})
@@ -2200,6 +2254,9 @@ class SFrame(object):
             else:
                 c.execute(sql_statement, params)
         except mod_info['Error'] as e:
+            # The rollback method is considered optional by DBAPI2, but some
+            # modules that do implement it won't work again unless it is called
+            # if an error happens on a cursor.
             if hasattr(conn, 'rollback'):
                 conn.rollback()
             raise e
@@ -2210,12 +2267,17 @@ class SFrame(object):
         result_names = [i[0] for i in result_desc]
         result_types = [None for i in result_desc]
 
+        cols_to_force_cast = set()
+        temp_vals = []
+
         # Set any types that are given to us
         col_name_to_num = {result_names[i]:i for i in range(len(result_names))}
         if column_type_hints is not None:
             if type(column_type_hints) is dict:
                 for k,v in column_type_hints.items():
-                    result_types[col_name_to_num[k]] = v
+                    col_num = col_name_to_num[k]
+                    cols_to_force_cast.add(col_num)
+                    result_types[col_num] = v
             elif type(column_type_hints) is list:
                 if len(column_type_hints) != len(result_names):
                     __LOGGER__.warn("If column_type_hints is specified as a "+\
@@ -2223,10 +2285,19 @@ class SFrame(object):
                         "set's number of columns. Ignoring (use dict instead).")
                 else:
                     result_types = column_type_hints
+                    cols_to_force_cast.update(range(len(result_desc)))
             elif type(column_type_hints) is type:
                 result_types = [column_type_hints for i in result_desc]
+                cols_to_force_cast.update(range(len(result_desc)))
 
-        temp_vals = []
+        # Since we will be casting whatever we receive to the types given
+        # before submitting the values to the SFrame, we need to make sure that
+        # these are types that a "cast" makes sense, and we're not calling a
+        # constructor that expects certain input (e.g.  datetime.datetime),
+        # since we could get lots of different input
+        hintable_types = [int,float,str]
+        if not all([i in hintable_types or i is None for i in result_types]):
+            raise TypeError("Only " + str(hintable_types) + " can be provided as type hints!")
 
         # Perform type inference by checking to see what python types are
         # returned from the cursor
@@ -2255,6 +2326,8 @@ class SFrame(object):
         # point. Try using DBAPI2 type_codes to pick a suitable type. If this
         # doesn't work, fall back to string.
         if not all(result_types):
+            missing_val_cols = [i for i,v in enumerate(result_types) if v is None]
+            cols_to_force_cast.update(missing_val_cols)
             inferred_types = infer_dbapi2_types(c, mod_info)
             cnt = 0
             for i in result_types:
@@ -2263,10 +2336,17 @@ class SFrame(object):
                 cnt += 1
 
         sb = SFrameBuilder(result_types, column_names=result_names)
-        sb.append_multiple(temp_vals)
+        unsupported_cols = [i for i,v in enumerate(sb.column_types()) if v is type(None)]
+        if len(unsupported_cols) > 0:
+            cols_to_force_cast.update(unsupported_cols)
+            for i in unsupported_cols:
+                result_types[i] = str
+            sb = SFrameBuilder(result_types, column_names=result_names)
+
+        sb.append_multiple(_force_cast_sql_types(temp_vals, result_types, cols_to_force_cast))
         rows = c.fetchmany()
         while len(rows) > 0:
-            sb.append_multiple(rows)
+            sb.append_multiple(_force_cast_sql_types(rows, result_types, cols_to_force_cast))
             rows = c.fetchmany()
         cls = sb.close()
 

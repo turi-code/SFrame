@@ -3150,7 +3150,7 @@ class SFrameTest(unittest.TestCase):
         expected_types = [float,float,str,str,str,str,dt.datetime]
         for i in zip(self.sf_all_types.column_names(),expected_types):
             new_col = SArray(none_col).astype(i[1])
-            new_col = new_col.append(self.sf_all_types[i[0]].astype(i[1]))
+            new_col = new_col.append(self.sf_all_types[i[0]].apply(lambda x: i[1](x) if i[1] is not dt.datetime else x))
             sf_inferred_types.add_column(new_col)
         _assert_sframe_equal(sf, sf_inferred_types)
 
@@ -3160,9 +3160,12 @@ class SFrameTest(unittest.TestCase):
         sf_iter = test_data.__iter__()
         sf = SFrame.from_sql(conn, "SELECT * FROM test_table", type_inference_rows=5, dbapi_module=dbapi2_mock())
 
+        sf_inferred_types = SFrame()
         expected_types = [str for i in range(len(sf_data[0]))]
         for i in zip(self.sf_all_types.column_names(),expected_types):
-            sf_inferred_types[i[0]] = sf_inferred_types[i[0]].astype(i[1])
+            new_col = SArray(none_col).astype(i[1])
+            new_col = new_col.append(self.sf_all_types[i[0]].apply(lambda x: str(x)))
+            sf_inferred_types.add_column(new_col)
         _assert_sframe_equal(sf, sf_inferred_types)
 
         ### column_type_hints tests
@@ -3171,29 +3174,34 @@ class SFrameTest(unittest.TestCase):
             dbapi_module=dbapi2_mock(), column_type_hints=str)
         _assert_sframe_equal(sf, sf_inferred_types)
 
+        # Provide unhintable types
         sf_iter = test_data.__iter__()
         expected_types = [int,float,str,array.array,list,dict,dt.datetime]
+        with self.assertRaises(TypeError):
+            sf = SFrame.from_sql(conn,
+                "SELECT * FROM test_table", type_inference_rows=5,
+                dbapi_module=dbapi2_mock(), column_type_hints=expected_types)
+
+        sf_iter = test_data.__iter__()
+        expected_types = {'X'+str(i+1):expected_types[i] for i in range(3)}
         sf = SFrame.from_sql(conn,
-            "SELECT * FROM test_table", type_inference_rows=5,
+            "SELECT * FROM test_table", type_inference_rows=10,
             dbapi_module=dbapi2_mock(), column_type_hints=expected_types)
         _assert_sframe_equal(sf[5:],self.sf_all_types)
 
+        # Test a float forced to a str
         sf_iter = test_data.__iter__()
-        expected_types = {'X'+str(i+1):expected_types[i] for i in range(len(expected_types))}
+        expected_types['X2'] = str
+        self.sf_all_types['X2'] = self.sf_all_types['X2'].apply(lambda x: str(x))
         sf = SFrame.from_sql(conn,
-            "SELECT * FROM test_table", type_inference_rows=5,
+            "SELECT * FROM test_table", type_inference_rows=10,
             dbapi_module=dbapi2_mock(), column_type_hints=expected_types)
         _assert_sframe_equal(sf[5:],self.sf_all_types)
 
-        sf_iter = test_data.__iter__()
-        del expected_types['X2']
-        del expected_types['X4']
-        self.sf_all_types['X2'] = self.sf_all_types['X2'].astype(str)
-        self.sf_all_types['X4'] = self.sf_all_types['X4'].astype(str)
-        sf = SFrame.from_sql(conn,
-            "SELECT * FROM test_table", type_inference_rows=5,
-            dbapi_module=dbapi2_mock(), column_type_hints=expected_types)
-        _assert_sframe_equal(sf[5:],self.sf_all_types)
+        # Type unsupported by sframe
+        curs.description = [['X1',44],['X2',44]]
+        sf_iter = [[buffer("woo"),1], [buffer("test"),2]].__iter__()
+        sf = SFrame.from_sql(conn, "SELECT * FROM test_table")
 
         # bad DBAPI version!
         bad_version = dbapi2_mock()
