@@ -100,7 +100,11 @@ write_all_rows = _write_all_rows
 
 ################################################################################
 
-cdef call_main():
+def main():
+    """
+    The main function for calling the spark interface.
+    """
+
     cdef list args = sys.argv
 
     cdef vector[const char*] c_args
@@ -116,11 +120,3 @@ cdef call_main():
     # work besides that.  Using sys._exit instead of exit gets around
     # this.
     _exit(_spark_unity_main(len(args), c_args.data()))
-
-
-if __name__ == "__main__":
-    """
-    The main function for calling the spark interface.
-    """
-
-    call_main()
