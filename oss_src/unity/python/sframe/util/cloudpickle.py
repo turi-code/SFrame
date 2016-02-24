@@ -726,11 +726,19 @@ def _fill_function(func, globals, defaults, closures, dict):
         that were created via _make_skel_func().
          """
     closure = _reconstruct_closure(closures) if closures else None
-    func = types.FunctionType(func.__code__, func.func_globals,
-            None, None, closure)
-    func.func_globals.update(globals)
-    func.func_defaults = defaults
-    func.func_dict = dict
+    if sys.version_info.major == 2:
+        func = types.FunctionType(func.__code__, func.func_globals,
+                None, None, closure)
+        func.func_globals.update(globals)
+        func.func_defaults = defaults
+        func.func_dict = dict
+    else:
+        func = types.FunctionType(func.__code__, func.__globals__,
+                None, None, closure)
+        func.__globals__.update(globals)
+        func.__defaults__ = defaults
+        func.__dict__ = dict
+
     return func
 
 
