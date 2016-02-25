@@ -3152,6 +3152,10 @@ class SFrameTest(unittest.TestCase):
             new_col = SArray(none_col).astype(i[1])
             new_col = new_col.append(self.sf_all_types[i[0]].apply(lambda x: i[1](x) if i[1] is not dt.datetime else x))
             sf_inferred_types.add_column(new_col)
+
+        # Don't test the string representation of dict, could be out of order
+        sf.remove_column('X6')
+        sf_inferred_types.remove_column('X6')
         _assert_sframe_equal(sf, sf_inferred_types)
 
         # more None rows than cache & no type information
@@ -3166,12 +3170,17 @@ class SFrameTest(unittest.TestCase):
             new_col = SArray(none_col).astype(i[1])
             new_col = new_col.append(self.sf_all_types[i[0]].apply(lambda x: str(x)))
             sf_inferred_types.add_column(new_col)
+
+        # Don't test the string representation of dict, could be out of order
+        sf.remove_column('X6')
+        sf_inferred_types.remove_column('X6')
         _assert_sframe_equal(sf, sf_inferred_types)
 
         ### column_type_hints tests
         sf_iter = test_data.__iter__()
         sf = SFrame.from_sql(conn, "SELECT * FROM test_table", type_inference_rows=5,
             dbapi_module=dbapi2_mock(), column_type_hints=str)
+        sf.remove_column('X6')
         _assert_sframe_equal(sf, sf_inferred_types)
 
         # Provide unhintable types
@@ -3200,8 +3209,10 @@ class SFrameTest(unittest.TestCase):
 
         # Type unsupported by sframe
         curs.description = [['X1',44],['X2',44]]
-        sf_iter = [[buffer("woo"),1], [buffer("test"),2]].__iter__()
+        sf_iter = [[complex(4.5,3),1], [complex(3.4,5),2]].__iter__()
         sf = SFrame.from_sql(conn, "SELECT * FROM test_table")
+        expected_sf = SFrame({'X1':["(4.5+3j)","(3.4+5j)"],'X2':[1,2]})
+        _assert_sframe_equal(sf, expected_sf)
 
         # bad DBAPI version!
         bad_version = dbapi2_mock()
