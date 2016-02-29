@@ -637,6 +637,15 @@ class unity_sarray: public unity_sarray_base {
   const flexible_type& na_value);
 
   /**
+   * Return the subslice of the sarray
+   *
+   * \param start The start row of the slice, cycle around if negative
+   * \param step Take an element every step, can be negative
+   * \param stop The end row of the slice, cycle around if negative
+   */
+  std::shared_ptr<unity_sarray_base> subslice(flexible_type start, flexible_type step, flexible_type stop);
+
+  /**
    * Begin iteration through the SArray.
    *
    * Works together with \ref iterator_get_next(). The usage pattern

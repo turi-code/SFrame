@@ -82,6 +82,7 @@ GENERATE_INTERFACE_AND_PROXY(unity_sarray_base, unity_sarray_proxy,
       (std::shared_ptr<unity_sframe_base>, unpack, (const std::string&)(const std::vector<flexible_type>&)(const std::vector<flex_type_enum>&)(const flexible_type&))
       (size_t, get_content_identifier, )
       (std::shared_ptr<unity_sarray_base>, copy_range, (size_t)(size_t)(size_t))
+      (std::shared_ptr<unity_sarray_base>, subslice, (flexible_type)(flexible_type)(flexible_type))
       (std::vector<flexible_type>, to_vector, )
       (std::shared_ptr<unity_sarray_base>, builtin_rolling_apply,(const std::string&)(ssize_t)(ssize_t)(size_t))
       (std::shared_ptr<unity_sarray_base>, builtin_cumulative_aggregate,(const std::string&))

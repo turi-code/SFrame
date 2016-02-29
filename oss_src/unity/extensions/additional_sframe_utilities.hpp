@@ -9,9 +9,8 @@
 #define GRAPHLAB_UNITY_EXTENSIONS_ADDITIONAL_SFRAME_UTILITIES_HPP
 #include <unity/lib/gl_sarray.hpp>
 
-graphlab::gl_sarray sarray_subslice(graphlab::gl_sarray input,
-                                    graphlab::flexible_type start,
-                                    graphlab::flexible_type step,
-                                    graphlab::flexible_type stop);
+void sarray_callback(graphlab::gl_sarray input, size_t callback_addr);
+
+void sframe_callback(graphlab::gl_sframe input, size_t callback_addr);
 
 #endif

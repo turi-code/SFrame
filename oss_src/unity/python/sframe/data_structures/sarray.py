@@ -1281,8 +1281,8 @@ class SArray(object):
         """
         if self.dtype() not in [str, array.array, list]:
             raise TypeError("SArray must contain strings, arrays or lists")
-        from .. import extensions
-        return extensions.sarray_subslice(self, start, step, stop)
+        with cython_context():
+            return SArray(_proxy=self.__proxy__.subslice(start, step, stop))
 
     def _count_words(self, to_lower=True, delimiters=["\r", "\v", "\n", "\f", "\t", " "]):
         """
