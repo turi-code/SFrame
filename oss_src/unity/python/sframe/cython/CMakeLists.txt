@@ -46,8 +46,7 @@ if(WIN32)
   make_copy_target(cython_deps ALL
     TARGETS
     ${UNITY_EXTENSION_LIBRARY}
-    unity_server
-    unity_toolkits_shared
+    ${INSTALLATION_BINARY_TARGETS}
     FILES
     ${INSTALLATION_BINARY_FILES}
     ${INSTALLATION_SYSTEM_BINARY_FILES}
