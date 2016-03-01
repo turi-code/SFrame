@@ -8,6 +8,7 @@
 #include <string>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <flexible_type/flexible_type.hpp>
+#include <logger/assertions.hpp>
 
 // contains some of the bigger functions I do not want to inline
 namespace graphlab {

@@ -12,15 +12,11 @@
 #include <unity/lib/toolkit_function_macros.hpp>
 using namespace graphlab;
 
-bool is_undefined_or_integer(flexible_type val) {
-  return (val.get_type() == flex_type_enum::INTEGER ||
-          val.get_type() == flex_type_enum::UNDEFINED);
-}
-
-void sarray_callback(graphlab::gl_sarray input, size_t callback_addr) {
+void sarray_callback(graphlab::gl_sarray input, size_t callback_addr,
+                     size_t begin, size_t end) {
   typedef bool(*callback_type)(const flexible_type*);
   callback_type callback_fun = (callback_type)(callback_addr);
-  auto ra = input.range_iterator();
+  auto ra = input.range_iterator(begin, end);
   auto iter = ra.begin();
   while (iter != ra.end()) {
     bool success = callback_fun(&(*iter));
@@ -29,10 +25,12 @@ void sarray_callback(graphlab::gl_sarray input, size_t callback_addr) {
   }
 }
 
-void sframe_callback(graphlab::gl_sframe input, size_t callback_addr) {
+void sframe_callback(graphlab::gl_sframe input, size_t callback_addr,
+                     size_t begin, size_t end) {
+  ASSERT_MSG(input.num_columns() > 0, "SFrame has no column");
   typedef bool(*callback_type)(const flexible_type*, size_t);
   callback_type callback_fun = (callback_type)(callback_addr);
-  auto ra = input.range_iterator();
+  auto ra = input.range_iterator(begin, end);
   auto iter = ra.begin();
   while (iter != ra.end()) {
     auto& row_vec = (*iter);
@@ -43,6 +41,6 @@ void sframe_callback(graphlab::gl_sframe input, size_t callback_addr) {
 }
 
 BEGIN_FUNCTION_REGISTRATION
-REGISTER_FUNCTION(sarray_callback, "input", "callback_addr");
-REGISTER_FUNCTION(sframe_callback, "input", "callback_addr");
+REGISTER_FUNCTION(sarray_callback, "input", "callback_addr", "begin", "end");
+REGISTER_FUNCTION(sframe_callback, "input", "callback_addr", "begin", "end");
 END_FUNCTION_REGISTRATION
