@@ -409,7 +409,7 @@ namespace graphlab {
 
     // goody. now for the dl loading
 #ifndef _WIN32
-    void* dl = dlopen(soname.c_str(), RTLD_NOW | RTLD_LOCAL);
+    void* dl = dlopen(soname.c_str(), RTLD_NOW | RTLD_GLOBAL);
 #else
     void *dl = (void *)LoadLibrary(soname.c_str());
 #endif
