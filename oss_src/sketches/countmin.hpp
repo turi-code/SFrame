@@ -90,6 +90,19 @@ class countmin {
     }
   }
 
+  /**
+   * Adds an arbitrary object to be counted. Any object type can be used,
+   * and there are no restrictions as long as std::hash<T> can be used to
+   * obtain a hash value.
+   */
+  void atomic_add(const T& t, size_t count = 1) {
+    // we use std::hash first, to bring it to a 64-bit number
+    size_t i = hash64(std::hash<T>()(t));
+    for (size_t j = 0; j < num_hash; ++j) {
+      size_t bin = hash64(seeds[j] ^ i) % num_bins;  // TODO: bit mask 
+      __sync_add_and_fetch(&(counts[j][bin]), count); 
+    }
+  }
  /**
    * Returns the estimate of the frequency for a given object.
    */
