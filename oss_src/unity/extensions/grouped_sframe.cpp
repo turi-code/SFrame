@@ -200,8 +200,8 @@ gl_sframe grouped_sframe::group_info() const {
       DASSERT_EQ(vals.size(), ret_column_names.size());
       writer.write(vals, thread_idx);
     }
-    return writer.close(); 
   });
+  return writer.close(); 
 }
 
 /// Private methods
