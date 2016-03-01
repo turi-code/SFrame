@@ -81,7 +81,6 @@ graph_pylambda_evaluator::graph_pylambda_evaluator() {
 
 graph_pylambda_evaluator::~graph_pylambda_evaluator() {
   if(m_lambda_id != size_t(-1)) {
-    std::cerr << "destructor: Clearing lambda " << m_lambda_id << std::endl; 
     release_lambda(m_lambda_id); 
   }
 }
