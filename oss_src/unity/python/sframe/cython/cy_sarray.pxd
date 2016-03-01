@@ -85,6 +85,7 @@ cdef extern from "<unity/lib/api/unity_sarray_interface.hpp>" namespace 'graphla
         unity_sarray_base_ptr copy_range(size_t, size_t, size_t) except +
         unity_sarray_base_ptr builtin_rolling_apply(string, ssize_t, ssize_t, size_t) except +
         unity_sarray_base_ptr builtin_cumulative_aggregate(string) except +
+        unity_sarray_base_ptr subslice(flexible_type, flexible_type, flexible_type) except +
 
 
 cdef create_proxy_wrapper_from_existing_proxy(PyCommClient cli, const unity_sarray_base_ptr& proxy)
@@ -215,3 +216,5 @@ cdef class UnitySArrayProxy:
     cpdef builtin_rolling_apply(self, fn_name, ssize_t before, ssize_t after, size_t min_observations)
 
     cpdef builtin_cumulative_aggregate(self, fn_name)
+
+    cpdef subslice(self, start, step, stop)

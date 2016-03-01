@@ -2416,6 +2416,100 @@ void unity_sarray::begin_iterator() {
   iterator_next_segment_id = 1;
 }
 
+struct slicer_impl {
+  int64_t m_start = 0;
+  bool has_start = false;
+  int64_t m_step = 1;
+  bool has_stop = false;
+  int64_t m_stop = 0;
+  
+  template <typename T>
+  T slice(const T& s) const {
+    T ret;
+    int64_t real_start;
+    if (has_start) {
+      if (m_start < 0) real_start = s.size() + m_start;
+      else real_start = m_start;
+    } else {
+      // default values
+      if (m_step > 0) real_start = 0;
+      else if (m_step < 0) real_start = s.size() - 1;
+    }
+
+    int64_t real_stop;
+    if (has_stop) {
+      if (m_stop < 0) real_stop = s.size() + m_stop;
+      else real_stop = m_stop;
+    } else {
+      // default values
+      if (m_step > 0) real_stop = s.size();
+      else if (m_step < 0) real_stop = -1;
+    }
+
+    if (m_step > 0 && real_start < real_stop) {
+      real_start = std::max<int64_t>(0, real_start);
+      real_stop = std::min<int64_t>(s.size(), real_stop);
+      for (int64_t i = real_start; i < real_stop; i += m_step) {
+        ret.push_back(s[i]);
+      }
+    } else if (m_step < 0 && real_start > real_stop) {
+      real_start = std::min<int64_t>(s.size() - 1, real_start);
+      real_stop = std::max<int64_t>(-1, real_stop);
+      for (int64_t i = real_start; i > real_stop; i += m_step) {
+        ret.push_back(s[i]);
+      }
+    }
+    return ret;
+  }
+};
+
+std::shared_ptr<unity_sarray_base> unity_sarray::subslice(flexible_type start,
+                                                          flexible_type step,
+                                                          flexible_type stop) {
+  auto dtype = this->dtype();
+  auto is_undefined_or_integer = [](flexible_type val) {
+    return (val.get_type() == flex_type_enum::INTEGER ||
+            val.get_type() == flex_type_enum::UNDEFINED);
+  };
+  // some quick type checking
+  if (!(is_undefined_or_integer(start) && 
+        is_undefined_or_integer(step) && 
+        is_undefined_or_integer(stop))) {
+    log_and_throw("Start, stop and end values must be integral.");
+  }
+  if (dtype != flex_type_enum::STRING &&
+      dtype != flex_type_enum::VECTOR &&
+      dtype != flex_type_enum::LIST) {
+    log_and_throw("SArray must contain strings, arrays or lists");
+  }
+  slicer_impl slicer;
+  if (start.get_type() == flex_type_enum::INTEGER) {
+    slicer.m_start = start.get<flex_int>();
+    slicer.has_start = true;
+  }
+  if (step.get_type() == flex_type_enum::INTEGER) {
+    slicer.m_step = step.get<flex_int>();
+    if (slicer.m_step == 0) slicer.m_step = 1;
+  }
+  if (stop.get_type() == flex_type_enum::INTEGER) {
+    slicer.m_stop = stop.get<flex_int>();
+    slicer.has_stop = true;
+  }
+  bool skip_undefined = false;
+  int seed = 0;
+  return this->transform_lambda(
+      [=](const flexible_type& f) -> flexible_type {
+        if (f.get_type() == flex_type_enum::STRING) {
+          return slicer.slice(f.get<flex_string>());
+        } else if (f.get_type() == flex_type_enum::VECTOR) {
+          return slicer.slice(f.get<flex_vec>());
+        } else if (f.get_type() == flex_type_enum::LIST) {
+          return slicer.slice(f.get<flex_list>());
+        } else {
+          return flex_undefined();
+        }
+      }, dtype, skip_undefined, seed);
+}
 
 std::vector<flexible_type> unity_sarray::iterator_get_next(size_t len) {
   Dlog_func_entry();

@@ -458,3 +458,12 @@ cdef class UnitySArrayProxy:
         with nogil:
             proxy = (self.thisptr.builtin_cumulative_aggregate(fn_name))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
+
+    cpdef subslice(self, start, step, stop):
+        cdef unity_sarray_base_ptr proxy
+        cdef flexible_type fstart = flexible_type_from_pyobject(start)
+        cdef flexible_type fstep = flexible_type_from_pyobject(step)
+        cdef flexible_type fstop = flexible_type_from_pyobject(stop)
+        with nogil:
+            proxy = (self.thisptr.subslice(fstart, fstep, fstop))
+        return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)

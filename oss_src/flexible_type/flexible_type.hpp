@@ -14,7 +14,6 @@
 #include <iostream>
 #include <functional>
 #include <typeindex>
-#include <logger/assertions.hpp>
 #include <parallel/atomic.hpp>
 #include <util/int128_types.hpp>
 //#define FLEX_TYPE_ASSERT DASSERT_TRUE

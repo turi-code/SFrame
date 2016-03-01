@@ -15,7 +15,6 @@
 #include <sframe/sarray_reader_buffer.hpp>
 #include <unity/lib/image_util.hpp>
 #include <sframe_query_engine/planning/planner.hpp>
-#include <unity/extensions/additional_sframe_utilities.hpp>
 
 namespace graphlab {
 
@@ -649,7 +648,7 @@ gl_sarray gl_sarray::subslice(flexible_type start,
       dt != flex_type_enum::LIST) {
     log_and_throw("SArray must contain strings, arrays or lists");
   }
-  return sarray_subslice(*this, start, stop, step);
+  return get_proxy()->subslice(start, stop, step);
 }
 
 gl_sarray gl_sarray::builtin_rolling_apply(const std::string &fn_name,
