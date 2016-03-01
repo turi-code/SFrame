@@ -648,7 +648,7 @@ gl_sarray gl_sarray::subslice(flexible_type start,
       dt != flex_type_enum::LIST) {
     log_and_throw("SArray must contain strings, arrays or lists");
   }
-  return get_proxy()->subslice(start, stop, step);
+  return get_proxy()->subslice(start, step, stop);
 }
 
 gl_sarray gl_sarray::builtin_rolling_apply(const std::string &fn_name,
