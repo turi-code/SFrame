@@ -154,7 +154,6 @@ if __name__ == '__main__':
         classifiers=classifiers,
         install_requires=[
             "boto == 2.33.0",
-            "mixpanel == 4.2.0",
             "decorator == 3.4.0",
             "tornado == 4.1",
             "prettytable == 0.7.2",
