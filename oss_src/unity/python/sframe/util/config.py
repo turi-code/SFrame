@@ -14,7 +14,7 @@ import sys as _sys
 class GraphLabConfig:
 
     __slots__ = ['graphlab_server', 'server_addr', 'server_bin', 'log_dir', 'unity_metric',
-                 'mode', 'mixpanel_user',
+                 'mode',
                  'log_rotation_interval','log_rotation_truncate', 'metrics_url']
 
     def __init__(self, server_addr=None):
@@ -67,7 +67,6 @@ class GraphLabConfig:
         except ImportError:
           self.graphlab_server = ''
           self.mode = 'UNIT'
-          self.mixpanel_user = ''
           self.metrics_url = ''
         else:
           if graphlab_env.mode in ['UNIT', 'DEV', 'QA', 'PROD']:
@@ -75,7 +74,6 @@ class GraphLabConfig:
           else:
             self.mode = 'PROD'
 
-          self.mixpanel_user = graphlab_env.mixpanel_user
           self.graphlab_server = graphlab_env.graphlab_server
           self.metrics_url = graphlab_env.metrics_url
 
