@@ -60,8 +60,6 @@ void unity_server::start(const unity_server_initializer& server_initializer) {
                                    options.publish_address,
                                    options.secret_key);
 
-  set_log_progress(true);
-
   // initialize built-in data structures, toolkits and models, defined in unity_server_init.cpp
   server_initializer.init_toolkits(*toolkit_functions);
   server_initializer.init_models(*toolkit_classes);
