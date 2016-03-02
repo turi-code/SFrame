@@ -10,7 +10,6 @@ from .metric_mock import MetricMock
 from .sys_info import get_distinct_id, get_sys_info, get_version, get_isgpu, get_build_number
 
 
-import Queue
 import logging
 import pprint
 import threading
