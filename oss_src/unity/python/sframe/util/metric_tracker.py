@@ -10,9 +10,6 @@ from .metric_mock import MetricMock
 from .sys_info import get_distinct_id, get_sys_info, get_version, get_isgpu, get_build_number
 
 
-# metrics libraries
-import mixpanel
-
 import logging
 import pprint
 import threading
@@ -58,8 +55,6 @@ class _MetricsWorkerThread(threading.Thread):
     root_package_name = __import__(__name__.split('.')[0]).__name__
     self.logger = logging.getLogger(root_package_name + '.metrics')
 
-    self._mixpanel = None # Mixpanel metrics tracker
-
     buffer_size = 5
     offline_buffer_size = 25
     self._sys_info_set = False
@@ -70,10 +65,6 @@ class _MetricsWorkerThread(threading.Thread):
       self._metrics_url = CONFIG.metrics_url
       self._requests = _requests # support mocking out requests library in unit-tests
 
-      if self._mode != 'PROD':
-        self._mixpanel = MetricMock()
-      else:
-        self._mixpanel = mixpanel.Mixpanel(CONFIG.mixpanel_user)
     except Exception as e:
       self.logger.warning("Unexpected exception connecting to Metrics service, disabling metrics, exception %s" % e)
     else:
@@ -99,51 +90,6 @@ class _MetricsWorkerThread(threading.Thread):
       except Exception as e:
         pass
 
-  @staticmethod
-  def _get_bucket_name_suffix(buckets, value):
-    """
-    Given a list of buckets and a value, generate a suffix for the bucket
-    name, corresponding to either one of the buckets given, or the largest
-    bucket with "+" appended.
-    """
-    suffix = None
-    for bucket in buckets:
-        if value <= bucket:
-            suffix = str(bucket)
-            break
-    # if we get here and suffix is None, value must be > the largest bucket
-    if suffix is None:
-        suffix = '%d+' % buckets[-1]
-    return suffix
-
-  @staticmethod
-  def _bucketize_mixpanel(event_name, value):
-    """
-    Take events that we would like to bucketize and bucketize them before sending to mixpanel
-
-    @param event_name current event name, used to assess if bucketization is required
-    @param value value used to decide which bucket for event
-    @return event_name if updated then will have bucket appended as suffix, otherwise original returned
-    """
-
-    if value == 1:
-        return event_name
-
-    bucket_events = {
-        'col.size': [ 5, 10, 20 ],
-        'row.size': [ 100000, 1000000, 10000000, 100000000 ],
-        'duration.secs': [ 300, 1800, 3600, 7200 ],
-        'duration.ms': [ 10, 100, 1000, 10000, 100000 ]
-    }
-
-    for (event_suffix, buckets) in bucket_events.items():
-        if event_name.endswith(event_suffix):
-            # if the suffix matches one we expect, bucketize using the buckets defined above
-            return '%s.%s' % (event_name, _MetricsWorkerThread._get_bucket_name_suffix(buckets, value))
-
-    # if there was no suffix match, just use the original event name
-    return event_name
-
   def _set_sys_info(self):
     # Don't do this if system info has been set
     if self._sys_info_set:
@@ -154,19 +100,6 @@ class _MetricsWorkerThread(threading.Thread):
   def _print_sys_info(self):
     pp = pprint.PrettyPrinter(indent=2)
     pp.pprint(self._sys_info)
-
-  def _send_mixpanel(self, event_name, value, properties, meta):
-    # Only send 'engine-started' events to Mixpanel. All other events are not sent to Mixpanel.
-    if 'engine-started' in event_name:
-      try:
-        # since mixpanel cannot send sizes or numbers, just tracks events, bucketize these here
-        if value != 1:
-          event_name = self._bucketize_mixpanel(event_name, value)
-          properties['value'] = value
-        properties['source'] = self._source
-        self._mixpanel.track(self._distinct_id, event_name, properties=properties, meta=meta)
-      except Exception as e:
-        pass
 
   def _track(self, event_name, value=1, type="gauge", properties={}, meta={}, send_sys_info=False):
     """
@@ -182,8 +115,6 @@ class _MetricsWorkerThread(threading.Thread):
       the_properties.update(self._sys_info)
 
     the_properties.update(properties)
-
-    self._send_mixpanel(event_name=event_name, value=value, properties=the_properties, meta=meta)
 
     try:
       # homebrew metrics - cloudfront

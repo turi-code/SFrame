@@ -8,5 +8,4 @@ of the BSD license. See the LICENSE file for details.
 graphlab_server = 'http://pws-billing-stage.herokuapp.com'
 
 mode = 'UNIT'
-mixpanel_user = ''
 metrics_url = 'http://d11jde3m8wpum9.cloudfront.net/i'

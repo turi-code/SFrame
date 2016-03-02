@@ -9,6 +9,5 @@ graphlab_server = 'http://pws-billing-stage.herokuapp.com'
 
 mode = 'QA'
 
-mixpanel_user = '97b6ae8fe096844c2efb9f6c57165d41'
 metrics_url = 'http://d343i1j50yi7ez.cloudfront.net/i'
 
