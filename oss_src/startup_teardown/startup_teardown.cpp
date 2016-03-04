@@ -77,25 +77,6 @@ int get_file_handle_limit() {
 }
 
 void install_sighandlers() {
-  //TODO: This functionality can be mirrored in Windows. Potentially with SEH,
-  //WER, and possibly needing some asm code written? Too complicated without a
-  //high payout to be on the critical path for now.  Revisit later.
-#ifndef _WIN32
-  /// Installing crash handler to print stack trace in case of segfault.
-  struct sigaction sigact;
-  sigact.sa_sigaction = crit_err_hdlr;
-  sigact.sa_flags = SA_RESTART | SA_SIGINFO;
-  // the crit_err_hdlr writes to this file, by default stderr. See crash_handler.hpp
-  BACKTRACE_FNAME = std::string("/tmp/graphlab_server_") 
-                            + std::to_string(getpid())
-                            + ".backtrace";
-  if (sigaction(SIGSEGV, &sigact, (struct sigaction *)NULL) != 0) {
-    fprintf(stderr, "error setting signal handler for %d (%s)\n",
-        SIGSEGV, strsignal(SIGSEGV));
-    exit(EXIT_FAILURE);
-  }
-#endif
-
 #ifdef _WIN32
   // Make sure dialog boxes don't come up for errors (apparently doesn't affect
   // "hard system errors")
