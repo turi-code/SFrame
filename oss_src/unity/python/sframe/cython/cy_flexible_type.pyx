@@ -134,7 +134,7 @@ from cython.operator cimport preincrement as inc
 from libcpp cimport bool as cbool
 from cpython cimport array
 
-from .cy_cpp_utils cimport str_to_cpp, cpp_to_str, unsafe_str_to_cpp, unsafe_unicode_to_cpp
+from cy_cpp_utils cimport str_to_cpp, cpp_to_str, unsafe_str_to_cpp, unsafe_unicode_to_cpp
 
 from cpython.ref cimport PyObject, PyTypeObject
 import itertools
