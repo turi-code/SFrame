@@ -307,8 +307,7 @@ void populate_row_buffer(const flexible_type & row,
         out.resize(in.size());
         for (size_t i = 0;i < in.size(); ++i) out[i] = in[i].to<double>();
       } else {
-        // lets use the built in casting.
-        row_buffer[i].soft_assign(rec[i]);
+        row_buffer[i] = rec[i];
       }
     }
     // for (size_t i = 0; i < ncols; ++i) {
@@ -624,7 +623,7 @@ int tordd_main(std::string & _output_directory, size_t & numPartitions, size_t &
 
   write_all_rows(*sframe_ptr, row_start, row_end);
   python::check_for_python_exception();
-  
+  std::cout.flush(); 
   return 0;
 }
 
@@ -698,8 +697,8 @@ int _spark_unity_main(int argc, const char **argv) {
     return EXIT_SUCCESS;
   }
 
-  logprogress_stream << "mode: " << mode << " type: " << rdd_type 
-                     << " encoding: " << encoding << std::endl;
+  //logprogress_stream << "mode: " << mode << " type: " << rdd_type 
+  //                   << " encoding: " << encoding << std::endl;
 
   if(mode == "tosframe") { 
     if (vm.count("encoding") == 0 || vm.count("type") == 0) {
