@@ -2629,3 +2629,15 @@ class SArrayTest(unittest.TestCase):
         expected =  [dt.datetime(2016,1,1,5,45,0,tzinfo=GMT(5.75))]
         self.__test_equal(sa, expected, dt.datetime)
 
+    def test_decimal(self):
+        import decimal
+        test_val = decimal.Decimal(3.0)
+        sa = SArray([test_val])
+        expected = [3.0]
+        self.__test_equal(sa, expected, float)
+
+    def test_timedelta(self):
+        test_val = dt.timedelta(1,1)
+        sa = SArray([test_val])
+        expected = [86401.0]
+        self.__test_equal(sa, expected, float)
