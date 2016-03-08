@@ -3153,9 +3153,10 @@ class SFrameTest(unittest.TestCase):
             new_col = new_col.append(self.sf_all_types[i[0]].apply(lambda x: i[1](x) if i[1] is not dt.datetime else x))
             sf_inferred_types.add_column(new_col)
 
-        # Don't test the string representation of dict, could be out of order
-        sf.remove_column('X6')
-        sf_inferred_types.remove_column('X6')
+        # Don't test the string representation of dict and list; there are
+        # funky consistency issues with the string representations of these
+        sf.remove_columns(['X5', 'X6'])
+        sf_inferred_types.remove_columns(['X5', 'X6'])
         _assert_sframe_equal(sf, sf_inferred_types)
 
         # more None rows than cache & no type information
@@ -3172,15 +3173,15 @@ class SFrameTest(unittest.TestCase):
             sf_inferred_types.add_column(new_col)
 
         # Don't test the string representation of dict, could be out of order
-        sf.remove_column('X6')
-        sf_inferred_types.remove_column('X6')
+        sf.remove_columns(['X5', 'X6'])
+        sf_inferred_types.remove_columns(['X5', 'X6'])
         _assert_sframe_equal(sf, sf_inferred_types)
 
         ### column_type_hints tests
         sf_iter = test_data.__iter__()
         sf = SFrame.from_sql(conn, "SELECT * FROM test_table", type_inference_rows=5,
             dbapi_module=dbapi2_mock(), column_type_hints=str)
-        sf.remove_column('X6')
+        sf.remove_columns(['X5', 'X6'])
         _assert_sframe_equal(sf, sf_inferred_types)
 
         # Provide unhintable types
