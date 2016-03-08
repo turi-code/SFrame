@@ -142,6 +142,7 @@ import datetime
 import calendar
 import collections
 import types
+import decimal
 
 from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t
 
@@ -210,15 +211,18 @@ from cpython.version cimport PY_MAJOR_VERSION
 cdef bint is_python_3 = (PY_MAJOR_VERSION >= 3)
 
 cdef type xrange_type, array_type, datetime_type, none_type
+cdef type decimal_type, timedelta_type
 
 if is_python_3:
     xrange_type             = range
 else:
     xrange_type             = types.XRangeType
 
-array_type    = array.array
-datetime_type = datetime.datetime
-none_type     = type(None)
+array_type     = array.array
+datetime_type  = datetime.datetime
+none_type      = type(None)
+decimal_type   = decimal.Decimal
+timedelta_type = datetime.timedelta
 
 
 ################################################################################
@@ -281,7 +285,6 @@ _code_by_type_lookup[<object_ptr>(xrange_type)]         = FT_LIST_TYPE + FT_SAFE
 _code_by_type_lookup[<object_ptr>(datetime_type)]       = FT_DATETIME_TYPE
 _code_by_type_lookup[<object_ptr>(_image_type)]         = FT_IMAGE_TYPE
 
-
 cdef map[object_ptr, int] _code_by_map_force = map[object_ptr, int]()
 
 _code_by_map_force[<object_ptr>(int)]           = FT_INT_TYPE       + FT_SAFE
@@ -329,6 +332,8 @@ cdef dict _code_by_name_lookup = {
     'float32'  : FT_FLOAT_TYPE   + FT_SAFE,
     'float64'  : FT_FLOAT_TYPE   + FT_SAFE,
     'float128' : FT_FLOAT_TYPE   + FT_SAFE,
+    'Decimal'  : FT_FLOAT_TYPE   + FT_SAFE,
+    'timedelta': FT_FLOAT_TYPE   + FT_SAFE,
     'datetime' : FT_DATETIME_TYPE + FT_SAFE,
     'date'     : FT_DATETIME_TYPE + FT_SAFE,
     'time'     : FT_DATETIME_TYPE + FT_SAFE,
@@ -1385,6 +1390,8 @@ cdef flexible_type _ft_translate(object v, int tr_code) except *:
         ret.set_int(v)
         return ret
     elif tr_code == (FT_FLOAT_TYPE + FT_SAFE):
+        if type(v) is timedelta_type:
+            v = v.total_seconds()
         ret.set_double(v)
         return ret
     elif tr_code == (FT_STR_TYPE + FT_SAFE):
