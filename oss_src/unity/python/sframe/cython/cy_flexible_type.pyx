@@ -225,6 +225,7 @@ decimal_type   = decimal.Decimal
 timedelta_type = datetime.timedelta
 
 
+
 ################################################################################
 # In some contexts, we need to be able to use the
 
@@ -341,6 +342,7 @@ cdef dict _code_by_name_lookup = {
     'Timestamp': FT_DATETIME_TYPE + FT_SAFE,
     'set'      : FT_LIST_TYPE + FT_SAFE,
     'frozenset': FT_LIST_TYPE + FT_SAFE,
+    'NaTType'  : FT_NONE_TYPE + FT_SAFE,
     'ndarray'  : FT_BUFFER_TYPE  # Just go by name on this one since it's not always imported
 }
 
@@ -1228,8 +1230,9 @@ cdef inline tr_datetime64_to_ft(flexible_type& ret, v):
     # Since flexible type datetime only goes down to microseconds, convert to
     # this. If higher resolution, this will truncate values
     cdef object as_py_datetime = v.astype('M8[us]').astype('O')
-    as_py_datetime = as_py_datetime.replace(tzinfo=GMT(0))
-    tr_datetime_to_ft(ret, as_py_datetime)
+    if as_py_datetime is not None:
+        as_py_datetime = as_py_datetime.replace(tzinfo=GMT(0))
+        tr_datetime_to_ft(ret, as_py_datetime)
 
 
 ################################################################################
@@ -1427,7 +1430,10 @@ cdef flexible_type _ft_translate(object v, int tr_code) except *:
         return ret
     elif tr_code == (FT_DATETIME_TYPE + FT_SAFE):
       if HAS_NUMPY and isinstance(v, np.datetime64):
-          tr_datetime64_to_ft(ret, v)
+          if v == np.datetime64('NaT'):
+              ret = FLEX_UNDEFINED
+          else:
+              tr_datetime64_to_ft(ret, v)
       elif HAS_PANDAS and isinstance(v, pd.Timestamp):
           tr_datetime_to_ft(ret, v.to_datetime())
       elif isinstance(v, datetime.datetime):

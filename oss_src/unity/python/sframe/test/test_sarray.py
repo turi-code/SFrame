@@ -2575,6 +2575,10 @@ class SArrayTest(unittest.TestCase):
         sa = SArray(iso_str_list)
         self.__test_equal(sa,expected,dt.datetime)
 
+        iso_str_list[2] = np.datetime64('NaT')
+        sa = SArray(iso_str_list)
+        self.__test_equal(sa,expected,dt.datetime)
+
         # A numpy array
         np_ary = np.array(iso_str_list)
         sa = SArray(np_ary)
@@ -2618,6 +2622,10 @@ class SArrayTest(unittest.TestCase):
         iso_str_list = [pd.Timestamp('2013-05-07T10:04:10'),
                         pd.Timestamp('1902-10-21T10:34:10Z'),
                         None]
+        sa = SArray(iso_str_list)
+        self.__test_equal(sa,self.datetime_data,dt.datetime)
+
+        iso_str_list[2] = pd.tslib.NaT
         sa = SArray(iso_str_list)
         self.__test_equal(sa,self.datetime_data,dt.datetime)
 
