@@ -6,6 +6,7 @@ All rights reserved.
 This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
+from __future__ import print_function
 
 import array
 import datetime
@@ -39,7 +40,9 @@ image_urls = [current_file_dir + x for x in [
 image_info = [image_info(u) for u in image_urls]
 
 def _print_hex_bytes(s):
-    print ":".join("{:02x}".format(ord(c)) for c in s)
+    sep = ":"
+    format_str = "{:02x}"
+    print(sep.join(format_str.format(ord(c)) for c in s))
 
 _SFrameComparer = util.SFrameComparer()
 
@@ -58,12 +61,12 @@ class JSONTest(unittest.TestCase):
         # test that JSON serialization is invertible with respect to both
         # value and type.
         if isinstance(value, str):
-            print "Input string is:"
+            print("Input string is:")
             _print_hex_bytes(value)
         json = sframe.json.dumps(value)
-        print "Serialized json is:"
-        print json
-        print "as hex:"
+        print("Serialized json is:")
+        print(json)
+        print("as hex:")
         _print_hex_bytes(json)
         self._assertEquals(sframe.json.loads(json), value)
 
