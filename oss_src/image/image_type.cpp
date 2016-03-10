@@ -9,7 +9,7 @@
 
 namespace graphlab{
 
-image_type::image_type(char* image_data, size_t height, size_t width, size_t channels, size_t image_data_size, int version, int format){
+image_type::image_type(const char* image_data, size_t height, size_t width, size_t channels, size_t image_data_size, int version, int format){
   m_image_data.reset(new char[image_data_size]);
   memcpy(&m_image_data[0], image_data, image_data_size);
   m_height = height;

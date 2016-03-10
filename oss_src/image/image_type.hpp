@@ -54,7 +54,7 @@ public:
   /// Constructor
   image_type() = default;
   /// Construct from existing data
-  image_type(char* image_data, size_t height, size_t width, 
+  image_type(const char* image_data, size_t height, size_t width,
              size_t channels, size_t image_data_size, int version, int format);
   /// Check whether image is decoded
   inline bool is_decoded() const { return m_format == Format::RAW_ARRAY; }
