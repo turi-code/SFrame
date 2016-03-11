@@ -1233,6 +1233,7 @@ cdef inline tr_datetime64_to_ft(flexible_type& ret, v):
     if as_py_datetime is not None:
         as_py_datetime = as_py_datetime.replace(tzinfo=GMT(0))
         tr_datetime_to_ft(ret, as_py_datetime)
+    # else, ret stays as FLEX_UNDEFINED
 
 
 ################################################################################
@@ -1429,20 +1430,18 @@ cdef flexible_type _ft_translate(object v, int tr_code) except *:
         ret = FLEX_UNDEFINED
         return ret
     elif tr_code == (FT_DATETIME_TYPE + FT_SAFE):
-      if HAS_NUMPY and isinstance(v, np.datetime64):
-          if v == np.datetime64('NaT'):
-              ret = FLEX_UNDEFINED
-          else:
-              tr_datetime64_to_ft(ret, v)
-      elif HAS_PANDAS and isinstance(v, pd.Timestamp):
+        ret = FLEX_UNDEFINED
+        if HAS_NUMPY and isinstance(v, np.datetime64):
+          tr_datetime64_to_ft(ret, v)
+        elif HAS_PANDAS and isinstance(v, pd.Timestamp):
           tr_datetime_to_ft(ret, v.to_datetime())
-      elif isinstance(v, datetime.datetime):
+        elif isinstance(v, datetime.datetime):
           tr_datetime_to_ft(ret, v)
-      else:
+        else:
           # This should catch only datetime.date, since the check for
           # datetime.datetime is before it
           tr_datetime_to_ft(ret, datetime.datetime(v.year, v.month, v.day))
-      return ret
+        return ret
     elif tr_code == (FT_IMAGE_TYPE + FT_SAFE):
         if type(v) != _image_type:
             raise TypeError("Cannot interpret type '" + str(type(v)) + "' as graphlab.Image type.")
