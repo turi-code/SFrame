@@ -7,11 +7,12 @@
 
 using namespace graphlab;
 
-static void _test_flexible_type(const flexible_type& value) {
+static flexible_type _test_flexible_type(const flexible_type& value) {
   std::cout << "flexible_type type is ";
   std::cout << flex_type_enum_to_name(value.get_type()) << std::endl;
   std::cout << "flexible_type value is ";
   std::cout << value;
+  return value;
 }
 
 BEGIN_FUNCTION_REGISTRATION;

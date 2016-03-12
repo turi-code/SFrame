@@ -51,7 +51,7 @@ def _to_flex_type(obj):
         })
     if isinstance(obj, dict):
         ret = {}
-        for (k,v) in obj.iteritems():
+        for (k,v) in obj.items():
             ret[_to_flex_type(k)] = _to_flex_type(v)
         return ret
     if isinstance(obj, list):
@@ -75,7 +75,7 @@ def _from_flex_type(obj):
             if obj['type'] == 'SFrame':
                 columns = obj['value']
                 return sframe.SFrame({
-                    name: _from_flex_type(value) for (name,value) in columns.iteritems()
+                    name: _from_flex_type(value) for (name,value) in columns.items()
                 })
     return obj
 

@@ -14,6 +14,7 @@ import math
 import os
 import pytz
 import sframe
+import sys
 import unittest
 
 from . import util
@@ -96,13 +97,20 @@ class JSONTest(unittest.TestCase):
                     sframe.json.dumps(float('nan')))))
 
     def test_string_to_json(self):
-        # TODO znation - test non-ascii, non-utf-8 charsets. test null byte inside string.
         [self._run_test_case(value) for value in [
             "hello",
             "a'b",
             "a\"b",
+            "ɖɞɫɷ",
+        ]]
+
+    @unittest.skipIf(sys.version_info.major != 2, """
+Python 3 SFrame doesn't support non-utf-8 strings with flexible_type.
+These test cases don't apply there.
+""")
+    def test_non_utf8_to_json(self):
+        [self._run_test_case(value) for value in [
             # some unicode strings from http://www.alanwood.net/unicode/unicode_samples.html
-            'ɖɞɫɷ',
             u'ɖɞɫɷ'.encode('utf-8'),
             u'ɖɞɫɷ'.encode('utf-16'),
             u'ɖɞɫɷ'.encode('utf-32'),
@@ -160,11 +168,6 @@ class JSONTest(unittest.TestCase):
             sframe.SArray([1.0,2.0,3.0]),
             sframe.SArray([None, 3, None]),
             sframe.SArray(["hello", "world"]),
-            sframe.SArray([
-                u'ɖɞɫɷ'.encode('utf-8'),
-                u'ɖɞɫɷ'.encode('utf-16'),
-                u'ɖɞɫɷ'.encode('utf-32'),
-            ]),
             sframe.SArray(array.array('d', [2.1,2.5,3.1])),
             sframe.SArray([
                 ["hello", None, "world"],
@@ -187,6 +190,19 @@ class JSONTest(unittest.TestCase):
             ]),
             sframe.SArray([
                 sframe.Image(path=item.url, format=item.format) for item in image_info
+            ]),
+        ]]
+
+    @unittest.skipIf(sys.version_info.major != 2, """
+Python 3 SFrame doesn't support non-utf-8 strings with flexible_type.
+These test cases don't apply there.
+""")
+    def test_non_utf8_sarray_to_json(self):
+        [self._run_test_case(value) for value in [
+            sframe.SArray([
+                u'ɖɞɫɷ'.encode('utf-8'),
+                u'ɖɞɫɷ'.encode('utf-16'),
+                u'ɖɞɫɷ'.encode('utf-32'),
             ]),
         ]]
 

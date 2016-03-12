@@ -1,5 +1,10 @@
 #include "json_flexible_type.hpp"
 
+#include <boost/algorithm/string.hpp>
+#include <boost/archive/iterators/base64_from_binary.hpp>
+#include <boost/archive/iterators/binary_from_base64.hpp>
+#include <boost/archive/iterators/transform_width.hpp>
+
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/ostreamwrapper.h>
@@ -111,6 +116,24 @@ static void _dump_date_time(flex_date_time input, json_writer& output) {
   }), output, flex_type_enum::DATETIME);
 }
 
+static flex_string _encode_image(const unsigned char * data, size_t size) {
+  typedef boost::archive::iterators::base64_from_binary<
+    // retrieve 6 bit integers from a sequence of 8 bit bytes
+    boost::archive::iterators::transform_width<
+      const unsigned char *,
+      6,
+      8
+    >
+  > to_base64;
+  std::stringstream ss;
+  std::copy(
+    to_base64(data),
+    to_base64(data + size),
+    std::ostream_iterator<char>(ss)
+  );
+  return ss.str();
+}
+
 static void _dump_image(flex_image input, json_writer& output) {
   output.StartObject();
   output.Key("type");
@@ -130,8 +153,8 @@ static void _dump_image(flex_image input, json_writer& output) {
   output.Key("format");
   _dump_int(static_cast<flex_int>(input.m_format), output);
   output.Key("image_data");
-  _dump_string(flex_string(
-    reinterpret_cast<const char *>(input.get_image_data()),
+  _dump_string(_encode_image(
+    input.get_image_data(),
     input.m_image_data_size
   ), output);
   output.EndObject();
@@ -292,8 +315,26 @@ static flexible_type _dict_get(const flex_dict& dict, const flex_string& key) {
   throw msg.str();
 }
 
+static flex_string _decode_image(const flex_string &encoded) {
+  typedef boost::archive::iterators::transform_width<
+    boost::archive::iterators::binary_from_base64<
+      flex_string::const_iterator
+    >,
+    8,
+    6
+  > from_base64;
+
+  return boost::algorithm::trim_right_copy_if(
+    std::string(from_base64(std::begin(encoded)), from_base64(std::end(encoded))),
+    [](char c) {
+      return c == '\0';
+    }
+  );
+}
+
 static flex_image _extract_image(const flexible_type& value) {
   flex_string image_data_str = _dict_get(value, "image_data");
+  image_data_str = _decode_image(image_data_str);
   const char *image_data = image_data_str.c_str();
   flex_int height = _dict_get(value, "height");
   flex_int width = _dict_get(value, "width");
