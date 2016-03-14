@@ -2575,6 +2575,10 @@ class SArrayTest(unittest.TestCase):
         sa = SArray(iso_str_list)
         self.__test_equal(sa,expected,dt.datetime)
 
+        iso_str_list[2] = np.datetime64('NaT')
+        sa = SArray(iso_str_list)
+        self.__test_equal(sa,expected,dt.datetime)
+
         # A numpy array
         np_ary = np.array(iso_str_list)
         sa = SArray(np_ary)
@@ -2621,6 +2625,10 @@ class SArrayTest(unittest.TestCase):
         sa = SArray(iso_str_list)
         self.__test_equal(sa,self.datetime_data,dt.datetime)
 
+        iso_str_list[2] = pd.tslib.NaT
+        sa = SArray(iso_str_list)
+        self.__test_equal(sa,self.datetime_data,dt.datetime)
+
         sa = SArray([pd.Timestamp('2015-03-08T02:38:00-08')])
         expected = [dt.datetime(2015,3,8,2,38,tzinfo=GMT(-8.0))]
         self.__test_equal(sa, expected, dt.datetime)
@@ -2629,3 +2637,15 @@ class SArrayTest(unittest.TestCase):
         expected =  [dt.datetime(2016,1,1,5,45,0,tzinfo=GMT(5.75))]
         self.__test_equal(sa, expected, dt.datetime)
 
+    def test_decimal(self):
+        import decimal
+        test_val = decimal.Decimal(3.0)
+        sa = SArray([test_val])
+        expected = [3.0]
+        self.__test_equal(sa, expected, float)
+
+    def test_timedelta(self):
+        test_val = dt.timedelta(1,1)
+        sa = SArray([test_val])
+        expected = [86401.0]
+        self.__test_equal(sa, expected, float)
