@@ -105,6 +105,7 @@ class _extensions_wrapper(object):
     return getattr(self._wrapped, name)
 
 import sys as _sys
+from . import json # imports from json.py in this directory
 
 _sys.modules[__name__ + ".extensions"] = _extensions_wrapper(_sys.modules[__name__ + ".extensions"])
 # rewrite the import

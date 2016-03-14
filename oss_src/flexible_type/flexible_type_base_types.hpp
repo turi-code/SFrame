@@ -723,7 +723,7 @@ inline flex_type_enum flex_type_enum_from_name(const std::string& name) {
     {"float", flex_type_enum::FLOAT},
     {"string", flex_type_enum::STRING},
     {"array", flex_type_enum::VECTOR},
-    {"recursive", flex_type_enum::LIST},
+    {"list", flex_type_enum::LIST},
     {"dictionary", flex_type_enum::DICT},
     {"image", flex_type_enum::IMAGE},
     {"undefined", flex_type_enum::UNDEFINED}
