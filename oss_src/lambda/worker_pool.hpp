@@ -232,7 +232,7 @@ public:
    */
   std::unique_ptr<worker_process<ProxyType>> get_worker() {
     std::unique_lock<graphlab::mutex> lck(m_mutex);
-    wait_for_all(lck);
+    wait_for_one(lck);
     auto worker = std::move(m_available_workers.front());
     m_available_workers.pop_front();
     return worker;
@@ -253,7 +253,7 @@ public:
    * If a new worker process cannot be started, decrease the pool size. 
    */
   void release_worker(std::unique_ptr<worker_process<ProxyType>>& worker) {
-    logstream(LOG_INFO) << "Release worker " << worker->id << std::endl;
+    logstream(LOG_DEBUG) << "Release worker " << worker->id << std::endl;
     std::unique_lock<graphlab::mutex> lck(m_mutex);
     if (check_alive(worker) == true) {
       // put the worker back to queue
