@@ -83,6 +83,7 @@ class DeprecationHelper(object):
 
 Graph = DeprecationHelper(SGraph)
 
+from .cython import cy_pylambda_workers
 ################### Extension Importing ########################
 from . import extensions
 from .extensions import ext_import
