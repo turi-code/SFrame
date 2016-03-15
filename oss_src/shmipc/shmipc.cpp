@@ -93,33 +93,62 @@ struct shared_memory_buffer {
 static atomic<size_t> SERVER_IPC_COUNTER;
 bool server::bind(const std::string& ipcfile, size_t buffer_size) {
   logstream(LOG_INFO) << "Server attaching to " << ipcfile << " " << buffer_size << std::endl;
-  m_shmname = ipcfile;
-  if (m_shmname.empty()) {
-    std::stringstream strm;
-    strm << get_my_pid() << "_" << SERVER_IPC_COUNTER.inc();
-    m_shmname= strm.str();
+  size_t _run_progress = 0; 
+  try {
+    m_shmname = ipcfile;
+    if (m_shmname.empty()) {
+      std::stringstream strm;
+      strm << get_my_pid() << "_" << SERVER_IPC_COUNTER.inc();
+      m_shmname= strm.str();
+    }
+    
+    // sets up the raii deleter so that we eventually
+    // delete this file
+    _run_progress = 1;
+    m_ipcfile_deleter = register_shared_memory_name(m_shmname);
+
+    
+    // this is really modified from code in 
+    // http://www.boost.org/doc/libs/1_58_0/doc/html/interprocess/synchronization_mechanisms.html
+    _run_progress = 2;
+    m_shared_object.reset(new shared_memory_object(create_only, 
+                                                   m_shmname.c_str(), 
+                                                   read_write));
+
+    //Set size
+    _run_progress = 3;
+    m_shared_object->truncate(buffer_size + sizeof(shared_memory_buffer));
+
+    //Map the whole shared memory in this process
+    _run_progress = 4;
+    m_mapped_region.reset(new mapped_region(*m_shared_object, 
+                                            read_write));
+
+    _run_progress = 5;
+    void* buffer = m_mapped_region->get_address();
+    // placement new. put the data in the buffer
+    
+    _run_progress = 6;
+    m_buffer = new (buffer) shared_memory_buffer;
+    m_buffer->m_buffer_size = buffer_size;
+    m_buffer->m_server_to_client.sender_pid = get_my_pid();
+
+  } catch (const std::string& error) {
+    logstream(LOG_ERROR) << "SHMIPC initialization Error (1), stage "
+                         << _run_progress << ": " << error << std::endl;
+    return false;
+    
+  } catch (const std::exception& error) {
+    logstream(LOG_ERROR) << "SHMIPC initialization Error (2), stage "
+                         << _run_progress << ": " << error.what() << std::endl;
+    return false;
+    
+  } catch (...) {
+    logstream(LOG_ERROR) << "Unknown SHMIPC Initialization Error, stage "
+                         << _run_progress << "." << std::endl;
+    return false;
   }
-  // sets up the raii deleter so that we eventually
-  // delete this file
-  m_ipcfile_deleter = register_shared_memory_name(m_shmname);
-  // this is really modified from code in 
-  // http://www.boost.org/doc/libs/1_58_0/doc/html/interprocess/synchronization_mechanisms.html
-  m_shared_object.reset(new shared_memory_object(create_only, 
-                                                 m_shmname.c_str(), 
-                                                 read_write));
-
-   //Set size
-  m_shared_object->truncate(buffer_size + sizeof(shared_memory_buffer));
-
-  //Map the whole shared memory in this process
-  m_mapped_region.reset(new mapped_region(*m_shared_object, 
-                                          read_write));
-
-  void* buffer = m_mapped_region->get_address();
-  // placement new. put the data in the buffer
-  m_buffer = new (buffer) shared_memory_buffer;
-  m_buffer->m_buffer_size = buffer_size;
-  m_buffer->m_server_to_client.sender_pid = get_my_pid();
+  
   return true;
 }
 
