@@ -10,7 +10,7 @@ import array as _array
 import datetime as _datetime
 
 def _get_type_from_name(name):
-    import sframe
+    from . import Image
     if name == 'int':
         return int
     if name == 'float':
@@ -26,15 +26,16 @@ def _get_type_from_name(name):
     if name == 'datetime':
         return _datetime.datetime
     if name == 'Image':
-        return sframe.Image
+        return Image
     raise ValueError("Unsupported type hint provided. Expected one of: int, float, str, array, list, dict, datetime, or Image. Got %s." % name)
 
 def _to_flex_type(obj):
     """
     Invertibly converts non-flexible_type object types to flexible_type.
     """
-    import sframe
-    if isinstance(obj, sframe.SArray):
+    from . import SArray
+    from . import SFrame
+    if isinstance(obj, SArray):
         return _to_flex_type({
             "type": "SArray",
             "value": {
@@ -42,7 +43,7 @@ def _to_flex_type(obj):
                 "values": list(obj)
             }
         })
-    if isinstance(obj, sframe.SFrame):
+    if isinstance(obj, SFrame):
         return _to_flex_type({
             "type": "SFrame",
             "value": {
@@ -62,19 +63,20 @@ def _from_flex_type(obj):
     """
     Invertibly converts flexible_type to some other types encoded as dict.
     """
-    import sframe
+    from . import SArray
+    from . import SFrame
     if isinstance(obj, dict):
         if len(obj.keys()) == 2 and \
             'type' in obj and \
             'value' in obj:
             if obj['type'] == 'SArray':
-                return sframe.SArray(
+                return SArray(
                     obj['value']['values'],
                     dtype=_get_type_from_name(obj['value']['dtype'])
                 )
             if obj['type'] == 'SFrame':
                 columns = obj['value']
-                return sframe.SFrame({
+                return SFrame({
                     name: _from_flex_type(value) for (name,value) in columns.items()
                 })
     return obj
@@ -94,9 +96,9 @@ def dumps(serializable_object):
         - datetime.datetime
         - recursive types of the above: list, dict, array.array
     """
-    import sframe
+    from . import extensions
     serializable_object = _to_flex_type(serializable_object)
-    return sframe.extensions.json.dumps(serializable_object)
+    return extensions.json.dumps(serializable_object)
 
 def loads(json_string):
     """
@@ -107,6 +109,6 @@ def loads(json_string):
     * The input must represent a serialized result produced by the `dumps`
       method in this module. If it does not the result will be undefined.
     """
-    import sframe
-    ret = sframe.extensions.json.loads(json_string)
+    from . import extensions
+    ret = extensions.json.loads(json_string)
     return _from_flex_type(ret)
