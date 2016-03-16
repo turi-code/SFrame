@@ -13,7 +13,6 @@ import datetime
 import math
 import os
 import pytz
-import sframe
 import sys
 import unittest
 
@@ -49,11 +48,12 @@ _SFrameComparer = util.SFrameComparer()
 
 class JSONTest(unittest.TestCase):
     def _assertEquals(self, x, y):
-        import sframe
+        from ..data_structures.sarray import SArray
+        from ..data_structures.sframe import SFrame
         self.assertEquals(type(x), type(y))
-        if isinstance(x, sframe.SArray):
+        if isinstance(x, SArray):
             _SFrameComparer._assert_sarray_equal(x, y)
-        elif isinstance(x, sframe.SFrame):
+        elif isinstance(x, SFrame):
             _SFrameComparer._assert_sframe_equal(x, y)
         else:
             self.assertEquals(x, y)
@@ -64,12 +64,13 @@ class JSONTest(unittest.TestCase):
         if isinstance(value, str):
             print("Input string is:")
             _print_hex_bytes(value)
-        json = sframe.json.dumps(value)
+        from .. import json
+        j = json.dumps(value)
         print("Serialized json is:")
-        print(json)
+        print(j)
         print("as hex:")
-        _print_hex_bytes(json)
-        self._assertEquals(sframe.json.loads(json), value)
+        _print_hex_bytes(j)
+        self._assertEquals(json.loads(j), value)
 
     def test_int(self):
         [self._run_test_case(value) for value in [
@@ -91,10 +92,11 @@ class JSONTest(unittest.TestCase):
             float('-inf'),
             float('inf'),
         ]]
+        from .. import json
         self.assertTrue(
             math.isnan(
-                sframe.json.loads(
-                    sframe.json.dumps(float('nan')))))
+                json.loads(
+                    json.dumps(float('nan')))))
 
     def test_string_to_json(self):
         [self._run_test_case(value) for value in [
@@ -156,25 +158,29 @@ These test cases don't apply there.
         ]]
 
     def test_image_to_json(self):
+        from .. import Image
         [self._run_test_case(value) for value in [
-            sframe.Image(path=item.url, format=item.format) for item in image_info
+            Image(path=item.url, format=item.format) for item in image_info
         ]]
 
     def test_sarray_to_json(self):
+        from ..data_structures.sarray import SArray
+        from ..data_structures.sframe import SFrame
+        from .. import Image
         d = datetime.datetime(year=2016, month=3, day=5)
         [self._run_test_case(value) for value in [
-            sframe.SArray(),
-            sframe.SArray([1,2,3]),
-            sframe.SArray([1.0,2.0,3.0]),
-            sframe.SArray([None, 3, None]),
-            sframe.SArray(["hello", "world"]),
-            sframe.SArray(array.array('d', [2.1,2.5,3.1])),
-            sframe.SArray([
+            SArray(),
+            SArray([1,2,3]),
+            SArray([1.0,2.0,3.0]),
+            SArray([None, 3, None]),
+            SArray(["hello", "world"]),
+            SArray(array.array('d', [2.1,2.5,3.1])),
+            SArray([
                 ["hello", None, "world"],
                 ["hello", 3, None],
                 [3.14159, None],
             ]),
-            sframe.SArray([
+            SArray([
                 {
                     "x": 1,
                     "y": 2
@@ -183,13 +189,13 @@ These test cases don't apply there.
                     "z": 3
                 },
             ]),
-            sframe.SArray([
+            SArray([
                 d,
                 pytz.utc.localize(d),
                 pytz.timezone('US/Arizona').localize(d),
             ]),
-            sframe.SArray([
-                sframe.Image(path=item.url, format=item.format) for item in image_info
+            SArray([
+                Image(path=item.url, format=item.format) for item in image_info
             ]),
         ]]
 
@@ -198,8 +204,10 @@ Python 3 SFrame doesn't support non-utf-8 strings with flexible_type.
 These test cases don't apply there.
 """)
     def test_non_utf8_sarray_to_json(self):
+        from ..data_structures.sarray import SArray
+        from ..data_structures.sframe import SFrame
         [self._run_test_case(value) for value in [
-            sframe.SArray([
+            SArray([
                 u'ɖɞɫɷ'.encode('utf-8'),
                 u'ɖɞɫɷ'.encode('utf-16'),
                 u'ɖɞɫɷ'.encode('utf-32'),
@@ -207,7 +215,8 @@ These test cases don't apply there.
         ]]
 
     def test_sframe_to_json(self):
+        from ..data_structures.sframe import SFrame
         [self._run_test_case(value) for value in [
-            sframe.SFrame(),
+            SFrame(),
             #sframe.SFrame({'foo': [1,2,3,4], 'bar': [None, "Hello", None, "World"]}),
         ]]
