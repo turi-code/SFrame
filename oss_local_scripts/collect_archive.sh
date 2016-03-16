@@ -32,11 +32,15 @@ fi
 
 workingdir=$WORKINGDIR
 # build prefix is the build directory. i.e. ..[some abs path].../debug or /release
-build_prefix=`my_realpath $BUILD_PREFIX | sed -e 's/^C:/\/C/g'`
+build_prefix=`my_realpath $BUILD_PREFIX | sed -e 's/^C:/\/C/g' | sed -e 's/^D:/\/D/g' | sed -e 's/^E:/\/E/g'`
 archive=${workingdir}/collect_archives.txt
 collectlibs=${workingdir}/collect_libs.txt
 # export map table. passes as a paramter to --version-script if GNU ld is used
-exportmap=$EXPORT_MAP
+if [[ $OSTYPE == linux* ]]; then
+        exportmap=$EXPORT_MAP
+else
+        exportmap=""
+fi
 echo "Export Map: $exportmap"
 command=$@
 

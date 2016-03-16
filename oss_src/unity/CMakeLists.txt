@@ -35,7 +35,7 @@ else()
                 unity_core
                 unity_toolkits
                 cppipc
-                )
+                EXPORT_MAP ${CMAKE_SOURCE_DIR}/local_cmake/stdcxx_reduce_exports.ver)
 
         make_empty_library(unity REQUIRES unity_shared)
         set(UNITY_ALL_LIBRARIES unity_shared)
