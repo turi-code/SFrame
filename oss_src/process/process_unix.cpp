@@ -32,17 +32,27 @@ namespace fs = boost::filesystem;
  * handler.
  */
 graphlab::mutex sigchld_handler_lock;
-std::set<size_t> proc_ids_to_reap;
+
+// This is an intentional leak of raw pointer because it is used on program termination.
+static std::set<size_t>* __proc_ids_to_reap;
+static std::once_flag __proc_ids_to_reap_initialized;
+static std::set<size_t>& get_proc_ids_to_reap() { 
+  std::call_once(__proc_ids_to_reap_initialized, 
+                 []() {
+                  __proc_ids_to_reap = new std::set<size_t>(); 
+                 });
+  return *__proc_ids_to_reap;
+}
 
 static void sigchld_handler(int sig) {
   // loop through the set of stuff to reap
   // and try to reap them
-  auto iter = proc_ids_to_reap.begin();
-  while (iter != proc_ids_to_reap.end()) {
-    auto cur_iter = iter;
-    ++iter;
-    if (waitpid(*cur_iter, NULL, WNOHANG) > 0) {
-      proc_ids_to_reap.erase(cur_iter);
+  auto iter = __proc_ids_to_reap->begin();
+  while (iter != __proc_ids_to_reap->end()) {
+    if (waitpid(*iter, NULL, WNOHANG) > 0) {
+      iter = __proc_ids_to_reap->erase(iter);
+    } else {
+      ++iter;
     }
   }
 }
@@ -269,6 +279,7 @@ void process::autoreap() {
   if (m_pid) {
     std::lock_guard<graphlab::mutex> guard(sigchld_handler_lock);
     uninstall_sigchld_handler();
+    auto& proc_ids_to_reap = get_proc_ids_to_reap();
     proc_ids_to_reap.insert(m_pid);
     install_sigchld_handler();
   }
