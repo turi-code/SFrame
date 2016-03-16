@@ -196,10 +196,10 @@ from os.path import join
 def write_exception(e):
     ex_str = "\n\nException: \n"
     traceback_str = traceback.format_exc()
-    
+
     try:
         ex_str += repr(e)
-    except Exception, e:
+    except Exception as e:
         ex_str += "Error expressing exception as string."
 
     ex_str += ": \n" + traceback_str
@@ -312,7 +312,7 @@ for f in server_logs:
     timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S')
     zipfile_name = join(temp_dir, "testing_logs-%d-%s.zip" % (os.getpid(), timestamp))
 
-    print "Creating archive of log files in %s." % zipfile_name
+    print("Creating archive of log files in %s." % zipfile_name)
 
     save_files = []
 
@@ -332,13 +332,13 @@ for f in server_logs:
             open(error_log_file, "w").write("\n\n".join(error_logs))
             logzip.write(error_log_file)
 
-    print "################################################################################"
-    print "#   "
-    print "#   Results of lambda test logged as %s." % zipfile_name
-    print "#   "
-    print "################################################################################"
-    
-    print "Cleaning up."
+    print("################################################################################")
+    print("#   ")
+    print("#   Results of lambda test logged as %s." % zipfile_name)
+    print("#   ")
+    print("################################################################################")
+
+    print("Cleaning up.")
 
     for f in save_files:
         try:
