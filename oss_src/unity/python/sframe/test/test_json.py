@@ -17,7 +17,7 @@ import sys
 import unittest
 
 from . import util
-
+from .. import _json as json
 class image_info:
     def __init__(self, url):
         self.url = url
@@ -64,10 +64,9 @@ class JSONTest(unittest.TestCase):
         if isinstance(value, str):
             print("Input string is:")
             _print_hex_bytes(value)
-        from .. import json
         j = json.dumps(value)
         print("Serialized json is:")
-        print(j)
+        #print(j)
         print("as hex:")
         _print_hex_bytes(j)
         self._assertEquals(json.loads(j), value)
@@ -92,7 +91,6 @@ class JSONTest(unittest.TestCase):
             float('-inf'),
             float('inf'),
         ]]
-        from .. import json
         self.assertTrue(
             math.isnan(
                 json.loads(
