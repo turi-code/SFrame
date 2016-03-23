@@ -1416,7 +1416,8 @@ std::shared_ptr<unity_sarray_base> unity_sarray::scalar_operator(flexible_type o
 
   // create the lazy evalation transform operator from the source
   std::shared_ptr<unity_sarray> ret_unity_sarray(new unity_sarray());
-  if (other.get_type() != flex_type_enum::UNDEFINED) {
+  bool op_is_not_equality_compare = (op != "==" && op != "!=");
+  if (other.get_type() != flex_type_enum::UNDEFINED && op_is_not_equality_compare) {
     auto transformfn = [=](const flexible_type& f)->flexible_type {
           if (f.get_type() == flex_type_enum::UNDEFINED) {
             return f;
