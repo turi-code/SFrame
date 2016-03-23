@@ -1028,7 +1028,7 @@ class gl_sarray {
   gl_sarray sample(double fraction, size_t seed) const;
 
   /**
-   * Return true if every element of the \ref gl_sarray evaluates to false. For
+   * Return true if every element of the \ref gl_sarray evaluates to true. For
    * numeric \ref gl_sarray objects zeros and missing values ("None") evaluate
    * to false, while all non-zero, non-missing values evaluate to true. For
    * string, list, and dictionary \ref gl_sarray objects, empty values (zero

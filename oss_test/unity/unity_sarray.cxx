@@ -828,11 +828,13 @@ class unity_sarray_test: public CxxTest::TestSuite {
     __test_numeric_ops_values_and_clean(dbl.left_scalar_operator(2, ">="), 1);
     __test_numeric_ops_values_and_clean(dbl.left_scalar_operator(2, "<"), 0);
     __test_numeric_ops_values_and_clean(dbl.left_scalar_operator(2, "<="), 1);
-    __test_numeric_ops_values_and_clean(dbl.left_scalar_operator(2, "=="), 1);
-    __test_numeric_ops_values_and_clean(dbl.left_scalar_operator(1, "!="), 1);
-    __test_numeric_ops_values_and_clean(dbl.left_scalar_operator(2, "!="), 0);
     __test_numeric_ops_values_and_clean(dbl.left_scalar_operator(1, "%"), 0);
     __test_numeric_ops_values_and_clean(dbl.left_scalar_operator(2, "%"), 0);
+
+    // None != (int)x for all x
+    __test_numeric_ops_values_and_clean_no_missing(dbl.left_scalar_operator(2, "=="), 0, 1);
+    __test_numeric_ops_values_and_clean_no_missing(dbl.left_scalar_operator(1, "!="), 1, 1);
+    __test_numeric_ops_values_and_clean_no_missing(dbl.left_scalar_operator(2, "!="), 1, 0);
 
     // these do not change types
     __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(1, "+"), 3);
@@ -842,11 +844,14 @@ class unity_sarray_test: public CxxTest::TestSuite {
     __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(2, ">="), 1);
     __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(2, "<"), 0);
     __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(2, "<="), 1);
-    __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(2, "=="), 1);
-    __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(1, "!="), 1);
-    __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(2, "!="), 0);
     __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(2, "%"), 0);
     __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(5, "%"), 1);
+
+    // (int)x != None for all x
+    __test_numeric_ops_values_and_clean_no_missing(dbl.right_scalar_operator(2, "=="), 0, 1);
+    __test_numeric_ops_values_and_clean_no_missing(dbl.right_scalar_operator(1, "!="), 1, 1);
+    __test_numeric_ops_values_and_clean_no_missing(dbl.right_scalar_operator(2, "!="), 1, 0);
+
 
     // these change types
     __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(2, "/"), 1.0);
@@ -854,14 +859,17 @@ class unity_sarray_test: public CxxTest::TestSuite {
     __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(1.0, "-"), -1.0);
     __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(2.0, "*"), 4.0);
     __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(2.0, "/"), 1.0);
+
     // these still do not change types
     __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(2.0, ">"), 0);
     __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(2.0, ">="), 1);
     __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(2.0, "<"), 0);
     __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(2.0, "<="), 1);
-    __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(2.0, "=="), 1);
-    __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(1.0, "!="), 1);
-    __test_numeric_ops_values_and_clean(dbl.right_scalar_operator(2.0, "!="), 0);
+
+    // (float)x != None for all x (should return int)
+    __test_numeric_ops_values_and_clean_no_missing(dbl.right_scalar_operator(2.0, "=="), 0, 1);
+    __test_numeric_ops_values_and_clean_no_missing(dbl.right_scalar_operator(1.0, "!="), 1, 1);
+    __test_numeric_ops_values_and_clean_no_missing(dbl.right_scalar_operator(2.0, "!="), 1, 0);
   }
 
 
@@ -972,6 +980,7 @@ class unity_sarray_test: public CxxTest::TestSuite {
   void test_string_scalar_ops() {
     // make a vector with an UNDEFINED first value
     std::vector<flexible_type> vec{"a","a","a","a","a","a","a","a","a","a"};
+
     // one missing at 0 to test missing propagation
     vec[0] = flexible_type(flex_type_enum::UNDEFINED);
 
@@ -993,8 +1002,10 @@ class unity_sarray_test: public CxxTest::TestSuite {
     __test_numeric_ops_values_and_clean(dbl->left_scalar_operator("b", ">"), 0);
     __test_numeric_ops_values_and_clean(dbl->left_scalar_operator("b", "<="), 1);
     __test_numeric_ops_values_and_clean(dbl->left_scalar_operator("b", ">="), 0);
-    __test_numeric_ops_values_and_clean(dbl->left_scalar_operator("b", "=="),  0);
-    __test_numeric_ops_values_and_clean(dbl->left_scalar_operator("b", "!="), 1);
+
+    // (std::string)s != None
+    __test_numeric_ops_values_and_clean_no_missing(dbl->left_scalar_operator("b", "=="), 0, 0);
+    __test_numeric_ops_values_and_clean_no_missing(dbl->left_scalar_operator("b", "!="), 1, 1);
   }
 
   void test_string_in() {
