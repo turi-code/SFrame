@@ -2622,7 +2622,7 @@ class SFrame(object):
         return row_of_tables
 
     def print_rows(self, num_rows=10, num_columns=40, max_column_width=30,
-                   max_row_width=80, output_file=sys.stdout):
+                   max_row_width=80, output_file=None):
         """
         Print the first M rows and N columns of the SFrame in human readable
         format.
@@ -2652,6 +2652,8 @@ class SFrame(object):
         --------
         head, tail
         """
+        if output_file is None:
+            output_file = sys.stdout
 
         max_row_width = max(max_row_width, max_column_width + 1)
 
