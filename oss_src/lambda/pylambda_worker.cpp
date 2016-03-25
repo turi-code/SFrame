@@ -81,9 +81,16 @@ int EXPORT pylambda_worker_main(const std::string& root_path,
       return 1;
     }
 
+    boost::optional<std::string> disable_shm = graphlab::getenv_str("GRAPHLAB_DISABLE_LAMBDA_SHM");
+    bool use_shm = true;
+    if(disable_shm && *disable_shm == "1") {
+      use_shm = false;
+      LOG_DEBUG_WITH_PID("shm disabled.");
+    }
+    
     graphlab::shmipc::server shm_comm_server;
-    bool has_shm = shm_comm_server.bind();
-
+    bool has_shm = use_shm ? shm_comm_server.bind() : false;
+    
     LOG_DEBUG_WITH_PID("shm_comm_server bind: has_shm=" << has_shm);
 
     // construct the server

@@ -49,23 +49,29 @@ static lambda_master* instance_ptr = nullptr;
       logprogress_stream << "Note that increasing the degree of parallelism also increases the memory footprint." << std::endl;
     }
 
-    /*
-     * Create an interprocess shared memory connection if possible.
-     */
-    auto shared_memory_setup = [](std::unique_ptr<lambda_evaluator_proxy>& proxy) {
-      return std::make_pair((void*)(proxy.get()), proxy->initialize_shared_memory_comm());
-    };
-    std::vector<std::pair<void*, std::string>> shared_memory_addresses = 
-        m_worker_pool->call_all_workers<std::pair<void*, std::string>>(shared_memory_setup);
+    boost::optional<std::string> disable_smh = graphlab::getenv_str("GRAPHLAB_DISABLE_LAMBDA_SHM");
+    
+    if(! (disable_smh && *disable_smh == "1") ) {
+      /*
+       * Create an interprocess shared memory connection if possible.
+       */
+      auto shared_memory_setup = [](std::unique_ptr<lambda_evaluator_proxy>& proxy) {
+        return std::make_pair((void*)(proxy.get()), proxy->initialize_shared_memory_comm());
+      };
+      std::vector<std::pair<void*, std::string>> shared_memory_addresses = 
+          m_worker_pool->call_all_workers<std::pair<void*, std::string>>(shared_memory_setup);
 
-    for (auto shared_memory_address: shared_memory_addresses) {
-      // for each worker, try to connect and store the addresses
-      if (!shared_memory_address.second.empty()) {
-        std::shared_ptr<shmipc::client> client = std::make_shared<shmipc::client>();
-        if (client->connect(shared_memory_address.second)) {
-          m_shared_memory_worker_connections[shared_memory_address.first] = client;
+      for (auto shared_memory_address: shared_memory_addresses) {
+        // for each worker, try to connect and store the addresses
+        if (!shared_memory_address.second.empty()) {
+          std::shared_ptr<shmipc::client> client = std::make_shared<shmipc::client>();
+          if (client->connect(shared_memory_address.second)) {
+            m_shared_memory_worker_connections[shared_memory_address.first] = client;
+          }
         }
       }
+    } else {
+      logprogress_stream << "SHM disabled; falling back to local TCP." << std::endl;
     }
   }
 
