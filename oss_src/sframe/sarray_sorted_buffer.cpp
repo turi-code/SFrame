@@ -17,12 +17,12 @@ static size_t BUFFER_ARRAY_SIZE = 16;
 
 template<typename T>
 sarray_sorted_buffer<T>::sarray_sorted_buffer(
-    size_t buffer_size,
-    comparator_type comparator,
-    bool deduplicate)
-  : buffer_size(buffer_size / BUFFER_ARRAY_SIZE),
-    comparator(comparator),
-    deduplicate(deduplicate) {
+    size_t buffer_size_,
+    comparator_type comparator_,
+    bool deduplicate_)
+  : buffer_size(buffer_size_ / BUFFER_ARRAY_SIZE),
+    comparator(comparator_),
+    deduplicate(deduplicate_) {
 
     sink = std::make_shared<sink_type>();
     sink->open_for_write(1);
