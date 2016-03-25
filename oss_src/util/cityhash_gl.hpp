@@ -1097,6 +1097,53 @@ static inline uint32_t simple_random_mapping(size_t index, size_t seed) {
   return uint32_t(h ^ (h >> 32)); 
 }
 
+/** Provides a simple, reversable hash for indices.  This hash has
+ *  excellent mixing properties, preserves 0 (i.e. 0 maps to 0), and
+ *  is reversable by calling reverse_index_hash(...) below.
+ *
+ *  Taken from the Murmur3 finalizer routine.
+ *  Reference: http://code.google.com/p/smhasher/wiki/MurmurHash3.
+ */
+static inline uint64_t index_hash(uint64_t idx) {
+
+  static constexpr uint64_t m3_final_1     = 0xff51afd7ed558ccdULL;
+  static constexpr uint64_t m3_final_2     = 0xc4ceb9fe1a85ec53ULL;
+  
+  static constexpr uint64_t r = 33;  
+
+  uint64_t h = idx;
+  
+  h ^= h >> r;
+  h *= m3_final_1;
+  h ^= h >> r;
+  h *= m3_final_2;
+  h ^= h >> r;
+
+  return h;
+}
+
+/** The reverse of the above index_hash.
+ *
+ */
+static inline uint64_t reverse_index_hash(uint64_t idx)  {
+
+  // Multaplicative inverses of m3_final_1 and m3_final_2 above
+  static constexpr uint64_t m3_final_1_inv = 0x4f74430c22a54005ULL;
+  static constexpr uint64_t m3_final_2_inv = 0x9cb4b2f8129337dbULL;
+  
+  static constexpr uint64_t r = 33;  
+
+  uint64_t h = idx;
+  
+  h ^= h >> r;
+  h *= m3_final_2_inv;
+  h ^= h >> r;
+  h *= m3_final_1_inv;
+  h ^= h >> r;
+
+  return h;
+}
+
 } // End namespace graphlab
 
 namespace std {

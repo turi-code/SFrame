@@ -142,4 +142,17 @@ class hash_function_test : public CxxTest::TestSuite {
       htest.check_and_add(hash64(v), v);
     }
   }  
+
+  void test_reversible_hashes() {
+    // Test the reversable hash functions.
+
+    for(size_t i = 0; i < 5000; ++i) {
+      DASSERT_EQ(i, reverse_index_hash(index_hash(i)));
+    }
+    
+    for(long i : values) {
+      DASSERT_EQ(i, long(reverse_index_hash(index_hash(size_t(i)))));
+    }
+  }  
+  
 };
