@@ -1880,6 +1880,10 @@ class SFrame(object):
         # Save SFrame in a temporary place
         tmp_loc = self.__get_staging_dir__(sc,graphlab_util_ref)
         sf_loc = os.path.join(tmp_loc, str(uuid.uuid4()))
+        # Following substring replace is required to make
+        # to_rdd() works on Azure blob storage accounts. 
+        if sf_loc.startswith("wasb://"):
+            sf_loc = sf_loc.replace(graphlab_util_ref.getHadoopNameNode(),"hdfs://")
         self.save(sf_loc)
         print(sf_loc)
         # Keep track of the temporary sframe that is saved(). We need to delete it eventually.
