@@ -130,6 +130,8 @@ gl_sframe _generate_random_sframe(size_t n_rows, std::string column_types,
 
       case 'v':
       case 'V':
+      case 'w':
+      case 'W':
         types[c_idx] = flex_type_enum::VECTOR;
         break;
 
