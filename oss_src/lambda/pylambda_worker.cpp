@@ -72,6 +72,8 @@ int EXPORT pylambda_worker_main(const std::string& root_path,
   LOG_DEBUG_WITH_PID("server_address = '" << server_address << "'");
   LOG_DEBUG_WITH_PID("parend pid = " << parent_pid);
 
+  size_t _last_line = __LINE__;
+#define __TRACK do { _last_line = __LINE__; } while(0)  
   try {
 
     LOG_DEBUG_WITH_PID("Library function entered successfully.");
@@ -81,56 +83,61 @@ int EXPORT pylambda_worker_main(const std::string& root_path,
       return 1;
     }
 
-    boost::optional<std::string> disable_shm = graphlab::getenv_str("GRAPHLAB_DISABLE_LAMBDA_SHM");
+    __TRACK; boost::optional<std::string> disable_shm = graphlab::getenv_str("GRAPHLAB_DISABLE_LAMBDA_SHM");
     bool use_shm = true;
     if(disable_shm && *disable_shm == "1") {
       use_shm = false;
-      LOG_DEBUG_WITH_PID("shm disabled.");
+      __TRACK; LOG_DEBUG_WITH_PID("shm disabled.");
     }
+
+    __TRACK; graphlab::shmipc::server shm_comm_server;
+    __TRACK; bool has_shm = use_shm ? shm_comm_server.bind() : false;
     
-    graphlab::shmipc::server shm_comm_server;
-    bool has_shm = use_shm ? shm_comm_server.bind() : false;
-    
-    LOG_DEBUG_WITH_PID("shm_comm_server bind: has_shm=" << has_shm);
+    __TRACK; LOG_DEBUG_WITH_PID("shm_comm_server bind: has_shm=" << has_shm);
 
     // construct the server
-    cppipc::comm_server server(std::vector<std::string>(), "", server_address);
+    __TRACK; cppipc::comm_server server(std::vector<std::string>(), "", server_address);
 
-    server.register_type<graphlab::lambda::lambda_evaluator_interface>([&](){
+    __TRACK; server.register_type<graphlab::lambda::lambda_evaluator_interface>([&](){
         if (has_shm) {
-          auto n = new graphlab::lambda::pylambda_evaluator(&shm_comm_server);
-          LOG_DEBUG_WITH_PID("creation of pylambda_evaluator with SHM complete.");
-          return n;
+          __TRACK; auto n = new graphlab::lambda::pylambda_evaluator(&shm_comm_server);
+          __TRACK; LOG_DEBUG_WITH_PID("creation of pylambda_evaluator with SHM complete.");
+          __TRACK; return n;
         } else {
-          auto n = new graphlab::lambda::pylambda_evaluator();
-          LOG_DEBUG_WITH_PID("creation of pylambda_evaluator without SHM complete.");
-          return n;
+          __TRACK; auto n = new graphlab::lambda::pylambda_evaluator();
+          __TRACK; LOG_DEBUG_WITH_PID("creation of pylambda_evaluator without SHM complete.");
+          __TRACK; return n;
         }
       });
-    server.register_type<graphlab::lambda::graph_lambda_evaluator_interface>([&](){
-        auto n = new graphlab::lambda::graph_pylambda_evaluator();
-        LOG_DEBUG_WITH_PID("creation of graph_pylambda_evaluator complete.");
-        return n;
+    
+    __TRACK; server.register_type<graphlab::lambda::graph_lambda_evaluator_interface>([&](){
+        __TRACK; auto n = new graphlab::lambda::graph_pylambda_evaluator();
+        __TRACK; LOG_DEBUG_WITH_PID("creation of graph_pylambda_evaluator complete.");
+        __TRACK; return n;
       });
+    
+    __TRACK; LOG_DEBUG_WITH_PID("Starting server.");
+    __TRACK; server.start();
 
-    LOG_DEBUG_WITH_PID("Starting server.");
-    server.start();
-
-    wait_for_parent_exit(parent_pid);
+    __TRACK; wait_for_parent_exit(parent_pid);
 
     return 0;
 
-    /** Any exceptions happening?
+    /** Any exceptions happening?  If so, propegate back what's going
+     *  on through the error codes.
      */
   } catch (const std::string& error) {
-    logstream(LOG_ERROR) << "Internal PyLambda Error: " << error << std::endl;
-    return 103;
+    logstream(LOG_ERROR) << "Internal PyLambda Error: " << error
+                         << "; last successful line =" << _last_line  << std::endl;
+    return _last_line;
   } catch (const std::exception& error) {
-    logstream(LOG_ERROR) << "PyLambda C++ Error: " << error.what() << std::endl;
-    return 104;
+    logstream(LOG_ERROR) << "PyLambda C++ Error: " << error.what()
+                         << "; last successful line =" << _last_line << std::endl;
+    return _last_line;
   } catch (...) {
-    logstream(LOG_ERROR) << "Unknown PyLambda Error." << std::endl;
-    return 105;
+    logstream(LOG_ERROR) << "Unknown PyLambda Error"
+                         << "; last successful line =" << _last_line << std::endl;
+    return _last_line;
   }
 }
 
