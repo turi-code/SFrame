@@ -219,7 +219,8 @@ bool csv_line_tokenizer::parse_as(char** buf, size_t len,
     // unescape the string inplace
     // skip the quote characters
     char* end_of_buf = (*buf) + len;
-    ++(*buf); len -= 2;
+    ++(*buf); 
+    if (len > 1) len -= 2;
     size_t new_length = 
         unescape_string(*buf, len, escape_char, quote_char, double_quote);
     bool ret = parse_as(buf, new_length, out, false);
