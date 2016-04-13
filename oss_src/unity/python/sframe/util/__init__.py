@@ -27,6 +27,10 @@ import sys as _sys
 from .sframe_generation import generate_random_sframe
 from .sframe_generation import generate_random_regression_sframe
 from .sframe_generation import generate_random_classification_sframe
+from .type_checks import _raise_error_if_not_function
+from .type_checks import _raise_error_if_not_of_type
+from .type_checks import _is_non_string_iterable
+from .type_checks import _is_string
 
 def _i_am_a_lambda_worker():
     if _re.match(".*lambda_worker.*", _sys.argv[0]) is not None:
@@ -774,57 +778,6 @@ def _pickle_to_temp_location_or_memory(obj):
         return filename
 
 
-def _raise_error_if_not_of_type(arg, expected_type, arg_name=None):
-    """
-    Check if the input is of expected type.
-
-    Parameters
-    ----------
-    arg            : Input argument.
-
-    expected_type  : A type OR a list of types that the argument is expected
-                     to be.
-
-    arg_name      : The name of the variable in the function being used. No
-                    name is assumed if set to None.
-
-    Examples
-    --------
-    _raise_error_if_not_of_type(sf, str, 'sf')
-    _raise_error_if_not_of_type(sf, [str, int], 'sf')
-    """
-
-    display_name = "%s " % arg_name if arg_name is not None else "Argument "
-    lst_expected_type = [expected_type] if \
-                        type(expected_type) == type else expected_type
-
-    err_msg = "%smust be of type %s " % (display_name,
-                        ' or '.join([x.__name__ for x in lst_expected_type]))
-    err_msg += "(not %s)." % type(arg).__name__
-    if not any(map(lambda x: isinstance(arg, x), lst_expected_type)):
-        raise TypeError(err_msg)
-
-def _raise_error_if_not_function(arg, arg_name=None):
-    """
-    Check if the input is of expected type.
-
-    Parameters
-    ----------
-    arg            : Input argument.
-
-    arg_name      : The name of the variable in the function being used. No
-                    name is assumed if set to None.
-
-    Examples
-    --------
-    _raise_error_if_not_function(func, 'func')
-
-    """
-    display_name = '%s ' % arg_name if arg_name is not None else ""
-    err_msg = "Argument %smust be a function." % display_name
-    if not hasattr(arg, '__call__'):
-        raise TypeError(err_msg)
-
 def get_log_location():
     from ..connect import main as _glconnect
     server = _glconnect.get_server()
@@ -841,9 +794,6 @@ def get_client_log_location():
 def get_server_log_location():
     return get_log_location()
 
-def _is_non_string_iterable(obj):
-    # In Python 3, str implements '__iter__'.
-    return (hasattr(obj, '__iter__') and not isinstance(obj, str))
 
 def get_module_from_object(obj):
     mod_str = obj.__class__.__module__.split('.')[0]
@@ -870,7 +820,7 @@ def infer_dbapi2_types(cursor, mod_info):
             elif i == j[0]:
                 ret_types.append(j[1])
                 type_found = True
-                break 
+                break
         if not type_found:
             ret_types.append(str)
 

@@ -18,6 +18,10 @@ import unittest
 
 from . import util
 from .. import _json as json
+
+if sys.version_info.major == 3:
+    long = int
+
 class image_info:
     def __init__(self, url):
         self.url = url
@@ -50,7 +54,10 @@ class JSONTest(unittest.TestCase):
     def _assertEquals(self, x, y):
         from ..data_structures.sarray import SArray
         from ..data_structures.sframe import SFrame
-        self.assertEquals(type(x), type(y))
+        if type(x) in [long,int]:
+            self.assertTrue(type(y) in [long,int])
+        else:
+            self.assertEquals(type(x), type(y))
         if isinstance(x, SArray):
             _SFrameComparer._assert_sarray_equal(x, y)
         elif isinstance(x, SFrame):
@@ -71,6 +78,7 @@ class JSONTest(unittest.TestCase):
         _print_hex_bytes(j)
         self._assertEquals(json.loads(j), value)
 
+    @unittest.skipIf(sys.platform == 'win32', "Windows long issue")
     def test_int(self):
         [self._run_test_case(value) for value in [
             0,

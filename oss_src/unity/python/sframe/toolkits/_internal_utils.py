@@ -23,6 +23,7 @@ from ..toolkits._main import ToolkitError
 
 import json
 import logging as _logging
+import six as _six
 
 
 _proxy_map = {UnitySFrameProxy: (lambda x: _SFrame(_proxy=x)),
@@ -58,10 +59,10 @@ def _SGraphFromJsonTree(json_str):
     """
     g = json.loads(json_str)
     vertices = [_Vertex(x['id'],
-                dict([(str(k), v) for k, v in x.iteritems() if k != 'id']))
+                dict([(str(k), v) for k, v in _six.iteritems(x) if k != 'id']))
                                                       for x in g['vertices']]
     edges = [_Edge(x['src'], x['dst'],
-             dict([(str(k), v) for k, v in x.iteritems() if k != 'src' and k != 'dst']))
+             dict([(str(k), v) for k, v in _six.iteritems(x) if k != 'src' and k != 'dst']))
                                                       for x in g['edges']]
     sg = _SGraph().add_vertices(vertices)
     if len(edges) > 0:
@@ -272,7 +273,7 @@ def _toolkit_repr_print(model, fields, section_titles, width=20):
         ret.append(bar)
         section = summary_dict['sections'][index]
         for (field_title, field_value) in section:
-            ret.append(key_str.format(field_title, width, field_value))
+            ret.append(key_str.format(str(field_title), width, field_value))
         ret.append("")
     return '\n'.join(ret)
 

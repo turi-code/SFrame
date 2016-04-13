@@ -23,6 +23,7 @@ import tempfile
 import subprocess
 from subprocess import PIPE
 from boto.exception import S3ResponseError
+from .type_checks import _is_string
 
 __logger__ = logging.getLogger(__name__)
 
@@ -433,6 +434,8 @@ def list_hdfs(hdfs_path, hadoop_conf_dir=None):
     exit_code, stdo, stde = _hdfs_exec_command(base_command)
     if exit_code == 0:
         files = []
+        if not _is_string(stdo):
+            stdo = stdo.decode()
         lines = stdo.split("\n")
         for l in lines:
             if len(l) == 0 or l.startswith("Found"):
@@ -706,7 +709,7 @@ def _awscli_s3_op(op, src, dst=None, recursive=False, silent=False, is_test=Fals
     # read stdout/stderr and wait for subprocess to finish
     prev = ''
     while True:
-        line = proc.stdout.read(100)
+        line = proc.stdout.read(100).decode()
         if line != '':
             # parse stdout from subprocess
             line = line.replace('\r\n', '\n').replace('\r', '\n')
