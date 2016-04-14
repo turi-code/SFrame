@@ -369,22 +369,19 @@ def _publish():
         # create a new class
         if _version_info.major == 3:
             new_class = _ToolkitClass.__dict__.copy()
-            new_class['__init__'] = _types.FunctionType(new_class['__init__'].__code__,
-                                     new_class['__init__'].__globals__,
-                                     name='__init__',
-                                     argdefs=(),
-                                     closure=())
+            del new_class['__dict__']
+            del new_class['__weakref__']
         else:
             new_class = copy.deepcopy(_ToolkitClass.__dict__)
 
-            # rewrite the init method to add the toolkit class name so it will
-            # default construct correctly
+        new_class['__init__'] = _types.FunctionType(new_class['__init__'].__code__,
+                                                    new_class['__init__'].__globals__,
+                                                    name='__init__',
+                                                    argdefs=(),
+                                                    closure=())
 
-            new_class['__init__'] = _types.FunctionType(new_class['__init__'].__code__,
-                                                        new_class['__init__'].__globals__,
-                                                        name='__init__',
-                                                        argdefs=(),
-                                                        closure=())
+        # rewrite the init method to add the toolkit class name so it will
+        # default construct correctly
         new_class['__init__'].tkclass_name = tkclass
 
         newclass = _types.ClassType(tkclass, (), new_class)

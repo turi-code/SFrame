@@ -2463,6 +2463,15 @@ class SFrame(object):
         conn.commit()
         c.close()
 
+
+    def __hash__(self):
+        '''
+        Because we override `__eq__` we need to implement this function in Python 3.
+        Just make it match default behavior in Python 2.
+        '''
+        return id(self) // 16
+
+
     def __repr__(self):
         """
         Returns a string description of the frame

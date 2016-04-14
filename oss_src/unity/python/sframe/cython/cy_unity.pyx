@@ -30,7 +30,7 @@ from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp.map cimport map
 
-from .cy_cpp_utils cimport str_to_cpp, cpp_to_str, from_vector_of_strings
+from .cy_cpp_utils cimport str_to_cpp, cpp_to_str, from_vector_of_strings, disable_cpp_str_decode, enable_cpp_str_decode
 
 from cython.operator cimport dereference as deref
 import inspect
@@ -84,7 +84,7 @@ cdef class UnityGlobalProxy:
         cdef toolkit_function_response_type response
         with nogil:
             response = self.thisptr.run_toolkit(toolkit_name, options)
-        return (response.success, response.message,
+        return (response.success, cpp_to_str(response.message),
                 variant_map_to_dict(self._cli, response.params))
 
     cpdef save_model(self, model, _url, explicit_model_wrapper = None):
@@ -109,9 +109,15 @@ cdef class UnityGlobalProxy:
         cdef variant_map_type response
         with nogil:
             response = self.thisptr.load_model(url)
-        variant_dict = variant_map_to_dict(self._cli, response)
-        model_wrapper = pickle.loads(variant_dict['model_wrapper'])
-        return model_wrapper(variant_dict['model_base'])
+
+        try:
+            disable_cpp_str_decode()
+            variant_dict = variant_map_to_dict(self._cli, response)
+        finally:
+             enable_cpp_str_decode()
+
+        model_wrapper = pickle.loads(variant_dict[b'model_wrapper'])
+        return model_wrapper(variant_dict[b'model_base'])
 
     cpdef eval_lambda(self, object fn, object arg):
         assert inspect.isfunction(fn), "First argument must be a function"
@@ -200,7 +206,7 @@ cdef bint is_function_closure_info(object closure) except *:
 
 cdef function_closure_info make_function_closure_info(object closure) except *:
     cdef function_closure_info ret
-    ret.native_fn_name  = closure.native_fn_name
+    ret.native_fn_name  = str_to_cpp(closure.native_fn_name)
     ret.arguments.resize(len(closure.arguments))
     for i in range(len(closure.arguments)):
         ret.arguments[i].first = closure.arguments[i][0]

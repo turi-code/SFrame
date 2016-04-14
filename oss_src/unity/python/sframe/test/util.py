@@ -12,7 +12,6 @@ import math
 import string
 import numpy as np
 from pandas.util.testing import assert_frame_equal
-import sqlite3
 
 from .. import SArray
 
@@ -114,7 +113,7 @@ def uniform_string_column(n, word_length, alphabet_size, missingness=0.):
         One string "word" in each entry of the output SArray.
     """
     result = []
-    letters = string.ascii_letters[:alphabet_size]
+    letters = list(string.ascii_letters[:alphabet_size])
 
     for i in range(n):
         missing_flag = random.random()
@@ -124,7 +123,7 @@ def uniform_string_column(n, word_length, alphabet_size, missingness=0.):
         else:
             word = []
             for j in range(word_length):
-                word.append(random.choice(letters))
+                word.append(np.random.choice(letters))
             result.append(''.join(word))
 
     return SArray(result)

@@ -27,4 +27,4 @@ cdef class UnityModel:
 
     cpdef list_fields(self)
 
-    cpdef get(self, string key, opts=*)
+    cpdef get(self, key, opts=*)

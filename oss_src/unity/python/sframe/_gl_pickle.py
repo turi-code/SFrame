@@ -474,7 +474,7 @@ class GLUnpickler(_pickle.Unpickler):
             zf = _zipfile.ZipFile(filename, allowZip64=True)
             for info in zf.infolist():
                 if info.filename == 'pickle_file':
-                    pickle_filename = zf.read(info.filename)
+                    pickle_filename = zf.read(info.filename).decode()
             if pickle_filename is None:
                 raise IOError(("Cannot pickle file of the given format. File"
                         " must be one of (a) GLPickler archive, "

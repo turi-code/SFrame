@@ -15,12 +15,14 @@ import pprint
 import threading
 import copy as _copy
 import requests as _requests
-import urllib as _urllib
 
-try:
+import sys as _sys
+if _sys.version_info.major == 3:
     import queue as Queue
-except ImportError:
+    from urllib.parse import quote_plus as _quote_plus
+else:
     import Queue
+    from urllib import quote_plus as _quote_plus
 
 __ALL__ = [ 'MetricTracker' ]
 
@@ -129,7 +131,7 @@ class _MetricsWorkerThread(threading.Thread):
         cloudfront_props['version'] = self._version
         cloudfront_props['isgpu'] = self._isgpu
         cloudfront_props['build_number'] = self._build_number
-        cloudfront_props['properties'] = _urllib.quote_plus(str(props))
+        cloudfront_props['properties'] = _quote_plus(str(props))
 
         # if product key is not set, then try to get it now when submitting
         if not self._product_key:
