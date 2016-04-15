@@ -1036,6 +1036,7 @@ class SFrame(object):
                        skiprows=0,
                        verbose=True,
                        store_errors=True,
+                       nrows_to_infer=100,
                        **kwargs):
         """
         Constructs an SFrame from a CSV file or a path to multiple CSVs, and
@@ -1102,8 +1103,8 @@ class SFrame(object):
         column_type_inference_was_used = False
         if column_type_hints is None:
             try:
-                # Get the first 100 rows (using all the desired arguments).
-                first_rows = SFrame.read_csv(url, nrows=100,
+                # Get the first nrows_to_infer rows (using all the desired arguments).
+                first_rows = SFrame.read_csv(url, nrows=nrows_to_infer,
                                  column_type_hints=type(None),
                                  header=header,
                                  delimiter=delimiter,
@@ -1121,7 +1122,7 @@ class SFrame(object):
                 typelist = '[' + ','.join(t.__name__ for t in column_type_hints) + ']'
                 if verbose != False:
                     print("------------------------------------------------------")
-                    print("Inferred types from first line of file as ")
+                    print("Inferred types from first %d line(s) of file as " % nrows_to_infer)
                     print("column_type_hints="+ typelist)
                     print("If parsing fails due to incorrect types, you can correct")
                     print("the inferred type list above and pass it to read_csv in")
@@ -1143,8 +1144,8 @@ class SFrame(object):
         elif type(column_type_hints) is dict:
             # we need to fill in a potentially incomplete dictionary
             try:
-                # Get the first 100 rows (using all the desired arguments).
-                first_rows = SFrame.read_csv(url, nrows=100,
+                # Get the first nrows_to_infer rows (using all the desired arguments).
+                first_rows = SFrame.read_csv(url, nrows=nrows_to_infer,
                                  column_type_hints=type(None),
                                  header=header,
                                  delimiter=delimiter,
@@ -1228,6 +1229,7 @@ class SFrame(object):
                              nrows=None,
                              skiprows=0,
                              verbose=True,
+                             nrows_to_infer=100,
                              **kwargs):
         """
         Constructs an SFrame from a CSV file or a path to multiple CSVs, and
@@ -1359,6 +1361,7 @@ class SFrame(object):
                                   verbose=verbose,
                                   skiprows=skiprows,
                                   store_errors=True,
+                                  nrows_to_infer=nrows_to_infer,
                                   **kwargs)
     @classmethod
     def read_csv(cls,
@@ -1378,6 +1381,7 @@ class SFrame(object):
                  nrows=None,
                  skiprows=0,
                  verbose=True,
+                 nrows_to_infer=100,
                  **kwargs):
         """
         Constructs an SFrame from a CSV file or a path to multiple CSVs.
@@ -1627,6 +1631,7 @@ class SFrame(object):
                                   skiprows=skiprows,
                                   verbose=verbose,
                                   store_errors=False,
+                                  nrows_to_infer=nrows_to_infer,
                                   **kwargs)[0]
 
 
