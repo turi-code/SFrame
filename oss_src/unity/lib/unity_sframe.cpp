@@ -77,7 +77,7 @@ void unity_sframe::construct_from_sframe_index(std::string location) {
   clear();
 
   auto status = fileio::get_file_status(location);
-  if (fileio::is_web_protocol(location)) {
+  if (fileio::is_web_protocol(fileio::get_protocol(location))) {
     // if it is a web protocol, we cannot be certain what type of file it is.
     // HEURISTIC:
     //   assume it is a "directory" and try to load dir_archive.ini
