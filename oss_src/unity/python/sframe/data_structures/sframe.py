@@ -3464,7 +3464,7 @@ class SFrame(object):
                     filename,
                     orient='records'):
         """
-        Writes an SFrame to a CSV file.
+        Writes an SFrame to a JSON file.
 
         Parameters
         ----------
