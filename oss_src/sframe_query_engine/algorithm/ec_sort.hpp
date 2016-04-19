@@ -14,8 +14,8 @@
 
 \page ec_sort EC Sort
 
-The current sort algorithm (in \ref graphlab::query_eval::sort) implementation 
-has lasted us a while and it is time to think about something better. 
+The current sort algorithm (in \ref graphlab::query_eval::sort) implementation
+has lasted us a while and it is time to think about something better.
 
 A brief overview of our current Sort algorithm
 ==============================================
@@ -107,7 +107,7 @@ property that if (c,r-1,v) must be read before (c,r,v). Hence the
 rows are written in the correct order. (though how to do this in
 parallel is a question.)
 
-We will also have to generate a per-bucket forward_map using the same 
+We will also have to generate a per-bucket forward_map using the same
 scatter procedure.
 
 This requires a little bit of intelligence in the caching of the
@@ -180,7 +180,7 @@ column data size and use the seek strategy if it is too large.
    of say ... 256 KB. about 100MBps * 2ms.
 
    - The second is optimization in the final sort of the bucket. We can perform
-   seeks to fetch elements from the bucket. Unlike the above, we pay for an 
+   seeks to fetch elements from the bucket. Unlike the above, we pay for an
    additional write + seek of the element, but it IS a smaller file.
 
 - Minimize full decode of dictionary/list type. We should be able to

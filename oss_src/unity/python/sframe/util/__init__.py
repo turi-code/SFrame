@@ -11,7 +11,6 @@ import logging.config
 import time as _time
 import tempfile as _tempfile
 import os as _os
-from .queue_channel import QueueHandler, MutableQueueListener
 
 import urllib as _urllib
 import re as _re
@@ -21,7 +20,6 @@ import tarfile as _tarfile
 import itertools as _itertools
 import uuid as _uuid
 import datetime as _datetime
-import logging as _logging
 import sys as _sys
 
 from .sframe_generation import generate_random_sframe
@@ -38,86 +36,66 @@ def _i_am_a_lambda_worker():
     return False
 
 try:
-    from queue import Queue as queue
-except ImportError:
-    from Queue import Queue as queue
-try:
     import configparser as _ConfigParser
 except ImportError:
     import ConfigParser as _ConfigParser
 
-__LOGGER__ = _logging.getLogger(__name__)
-# overuse the same logger so we have one logging config
+# Return the root package name: sframe or graphlab
 root_package_name = __import__(__name__.split('.')[0]).__name__
-logger = logging.getLogger(root_package_name)
 client_log_file = _os.path.join(_tempfile.gettempdir(),
                                 root_package_name +
                                 '_client_%d_%d.log' % (_time.time(), _os.getpid()))
 
-logging.config.dictConfig({
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'standard': {
-            # XXX: temp!
-            'format': '%(asctime)s [%(levelname)s] %(name)s, %(lineno)s: %(message)s'
+
+def init_logger():
+    """
+    Initialize the logging configuration for the graphlab/sframe package. This does not
+    affect the logging config of root or other modules outside of graphlab/sframe.
+    """
+    # Package level logger
+    logging.config.dictConfig({
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'standard': {
+                'format': '%(asctime)s [%(levelname)s] %(name)s, %(lineno)s: %(message)s'
+            },
+            'brief': {
+                'format': '[%(levelname)s] %(name)s: %(message)s'
+            }
         },
-        'brief': {
-            # XXX: temp!
-            'format': '%(asctime)s [%(levelname)s] %(name)s, %(lineno)s: %(message)s'
-            #'format': '[%(levelname)s] %(message)s'
-        }
-    },
-    'handlers': {
-        'default': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'brief'
+        'handlers': {
+            'default': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'brief'
+            },
+            'file': {
+                'class': 'logging.FileHandler',
+                'formatter': 'standard',
+                'filename': client_log_file,
+                'encoding': 'UTF-8',
+                'delay': 'False',
+            }
         },
-        'file': {
-            'class':'logging.FileHandler',
-            'formatter':'standard',
-            'filename':client_log_file,
-            'encoding': 'UTF-8',
-            'delay': 'False',
+        'loggers': {
+            root_package_name: {
+                'handlers': ['default', 'file'],
+                'propagate': 'True'
+            }
         }
-    },
-    'loggers': {
-        '': {
-            'handlers': ['default', 'file'],
-            'propagate': 'True'
-        }
-    }
-})
+    })
 
-# Set module specific log levels
-logging.getLogger('librato').setLevel(logging.CRITICAL)
-logging.getLogger('requests').setLevel(logging.CRITICAL)
-if _i_am_a_lambda_worker():
-    logging.getLogger(root_package_name).setLevel(logging.WARNING)
-    logging.getLogger(__name__).setLevel(logging.WARNING)
-else:
-    logging.getLogger(root_package_name).setLevel(logging.INFO)
-    logging.getLogger(__name__).setLevel(logging.INFO)
+    # Set module specific log levels
+    logging.getLogger('librato').setLevel(logging.CRITICAL)
+    logging.getLogger('requests').setLevel(logging.CRITICAL)
+    if _i_am_a_lambda_worker():
+        logging.getLogger(root_package_name).setLevel(logging.WARNING)
+    else:
+        logging.getLogger(root_package_name).setLevel(logging.INFO)
 
-#amend the logging configuration with a handler streaming to a message queue
 
-q = queue(-1)
-ql = MutableQueueListener(q)
-
-qh = QueueHandler(q)
-logging.root.addHandler(qh)
-
-ql.start()
-
-def stop_queue_listener():
-    ql.stop()
-
-def _attach_log_handler(handler):
-    ql.addHandler(handler)
-
-def _detach_log_handler(handler):
-    ql.removeHandler(handler)
-
+# Let's call init_logger on import
+init_logger()
 
 
 def _convert_slashes(path):
@@ -391,97 +369,7 @@ def set_runtime_config(name, value):
     of performance tuning constants may also change as improved algorithms
     are developed and implemented.
 
-    **Basic Configuration Variables**
-
-    - *GRAPHLAB_CACHE_FILE_LOCATIONS*
-     The directory in which intermediate SFrames/SArray are stored.
-     For instance "/var/tmp".  Multiple directories can be specified separated
-     by a colon (ex: "/var/tmp:/tmp") in which case intermediate SFrames will
-     be striped across both directories (useful for specifying multiple disks).
-     Defaults to /var/tmp if the directory exists, /tmp otherwise.
-
-    - *GRAPHLAB_FILEIO_MAXIMUM_CACHE_CAPACITY*
-     The maximum amount of memory which will be occupied by *all* intermediate
-     SFrames/SArrays. Once this limit is exceeded, SFrames/SArrays will be
-     flushed out to temporary storage (as specified by
-     `GRAPHLAB_CACHE_FILE_LOCATIONS`). On large systems increasing this as well
-     as `GRAPHLAB_FILEIO_MAXIMUM_CACHE_CAPACITY_PER_FILE` can improve performance
-     significantly. Defaults to 2147483648 bytes (2GB).
-
-    - *GRAPHLAB_FILEIO_MAXIMUM_CACHE_CAPACITY_PER_FILE*
-     The maximum amount of memory which will be occupied by any individual
-     intermediate SFrame/SArray. Once this limit is exceeded, the
-     SFrame/SArray will be flushed out to temporary storage (as specified by
-     `GRAPHLAB_CACHE_FILE_LOCATIONS`). On large systems, increasing this as well
-     as `GRAPHLAB_FILEIO_MAXIMUM_CACHE_CAPACITY` can improve performance
-     significantly for large SFrames. Defaults to 134217728 bytes (128MB).
-
-    **SSL Configuration**
-    - *GRAPHLAB_FILEIO_ALTERNATIVE_SSL_CERT_FILE*
-     The location of an SSL certificate file used to validate HTTPS / S3
-     connections. Defaults to the the Python certifi package certificates.
-
-    - *GRAPHLAB_FILEIO_ALTERNATIVE_SSL_CERT_DIR*
-     The location of an SSL certificate directory used to validate HTTPS / S3
-     connections. Defaults to the operating system certificates.
-
-    - *GRAPHLAB_FILEIO_INSECURE_SSL_CERTIFICATE_CHECKS*
-     If set to a non-zero value, disables all SSL certificate validation.
-     Defaults to False.
-
-    **ODBC Configuration**
-
-    - *GRAPHLAB_LIBODBC_PREFIX*
-     A directory containing libodbc.so. Also see :func:`graphlab.set_libodbc_path`
-     and :func:`graphlab.connect_odbc`
-
-    - *GRAPHLAB_ODBC_BUFFER_MAX_ROWS*
-     The number of rows to read from ODBC in each batch. Increasing this
-     may give better performance at increased memory consumption. Defaults to
-     2000.
-
-    - *GRAPHLAB_ODBC_BUFFER_SIZE*
-     The maximum ODBC buffer size in bytes when reading. Increasing this may
-     give better performance at increased memory consumption. Defaults to 3GB.
-
-    **Sort Performance Configuration**
-
-    - *GRAPHLAB_SFRAME_SORT_PIVOT_ESTIMATION_SAMPLE_SIZE*
-     The number of random rows to sample from the SFrame to estimate the
-     sort pivots used to partition the sort. Defaults to 2000000.
-
-    - *GRAPHLAB_SFRAME_SORT_BUFFER_SIZE*
-     The maximum estimated memory consumption sort is allowed to use. Increasing
-     this will increase the size of each sort partition, and will increase
-     performance with increased memory consumption. Defaults to 2GB.
-
-    **Join Performance Configuration**
-
-    - *GRAPHLAB_SFRAME_JOIN_BUFFER_NUM_CELLS*
-     The maximum number of cells to buffer in memory. Increasing this will
-     increase the size of each join partition and will increase performance
-     with increased memory consumption.
-     If you have very large cells (very long strings for instance),
-     decreasing this value will help decrease memory consumption.
-     Defaults to 52428800.
-
-    **Groupby Aggregate Performance Configuration**
-
-    - *GRAPHLAB_SFRAME_GROUPBY_BUFFER_NUM_ROWS*
-     The number of groupby keys cached in memory. Increasing this will increase
-     performance with increased memory consumption. Defaults to 1048576.
-
-    **Advanced Configuration Variables**
-
-    - *GRAPHLAB_SFRAME_FILE_HANDLE_POOL_SIZE*
-     The maximum number of file handles to use when reading SFrames/SArrays.
-     Once this limit is exceeded, file handles will be recycled, reducing
-     performance. This limit should be rarely approached by most SFrame/SArray
-     operations. Large SGraphs however may create a large a number of SFrames
-     in which case increasing this limit may improve performance (You may
-     also need to increase the system file handle limit with "ulimit -n").
-     Defaults to 128.
-
+    Parameters
     ----------
     name: A string referring to runtime configuration variable.
 
@@ -496,6 +384,92 @@ def set_runtime_config(name, value):
     A RuntimeError if the key does not exist, or if the value cannot be
     changed to the requested value.
 
+    Notes
+    -----
+    **Basic Configuration Variables**
+
+    *GRAPHLAB_CACHE_FILE_LOCATIONS*: The directory in which intermediate
+    SFrames/SArray are stored.  For instance "/var/tmp".  Multiple directories
+    can be specified separated by a colon (ex: "/var/tmp:/tmp") in which case
+    intermediate SFrames will be striped across both directories (useful for
+    specifying multiple disks).  Defaults to /var/tmp if the directory exists,
+    /tmp otherwise.
+
+    *GRAPHLAB_FILEIO_MAXIMUM_CACHE_CAPACITY*: The maximum amount of memory which
+    will be occupied by *all* intermediate SFrames/SArrays. Once this limit is
+    exceeded, SFrames/SArrays will be flushed out to temporary storage (as
+    specified by `GRAPHLAB_CACHE_FILE_LOCATIONS`). On large systems increasing
+    this as well as `GRAPHLAB_FILEIO_MAXIMUM_CACHE_CAPACITY_PER_FILE` can
+    improve performance significantly. Defaults to 2147483648 bytes (2GB).
+
+    *GRAPHLAB_FILEIO_MAXIMUM_CACHE_CAPACITY_PER_FILE*: The maximum amount of
+    memory which will be occupied by any individual intermediate SFrame/SArray.
+    Once this limit is exceeded, the SFrame/SArray will be flushed out to
+    temporary storage (as specified by `GRAPHLAB_CACHE_FILE_LOCATIONS`). On
+    large systems, increasing this as well as
+    `GRAPHLAB_FILEIO_MAXIMUM_CACHE_CAPACITY` can improve performance
+    significantly for large SFrames. Defaults to 134217728 bytes (128MB).
+
+    **SSL Configuration**
+
+    *GRAPHLAB_FILEIO_ALTERNATIVE_SSL_CERT_FILE*: The location of an SSL
+    certificate file used to validate HTTPS / S3 connections. Defaults to the
+    the Python certifi package certificates.
+
+    *GRAPHLAB_FILEIO_ALTERNATIVE_SSL_CERT_DIR*: The location of an SSL
+    certificate directory used to validate HTTPS / S3 connections. Defaults to
+    the operating system certificates.
+
+    *GRAPHLAB_FILEIO_INSECURE_SSL_CERTIFICATE_CHECKS*: If set to a non-zero
+    value, disables all SSL certificate validation.  Defaults to False.
+
+    **ODBC Configuration**
+
+    *GRAPHLAB_LIBODBC_PREFIX*: A directory containing libodbc.so. Also see
+    :func:`graphlab.set_libodbc_path` and :func:`graphlab.connect_odbc`
+
+    *GRAPHLAB_ODBC_BUFFER_MAX_ROWS*: The number of rows to read from ODBC in
+    each batch. Increasing this may give better performance at increased memory
+    consumption. Defaults to 2000.
+
+    *GRAPHLAB_ODBC_BUFFER_SIZE*: The maximum ODBC buffer size in bytes when
+    reading. Increasing this may give better performance at increased memory
+    consumption. Defaults to 3GB.
+
+    **Sort Performance Configuration**
+
+    *GRAPHLAB_SFRAME_SORT_PIVOT_ESTIMATION_SAMPLE_SIZE*: The number of random
+    rows to sample from the SFrame to estimate the sort pivots used to
+    partition the sort. Defaults to 2000000.
+
+    *GRAPHLAB_SFRAME_SORT_BUFFER_SIZE*: The maximum estimated memory consumption
+    sort is allowed to use. Increasing this will increase the size of each sort
+    partition, and will increase performance with increased memory consumption.
+    Defaults to 2GB.
+
+    **Join Performance Configuration**
+
+    *GRAPHLAB_SFRAME_JOIN_BUFFER_NUM_CELLS*: The maximum number of cells to
+    buffer in memory. Increasing this will increase the size of each join
+    partition and will increase performance with increased memory consumption.
+    If you have very large cells (very long strings for instance), decreasing
+    this value will help decrease memory consumption.  Defaults to 52428800.
+
+    **Groupby Aggregate Performance Configuration**
+
+    *GRAPHLAB_SFRAME_GROUPBY_BUFFER_NUM_ROWS*: The number of groupby keys cached
+    in memory. Increasing this will increase performance with increased memory
+    consumption. Defaults to 1048576.
+
+    **Advanced Configuration Variables**
+
+    *GRAPHLAB_SFRAME_FILE_HANDLE_POOL_SIZE*: The maximum number of file handles
+    to use when reading SFrames/SArrays.  Once this limit is exceeded, file
+    handles will be recycled, reducing performance. This limit should be rarely
+    approached by most SFrame/SArray operations. Large SGraphs however may
+    create a large a number of SFrames in which case increasing this limit may
+    improve performance (You may also need to increase the system file handle
+    limit with "ulimit -n").  Defaults to 128.
     """
     from ..connect import main as _glconnect
     unity = _glconnect.get_unity()

@@ -1316,9 +1316,9 @@ std::shared_ptr<unity_sarray_base> unity_sarray::lazy_astype(flex_type_enum dtyp
       }
       return ret;
     };
-    auto ret = transform_lambda(transform_fn, 
+    auto ret = transform_lambda(transform_fn,
                                 dtype,
-                                true /*skip undefined*/, 
+                                true /*skip undefined*/,
                                 0 /*random seed*/);
     return ret;
   } else {
@@ -1468,14 +1468,14 @@ std::shared_ptr<unity_sarray_base> unity_sarray::scalar_operator(flexible_type o
   //  - Or if the other scalar value is undefined.
   bool op_is_equality_compare = (op == "==" || op == "!=" || op == "in");
   if (other.get_type() == flex_type_enum::UNDEFINED || op_is_equality_compare) {
-    auto transformfn =  
+    auto transformfn =
         [=](const flexible_type& f)->flexible_type {
           return right_operator ? binaryfn(other, f) : binaryfn(f, other);
         };
 
-    return transform_lambda(transformfn, 
+    return transform_lambda(transformfn,
                             output_type,
-                            false/*skip undefined*/, 
+                            false/*skip undefined*/,
                             0 /*random seed*/);
   } else {
     auto transformfn = [=](const flexible_type& f)->flexible_type {
@@ -1489,7 +1489,7 @@ std::shared_ptr<unity_sarray_base> unity_sarray::scalar_operator(flexible_type o
                             output_type,
                             true /*skip undefined*/, 
                             0 /*random seed*/);
-  } 
+  }
 
   return ret_unity_sarray;
 }
@@ -2572,7 +2572,7 @@ std::shared_ptr<unity_sarray_base> unity_sarray::subslice(flexible_type start,
       }, dtype, skip_undefined, seed);
 }
 
-std::shared_ptr<unity_sarray_base> 
+std::shared_ptr<unity_sarray_base>
 unity_sarray::ternary_operator(std::shared_ptr<unity_sarray_base> is_true_,
                                std::shared_ptr<unity_sarray_base> is_false_) {
 
@@ -2583,7 +2583,7 @@ unity_sarray::ternary_operator(std::shared_ptr<unity_sarray_base> is_true_,
 
   auto equal_length = query_eval::planner().test_equal_length(this->get_planner_node(),
                                                               is_true->get_planner_node());
-  
+
   if (!equal_length) {
     log_and_throw("Condition SArray must be of the same length as the true result");
   }
@@ -2607,7 +2607,7 @@ unity_sarray::ternary_operator(std::shared_ptr<unity_sarray_base> is_true_,
   return ret;
 }
 
-std::shared_ptr<unity_sarray_base> 
+std::shared_ptr<unity_sarray_base>
 unity_sarray::to_const(const flexible_type& value, flex_type_enum type) {
   // check type
   flexible_type converted_value(type);
@@ -2626,7 +2626,7 @@ unity_sarray::to_const(const flexible_type& value, flex_type_enum type) {
     return transform_lambda([=](const flexible_type&){ return converted_value; },
                            type,
                            false,
-                           0); 
+                           0);
   }
 }
 std::vector<flexible_type> unity_sarray::iterator_get_next(size_t len) {
@@ -2712,7 +2712,7 @@ unity_sarray::copy_range(size_t start, size_t step, size_t end) {
     auto current_node = this->get_planner_node();
     auto sliced_node = query_eval::planner().slice(current_node, start, end);
     // slice may partially materialize the node. Save it to avoid repeated materialization
-    m_planner_node = current_node; 
+    m_planner_node = current_node;
     ret->construct_from_planner_node(sliced_node);
     return ret;
   }

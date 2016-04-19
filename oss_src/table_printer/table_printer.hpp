@@ -295,6 +295,14 @@ class table_printer {
 
     _p(ss);
   }
+
+  // If it's time to print the next row.  This can avoid doing
+  // expensive things in an inner loop.
+  GL_HOT_INLINE
+  bool time_for_next_row() const {
+    double time_ms = lowres_tt.ms();
+    return (time_ms >= next_timed_print);
+  }
   
   /** Print a row associated with the progress of an algorithm, but
    *  print at most once a second. 
@@ -391,7 +399,7 @@ class table_printer {
 
   
   /** Returns the elapsed time since class creation.  This is the
-   * value used if progress_time() is passed in to print_row.
+   *  value used if progress_time() is passed in to print_row.
    */
   double elapsed_time() const;
 

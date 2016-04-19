@@ -35,11 +35,11 @@ struct operator_impl<planner_node_type::RANGE_NODE> : public query_operator {
   inline operator_impl(flex_int start, flex_int end)
   : m_start(start)
   , m_end(end)
-  { 
+  {
     ASSERT_LE(m_start, m_end);
   }
-  
-  
+
+
   inline std::shared_ptr<query_operator> clone() const {
     return std::make_shared<operator_impl>(m_start, m_end);
   }
@@ -78,7 +78,7 @@ struct operator_impl<planner_node_type::RANGE_NODE> : public query_operator {
     flex_int start = (flex_int)pnode->operator_parameters["start"];
     size_t begin_index = pnode->operator_parameters["begin_index"];
     size_t end_index = pnode->operator_parameters["end_index"];
-    return std::make_shared<operator_impl>(start + begin_index, 
+    return std::make_shared<operator_impl>(start + begin_index,
                                            start + end_index);
   }
 

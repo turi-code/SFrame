@@ -123,7 +123,7 @@ static inline void flip_bit(T& x, unsigned int bit, _ENABLE_IF_UINT(T))
  * \param n_bits Index of the bit to flip.
  */
 template <typename T>
-static inline T bit_mask(unsigned int n_bits, _ENABLE_IF_UINT(T)) {
+static inline T bit_mask(size_t n_bits, _ENABLE_IF_UINT(T)) {
   return (T(1) << n_bits) - 1;
 }
 
@@ -135,7 +135,7 @@ static inline T bit_mask(unsigned int n_bits, _ENABLE_IF_UINT(T)) {
  * \param index_end   End of interval.
  */
 template <typename T>
-static inline T bit_mask(unsigned int index_begin, unsigned int index_end, _ENABLE_IF_UINT(T)) {
+static inline T bit_mask(size_t index_begin, unsigned int index_end, _ENABLE_IF_UINT(T)) {
   return bit_mask<T>(index_begin) ^ bit_mask<T>(index_end);
 }
 

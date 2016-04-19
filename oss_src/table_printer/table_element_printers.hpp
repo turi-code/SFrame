@@ -11,6 +11,7 @@
 #include <flexible_type/flexible_type.hpp>
 #include <type_traits>
 #include <atomic>
+#include <parallel/atomic.hpp>
 
 namespace graphlab {
 

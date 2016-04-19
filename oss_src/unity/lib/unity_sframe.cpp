@@ -1377,7 +1377,7 @@ unity_sframe::copy_range(size_t start, size_t step, size_t end) {
     auto current_node = this->get_planner_node();
     auto sliced_node = query_eval::planner().slice(current_node, start, end);
     // slice may partially materialize the node. Save it to avoid repeated materialization
-    m_planner_node = current_node; 
+    m_planner_node = current_node;
     ret->construct_from_planner_node(sliced_node, this->column_names());
     return ret;
   }

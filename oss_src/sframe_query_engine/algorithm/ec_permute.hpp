@@ -31,7 +31,7 @@ namespace query_eval {
  * forward_map[i] of the returned sframe.
  *
  * \note The forward_map is not checked that it is a valid permutation
- * If the constraints is not met, either an exception will be thrown, or 
+ * If the constraints is not met, either an exception will be thrown, or
  * the result is ill-defined.
  */
 sframe permute_sframe(sframe &values_sframe,
@@ -40,4 +40,3 @@ sframe permute_sframe(sframe &values_sframe,
 } // graphlab
 
 #endif
-

@@ -87,7 +87,7 @@ flexible_type encode_image(const flexible_type& data);
 
 /** Reisze an sarray of flex_images with the new size.
  */
-flexible_type resize_image(const flexible_type& image, size_t resized_width, 
+flexible_type resize_image(const flexible_type& image, size_t resized_width,
     size_t resized_height, size_t resized_channel, bool decode = false);
 
 /** Resize an sarray of flex_image with the new size.

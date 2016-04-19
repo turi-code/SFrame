@@ -751,7 +751,7 @@ _inference_code_from_tr_code[FT_ARRAY_TYPE]              = FTI_VECTOR
 _inference_code_from_tr_code[FT_NONE_TYPE]               = FTI_NONE
 _inference_code_from_tr_code[FT_DATETIME_TYPE]           = FTI_DATETIME
 _inference_code_from_tr_code[FT_IMAGE_TYPE]              = FTI_IMAGE
-_inference_code_from_tr_code[FT_SAFE + FT_INT_TYPE]      = FTI_INTEGER
+_inference_code_from_tr_code[FT_SAFE + FT_INT_TYPE]      = 0
 _inference_code_from_tr_code[FT_SAFE + FT_FLOAT_TYPE]    = FTI_FLOAT
 _inference_code_from_tr_code[FT_SAFE + FT_STR_TYPE]      = FTI_STRING
 _inference_code_from_tr_code[FT_SAFE + FT_UNICODE_TYPE]  = FTI_STRING
@@ -790,8 +790,15 @@ cdef size_t _choose_inference_code(int tr_code, object v) except -2:
     if _infer_code != 0:
         return _infer_code
 
+    # Handle doubles and floats
+    if tr_code == (FT_INT_TYPE + FT_SAFE):
+        if v < -9223372036854775808 or v > 9223372036854775807:
+            return FTI_FLOAT
+        else:
+            return FTI_INTEGER
+
     # Handle safe casts of tuples and lists.
-    if tr_code == (FT_LIST_TYPE + FT_SAFE) and type(v) is not list:
+    elif tr_code == (FT_LIST_TYPE + FT_SAFE) and type(v) is not list:
         v = list(v)
         tr_code = FT_LIST_TYPE
     elif tr_code == (FT_TUPLE_TYPE + FT_SAFE) and type(v) is not tuple:
@@ -1391,7 +1398,19 @@ cdef flexible_type _ft_translate(object v, int tr_code) except *:
     
     # Now, versions of the above with a cast and/or check.
     elif tr_code == (FT_INT_TYPE + FT_SAFE):
-        ret.set_int(v)
+        try:
+            ret.set_int(v)
+        except OverflowError:
+
+            # Explicitly handle the maximum value that can fit in an
+            # int64_t, aka std::numeric_limits<int64_t>::max().
+            # Python puts this value into a long type, which causes
+            # the cast to C-long to fail even though it can still be
+            # represented in C.
+            if v == 9223372036854775808:
+                ret.set_int(9223372036854775808)
+            else:
+                ret.set_double(float(v))
         return ret
     elif tr_code == (FT_FLOAT_TYPE + FT_SAFE):
         if type(v) is timedelta_type:
@@ -1490,7 +1509,7 @@ cdef flexible_type flexible_type_from_pyobject_hint(object v, type t) except *:
         raise TypeError("Type '%s' not valid type hint." % str(t))
 
     cdef flexible_type ret
-    
+
     ret = _ft_translate(v, tr_code)
     return ret
 
@@ -1498,7 +1517,7 @@ def _check_ft_pyobject_hint_path(object v, type t):
     cdef flexible_type ft = flexible_type_from_pyobject_hint(v, t)
     assert ft.get_type() == flex_type_enum_from_pytype(t)
 
-    
+
 
 ################################################################################
 # Translation from various flexible types to the corresponding types.

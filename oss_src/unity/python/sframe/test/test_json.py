@@ -6,7 +6,7 @@ All rights reserved.
 This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
-from __future__ import print_function
+#from __future__ import print_function
 
 import array
 import datetime
@@ -74,13 +74,13 @@ class JSONTest(unittest.TestCase):
         # test that JSON serialization is invertible with respect to both
         # value and type.
         (data, schema) = _json.to_serializable(value)
-        print("----------------------------------")
-        print("Value: %s" % value)
-        print("Serializable Data: %s" % data)
-        print("Serializable Schema: %s" % schema)
+        #print("----------------------------------")
+        #print("Value: %s" % value)
+        #print("Serializable Data: %s" % data)
+        #print("Serializable Schema: %s" % schema)
         result = _json.from_serializable(data, schema)
-        print("Deserialized Result: %s" % result)
-        print("----------------------------------")
+        #print("Deserialized Result: %s" % result)
+        #print("----------------------------------")
         self._assertEquals(result, value)
         # test that JSON serialization gives expected result
         serialized = _json.dumps(value)

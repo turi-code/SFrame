@@ -2809,6 +2809,10 @@ class SFrameTest(unittest.TestCase):
         result = sf[sf['a'] > 10].sort('a', ascending = False)
         assert_frame_equal(reversed_sf[reversed_sf['a'] > 10].to_dataframe(), result.to_dataframe());
 
+        # lazy reversed
+        result = sf[sf['a'] > 10].sort('a', ascending = False)
+        assert_frame_equal(reversed_sf[reversed_sf['a'] > 10].to_dataframe(), result.to_dataframe());
+
         # sort two columns
         result = sf.sort(['a', 'b'])
         assert_frame_equal(sf.to_dataframe(), result.to_dataframe());
@@ -3312,7 +3316,7 @@ class SFrameTest(unittest.TestCase):
         g['b'] = g['a'] + 1
         g['b'].materialize()
         g.materialize()
-        
+
 if __name__ == "__main__":
 
     import sys

@@ -638,8 +638,8 @@ class sarray_group_format_writer_v2: public sarray_group_format_writer<T> {
   /**
    * Writes a collection of rows to a column
    */
-  void write_column(size_t columnid, 
-                    size_t segmentid, 
+  void write_column(size_t columnid,
+                    size_t segmentid,
                     const std::vector<T>& t) {
     DASSERT_LT(segmentid, m_nsegments);
     DASSERT_LT(columnid, m_column_buffers.size());
@@ -658,8 +658,8 @@ class sarray_group_format_writer_v2: public sarray_group_format_writer<T> {
   /**
    * Writes a collection of rows to a column
    */
-  void write_column(size_t columnid, 
-                    size_t segmentid, 
+  void write_column(size_t columnid,
+                    size_t segmentid,
                     std::vector<T>&& t) {
     DASSERT_LT(segmentid, m_nsegments);
     DASSERT_LT(columnid, m_column_buffers.size());

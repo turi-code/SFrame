@@ -41,7 +41,7 @@ class ternary_operator_test: public CxxTest::TestSuite {
 
     std::vector<flexible_type> expected{0,2,0,2,0};
     auto node = make_node(op_sarray_source(sa_condition),
-                          op_sarray_source(sa_true), 
+                          op_sarray_source(sa_true),
                           op_sarray_source(sa_false));
     check_node(node, expected);
   }

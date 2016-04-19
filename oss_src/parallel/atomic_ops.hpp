@@ -269,6 +269,16 @@ namespace graphlab {
     }
   }
 
+
+  /**  Atomically increments the value.  Equivalent to value += increment;
+    */
+  template<typename T>
+  void atomic_increment(T& value, int increment = 1) {
+    __sync_fetch_and_add(&value, increment);
+  }
+
+
+
 }
 #endif
 

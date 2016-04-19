@@ -154,5 +154,16 @@ class hash_function_test : public CxxTest::TestSuite {
       DASSERT_EQ(i, long(reverse_index_hash(index_hash(size_t(i)))));
     }
   }  
+
+  void test_hash64_cutoff() {
+    // Test the reversable hash functions.
+    DASSERT_EQ(std::numeric_limits<uint64_t>::max(), hash64_proportion_cutoff(1));
+
+    for(size_t i = 0; i < 10000; ++i) {
+      double prop = (double(i) / 10000);
+
+      DASSERT_DELTA(prop, hash64_proportion_cutoff(prop) / std::numeric_limits<uint64_t>::max(), 1e-6);
+    }
+  }
   
 };

@@ -223,7 +223,7 @@ int request_socket::send_and_retry(size_t id, size_t max_retry,
   size_t failure_counter = 0;
   
   if (msgs.size() == 0) {
-    logstream(LOG_ERROR) << "request socket error: Attempting to send 0 length message" 
+    logstream(LOG_ERROR) << "request socket error: Attempting to send 0 length message"
                          << std::endl;
     assert(msgs.size() > 0);
   } 

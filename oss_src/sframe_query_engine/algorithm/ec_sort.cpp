@@ -49,12 +49,12 @@ std::shared_ptr<sframe> ec_sort(
   ASSERT_GE(num_rows, 0);
   // fast path for 0 rows.
   // fast path for no value columns
-  if (num_rows == 0 || 
+  if (num_rows == 0 ||
       key_column_indices.size() == column_names.size()) {
-    return sort(sframe_planner_node, column_names, 
+    return sort(sframe_planner_node, column_names,
                 key_column_indices, sort_orders);
   }
-  
+
   // key columns
   auto key_columns = op_project::make_planner_node(sframe_planner_node, key_column_indices);
   std::vector<std::string> key_column_names;
@@ -62,7 +62,7 @@ std::shared_ptr<sframe> ec_sort(
                  [&](size_t i) {
                    key_column_names.push_back(column_names[i]);
                  });
-  std::set<size_t> key_column_indices_set(key_column_indices.begin(), 
+  std::set<size_t> key_column_indices_set(key_column_indices.begin(),
                                           key_column_indices.end());
   size_t num_key_columns = key_column_indices.size();
 
@@ -72,7 +72,7 @@ std::shared_ptr<sframe> ec_sort(
   for (size_t i = 0 ;i < num_columns; ++i) {
     if (key_column_indices_set.count(i) == 0) value_column_indices.push_back(i);
   }
-  auto value_columns = 
+  auto value_columns =
       op_project::make_planner_node(sframe_planner_node, value_column_indices);
   std::for_each(value_column_indices.begin(), value_column_indices.end(),
                  [&](size_t i) {
@@ -80,7 +80,7 @@ std::shared_ptr<sframe> ec_sort(
                  });
   std::vector<flex_type_enum> value_column_types = infer_planner_node_type(value_columns);
   {
-    std::set<flex_type_enum> value_column_type_set(value_column_types.begin(), 
+    std::set<flex_type_enum> value_column_type_set(value_column_types.begin(),
                                                    value_column_types.end());
     // remove all the definitely small value types
     value_column_type_set.erase(flex_type_enum::INTEGER);
@@ -91,14 +91,14 @@ std::shared_ptr<sframe> ec_sort(
     // TODO: yes 20 is a magic number.
     // On my Mac laptop this seems to roughly be the change over point.
     if (value_column_types.size() < 20 && value_column_type_set.size() == 0) {
-      return sort(sframe_planner_node, column_names, 
+      return sort(sframe_planner_node, column_names,
                   key_column_indices, sort_orders);
     }
   }
 
   // Forward Map Generation
   // ----------------------
-  // 
+  //
   // - A set of row numbers are added to the key columns, and the key
   // columns are sorted. And then dropped. This gives the inverse map.
   // (i.e. x[i] = j implies output row i is read from input row j)
@@ -106,7 +106,7 @@ std::shared_ptr<sframe> ec_sort(
   // of row numbers. This gives the forward map (i.e. y[i] = j implies
   // input row i is written to output row j)
   // - (In SFrame pseudocode:
-  // 
+  //
   //     B = A[['key']].add_row_number('r1').sort('key')
   //     inverse_map = B['r1'] # we don't need this
   //     C = B.add_row_number('r2').sort('r1')
@@ -143,7 +143,7 @@ std::shared_ptr<sframe> ec_sort(
     // when constructing the final SFrame
     sorted_key_columns = planner().materialize(
         op_project::make_planner_node(
-            op_sframe_source::make_planner_node(*B), 
+            op_sframe_source::make_planner_node(*B),
             forward_map_sort1_column_indices));
     ASSERT_EQ(sorted_key_columns.num_columns(), num_key_columns);
 
@@ -179,7 +179,7 @@ std::shared_ptr<sframe> ec_sort(
   for (size_t i = 0;i < sorted_values_sframe.num_columns(); ++i) {
     final_name_to_column[value_column_names[i]] = sorted_values_sframe.select_column(i);
   }
-  
+
   for (size_t i = 0;i  < num_columns; ++i) {
     ASSERT_TRUE(final_name_to_column.count(column_names[i]) > 0);
     final_sframe_columns[i] = final_name_to_column[column_names[i]];

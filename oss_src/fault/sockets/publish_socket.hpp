@@ -11,7 +11,7 @@
 #include <vector>
 #include <set>
 #include <zmq.h>
-#include <boost/thread/mutex.hpp>
+#include <mutex>
 #include <fault/zmq/zmq_msg_vector.hpp>
 #include <export.hpp>
 namespace graphlab { 
@@ -104,6 +104,7 @@ class EXPORT publish_socket {
   void* z_ctx;
   void* z_socket;
   graphlab::zookeeper_util::key_value* zk_keyval;
+  std::mutex z_mutex;
   std::string local_address;
   std::set<std::string> registered_keys;
 };

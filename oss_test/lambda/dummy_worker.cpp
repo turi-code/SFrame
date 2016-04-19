@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
   if(use_fallback != nullptr && std::string(use_fallback) == "1") {
     libfault::FORCE_IPC_TO_TCP_FALLBACK = true;
   }
-  
+
   size_t parent_pid = get_parent_pid();
   // Options
   std::string program_name = argv[0];

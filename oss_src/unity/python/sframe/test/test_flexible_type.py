@@ -45,7 +45,9 @@ IntegerValue = (
                          + [np.bool, bool, np.bool_])])
 special_types.add(id(IntegerValue))
 
-FloatValue = [float(0)] + [_dt(0) for _dt in np.sctypes['float']]
+# 2**63 and -2**63-1 are not representable by a C int64_t, so it's
+# treated as a float.
+FloatValue = [float(0)] + [_dt(0) for _dt in np.sctypes['float']] + [2**63, -2**63 - 1]
 special_types.add(id(FloatValue))
 
 StringValue = ([str('bork'), unicode('bork'), b'bork', b'']
@@ -519,9 +521,7 @@ class FlexibleTypeTest(unittest.TestCase):
         _check_ft_pyobject_hint_path([], list)
         _check_ft_pyobject_hint_path([1], list)
         _check_ft_pyobject_hint_path((1,2), list)
-        
+
         _check_ft_pyobject_hint_path({1:1}, dict)
         _check_ft_pyobject_hint_path(array.array('i', [1,2]), array.array)
         _check_ft_pyobject_hint_path(array.array('d', [1,2]), array.array)
-        
-                    

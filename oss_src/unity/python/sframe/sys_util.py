@@ -449,7 +449,7 @@ def get_library_name():
     this file is bundled with.
     """
     from os.path import split, abspath
-    
+
     __lib_name = split(split(abspath(sys.modules[__name__].__file__))[0])[1]
 
     assert __lib_name in ["sframe", "graphlab"]
@@ -490,7 +490,7 @@ def setup_environment_from_config_file():
     """
 
     from os.path import exists
-    
+
     config_file = get_config_file()
 
     if not exists(config_file):
@@ -514,7 +514,7 @@ def setup_environment_from_config_file():
                           % (k, str(v), config_file, str(e)) )
     except Exception as e:
         print("WARNING: Error reading config file '%s': %s." % (config_file, str(e)))
-                      
+
 
 def write_config_file_value(key, value):
     """
@@ -531,12 +531,11 @@ def write_config_file_value(key, value):
     config.read(filename)
 
     __section = "Environment"
-    
+
     if not(config.has_section(__section)):
         config.add_section(__section)
-        
+
     config.set(__section, key, value)
 
     with open(filename, 'w') as config_file:
         config.write(config_file)
-    

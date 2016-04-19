@@ -183,7 +183,7 @@ std::unique_ptr<worker_process<ProxyType>> spawn_worker(std::vector<std::string>
     // Exit if we are out of time.
     if(LAMBDA_WORKER_CONNECTION_TIMEOUT >= 0
        && (conn_timer.current_time() >= LAMBDA_WORKER_CONNECTION_TIMEOUT)) {
-      
+
       logstream(LOG_ERROR)
          << "Timeout connecting to lambda worker process" << new_process->get_pid()
          << "; conn attempt time = " << conn_timer.current_time()
