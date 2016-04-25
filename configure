@@ -132,7 +132,7 @@ if [ -e deps/local/bin/cc ]; then
 fi
 
 if [[ $python35 == 1 && $python3 ]]; then
-    echo "Two version of Python specified. Pick one."
+    echo "Two versions of Python specified. Pick one."
     exit 1
 fi
 
