@@ -27,7 +27,11 @@ void check_operation_feasibility(flex_type_enum left,
       }
     }
   } else if (op == "+" || op == "-" || op == "*" || op == "/") {
-    operation_is_feasible = flex_type_has_binary_op(left, right, op[0]);
+    if (left == flex_type_enum::DATETIME && right == flex_type_enum::DATETIME && op == "-") {
+      operation_is_feasible = true;
+    } else {
+      operation_is_feasible = flex_type_has_binary_op(left, right, op[0]);
+    }
   } else if (op == "%") {
     operation_is_feasible = left == flex_type_enum::INTEGER &&
                             right == flex_type_enum::INTEGER;
@@ -77,6 +81,8 @@ flex_type_enum get_output_type(flex_type_enum left,
   } else if (op == "+" || op == "-" || op == "*") {
     if (left == flex_type_enum::INTEGER && right == flex_type_enum::FLOAT) {
       // operations against float always returns float
+      return flex_type_enum::FLOAT;
+    } else if (left == flex_type_enum::DATETIME && right == flex_type_enum::DATETIME && op == "-") {
       return flex_type_enum::FLOAT;
     } else {
       // otherwise we take the type on the left hand side
@@ -146,6 +152,12 @@ get_binary_operator(flex_type_enum left, flex_type_enum right, std::string op) {
       // integer - float is float
       return [](const flexible_type& l, const flexible_type& r)->flexible_type{
         return (flex_float)l - (flex_float)r;
+      };
+    } else if (left == flex_type_enum::DATETIME && right == flex_type_enum::DATETIME) {
+      // integer - float is float
+      return [](const flexible_type& l, const flexible_type& r)->flexible_type{
+        return l.get<flex_date_time>().microsecond_res_timestamp() -
+               r.get<flex_date_time>().microsecond_res_timestamp();
       };
     } else if (left == flex_type_enum::VECTOR && right == flex_type_enum::VECTOR) {
      return [](const flexible_type& l, const flexible_type& r)->flexible_type{
@@ -257,7 +269,12 @@ get_binary_operator(flex_type_enum left, flex_type_enum right, std::string op) {
     } else {
       // std::pow always returns floats
       return [](const flexible_type& l, const flexible_type& r)->flexible_type{
-        return std::pow((flex_float)l, (flex_float)r);
+        flex_float rd = (flex_float)r;
+        if (rd == 0.5) {
+          return std::sqrt((flex_float)l);
+        } else {
+          return std::pow((flex_float)l, (flex_float)r);
+        }
       };
     }
 /**************************************************************************/

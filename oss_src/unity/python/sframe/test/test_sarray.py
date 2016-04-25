@@ -631,16 +631,16 @@ class SArrayTest(unittest.TestCase):
 
         # test standard tail
         s = SArray([x for x in range(0,40)], int)
-        self.assertEqual(s.tail(), [x for x in range(30,40)])
+        self.assertEqual(list(s.tail()), [x for x in range(30,40)])
 
         # smaller amount
-        self.assertEqual(s.tail(3), [x for x in range(37,40)])
+        self.assertEqual(list(s.tail(3)), [x for x in range(37,40)])
 
         # larger amount
-        self.assertEqual(s.tail(40), [x for x in range(0,40)])
+        self.assertEqual(list(s.tail(40)), [x for x in range(0,40)])
 
         # too large
-        self.assertEqual(s.tail(81), [x for x in range(0,40)])
+        self.assertEqual(list(s.tail(81)), [x for x in range(0,40)])
 
     def test_max_min_sum_mean(self):
         # negative and positive
@@ -737,13 +737,13 @@ class SArrayTest(unittest.TestCase):
         s = SArray([], int)
         self.assertEqual(len(s), 0)
         self.assertEqual(str(s), '[]')
-        self.assertEqual(bool(s), False)
+        self.assertRaises(ValueError, lambda: bool(s))
 
         # increasing ints
         s = SArray(self.int_data, int)
         self.assertEqual(len(s), len(self.int_data))
         self.assertEqual(list(s), self.int_data)
-        self.assertEqual(bool(s), True)
+        self.assertRaises(ValueError, lambda: bool(s))
 
         realsum = sum(self.int_data)
         sum1 = sum([x for x in s])
@@ -772,6 +772,7 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(t / 2, list(s / 2.0), float)
         self.__test_equal(t * 2, list(s * 2), int)
         self.__test_equal(t ** 2, list(s ** 2), float)
+        self.__test_equal(t ** 0.5, list(s ** 0.5), float)
         self.__test_equal(((t ** 2) ** 0.5 + 1e-8).astype(int), list(s), int)
         self.__test_equal(t < 5, list(s < 5), int)
         self.__test_equal(t > 5, list(s > 5), int)
@@ -820,6 +821,7 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(t / t2, list(s.astype(float) / s2), float)
         self.__test_equal(t * t2, list(s * s2), int)
         self.__test_equal(t ** t2, list(s ** s2), float)
+        self.__test_equal(t ** (1.0 / t2), list(s ** (1.0 / s2)), float)
         self.__test_equal(t > t2, list(s > s2), int)
         self.__test_equal(t <= t2, list(s <= s2), int)
         self.__test_equal(t >= t2, list(s >= s2), int)
@@ -920,7 +922,7 @@ class SArrayTest(unittest.TestCase):
         sa_sample = sa.sample(.5, 9)
         sa_sample2 = sa.sample(.5, 9)
 
-        self.assertEqual(sa_sample.head(), sa_sample2.head())
+        self.assertEqual(list(sa_sample.head()), list(sa_sample2.head()))
 
         for i in sa_sample:
             self.assertTrue(i in self.int_data)
@@ -1154,13 +1156,13 @@ class SArrayTest(unittest.TestCase):
         # self.dict_data =  [{str(i): i, i : float(i)} for i in self.int_data]
         sa = SArray(self.dict_data)
         sa_keys = sa.dict_keys()
-        self.assertEquals(sa_keys, [str(i) for i in self.int_data])
+        self.assertEquals([set(i) for i in sa_keys], [{str(i), i} for i in self.int_data])
 
         # na value
         d = [{'a': 1}, {None: 2}, {"b": None}, None]
         sa = SArray(d)
         sa_keys = sa.dict_keys()
-        self.assertEquals(sa_keys, [['a'], [None], ['b'], None])
+        self.assertEquals(list(sa_keys), [['a'], [None], ['b'], None])
 
         #empty SArray
         sa = SArray()
@@ -1175,13 +1177,13 @@ class SArrayTest(unittest.TestCase):
         # self.dict_data =  [{str(i): i, i : float(i)} for i in self.int_data]
         sa = SArray(self.dict_data)
         sa_values = sa.dict_values()
-        self.assertEquals(sa_values, [[i, float(i)] for i in self.int_data])
+        self.assertEquals(list(sa_values), [[i, float(i)] for i in self.int_data])
 
         # na value
         d = [{'a': 1}, {None: 'str'}, {"b": None}, None]
         sa = SArray(d)
         sa_values = sa.dict_values()
-        self.assertEquals(sa_values, [[1], ['str'], [None], None])
+        self.assertEquals(list(sa_values), [[1], ['str'], [None], None])
 
         #empty SArray
         sa = SArray()
@@ -1197,7 +1199,7 @@ class SArrayTest(unittest.TestCase):
         d = [{'a':1, 'b': [1,2]}, {None: 'str'}, {"b": None, "c": 1}, None]
         sa = SArray(d)
         sa_values = sa.dict_trim_by_keys(['a', 'b'])
-        self.assertEquals(sa_values, [{}, {None: 'str'}, {"c": 1}, None])
+        self.assertEquals(list(sa_values), [{}, {None: 'str'}, {"c": 1}, None])
 
         #empty SArray
         sa = SArray()
@@ -1212,19 +1214,19 @@ class SArrayTest(unittest.TestCase):
         d = [{'a':1, 'b': 20, 'c':None}, {"b": 4, None: 5}, None]
         sa = SArray(d)
         sa_values = sa.dict_trim_by_values(5,10)
-        self.assertEquals(sa_values, [{'b': 20, 'c':None}, {None:5}, None])
+        self.assertEquals(list(sa_values), [{'c':None}, {None:5}, None])
 
         # no upper key
         sa_values = sa.dict_trim_by_values(2)
-        self.assertEquals(sa_values, [{'b': 20}, {"b": 4, None:5}, None])
+        self.assertEquals(list(sa_values), [{'b': 20, 'c':None}, {"b": 4, None:5}, None])
 
         # no param
         sa_values = sa.dict_trim_by_values()
-        self.assertEquals(sa_values, [{'a':1, 'b': 20, 'c':None}, {"b": 4, None: 5}, None])
+        self.assertEquals(list(sa_values), [{'a':1, 'b': 20, 'c':None}, {"b": 4, None: 5}, None])
 
         # no lower key
         sa_values = sa.dict_trim_by_values(upper=7)
-        self.assertEquals(sa_values, [{'a':1, 'c':None}, {"b": 4, None: 1}, None])
+        self.assertEquals(list(sa_values), [{'a':1, 'c':None}, {"b": 4, None: 5}, None])
 
         #empty SArray
         sa = SArray()
@@ -1238,17 +1240,17 @@ class SArrayTest(unittest.TestCase):
         d = [{'a':1, 'b': 20, 'c':None}, {"b": 4, None: 5}, None, {'a':0}]
         sa = SArray(d)
         sa_values = sa.dict_has_any_keys([])
-        self.assertEquals(sa_values, [0,0,0,0])
+        self.assertEquals(list(sa_values), [0,0,None,0])
 
         sa_values = sa.dict_has_any_keys(['a'])
-        self.assertEquals(sa_values, [1,0,0,1])
+        self.assertEquals(list(sa_values), [1,0,None,1])
 
         # one value is auto convert to list
         sa_values = sa.dict_has_any_keys("a")
-        self.assertEquals(sa_values, [1,0,0,1])
+        self.assertEquals(list(sa_values), [1,0,None,1])
 
         sa_values = sa.dict_has_any_keys(['a', 'b'])
-        self.assertEquals(sa_values, [1,1,0,1])
+        self.assertEquals(list(sa_values), [1,1,None,1])
 
         with self.assertRaises(TypeError):
             sa.dict_has_any_keys()
@@ -1265,20 +1267,20 @@ class SArrayTest(unittest.TestCase):
         d = [{'a':1, 'b': 20, 'c':None}, {"b": 4, None: 5}, None, {'a':0}]
         sa = SArray(d)
         sa_values = sa.dict_has_all_keys([])
-        self.assertEquals(sa_values, [1,1,0,1])
+        self.assertEquals(list(sa_values), [1,1,None,1])
 
         sa_values = sa.dict_has_all_keys(['a'])
-        self.assertEquals(sa_values, [1,0,0,1])
+        self.assertEquals(list(sa_values), [1,0,None,1])
 
         # one value is auto convert to list
         sa_values = sa.dict_has_all_keys("a")
-        self.assertEquals(sa_values, [1,0,0,1])
+        self.assertEquals(list(sa_values), [1,0,None,1])
 
         sa_values = sa.dict_has_all_keys(['a', 'b'])
-        self.assertEquals(sa_values, [1,0,0,0])
+        self.assertEquals(list(sa_values), [1,0,None,0])
 
         sa_values = sa.dict_has_all_keys([None, "b"])
-        self.assertEquals(sa_values, [0,1,0,0])
+        self.assertEquals(list(sa_values), [0,1,None,0])
 
         with self.assertRaises(TypeError):
             sa.dict_has_all_keys()
@@ -1443,9 +1445,9 @@ class SArrayTest(unittest.TestCase):
         ascending = SArray([1,1,2,3,4,5])
         descending = SArray([5,4,3,2,1,1])
         result = test.sort()
-        self.assertEqual(result, ascending)
+        self.assertEqual(list(result), list(ascending))
         result = test.sort(ascending = False)
-        self.assertEqual(result, descending)
+        self.assertEqual(list(result), list(descending))
 
         with self.assertRaises(TypeError):
             SArray([[1,2], [2,3]]).sort()
@@ -1508,6 +1510,18 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(ret['X.weekday'] , [1, 1, None], int)
         self.__test_equal(ret['X.isoweekday'] , [2, 2, None], int)
         self.__test_equal(ret['X.tmweekday'] , [2, 2, None], int)
+
+    def test_datetime_difference(self):
+        sa = SArray(self.datetime_data)
+        sa2 = SArray(self.datetime_data2)
+        res = sa2 - sa
+        expected = [float(x.microsecond) / 1000000.0 if x is not None else x for x in self.datetime_data2]
+        self.assertEqual(len(res), len(expected))
+        for i in range(len(res)):
+            if res[i] == None:
+                self.assertEqual(res[i], expected[i])
+            else:
+                self.assertAlmostEqual(res[i], expected[i], places=6)
 
     def test_datetime_lambda(self):
         data = [dt.datetime(2013, 5, 7, 10, 4, 10, 109321),

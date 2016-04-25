@@ -656,7 +656,8 @@ class SArray(object):
         """
         Returns true if the array is not empty.
         """
-        return self.size() != 0
+        # message copied from Numpy
+        raise ValueError("The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()")
 
     def __len__(self):
         """
