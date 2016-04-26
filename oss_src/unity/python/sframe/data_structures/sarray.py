@@ -709,13 +709,20 @@ class SArray(object):
 
     def contains(self, item):
         """
-        Performs an element-wise substring search of "item". The current
-        array must contains strings and item must be a string. Produces a 1
-        for each row if item is a substring of the row and 0 otherwise.
+        Performs an element-wise search of "item" in the SArray.
 
         Conceptually equivalent to:
 
         >>> sa.apply(lambda x: item in x)
+        
+        If the current SArray contains strings and item is a string. Produces a 1
+        for each row if 'item' is a substring of the row and 0 otherwise.
+
+        If the current SArray contains list or arrays, this produces a 1
+        for each row if 'item' is an element of the list or array.
+
+        If the current SArray contains dictionaries, this produces a 1
+        for each row if 'item' is a key in the dictionary.
 
         Parameters
         ----------
@@ -734,6 +741,14 @@ class SArray(object):
         dtype: int
         Rows: 3
         [1, 0, 0]
+        >>> SArray([['a','b'],['b','c'],['c','d']]).contains("b")
+        dtype: int
+        Rows: 3
+        [1, 1, 0]
+        >>> SArray([{'a':1},{'a':2,'b':1}, {'c':1}]).contains("a")
+        dtype: int
+        Rows: 3
+        [1, 1, 0]
         """
         return SArray(_proxy = self.__proxy__.left_scalar_operator(item, 'in'))
 

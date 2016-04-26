@@ -139,6 +139,23 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(sstr.contains("ll"), ["ll" in i for i in self.string_data], int)
         self.__test_equal(sstr.contains("a"), ["a" in i for i in self.string_data], int)
 
+        svec = SArray([[1.0,2.0],[2.0,3.0],[3.0,4.0],[4.0,5.0]], array.array)
+        self.__test_equal(svec.contains(1.0), [1,0,0,0], int)
+        self.__test_equal(svec.contains(0.0), [0,0,0,0], int)
+        self.__test_equal(svec.contains(2), [1,1,0,0], int)
+
+        slist = SArray([[1,"22"],[2,"33"],[3,"44"],[4,"55"]], list)
+        self.__test_equal(slist.contains(1.0), [1,0,0,0], int)
+        self.__test_equal(slist.contains(3), [0,0,1,0], int)
+        self.__test_equal(slist.contains("33"), [0,1,0,0], int)
+        self.__test_equal(slist.contains("3"), [0,0,0,0], int)
+
+        sdict = SArray([{1:"2"},{2:"3"},{3:"4"},{"4":"5"}], dict)
+        self.__test_equal(sdict.contains(1.0), [1,0,0,0], int)
+        self.__test_equal(sdict.contains(3), [0,0,1,0], int)
+        self.__test_equal(sdict.contains("4"), [0,0,0,1], int)
+        self.__test_equal(sdict.contains("3"), [0,0,0,0], int)
+
     def test_save_load(self):
         # Make sure these files don't exist before testing
         self._remove_sarray_files("intarr")
@@ -465,6 +482,18 @@ class SArrayTest(unittest.TestCase):
         s = SArray(["{1xyz:1a,2b:2}"])
         ret = list(s.astype(dict).head(1))
         self.assertEqual(ret, [{"1xyz":"1a","2b":2}])
+
+        # astype between list and array
+        s = SArray([array.array('d',[1.0,2.0]), array.array('d',[2.0,3.0])])
+        ret = list(s.astype(list))
+        self.assertEqual(ret, [[1.0, 2.0], [2.0,3.0]])
+        ret = list(s.astype(list).astype(array.array))
+        self.assertEqual(list(s), list(ret))
+        with self.assertRaises(RuntimeError):
+            ret = list(SArray([["a",1.0],["b",2.0]]).astype(array.array))
+
+        badcast = list(SArray([["a",1.0],["b",2.0]]).astype(array.array, undefined_on_failure=True))
+        self.assertEqual(badcast, [None, None])
 
     def test_clip(self):
         # invalid types
