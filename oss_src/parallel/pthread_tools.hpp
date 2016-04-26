@@ -261,7 +261,7 @@ namespace graphlab {
 #else
       int error = pthread_cond_wait(&m_cond, &mut.m_mut);
 #endif
-      ASSERT_TRUE(!error);
+      ASSERT_MSG(!error, "Condition variable wait error %d", error);
     }
     /// Waits on condition. The mutex must already be acquired. Caller
     /// must be careful about spurious wakes.
@@ -402,7 +402,7 @@ namespace graphlab {
     /// Signals one waiting thread to wake up
     inline void signal() const {
       int error = pthread_cond_signal(&m_cond);
-      ASSERT_TRUE(!error);
+      ASSERT_MSG(!error, "Condition variable signal error %d", error);
     }
     /// Signals one waiting thread to wake up. Synonym for signal()
     inline void notify_one() const {
@@ -411,7 +411,7 @@ namespace graphlab {
     /// Wakes up all waiting threads
     inline void broadcast() const {
       int error = pthread_cond_broadcast(&m_cond);
-      ASSERT_TRUE(!error);
+      ASSERT_MSG(!error, "Condition variable broadcast error %d", error);
     }
     /// Synonym for broadcast
     inline void notify_all() const {
@@ -419,7 +419,7 @@ namespace graphlab {
     }
     ~conditional() {
       int error = pthread_cond_destroy(&m_cond);
-      ASSERT_TRUE(!error);
+      DASSERT_MSG(!error, "Condition variable destroy error %d", error);
     }
   }; // End conditional
 

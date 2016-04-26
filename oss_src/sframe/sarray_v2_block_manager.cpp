@@ -26,8 +26,8 @@ static unfair_lock* get_io_locks() {
 }
 
 block_manager& block_manager::get_instance() {
-  static block_manager manager;
-  return manager;
+  static block_manager* manager = new block_manager();
+  return *manager;
 }
 
 block_manager::block_manager() {

@@ -60,7 +60,7 @@ namespace graphlab {
     /// constructs a mutex
     mutex() {
       int error = pthread_mutex_init(&m_mut, NULL);
-      ASSERT_TRUE(!error);
+      ASSERT_MSG(!error, "Mutex create error %d", error);
     }
     /** Copy constructor which does not copy. Do not use!
         Required for compatibility with some STL implementations (LLVM).
@@ -68,12 +68,12 @@ namespace graphlab {
         rather than the standard constructor.    */
     mutex(const mutex&) {
       int error = pthread_mutex_init(&m_mut, NULL);
-      ASSERT_TRUE(!error);
+      ASSERT_MSG(!error, "Mutex create error %d", error);
     }
 
     ~mutex(){
       int error = pthread_mutex_destroy( &m_mut );
-      ASSERT_TRUE(!error);
+      DASSERT_MSG(!error, "Mutex destroy error %d", error);
     }
 
     // not copyable
@@ -82,7 +82,7 @@ namespace graphlab {
     /// Acquires a lock on the mutex
     inline void lock() const {
       int error = pthread_mutex_lock( &m_mut  );
-      DASSERT_TRUE(!error);
+      DASSERT_MSG(!error, "Mutex lock error %d", error);
 #ifdef _WIN32
       DASSERT_TRUE(!locked);
       locked = true;
@@ -94,7 +94,7 @@ namespace graphlab {
       locked = false;
 #endif
       int error = pthread_mutex_unlock( &m_mut );
-      DASSERT_TRUE(!error);
+      DASSERT_MSG(!error, "Mutex unlock error %d", error);
     }
     /// Non-blocking attempt to acquire a lock on the mutex
     inline bool try_lock() const {
@@ -146,7 +146,7 @@ namespace graphlab {
 
     ~recursive_mutex(){
       int error = pthread_mutex_destroy( &m_mut );
-      ASSERT_TRUE(!error);
+      DASSERT_TRUE(!error);
     }
 
     // not copyable
