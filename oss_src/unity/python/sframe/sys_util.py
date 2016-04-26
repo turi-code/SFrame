@@ -396,9 +396,9 @@ def get_hadoop_class_path():
     output = None
     try:
         try:
-            output = _subprocess.check_output([hadoop_exe_name, 'classpath'])
+            output = _subprocess.check_output([hadoop_exe_name, 'classpath']).decode()
         except:
-            output = _subprocess.check_output(['/'.join([env['HADOOP_HOME'],'bin',hadoop_exe_name]), 'classpath'])
+            output = _subprocess.check_output(['/'.join([env['HADOOP_HOME'],'bin',hadoop_exe_name]), 'classpath']).decode()
 
         output = (os.path.pathsep).join(os.path.realpath(path) for path in output.split(os.path.pathsep))
         return _get_expanded_classpath(output)

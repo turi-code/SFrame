@@ -28,7 +28,7 @@
  */
 
 
-
+#include <mutex>
 #include <parallel/thread_pool.hpp>
 #include <logger/assertions.hpp>
 #include <parallel/pthread_tools.hpp>
@@ -39,7 +39,7 @@ parallel_task_queue::parallel_task_queue(thread_pool& pool):pool(pool) { }
 
 void parallel_task_queue::launch(const boost::function<void (void)> &spawn_function, 
                                  int thread_id) {
-  mut.lock();
+  std::lock_guard<mutex> ulock(mut);
   tasks_inserted++;
   pool.launch(
       [&,spawn_function]() {
@@ -47,22 +47,19 @@ void parallel_task_queue::launch(const boost::function<void (void)> &spawn_funct
           spawn_function();
         } catch(...) {
           // if an exception was raised, put it in the exception queue
-          mut.lock();
+          std::lock_guard<mutex> exlock(mut);
           exception_queue.push(std::current_exception());
-          mut.unlock();
         }
-        mut.lock();
+        std::lock_guard<mutex> finishlock(mut);
         tasks_completed++;
         if (waiting_on_join && 
             tasks_completed == tasks_inserted) event_condition.signal();
-        mut.unlock();
       }, thread_id);
-  mut.unlock();
 }
 
 void parallel_task_queue::join() {
   std::pair<bool, bool> eventret;
-  mut.lock();
+  std::unique_lock<mutex> join_lock(mut);
   waiting_on_join = true;
   while(1) {
     // nothing to throw, check if all tasks were completed
@@ -70,11 +67,10 @@ void parallel_task_queue::join() {
       // yup
       break;
     }
-    event_condition.wait(mut);
+    event_condition.wait(join_lock);
   }
   waiting_on_join = false;
 
-  mut.unlock();
   if (exception_queue.size() > 0) {
     // check the exception queue.
     auto first_exception = exception_queue.front();
@@ -85,7 +81,9 @@ void parallel_task_queue::join() {
 
 parallel_task_queue::~parallel_task_queue() {
   // keep joining, and throwing away exceptions
-  join();
+  try {
+    join();
+  } catch (...) { }
 }
 
 
@@ -193,10 +191,9 @@ void thread_pool::set_cpu_affinity(bool affinity) {
 
 void thread_pool::launch(const boost::function<void (void)> &spawn_function, 
                          int virtual_threadid) {
-  mut.lock();
+  std::lock_guard<mutex> lock(mut);
   ++tasks_inserted;
   spawn_queue.enqueue(std::make_pair(spawn_function, virtual_threadid));
-  mut.unlock();
 }
 
 void thread_pool::wait_for_task() {
@@ -214,11 +211,10 @@ void thread_pool::wait_for_task() {
       }
       queue_entry.first.first();
       thread::set_thread_id(cur_thread_id);
-      mut.lock();
+      std::lock_guard<mutex> lock(mut);
       ++tasks_completed;
       if (waiting_on_join && 
           tasks_completed == tasks_inserted) event_condition.signal();
-      mut.unlock();
 
     }
     else {
@@ -231,7 +227,7 @@ void thread_pool::wait_for_task() {
 void thread_pool::join() {
   spawn_queue.wait_until_empty();
 
-  mut.lock();
+  std::unique_lock<mutex> lock(mut);
   waiting_on_join = true;
   while(1) {
     // nothing to throw, check if all tasks were completed
@@ -239,10 +235,9 @@ void thread_pool::join() {
       // yup
       break;
     }
-    event_condition.wait(mut);
+    event_condition.wait(lock);
   }
   waiting_on_join = false;
-  mut.unlock();
 }
 
 thread_pool::~thread_pool() {

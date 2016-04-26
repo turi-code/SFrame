@@ -89,7 +89,6 @@ std::unique_ptr<worker_process<ProxyType>> spawn_worker(std::vector<std::string>
   if(new_process->launch(worker_binary, args) == false) {
     throw("Fail launching lambda worker.");
   }
-  new_process->autoreap();
 
   // Step 2: create cppipc client and connect it to the launched process 
   size_t retry = 0;

@@ -1130,7 +1130,7 @@ class SFrame(object):
                     print("------------------------------------------------------")
                 column_type_inference_was_used = True
             except RuntimeError as e:
-                if type(e) == RuntimeError and ("cancel" in e.args[0] or "Cancel" in e.args[0]):
+                if type(e) == RuntimeError and ("cancel" in str(e.args[0]) or "Cancel" in str(e.args[0])):
                     raise e
                 # If the above fails, default back to str for all columns.
                 column_type_hints = str
@@ -1190,7 +1190,7 @@ class SFrame(object):
             with cython_context():
                 errors = proxy.load_from_csvs(internal_url, parsing_config, type_hints)
         except Exception as e:
-            if type(e) == RuntimeError and "CSV parsing cancelled" in e.args[0]:
+            if type(e) == RuntimeError and "CSV parsing cancelled" in str(e.args[0]):
                 raise e
             if column_type_inference_was_used:
                 # try again
