@@ -770,7 +770,7 @@ class SFrameTest(unittest.TestCase):
 
         # test indexing
         sub_col = sf['float_data']
-        self.assertEqual(sub_col.head(10), self.float_data)
+        self.assertEqual(list(sub_col.head(10)), self.float_data)
 
         with self.assertRaises(TypeError):
             sub_sf = sf.select_columns(['duh',1])
@@ -941,8 +941,8 @@ class SFrameTest(unittest.TestCase):
         self.assertEquals('X3', names[1])
 
         # check content
-        self.assertEquals(sf['X1'].head(10), self.int_data)
-        self.assertEquals(sf['X3'].head(10), self.string_data)
+        self.assertEquals(list(sf['X1'].head(10)), self.int_data)
+        self.assertEquals(list(sf['X3'].head(10)), self.string_data)
 
         # check that a new automatically named column will not conflict
         sf.add_column(SArray(self.string_data))
@@ -1109,18 +1109,19 @@ class SFrameTest(unittest.TestCase):
                     aggregate.DISTINCT('value'),
                     aggregate.FREQ_COUNT('value')]
             sf2 = sf.groupby('key', built_ins)
-            self.assertEqual(sf2['Count'], m)
-            self.assertEqual(sf2['Sum of value'], sum(values))
-            self.assertEqual(sf2['Avg of value'], np.mean(values))
-            self.assertEqual(sf2['Min of value'], min(values))
-            self.assertEqual(sf2['Max of value'], max(values))
-            self.assertEqual(sf2['Var of value'], np.var(values))
-            self.assertEqual(sf2['Stdv of value'], np.std(values))
-            self.assertEqual(sf2['Vector Sum of vector_values'],
-                    np.sum(vector_values, axis=0))
-            self.assertEqual(sf2['Vector Avg of vector_values'],
-                    np.mean(vector_values, axis=0))
-            self.assertEqual(sf2['Count Distinct of value'],
+            self.assertEquals(len(sf2), 1)
+            self.assertEqual(sf2['Count'][0], m)
+            self.assertEqual(sf2['Sum of value'][0], sum(values))
+            self.assertAlmostEqual(sf2['Avg of value'][0], np.mean(values))
+            self.assertEqual(sf2['Min of value'][0], min(values))
+            self.assertEqual(sf2['Max of value'][0], max(values))
+            self.assertAlmostEqual(sf2['Var of value'][0], np.var(values))
+            self.assertAlmostEqual(sf2['Stdv of value'][0], np.std(values))
+            np.testing.assert_almost_equal(list(sf2['Vector Sum of vector_values'][0]),
+                    list(np.sum(vector_values, axis=0)))
+            np.testing.assert_almost_equal(list(sf2['Vector Avg of vector_values'][0]),
+                    list(np.mean(vector_values, axis=0)))
+            self.assertEqual(sf2['Count Distinct of value'][0],
                     len(np.unique(values)))
             self.assertEqual(sorted(sf2['Distinct of value'][0]),
                     sorted(list(np.unique(values))))
@@ -1143,14 +1144,14 @@ class SFrameTest(unittest.TestCase):
                 aggregate.STDV('value'), aggregate.COUNT_DISTINCT('value'),
                 aggregate.DISTINCT('value'), aggregate.FREQ_COUNT('value')]
         sf2 = sf.groupby('key', built_ins).sort('key')
-        self.assertEqual(sf2['Count'], [6,4])
-        self.assertEqual(sf2['Sum of value'], [1, 0])
-        self.assertEqual(sf2['Avg of value'], [1, None])
-        self.assertEqual(sf2['Min of value'], [1, None])
-        self.assertEqual(sf2['Max of value'],  [1, None])
-        self.assertEqual(sf2['Var of value'], [1, 0])
-        self.assertEqual(sf2['Stdv of value'], [1, 0])
-        self.assertEqual(sf2['Count Distinct of value'], [2, 1])
+        self.assertEqual(list(sf2['Count']), [6,4])
+        self.assertEqual(list(sf2['Sum of value']), [1, 0])
+        self.assertEqual(list(sf2['Avg of value']), [1, None])
+        self.assertEqual(list(sf2['Min of value']), [1, None])
+        self.assertEqual(list(sf2['Max of value']),  [1, None])
+        self.assertEqual(list(sf2['Var of value']), [0, 0])
+        self.assertEqual(list(sf2['Stdv of value']), [0, 0])
+        self.assertEqual(list(sf2['Count Distinct of value']), [2, 1])
         self.assertEqual(set(sf2['Distinct of value'][0]), set([1, None]))
         self.assertEqual(set(sf2['Distinct of value'][1]), set([None]))
         self.assertEqual(sf2['Frequency Count of value'][0], {1:1, None:5})
@@ -1178,18 +1179,19 @@ class SFrameTest(unittest.TestCase):
                     aggregate.COUNT_DISTINCT('value'),
                     aggregate.DISTINCT('value')]
             sf2 = sf.groupby('key', built_ins)
-            self.assertEqual(sf2['Count'], m)
-            self.assertEqual(sf2['Sum of value'], sum(values))
-            self.assertEqual(sf2['Avg of value'], np.mean(values))
-            self.assertEqual(sf2['Min of value'], min(values))
-            self.assertEqual(sf2['Max of value'], max(values))
-            self.assertEqual(sf2['Var of value'], np.var(values))
-            self.assertEqual(sf2['Stdv of value'], np.std(values))
-            self.assertEqual(sf2['Vector Sum of vector_values'],
-                    np.sum(vector_values, axis=0))
-            self.assertEqual(sf2['Vector Avg of vector_values'],
-                    np.mean(vector_values, axis=0))
-            self.assertEqual(sf2['Count Distinct of value'],
+            self.assertEquals(len(sf2), 1)
+            self.assertEqual(sf2['Count'][0], m)
+            self.assertEqual(sf2['Sum of value'][0], sum(values))
+            self.assertAlmostEqual(sf2['Avg of value'][0], np.mean(values))
+            self.assertEqual(sf2['Min of value'][0], min(values))
+            self.assertEqual(sf2['Max of value'][0], max(values))
+            self.assertAlmostEqual(sf2['Var of value'][0], np.var(values))
+            self.assertAlmostEqual(sf2['Stdv of value'][0], np.std(values))
+            np.testing.assert_almost_equal(list(sf2['Vector Sum of vector_values'][0]),
+                    list(np.sum(vector_values, axis=0)))
+            np.testing.assert_almost_equal(list(sf2['Vector Avg of vector_values'][0]),
+                    list(np.mean(vector_values, axis=0)))
+            self.assertEqual(sf2['Count Distinct of value'][0],
                     len(np.unique(values)))
             self.assertEqual(sorted(sf2['Distinct of value'][0]),
                     sorted(np.unique(values)))
@@ -1222,19 +1224,20 @@ class SFrameTest(unittest.TestCase):
                     'unique':aggregate.DISTINCT('value'),
                     'frequency':aggregate.FREQ_COUNT('value')}
             sf2 = sf.groupby('key', built_ins)
-            self.assertEqual(sf2['count'], m)
-            self.assertEqual(sf2['sum'], sum(values))
-            self.assertEqual(sf2['avg'], np.mean(values))
-            self.assertEqual(sf2['avg2'], np.mean(values))
-            self.assertEqual(sf2['min'], min(values))
-            self.assertEqual(sf2['max'], max(values))
-            self.assertEqual(sf2['var'], np.var(values))
-            self.assertEqual(sf2['var2'], np.var(values))
-            self.assertEqual(sf2['stdv'], np.std(values))
-            self.assertEqual(sf2['stdv2'], np.std(values))
-            self.assertEqual(sf2['vector_sum'], np.sum(vector_values, axis=0))
-            self.assertEqual(sf2['vector_mean'], np.mean(vector_values, axis=0))
-            self.assertEqual(sf2['count_unique'], len(np.unique(values)))
+            self.assertEquals(len(sf2), 1)
+            self.assertEqual(sf2['count'][0], m)
+            self.assertEqual(sf2['sum'][0], sum(values))
+            self.assertAlmostEqual(sf2['avg'][0], np.mean(values))
+            self.assertAlmostEqual(sf2['avg2'][0], np.mean(values))
+            self.assertEqual(sf2['min'][0], min(values))
+            self.assertEqual(sf2['max'][0], max(values))
+            self.assertAlmostEqual(sf2['var'][0], np.var(values))
+            self.assertAlmostEqual(sf2['var2'][0], np.var(values))
+            self.assertAlmostEqual(sf2['stdv'][0], np.std(values))
+            self.assertAlmostEqual(sf2['stdv2'][0], np.std(values))
+            np.testing.assert_almost_equal(sf2['vector_sum'][0], list(np.sum(vector_values, axis=0)))
+            np.testing.assert_almost_equal(sf2['vector_mean'][0], list(np.mean(vector_values, axis=0)))
+            self.assertEqual(sf2['count_unique'][0], len(np.unique(values)))
             self.assertEqual(sorted(sf2['unique'][0]),
                              sorted(np.unique(values)))
             self.assertEqual(sf2['frequency'][0],
@@ -1786,17 +1789,17 @@ class SFrameTest(unittest.TestCase):
     def test_replace_one_column(self):
         sf = SFrame()
         sf['a'] = [1,2,3]
-        self.assertEquals(sf['a'], [1,2,3])
+        self.assertEquals(list(sf['a']), [1,2,3])
 
         # this should succeed as we are replacing a new column
         sf['a'] = [1,2]
-        self.assertEquals(sf['a'], [1,2])
+        self.assertEquals(list(sf['a']), [1,2])
 
         # failed to add new column should revert original sframe
         with self.assertRaises(TypeError):
             sf['a'] = [1,2,'a']
 
-        self.assertEquals(sf['a'], [1,2])
+        self.assertEquals(list(sf['a']), [1,2])
 
         # add a column with different length should fail if there are more than one column
         sf = SFrame()
