@@ -654,7 +654,16 @@ class SArray(object):
 
     def __nonzero__(self):
         """
-        Returns true if the array is not empty.
+        Raises a ValueError exception.
+        The truth value of an array with more than one element is ambiguous. Use a.any() or a.all().
+        """
+        # message copied from Numpy
+        raise ValueError("The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()")
+
+    def __bool__(self):
+        """
+        Raises a ValueError exception.
+        The truth value of an array with more than one element is ambiguous. Use a.any() or a.all().
         """
         # message copied from Numpy
         raise ValueError("The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()")
