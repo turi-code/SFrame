@@ -347,6 +347,29 @@ csv_test test_na_values() {
   return ret;
 }
 
+csv_test test_na_values2() {
+  csv_test ret;
+  std::stringstream strm;
+  strm << "k,v\n"
+       << "a,1\n"
+       << "b,1\n"
+       << "c,-8\n"
+       << "d,3\n";
+
+  ret.file = strm.str();
+  ret.tokenizer.delimiter = ",";
+  ret.tokenizer.na_values = {"-8"};
+
+  ret.values.push_back({"a", 1});
+  ret.values.push_back({"b", 1});
+  ret.values.push_back({"c", flex_undefined()});
+  ret.values.push_back({"d", 3});
+
+  ret.types = {{"k", flex_type_enum::STRING},
+               {"v", flex_type_enum::INTEGER}};
+  return ret;
+}
+
 csv_test test_missing_tab_values() {
   csv_test ret;
   std::stringstream strm;
@@ -745,8 +768,9 @@ class sframe_test : public CxxTest::TestSuite {
      TS_ASSERT_EQUALS(s, "\'\"\\/\b\r\n");
 
    }
-   void _test_na() {
-     evaluate(test_na_values());
+   void test_na() {
+     //evaluate(test_na_values());
+     evaluate(test_na_values2());
    }
 
    void test_csvs() {
