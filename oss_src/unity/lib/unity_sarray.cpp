@@ -1445,8 +1445,23 @@ std::shared_ptr<unity_sarray_base> unity_sarray::scalar_operator(flexible_type o
 
   // create the lazy evalation transform operator from the source
   std::shared_ptr<unity_sarray> ret_unity_sarray(new unity_sarray());
-  bool op_is_not_equality_compare = (op != "==" && op != "!=");
-  if (other.get_type() != flex_type_enum::UNDEFINED && op_is_not_equality_compare) {
+
+  // most of the time the scalar operators can skip undefined. Except
+  //  - certain operators which depend on equality of values.
+  //     like == or != or in.
+  //  - Or if the other scalar value is undefined.
+  bool op_is_equality_compare = (op == "==" || op == "!=" || op == "in");
+  if (other.get_type() == flex_type_enum::UNDEFINED || op_is_equality_compare) {
+    auto transformfn =  
+        [=](const flexible_type& f)->flexible_type {
+          return right_operator ? binaryfn(other, f) : binaryfn(f, other);
+        };
+
+    return transform_lambda(transformfn, 
+                            output_type,
+                            false/*skip undefined*/, 
+                            0 /*random seed*/);
+  } else {
     auto transformfn = [=](const flexible_type& f)->flexible_type {
           if (f.get_type() == flex_type_enum::UNDEFINED) {
             return f;
@@ -1458,17 +1473,7 @@ std::shared_ptr<unity_sarray_base> unity_sarray::scalar_operator(flexible_type o
                             output_type,
                             true /*skip undefined*/, 
                             0 /*random seed*/);
-  } else {
-    auto transformfn =  
-        [=](const flexible_type& f)->flexible_type {
-          return right_operator ? binaryfn(other, f) : binaryfn(f, other);
-        };
-
-    return transform_lambda(transformfn, 
-                            output_type,
-                            false/*skip undefined*/, 
-                            0 /*random seed*/);
-  }
+  } 
 
   return ret_unity_sarray;
 }

@@ -144,17 +144,25 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(svec.contains(0.0), [0,0,0,0], int)
         self.__test_equal(svec.contains(2), [1,1,0,0], int)
 
-        slist = SArray([[1,"22"],[2,"33"],[3,"44"],[4,"55"]], list)
+        slist = SArray([[1,"22"],[2,"33"],[3,"44"],[4,None]], list)
         self.__test_equal(slist.contains(1.0), [1,0,0,0], int)
         self.__test_equal(slist.contains(3), [0,0,1,0], int)
         self.__test_equal(slist.contains("33"), [0,1,0,0], int)
         self.__test_equal(slist.contains("3"), [0,0,0,0], int)
+        self.__test_equal(slist.contains(None), [0,0,0,1], int)
 
         sdict = SArray([{1:"2"},{2:"3"},{3:"4"},{"4":"5"}], dict)
         self.__test_equal(sdict.contains(1.0), [1,0,0,0], int)
         self.__test_equal(sdict.contains(3), [0,0,1,0], int)
         self.__test_equal(sdict.contains("4"), [0,0,0,1], int)
         self.__test_equal(sdict.contains("3"), [0,0,0,0], int)
+
+
+        self.__test_equal(SArray(['ab','bc','cd']).is_in('abc'), [1,1,0], int)
+        self.__test_equal(SArray(['a','b','c']).is_in(['a','b']), [1,1,0], int)
+        self.__test_equal(SArray([1,2,3]).is_in(array.array('d',[1.0,2.0])), [1,1,0], int)
+        self.__test_equal(SArray([1,2,None]).is_in([1, None]), [1,0,1], int)
+        self.__test_equal(SArray([1,2,None]).is_in([1]), [1,0,0], int)
 
     def test_save_load(self):
         # Make sure these files don't exist before testing
