@@ -8,80 +8,17 @@ of the BSD license. See the LICENSE file for details.
 
 import array as _array
 import datetime as _datetime
+import json as _json
 
-def _get_type_from_name(name):
-    from . import Image
-    if name == 'int':
-        return int
-    if name == 'float':
-        return float
-    if name == 'str':
-        return str
-    if name == 'array':
-        return _array.array
-    if name == 'list':
-        return list
-    if name == 'dict':
-        return dict
-    if name == 'datetime':
-        return _datetime.datetime
-    if name == 'Image':
-        return Image
-    raise ValueError("Unsupported type hint provided. Expected one of: int, float, str, array, list, dict, datetime, or Image. Got %s." % name)
+def to_serializable(obj):
+    from . import extensions
+    return extensions.json.to_serializable(obj)
 
-def _to_flex_type(obj):
-    """
-    Invertibly converts non-flexible_type object types to flexible_type.
-    """
-    from . import SArray
-    from . import SFrame
-    if isinstance(obj, SArray):
-        return _to_flex_type({
-            "type": "SArray",
-            "value": {
-                "dtype": obj.dtype().__name__,
-                "values": list(obj)
-            }
-        })
-    if isinstance(obj, SFrame):
-        return _to_flex_type({
-            "type": "SFrame",
-            "value": {
-                name: obj[name] for name in obj.column_names()
-            }
-        })
-    if isinstance(obj, dict):
-        ret = {}
-        for (k,v) in obj.items():
-            ret[_to_flex_type(k)] = _to_flex_type(v)
-        return ret
-    if isinstance(obj, list):
-        return [_to_flex_type(v) for v in obj]
-    return obj
+def from_serializable(data, schema):
+    from . import extensions
+    return extensions.json.from_serializable(data, schema)
 
-def _from_flex_type(obj):
-    """
-    Invertibly converts flexible_type to some other types encoded as dict.
-    """
-    from . import SArray
-    from . import SFrame
-    if isinstance(obj, dict):
-        if len(obj.keys()) == 2 and \
-            'type' in obj and \
-            'value' in obj:
-            if obj['type'] == 'SArray':
-                return SArray(
-                    obj['value']['values'],
-                    dtype=_get_type_from_name(obj['value']['dtype'])
-                )
-            if obj['type'] == 'SFrame':
-                columns = obj['value']
-                return SFrame({
-                    name: _from_flex_type(value) for (name,value) in columns.items()
-                })
-    return obj
-
-def dumps(serializable_object):
+def dumps(obj):
     """
     Dumps a serializable object to JSON. This API maps to the Python built-in
     json dumps method, with a few differences:
@@ -90,15 +27,17 @@ def dumps(serializable_object):
     * The input can be any of the following types:
         - SFrame
         - SArray
-        - Image
-        - int, long
-        - float
-        - datetime.datetime
-        - recursive types of the above: list, dict, array.array
+        - SGraph
+        - single flexible_type (Image, int, long, float, datetime.datetime)
+        - recursive flexible_type (list, dict, array.array)
+        - recursive variant_type (list or dict of all of the above)
+    * Serialized result includes both data and schema. Deserialization requires
+      valid schema information to disambiguate various other wrapped types
+      (like Image) from dict.
     """
     from . import extensions
-    serializable_object = _to_flex_type(serializable_object)
-    return extensions.json.dumps(serializable_object)
+    (data, schema) = to_serializable(obj)
+    return _json.dumps({'data': data, 'schema': schema})
 
 def loads(json_string):
     """
@@ -107,8 +46,9 @@ def loads(json_string):
 
     * The input string must be valid JSON according to RFC 7159.
     * The input must represent a serialized result produced by the `dumps`
-      method in this module. If it does not the result will be undefined.
+      method in this module, including both data and schema.
+      If it does not the result will be unspecified and may raise exceptions.
     """
     from . import extensions
-    ret = extensions.json.loads(json_string)
-    return _from_flex_type(ret)
+    result = _json.loads(json_string)
+    return from_serializable(**result)

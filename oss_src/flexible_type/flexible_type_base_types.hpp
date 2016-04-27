@@ -706,7 +706,7 @@ inline const char* flex_type_enum_to_name(flex_type_enum en) {
    case flex_type_enum::IMAGE:
      return "image";
    default:
-     return "NoneType";
+     return "undefined";
   }
 }
 

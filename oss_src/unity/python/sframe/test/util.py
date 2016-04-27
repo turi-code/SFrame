@@ -21,6 +21,10 @@ class SFrameComparer():
 
     Adapted from test_sframe.py
     """
+    def _assert_sgraph_equal(self, sg1, sg2):
+        self._assert_sframe_equal(sg1.vertices, sg2.vertices)
+        self._assert_sframe_equal(sg1.edges, sg2.edges)
+
     def _assert_sframe_equal(self, sf1, sf2):
         assert sf1.num_rows() == sf2.num_rows()
         assert sf1.num_cols() == sf2.num_cols()
