@@ -7,6 +7,7 @@
  */
 #include <cassert>
 #include <boost/bind.hpp>
+#include <parallel/atomic.hpp>
 #include <fault/zmq/print_zmq_error.hpp>
 #include <fault/sockets/socket_errors.hpp>
 #include <fault/sockets/socket_config.hpp>
@@ -17,7 +18,7 @@
 #include <zookeeper_util/key_value.hpp>
 #endif
 
-static size_t ASYNC_SOCKET_CTR = 1;
+static graphlab::atomic<size_t> ASYNC_SOCKET_CTR;
 
 namespace libfault {
 
@@ -74,8 +75,8 @@ async_request_socket::async_request_socket(void* zmq_ctx,
   // spawn the inproc sockets.
   // need to make a unique name for the pull socket
   char inprocname[64];
-  sprintf(inprocname, "inproc://async_req_%ld", ASYNC_SOCKET_CTR);
-  ++ASYNC_SOCKET_CTR;
+  size_t socket_number = ASYNC_SOCKET_CTR.inc();
+  sprintf(inprocname, "inproc://async_req_%ld", socket_number);
 
   inproc_pull_socket = zmq_socket(zmq_ctx, ZMQ_PULL);
   if (inproc_pull_socket == NULL) {

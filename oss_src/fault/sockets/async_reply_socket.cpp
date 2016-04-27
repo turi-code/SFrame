@@ -9,6 +9,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
+#include <parallel/atomic.hpp>
 #include <boost/bind.hpp>
 #include <fault/sockets/socket_errors.hpp>
 #include <fault/sockets/socket_config.hpp>
@@ -23,7 +24,7 @@
 #endif
 namespace libfault {
 
-static size_t ASYNC_REPLY_SOCKET_CTR = 1;
+static graphlab::atomic<size_t> ASYNC_REPLY_SOCKET_CTR;
 
 
 async_reply_socket::async_reply_socket(void* zmq_ctx,
@@ -83,8 +84,8 @@ async_reply_socket::async_reply_socket(void* zmq_ctx,
 
   // now construct the threads and the required inproc sockets
   char inprocname[64];
-  sprintf(inprocname, "inproc://async_rep_%ld", ASYNC_REPLY_SOCKET_CTR);
-  ++ASYNC_REPLY_SOCKET_CTR;
+  size_t socket_number = ASYNC_REPLY_SOCKET_CTR.inc();
+  sprintf(inprocname, "inproc://async_rep_%ld", socket_number);
   inproc_pull_socket = zmq_socket(zmq_ctx, ZMQ_PULL);
   if (inproc_pull_socket == NULL) {
     print_zmq_error("async_reply_socket");
