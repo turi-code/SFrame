@@ -40,8 +40,7 @@ struct worker_process {
   // next avaiable worker id 
   static int get_next_id() {
     static atomic<int> next_id;
-    next_id++;
-    return next_id;
+    return next_id.inc_ret_last();
   }
 
   // constructor
@@ -120,6 +119,8 @@ std::unique_ptr<worker_process<ProxyType>> spawn_worker(std::vector<std::string>
     } catch (std::string error) {
       logstream(LOG_ERROR) << error << std::endl;
       break;
+    } catch (const std::exception& e) {
+      logstream(LOG_ERROR) << "Error Starting cppipc client at " << worker_address << ". Error: \"" << e.what() << "\"\n";
     } catch (...) {
       logstream(LOG_ERROR) << "Error starting cppipc client at " << worker_address << std::endl;
       break;

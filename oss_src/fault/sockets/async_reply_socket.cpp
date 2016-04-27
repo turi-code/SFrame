@@ -9,7 +9,9 @@
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
+#include <parallel/atomic.hpp>
 #include <boost/bind.hpp>
+#include <logger/logger.hpp>
 #include <fault/sockets/socket_errors.hpp>
 #include <fault/sockets/socket_config.hpp>
 #include <fault/sockets/async_reply_socket.hpp>
@@ -23,7 +25,7 @@
 #endif
 namespace libfault {
 
-static size_t ASYNC_REPLY_SOCKET_CTR = 1;
+static graphlab::atomic<size_t> ASYNC_REPLY_SOCKET_CTR;
 
 
 async_reply_socket::async_reply_socket(void* zmq_ctx,
@@ -83,8 +85,8 @@ async_reply_socket::async_reply_socket(void* zmq_ctx,
 
   // now construct the threads and the required inproc sockets
   char inprocname[64];
-  sprintf(inprocname, "inproc://async_rep_%ld", ASYNC_REPLY_SOCKET_CTR);
-  ++ASYNC_REPLY_SOCKET_CTR;
+  size_t socket_number = ASYNC_REPLY_SOCKET_CTR.inc();
+  sprintf(inprocname, "inproc://async_rep_%ld", socket_number);
   inproc_pull_socket = zmq_socket(zmq_ctx, ZMQ_PULL);
   if (inproc_pull_socket == NULL) {
     print_zmq_error("async_reply_socket");
@@ -246,7 +248,7 @@ void async_reply_socket::pull_socket_callback(socket_receive_pollset* unused,
     rc = data.send(z_socket);
 
     if (rc != 0) {
-      std::cerr << "Failed to send message: " << zmq_strerror(rc) << std::endl;
+      logstream(LOG_ERROR) << "Failed to send message: " << zmq_strerror(rc) << std::endl;
     }
   }
 }
@@ -264,7 +266,7 @@ void async_reply_socket::process_job(thread_data* data, zmq_msg_vector* msg) {
 
   // bad packet
   if (msg->size() == 0) {
-    std::cerr << "Unexpected Message Format\n";
+    logstream(LOG_ERROR) << "Unexpected Message Format" << std::endl;
     delete msg;
     return;
   }
@@ -273,7 +275,8 @@ void async_reply_socket::process_job(thread_data* data, zmq_msg_vector* msg) {
   if (zk_keyval) {
     std::string s = msg->extract_front();
     if(registered_keys.count(s) == 0) {
-      std::cerr << "Received message "<< s << " destined for a different object!\n";
+      logstream(LOG_ERROR) << "Received message "<< s 
+                           << " destined for a different object!" << std::endl;
       delete msg;
       return;
     }
@@ -294,7 +297,8 @@ void async_reply_socket::process_job(thread_data* data, zmq_msg_vector* msg) {
     rc = send.send(data->inproc_push_socket);
 
     if (rc != 0) {
-      std::cerr << "Failed to push message: " << zmq_strerror(rc) << std::endl;
+      logstream(LOG_ERROR) << "Failed to push message: " << zmq_strerror(rc) 
+                           << std::endl;
     }
   }
 }

@@ -8,6 +8,7 @@
 #include <cassert>
 #include <thread>
 #include <chrono>
+#include <logger/logger.hpp>
 #include <boost/bind.hpp>
 #include <boost/thread.hpp>
 #include <fault/sockets/socket_errors.hpp>
@@ -165,8 +166,8 @@ void* request_socket::get_socket(const size_t id) {
     int rc = zmq_connect(targets[id].z_socket, real_address.c_str());
     if (rc) {
       // unable to connect. Close the socket and fail
-      std::cerr << "request_socket error: Unable to connect to " << real_address
-                << ". Error(" << zmq_errno() << ") = " << zmq_strerror(zmq_errno()) << "\n";
+      logstream(LOG_ERROR) << "request_socket error: Unable to connect to " << real_address
+                << ". Error(" << zmq_errno() << ") = " << zmq_strerror(zmq_errno()) << std::endl;
       zmq_close(targets[id].z_socket);
       return NULL;
     }
@@ -222,7 +223,8 @@ int request_socket::send_and_retry(size_t id, size_t max_retry,
   size_t failure_counter = 0;
   
   if (msgs.size() == 0) {
-    std::cerr<< "request socket error: Attempting to send 0 length message\n";
+    logstream(LOG_ERROR) << "request socket error: Attempting to send 0 length message" 
+                         << std::endl;
     assert(msgs.size() > 0);
   } 
 

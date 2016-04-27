@@ -21,6 +21,8 @@ make_library(fault_comm
   zeromq
   network
   util
+  parallel
+  logger
 )
 set_property(TARGET fault_comm APPEND PROPERTY COMPILE_DEFINITIONS FAKE_ZOOKEEPER) 
 
@@ -46,6 +48,8 @@ make_library(fault_comm_zookeeper
   zookeeper_util
   network
   util
+  parallel
+  logger
 )
 else()
   make_empty_library(fault_comm_zookeeper fault_comm)
