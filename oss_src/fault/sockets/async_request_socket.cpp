@@ -8,6 +8,7 @@
 #include <cassert>
 #include <boost/bind.hpp>
 #include <parallel/atomic.hpp>
+#include <logger/logger.hpp>
 #include <fault/zmq/print_zmq_error.hpp>
 #include <fault/sockets/socket_errors.hpp>
 #include <fault/sockets/socket_config.hpp>
@@ -38,8 +39,8 @@ async_request_socket::async_request_socket(void* zmq_ctx,
   // Is at least one encryption key non-empty AND are they all not non-empty?
   if((!public_key.empty() || !secret_key.empty() || !server_public_key.empty())
      && !(!public_key.empty() && !secret_key.empty() && !server_public_key.empty())) {
-    std::cerr << "Unable to encrypt socket communication. At least one, but not all, of the "
-      "following parameters were set: public_key secret_key server_public_key";
+    logstream(LOG_ERROR) << "Unable to encrypt socket communication. At least one, but not all, of the "
+      "following parameters were set: public_key secret_key server_public_key" << std::endl;
   }
 
   z_ctx = zmq_ctx;
@@ -285,8 +286,8 @@ void* async_request_socket::get_socket(const size_t id) {
     int rc = zmq_connect(targets[id].z_socket, real_address.c_str());
     if (rc) {
       // unable to connect. Close the socket and fail
-      std::cerr << "async_request_socket error: Unable to connect to " << real_address
-                << ". Error(" << zmq_errno() << ") = " << zmq_strerror(zmq_errno()) << "\n";
+      logstream(LOG_ERROR) << "async_request_socket error: Unable to connect to " << real_address
+                << ". Error(" << zmq_errno() << ") = " << zmq_strerror(zmq_errno()) << std::endl;
       zmq_close(targets[id].z_socket);
       return NULL;
     }
@@ -350,7 +351,7 @@ async_request_socket::send_to_target(size_t id,
   push_lock.lock();
   int rc = msgs.send(inproc_push_socket);
   if (rc != 0) {
-    std::cerr << "Failed to send message: " << zmq_strerror(rc) << std::endl;
+    logstream(LOG_ERROR) << "Failed to send message: " << zmq_strerror(rc) << std::endl;
   }
   push_lock.unlock();
 

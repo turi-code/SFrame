@@ -11,6 +11,7 @@
 #include <iostream>
 #include <parallel/atomic.hpp>
 #include <boost/bind.hpp>
+#include <logger/logger.hpp>
 #include <fault/sockets/socket_errors.hpp>
 #include <fault/sockets/socket_config.hpp>
 #include <fault/sockets/async_reply_socket.hpp>
@@ -247,7 +248,7 @@ void async_reply_socket::pull_socket_callback(socket_receive_pollset* unused,
     rc = data.send(z_socket);
 
     if (rc != 0) {
-      std::cerr << "Failed to send message: " << zmq_strerror(rc) << std::endl;
+      logstream(LOG_ERROR) << "Failed to send message: " << zmq_strerror(rc) << std::endl;
     }
   }
 }
@@ -265,7 +266,7 @@ void async_reply_socket::process_job(thread_data* data, zmq_msg_vector* msg) {
 
   // bad packet
   if (msg->size() == 0) {
-    std::cerr << "Unexpected Message Format\n";
+    logstream(LOG_ERROR) << "Unexpected Message Format" << std::endl;
     delete msg;
     return;
   }
@@ -274,7 +275,8 @@ void async_reply_socket::process_job(thread_data* data, zmq_msg_vector* msg) {
   if (zk_keyval) {
     std::string s = msg->extract_front();
     if(registered_keys.count(s) == 0) {
-      std::cerr << "Received message "<< s << " destined for a different object!\n";
+      logstream(LOG_ERROR) << "Received message "<< s 
+                           << " destined for a different object!" << std::endl;
       delete msg;
       return;
     }
@@ -295,7 +297,8 @@ void async_reply_socket::process_job(thread_data* data, zmq_msg_vector* msg) {
     rc = send.send(data->inproc_push_socket);
 
     if (rc != 0) {
-      std::cerr << "Failed to push message: " << zmq_strerror(rc) << std::endl;
+      logstream(LOG_ERROR) << "Failed to push message: " << zmq_strerror(rc) 
+                           << std::endl;
     }
   }
 }

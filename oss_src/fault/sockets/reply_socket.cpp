@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <boost/bind.hpp>
+#include <logger/logger.hpp>
 #include <fault/sockets/socket_errors.hpp>
 #include <fault/sockets/socket_config.hpp>
 #include <fault/sockets/reply_socket.hpp>
@@ -134,7 +135,7 @@ void reply_socket::wrapped_callback(socket_receive_pollset* unused,
 
     // bad packet
     if (recv.size() == 0) {
-      std::cerr << "Unexpected Message Format\n";
+      logstream(LOG_ERROR) << "Unexpected Message Format" << std::endl;
       continue;
     }
 
@@ -142,7 +143,7 @@ void reply_socket::wrapped_callback(socket_receive_pollset* unused,
     if (zk_keyval) {
       std::string s = recv.extract_front();
       if(registered_keys.count(s) == 0) {
-        std::cerr << "Received message "<< s << " destined for a different object!\n";
+        logstream(LOG_ERROR) << "Received message "<< s << " destined for a different object!" << std::endl;
         continue;
       }
     }
