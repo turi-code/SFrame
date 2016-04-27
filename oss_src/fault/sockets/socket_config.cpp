@@ -11,6 +11,8 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/integer_traits.hpp>
 #include <util/md5.hpp>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 namespace libfault {
 int SEND_TIMEOUT = 3000; 
@@ -98,7 +100,40 @@ std::string normalize_address(const std::string& address) {
   } else {
     return address;
   }
+#else
+  /*
+   *
+  ipc sockets on Linux and Mac use Unix domain sockets which have a maximum
+  length defined by
+
+  #include <iostream>
+  #include <sys/socket.h>
+  #include <sys/un.h>
+
+  int main() {
+    struct sockaddr_un my_addr;
+    std::cout << sizeof(my_addr.sun_path) << std::endl;
+  }
+  This appears to be 104 on Mac OS X 10.11 and 108 on a Ubuntu machine
+  (length includes the null terminator).
+
+  See http://man7.org/linux/man-pages/man7/unix.7.html
+  */
+  struct sockaddr_un un_addr;
+  size_t max_length = sizeof(un_addr.sun_path) - 1;  // null terminator
+  if (boost::starts_with(address, "ipc://") &&
+      address.length() > max_length) { // strictly this leaves a 5 char buffer
+                                       // since we didn't strip the ipc://
+     // we hash it to a file we put in /tmp
+     // we could use $TMPDIR but that might be a bad idea.
+     // since $TMPDIR could bump the length much bigger again.
+     // with /tmp the length is bounded to strlen("/tmp") + md5 length.
+    std::string md5_hash = graphlab::md5(address);
+    return "ipc:///tmp/" + md5_hash;
+  } else {
+    return address;
+  }
 #endif
-  return address;
 }
+
 };
