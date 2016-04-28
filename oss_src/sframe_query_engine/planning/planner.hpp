@@ -62,7 +62,8 @@ class planner {
    */
   void materialize(std::shared_ptr<planner_node> tip,
                    write_callback_type callback,
-                   size_t num_segments);
+                   size_t num_segments,
+                   materialize_options exec_params = materialize_options());
 
   
   /** If this returns true, it is recommended to go ahead and
@@ -77,8 +78,14 @@ class planner {
   std::shared_ptr<planner_node>  materialize_as_planner_node(
       std::shared_ptr<planner_node> tip, 
       materialize_options exec_params = materialize_options());
-  
-  
+
+  /**
+   * Returns a new planner node which is a range slice of the input node.
+   *
+   * The operation may modify (materialize) input node.
+   */
+  std::shared_ptr<planner_node> slice(std::shared_ptr<planner_node>& tip, size_t begin, size_t end);
+
   /**
    * Try to test that both a and b have equal length and to materialize
    * them if necessary to prove that this is the case.

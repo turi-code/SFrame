@@ -137,6 +137,10 @@ bool is_source_node(const std::shared_ptr<planner_node>& n);
  */
 bool is_parallel_slicable(const std::shared_ptr<planner_node>& n);
 
+/** Returns true if the graph contains only linear transformations.
+ */
+bool is_linear_graph(const std::shared_ptr<planner_node>& n);
+
 /** Returns a set of integers giving the different parallel slicable
  *  units for the inputs of a particular node. If 
  */

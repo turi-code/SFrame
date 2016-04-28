@@ -157,4 +157,122 @@ class basic_end_to_end: public CxxTest::TestSuite {
                                    0);
     TS_ASSERT_EQUALS(m, TEST_LENGTH - 1);
   }
+
+  void test_range_slice() {
+    // const size_t TEST_LENGTH = 128;
+    const size_t TEST_LENGTH = 100;
+    global_logger().set_log_level(LOG_INFO);
+
+    std::vector<flexible_type> data;
+    for (size_t i = 0;i < TEST_LENGTH; ++i) data.push_back(i);
+    auto sa = std::make_shared<sarray<flexible_type>>();
+    sa->open_for_write();
+    sa->set_type(flex_type_enum::INTEGER);
+    graphlab::copy(data.begin(), data.end(), *sa);
+    sa->close();
+
+    // Direct slice source node
+    {
+      const size_t SLICE_LENGTH = TEST_LENGTH / 4;
+      materialize_options opts;
+      size_t begin = SLICE_LENGTH;
+      size_t end  = begin  + SLICE_LENGTH;
+      auto root = op_sarray_source::make_planner_node(sa);
+      root = planner().slice(root, begin, end);
+      auto res = planner().materialize(root, opts);
+      std::vector<flexible_type> all_rows;
+      res.select_column(0)->get_reader()->read_rows(0, res.size(), all_rows);
+      TS_ASSERT_EQUALS(all_rows.size(), SLICE_LENGTH);
+      for (flex_int i = 0; i < SLICE_LENGTH; ++i) {
+        flex_int j = (flex_int)(all_rows[i]);
+        TS_ASSERT_EQUALS(i + begin, j);
+      }
+    }
+
+    // Slice linear plan
+    {
+      const size_t SLICE_LENGTH = TEST_LENGTH / 4;
+      materialize_options opts;
+      size_t begin = SLICE_LENGTH;
+      size_t end = begin + SLICE_LENGTH;
+      auto root = op_sarray_source::make_planner_node(sa);
+      auto add_one = 
+        op_transform::make_planner_node(
+            root, 
+            [](const sframe_rows::row& a)->flexible_type {
+              return a[0] + 1;
+            },
+            flex_type_enum::INTEGER);
+      add_one = planner().slice(add_one, begin, end);
+      auto res = planner().materialize(add_one, opts);
+      std::vector<flexible_type> all_rows;
+      res.select_column(0)->get_reader()->read_rows(0, res.size(), all_rows);
+      TS_ASSERT_EQUALS(all_rows.size(), SLICE_LENGTH);
+      for (flex_int i = 0; i < SLICE_LENGTH; ++i) {
+        flex_int j = (flex_int)(all_rows[i]);
+        TS_ASSERT_EQUALS(1 + i + begin, j);
+      }
+    }
+
+    // Slice sublinear plan
+    {
+      const size_t SLICE_LENGTH = TEST_LENGTH / 4;
+      materialize_options opts;
+      size_t begin = SLICE_LENGTH;
+      size_t end = begin + SLICE_LENGTH;
+      auto root = op_sarray_source::make_planner_node(sa);
+      // even_selector = root % 2 == 0
+      auto even_selector = 
+          op_transform::make_planner_node(
+              root, 
+              [](const sframe_rows::row& a)->flexible_type {
+                return (flex_int)(a[0]) % 2 == 0;
+              },
+              flex_type_enum::INTEGER);
+      auto filter = op_logical_filter::make_planner_node(root, even_selector);
+      filter = planner().slice(filter, begin, end);
+      auto res = planner().materialize(filter, opts);
+      std::vector<flexible_type> all_rows;
+      res.select_column(0)->get_reader()->read_rows(0, res.size(), all_rows);
+      TS_ASSERT_EQUALS(all_rows.size(), SLICE_LENGTH);
+      for (flex_int i = 0; i < SLICE_LENGTH; ++i) {
+        flex_int j = (flex_int)(all_rows[i]);
+        TS_ASSERT_EQUALS((i + begin) * 2, j);
+      }
+    }
+
+    // Non linear Plan
+    {
+      auto root = op_sarray_source::make_planner_node(sa);
+      auto add_one = 
+          op_transform::make_planner_node(
+              root, 
+              [](const sframe_rows::row& a)->flexible_type {
+                return a[0] + 1;
+              },
+              flex_type_enum::INTEGER);
+      auto append = op_append::make_planner_node(add_one, add_one);
+
+      // Slice the first half
+      const size_t SLICE_LENGTH = TEST_LENGTH;
+      auto sliced = planner().slice(append, 0, SLICE_LENGTH);
+      auto res = planner().materialize(sliced);
+      std::vector<flexible_type> all_rows;
+      res.select_column(0)->get_reader()->read_rows(0, res.size(), all_rows);
+      TS_ASSERT_EQUALS(all_rows.size(), SLICE_LENGTH);
+      for (flex_int i = 0; i < SLICE_LENGTH; ++i) {
+        flex_int j = (flex_int)(all_rows[i]);
+        TS_ASSERT_EQUALS(i + 1, j);
+      }
+      // Slice the second half
+      sliced = planner().slice(append, SLICE_LENGTH, TEST_LENGTH * 2);
+      res = planner().materialize(sliced);
+      res.select_column(0)->get_reader()->read_rows(0, res.size(), all_rows);
+      TS_ASSERT_EQUALS(all_rows.size(), SLICE_LENGTH);
+      for (flex_int i = 0; i < SLICE_LENGTH; ++i) {
+        flex_int j = (flex_int)(all_rows[i]);
+        TS_ASSERT_EQUALS(i + 1, j);
+      }
+    }
+  }
 };
