@@ -320,7 +320,7 @@ async_request_socket::send_to_target(size_t id,
 #if __cplusplus < 201103L
     ret = boost::detail::thread_move_t<unique_future_reply>(promise->get_future());
 #else
-    ret = std::move(promise->get_future());
+    ret = promise->get_future();
 #endif
   }
   else {
@@ -329,7 +329,7 @@ async_request_socket::send_to_target(size_t id,
 #if __cplusplus < 201103L
     ret = boost::detail::thread_move_t<unique_future_reply>(promisetmp.get_future());
 #else
-    ret = std::move(promisetmp.get_future());
+    ret = promisetmp.get_future();
 #endif
   }
   // format of the packet is
@@ -377,7 +377,7 @@ future_reply async_request_socket::request_master(zmq_msg_vector& msgs,
 #if __cplusplus < 201103L
     return boost::detail::thread_move_t<unique_future_reply>(promise.get_future());
 #else
-  return std::move(promise.get_future());
+  return promise.get_future();
 #endif
   }
 }
@@ -401,7 +401,7 @@ async_request_socket::request_any(zmq_msg_vector& msgs,
 #if __cplusplus < 201103L
   return boost::detail::thread_move_t<unique_future_reply>(promise.get_future());
 #else
-  return std::move(promise.get_future());
+  return promise.get_future();
 #endif
 }
 
