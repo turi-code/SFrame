@@ -91,7 +91,23 @@ int EXPORT pylambda_worker_main(const std::string& root_path,
     }
 
     __TRACK; graphlab::shmipc::server shm_comm_server;
-    __TRACK; bool has_shm = use_shm ? shm_comm_server.bind() : false;
+    bool has_shm = false;
+    
+    try { 
+      __TRACK; has_shm = use_shm ? shm_comm_server.bind() : false;
+    } catch (const std::string& error) {
+      logstream(LOG_ERROR) << "Internal PyLambda Error binding SHM server: "
+                           << error << "; disabling SHM." << std::endl;
+      has_shm = false;      
+    } catch (const std::exception& error) {
+      logstream(LOG_ERROR) << "Internal PyLambda Error binding SHM server: "
+                           << error.what() << "; disabling SHM." << std::endl;
+      has_shm = false;      
+    } catch (...) {
+      logstream(LOG_ERROR) << "Unknown internal PyLambda Error binding SHM server; disabling SHM."
+                           << std::endl;
+      has_shm = false;      
+    }
     
     __TRACK; LOG_DEBUG_WITH_PID("shm_comm_server bind: has_shm=" << has_shm);
 
