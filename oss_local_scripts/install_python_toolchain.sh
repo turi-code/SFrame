@@ -75,7 +75,7 @@ if [[ $haspython == 0 ]]; then
                         if [[ ${PYTHON_VERSION} == "python3.4m" ]]; then
                                 download_file https://repo.continuum.io/miniconda/Miniconda3-3.16.0-Windows-x86_64.exe miniconda.exe
                         elif [[ ${PYTHON_VERSION} == "python3.5m" ]]; then
-                                download_file https://repo.continuum.io/miniconda/Miniconda3-latest-Windows-x86_64.exe miniconda.sh
+                                download_file https://repo.continuum.io/miniconda/Miniconda3-latest-Windows-x86_64.exe miniconda.exe
                         else
                                 download_file http://repo.continuum.io/miniconda/Miniconda-latest-Windows-x86_64.exe miniconda.exe
                         fi
