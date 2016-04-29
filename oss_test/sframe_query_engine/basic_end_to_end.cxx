@@ -159,8 +159,7 @@ class basic_end_to_end: public CxxTest::TestSuite {
   }
 
   void test_range_slice() {
-    // const size_t TEST_LENGTH = 128;
-    const size_t TEST_LENGTH = 100;
+    const size_t TEST_LENGTH = 1000;
     global_logger().set_log_level(LOG_INFO);
 
     std::vector<flexible_type> data;

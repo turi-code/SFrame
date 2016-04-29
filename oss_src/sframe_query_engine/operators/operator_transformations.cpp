@@ -83,6 +83,8 @@ pnode_ptr make_sliced_graph(pnode_ptr n, size_t begin_index, size_t end_index,
       ret->inputs[i] = make_sliced_graph(ret->inputs[i], begin_index, end_index, memo);
     }
   }
+  // forget any length  memoized
+  ret->any_operator_parameters.erase("__length_memo__");
   memo[n] = ret;
   return ret;
 }

@@ -2582,10 +2582,21 @@ unity_sarray::copy_range(size_t start, size_t step, size_t end) {
   if (step == 0) log_and_throw("Range step size must be at least 1");
   // end cannot be past the end
   end = std::min(end, size());
+
+  std::shared_ptr<unity_sarray> ret(new unity_sarray);
   if (end <= start) {
     // return an empty array of the appropriate type
-    std::shared_ptr<unity_sarray> ret(new unity_sarray);
     ret->construct_from_vector(std::vector<flexible_type>(), dtype());
+    return ret;
+  }
+
+  // Fast path: range slice with step 1, we can slice the input using the query planner.
+  if ((start < end) && step == 1) {
+    auto current_node = this->get_planner_node();
+    auto sliced_node = query_eval::planner().slice(current_node, start, end);
+    // slice may partially materialize the node. Save it to avoid repeated materialization
+    m_planner_node = current_node; 
+    ret->construct_from_planner_node(sliced_node);
     return ret;
   }
 
@@ -2599,7 +2610,6 @@ unity_sarray::copy_range(size_t start, size_t step, size_t end) {
   graphlab::copy_range(*sarray_ptr, *out_sarray, start, step, end);
   out_sarray->close();
 
-  std::shared_ptr<unity_sarray> ret(new unity_sarray);
   ret->construct_from_sarray(out_sarray);
   return ret;
 }
