@@ -2609,27 +2609,21 @@ create_sequential_sarray(ssize_t size, ssize_t start, bool reverse) {
     if(size < 0) {
       log_and_throw("Must give size as >= 0");
     }
+    if (reverse == false) {
+      // not reverse. just make a sequence operator from start to start+ size
+      std::shared_ptr<unity_sarray> seq = std::make_shared<unity_sarray>();
+      seq->construct_from_planner_node(op_sequence::make_planner_node(start, start + size));
+      return seq;
+    } else {
+      // reverse. Do it by start_constant - seq(0, size)
+      std::shared_ptr<unity_sarray> start_const = std::make_shared<unity_sarray>();
+      start_const->construct_from_const(start, size);
 
-    auto row_num_sarray = std::make_shared<sarray<flexible_type>>();
-    row_num_sarray->open_for_write(1);
-    row_num_sarray->set_type(flex_type_enum::INTEGER);
+      std::shared_ptr<unity_sarray> seq = std::make_shared<unity_sarray>();
+      seq->construct_from_planner_node(op_sequence::make_planner_node(0, size));
 
-    auto out_iter = row_num_sarray->get_output_iterator(0);
-    for(ssize_t i = 0; i < size; ++i) {
-      if(reverse) {
-        *out_iter = start-i;
-      } else {
-        *out_iter = start+i;
-      }
-      ++out_iter;
+      return start_const->vector_operator(seq, "-");
     }
-
-    row_num_sarray->close();
-
-    std::shared_ptr<unity_sarray> row_num_column(new unity_sarray());
-    row_num_column->construct_from_sarray(row_num_sarray);
-
-    return row_num_column;
 }
 
 std::shared_ptr<unity_sarray_base> unity_sarray::builtin_rolling_apply(

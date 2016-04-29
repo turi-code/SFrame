@@ -23,6 +23,7 @@
 #include <sframe_query_engine/operators/reduce.hpp>
 #include <sframe_query_engine/operators/lambda_transform.hpp>
 #include <sframe_query_engine/operators/optonly_identity_operator.hpp>
+#include <sframe_query_engine/operators/sequence.hpp>
 
 
 #endif /* GRAPHLAB_SFRAME_QUERY_ALL_OPERATORS_H_ */

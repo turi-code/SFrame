@@ -38,6 +38,7 @@ enum class planner_node_type : int {
     UNION_NODE,
     GENERALIZED_UNION_PROJECT_NODE,
     REDUCE_NODE,
+    SEQUENCE_NODE,
 
       // These are used as logical-node-only types.  Do not actually become an operator.
       IDENTITY_NODE,
