@@ -76,8 +76,8 @@ struct operator_impl<planner_node_type::SEQUENCE_NODE> : public query_operator {
     ASSERT_EQ((int)pnode->operator_type, (int)planner_node_type::SEQUENCE_NODE);
     ASSERT_TRUE(pnode->operator_parameters.count("begin_index"));
     ASSERT_TRUE(pnode->operator_parameters.count("end_index"));
-    size_t begin_index = (flex_int)pnode->operator_parameters["begin_index"];
-    size_t end_index = (flex_int)pnode->operator_parameters["end_index"];
+    flex_int begin_index = (flex_int)pnode->operator_parameters["begin_index"];
+    flex_int end_index = (flex_int)pnode->operator_parameters["end_index"];
     return std::make_shared<operator_impl>(begin_index, end_index);
   }
 
