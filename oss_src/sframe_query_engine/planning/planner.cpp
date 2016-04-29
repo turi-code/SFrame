@@ -51,7 +51,7 @@ static sframe execute_node_impl(pnode_ptr input_n, const materialize_options& ex
  * Executes a query plan, potentially parallelizing it if possible.
  * Also implements fast paths in the event the input node is a source node.
  */
-static sframe execute_node(pnode_ptr input_n, materialize_options exec_params) {
+static sframe execute_node(pnode_ptr input_n, const materialize_options& exec_params) {
   // fast path for SFRAME_SOURCE. If I am not streaming into
   // a callback, I can just call save
   if (exec_params.write_callback == nullptr &&
