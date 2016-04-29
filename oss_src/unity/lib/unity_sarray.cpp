@@ -1211,7 +1211,8 @@ std::shared_ptr<unity_sarray_base> unity_sarray::lazy_astype(flex_type_enum dtyp
         (current_type == flex_type_enum::STRING && dtype == flex_type_enum::FLOAT) ||
         (current_type == flex_type_enum::STRING && dtype == flex_type_enum::VECTOR) ||
         (current_type == flex_type_enum::STRING && dtype == flex_type_enum::LIST) ||
-        (current_type == flex_type_enum::STRING && dtype == flex_type_enum::DICT)
+        (current_type == flex_type_enum::STRING && dtype == flex_type_enum::DICT) ||
+        (current_type == flex_type_enum::LIST&& dtype == flex_type_enum::VECTOR)
        )) {
     log_and_throw("Not able to cast to given type");
   }
@@ -1271,6 +1272,34 @@ std::shared_ptr<unity_sarray_base> unity_sarray::lazy_astype(flex_type_enum dtyp
       return ret;
     };
 
+    auto ret = transform_lambda(transform_fn, 
+                                dtype,
+                                true /*skip undefined*/, 
+                                0 /*random seed*/);
+    return ret;
+
+  } else if (current_type == flex_type_enum::LIST && dtype == flex_type_enum::VECTOR) {
+    // a lambda that converts list to vector, one element at a time
+    auto transform_fn = [undefined_on_failure](const flexible_type& f)->flexible_type {
+      if (f.get_type() == flex_type_enum::UNDEFINED) return f;
+      // input
+      const flex_list& src = f.get<flex_list>();
+      // output
+      flex_vec ret;
+      ret.resize(src.size());
+
+      for (size_t i = 0;i < src.size(); ++i) {
+        auto src_type = src[i].get_type();
+        if (src_type == flex_type_enum::INTEGER || src_type == flex_type_enum::FLOAT) {
+          ret[i] = (flex_float)(src[i]);
+        } else {
+          // not convertible.
+          if (undefined_on_failure) return FLEX_UNDEFINED;
+          else log_and_throw("Unable to interpret " + flex_string(f) + " as a numeric array");
+        }
+      }
+      return ret;
+    };
     auto ret = transform_lambda(transform_fn, 
                                 dtype,
                                 true /*skip undefined*/, 
@@ -1416,8 +1445,23 @@ std::shared_ptr<unity_sarray_base> unity_sarray::scalar_operator(flexible_type o
 
   // create the lazy evalation transform operator from the source
   std::shared_ptr<unity_sarray> ret_unity_sarray(new unity_sarray());
-  bool op_is_not_equality_compare = (op != "==" && op != "!=");
-  if (other.get_type() != flex_type_enum::UNDEFINED && op_is_not_equality_compare) {
+
+  // most of the time the scalar operators can skip undefined. Except
+  //  - certain operators which depend on equality of values.
+  //     like == or != or in.
+  //  - Or if the other scalar value is undefined.
+  bool op_is_equality_compare = (op == "==" || op == "!=" || op == "in");
+  if (other.get_type() == flex_type_enum::UNDEFINED || op_is_equality_compare) {
+    auto transformfn =  
+        [=](const flexible_type& f)->flexible_type {
+          return right_operator ? binaryfn(other, f) : binaryfn(f, other);
+        };
+
+    return transform_lambda(transformfn, 
+                            output_type,
+                            false/*skip undefined*/, 
+                            0 /*random seed*/);
+  } else {
     auto transformfn = [=](const flexible_type& f)->flexible_type {
           if (f.get_type() == flex_type_enum::UNDEFINED) {
             return f;
@@ -1429,17 +1473,7 @@ std::shared_ptr<unity_sarray_base> unity_sarray::scalar_operator(flexible_type o
                             output_type,
                             true /*skip undefined*/, 
                             0 /*random seed*/);
-  } else {
-    auto transformfn =  
-        [=](const flexible_type& f)->flexible_type {
-          return right_operator ? binaryfn(other, f) : binaryfn(f, other);
-        };
-
-    return transform_lambda(transformfn, 
-                            output_type,
-                            false/*skip undefined*/, 
-                            0 /*random seed*/);
-  }
+  } 
 
   return ret_unity_sarray;
 }

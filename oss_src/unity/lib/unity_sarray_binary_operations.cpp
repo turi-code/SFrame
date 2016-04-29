@@ -18,19 +18,17 @@ void check_operation_feasibility(flex_type_enum left,
                                  std::string op) {
   bool operation_is_feasible = false;
 
-  if (left == flex_type_enum::VECTOR || right == flex_type_enum::VECTOR) {
-    // special handling for vectors
-    // we can perform every numeric op against numbers
-    if (left == flex_type_enum::VECTOR || left == flex_type_enum::INTEGER || left == flex_type_enum::FLOAT) {
-      if (right == flex_type_enum::VECTOR || right == flex_type_enum::INTEGER || right == flex_type_enum::FLOAT) {
-          operation_is_feasible = true;
-      }
-    }
-  } else if (op == "+" || op == "-" || op == "*" || op == "/") {
+  if (op == "+" || op == "-" || op == "*" || op == "/") {
     if (left == flex_type_enum::DATETIME && right == flex_type_enum::DATETIME && op == "-") {
       operation_is_feasible = true;
     } else {
-      operation_is_feasible = flex_type_has_binary_op(left, right, op[0]);
+      operation_is_feasible = flex_type_has_binary_op(left, right, op[0]) ||
+                            ((left == flex_type_enum::FLOAT
+                             || left == flex_type_enum::INTEGER
+                             || left == flex_type_enum::VECTOR)
+                             && (right == flex_type_enum::FLOAT
+                                 || right == flex_type_enum::INTEGER
+                                 || right == flex_type_enum::VECTOR));
     }
   } else if (op == "%") {
     operation_is_feasible = left == flex_type_enum::INTEGER &&
@@ -54,8 +52,14 @@ void check_operation_feasibility(flex_type_enum left,
     // boolean operations are always feasible
     operation_is_feasible = true;
   } else if (op == "in") {
-    operation_is_feasible = left == flex_type_enum::STRING &&
-                            right == flex_type_enum::STRING;
+    // note that while the op is "in", the direction of the operator is 
+    // [BIGGER_LIST "in" element] rather than ["element" in BIGGER_LIST]
+    // yes. slightly disconcerting I know. Sorry.
+    operation_is_feasible = (left == flex_type_enum::STRING && right == flex_type_enum::STRING) ||
+                            (left == flex_type_enum::VECTOR && right == flex_type_enum::FLOAT) ||
+                            (left == flex_type_enum::VECTOR && right == flex_type_enum::INTEGER) ||
+                            (left == flex_type_enum::DICT) ||
+                            (left == flex_type_enum::LIST);
   } else if (op == "left_abs") {
     // right part of the operator is ignored in this one
     operation_is_feasible = (left == flex_type_enum::FLOAT
@@ -76,26 +80,35 @@ void check_operation_feasibility(flex_type_enum left,
 flex_type_enum get_output_type(flex_type_enum left, 
                                flex_type_enum right,
                                std::string op) {
-  if (left == flex_type_enum::VECTOR || right == flex_type_enum::VECTOR) {
-    return flex_type_enum::VECTOR;
-  } else if (op == "+" || op == "-" || op == "*") {
+  if (op == "+" || op == "-" || op == "*") {
     if (left == flex_type_enum::INTEGER && right == flex_type_enum::FLOAT) {
       // operations against float always returns float
       return flex_type_enum::FLOAT;
     } else if (left == flex_type_enum::DATETIME && right == flex_type_enum::DATETIME && op == "-") {
       return flex_type_enum::FLOAT;
+    } else if (left == flex_type_enum::VECTOR || right == flex_type_enum::VECTOR) {
+      // vector operations always return vector
+      return flex_type_enum::VECTOR;
     } else {
       // otherwise we take the type on the left hand side
       return left;
     }
   } else if (op == "**") {
-    return flex_type_enum::FLOAT;
+    if (left == flex_type_enum::VECTOR || right == flex_type_enum::VECTOR) {
+      // vector operations always return vector
+      return flex_type_enum::VECTOR;
+    } else {
+      return flex_type_enum::FLOAT;
+    }
   } else if (op == "%") {
     return flex_type_enum::INTEGER;
   } else if (op == "/") {
-    // division always returns float
-    // unless one of them are a vector
-    return flex_type_enum::FLOAT;
+    if (left == flex_type_enum::VECTOR || right == flex_type_enum::VECTOR) {
+      // vector operations always return vector
+      return flex_type_enum::VECTOR;
+    } else {
+      return flex_type_enum::FLOAT;
+    }
   } else if (op == "<" || op == ">" || op == "<=" || 
              op == ">=" || op == "==" || op == "!=") {
     // comparison always returns integer
@@ -299,16 +312,54 @@ get_binary_operator(flex_type_enum left, flex_type_enum right, std::string op) {
 /*                                                                        */
 /**************************************************************************/
     } else if (op == "in") {
-      return [](const flexible_type& l, const flexible_type& r)->flexible_type {
-        if (l.get_type() == flex_type_enum::STRING &&
-            r.get_type() == flex_type_enum::STRING ) {
-          const auto& left_str = l.get<flex_string>();
-          const auto& right_str = r.get<flex_string>();
-          return left_str.find(right_str) != std::string::npos;
-        } else {
-          return 0;
-        }
-      };
+      // note that while the op is "in", the direction of the operator is 
+      // [BIGGER_LIST "in" element] rather than ["element" in BIGGER_LIST]
+      // yes. slightly disconcerting I know. Sorry.
+      if (left == flex_type_enum::STRING && right == flex_type_enum::STRING) {
+        return [](const flexible_type& l, const flexible_type& r)->flexible_type {
+          if (l.get_type() == flex_type_enum::STRING &&
+              r.get_type() == flex_type_enum::STRING ) {
+            const auto& left_str = l.get<flex_string>();
+            const auto& right_str = r.get<flex_string>();
+            return left_str.find(right_str) != std::string::npos;
+          } else {
+            return 0;
+          }
+        };
+      } else if (left == flex_type_enum::VECTOR && 
+                 (right == flex_type_enum::FLOAT || right == flex_type_enum::INTEGER)) {
+        return [](const flexible_type& l, const flexible_type& r)->flexible_type {
+          if (l.get_type() == flex_type_enum::VECTOR &&
+              (r.get_type() == flex_type_enum::FLOAT || r.get_type() == flex_type_enum::INTEGER)) {
+            const auto& vec = l.get<flex_vec>();
+            const auto val = (flex_float)r;
+            int ret = (std::find(vec.begin(), vec.end(), val) != vec.end());
+            return ret;
+          } else {
+            return 0;
+          }
+        };
+      } else if (left == flex_type_enum::LIST) {
+        return [](const flexible_type& l, const flexible_type& r)->flexible_type {
+          if (l.get_type() == flex_type_enum::LIST) {
+            const auto& vec = l.get<flex_list>();
+            int ret = std::find(vec.begin(), vec.end(), r) != vec.end();
+            return ret;
+          } else {
+            return 0;
+          }
+        };
+      } else if (left == flex_type_enum::DICT) {
+        return [](const flexible_type& l, const flexible_type& r)->flexible_type {
+          if (l.get_type() == flex_type_enum::DICT) {
+            const auto& dict = l.get<flex_dict>();
+            for (const auto& elem: dict) {
+              if (elem.first == r) return 1;
+            }
+            return 0;
+          }
+        };
+      }
 /**************************************************************************/
 /*                                                                        */
 /*                      abs of the left value                             */

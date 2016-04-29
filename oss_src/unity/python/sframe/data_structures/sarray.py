@@ -709,33 +709,95 @@ class SArray(object):
 
     def contains(self, item):
         """
-        Performs an element-wise substring search of "item". The current
-        array must contains strings and item must be a string. Produces a 1
-        for each row if item is a substring of the row and 0 otherwise.
+        Performs an element-wise search of "item" in the SArray.
 
         Conceptually equivalent to:
 
         >>> sa.apply(lambda x: item in x)
+        
+        If the current SArray contains strings and item is a string. Produces a 1
+        for each row if 'item' is a substring of the row and 0 otherwise.
+
+        If the current SArray contains list or arrays, this produces a 1
+        for each row if 'item' is an element of the list or array.
+
+        If the current SArray contains dictionaries, this produces a 1
+        for each row if 'item' is a key in the dictionary.
 
         Parameters
         ----------
-        item : str
+        item : any type
             The item to search for.
 
         Returns
         -------
         out : SArray
-            A binary SArray where a non-zero value denotes that the string
-            was found in the SArray. And 0 if it is not found.
+            A binary SArray where a non-zero value denotes that the item 
+            was found in the row. And 0 if it is not found.
 
         Examples
         --------
-        >>> SArray(["abc","def","ghi"]).contains("a")
+        >>> SArray(['abc','def','ghi']).contains('a')
         dtype: int
         Rows: 3
         [1, 0, 0]
+        >>> SArray([['a','b'],['b','c'],['c','d']]).contains('b')
+        dtype: int
+        Rows: 3
+        [1, 1, 0]
+        >>> SArray([{'a':1},{'a':2,'b':1}, {'c':1}]).contains('a')
+        dtype: int
+        Rows: 3
+        [1, 1, 0]
+
+        See Also
+        --------
+        is_in 
         """
         return SArray(_proxy = self.__proxy__.left_scalar_operator(item, 'in'))
+
+
+    def is_in(self, other):
+        """
+        Performs an element-wise search for each row in 'other'.
+
+        Conceptually equivalent to:
+
+        >>> sa.apply(lambda x: x in other)
+        
+        If the current SArray contains strings and other is a string. Produces a 1
+        for each row if the row is a substring of 'other', and 0 otherwise.
+
+        If the 'other' is a list or array, this produces a 1
+        for each row if the row is an element of 'other'
+
+        Parameters
+        ----------
+        other : list, array.array, str
+            The variable to search in.
+
+        Returns
+        -------
+        out : SArray
+            A binary SArray where a non-zero value denotes that row was
+            was found in 'other'. And 0 if it is not found.
+
+        Examples
+        --------
+        >>> SArray(['ab','bc','cd']).is_in('abc')
+        dtype: int
+        Rows: 3
+        [1, 1, 0]
+        >>> SArray(['a','b','c']).is_in(['a','b'])
+        dtype: int
+        Rows: 3
+        [1, 1, 0]
+
+        See Also
+        --------
+        contains
+        """
+        return SArray(_proxy = self.__proxy__.right_scalar_operator(other, 'in'))
 
     # XXX: all of these functions are highly repetitive
     def __add__(self, other):
