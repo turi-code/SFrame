@@ -1,6 +1,8 @@
 #include "encoder.hpp"
 #include "types.hpp"
 
+#include <logger/assertions.hpp>
+#include <logger/logger.hpp>
 #include <unity/lib/gl_sarray.hpp>
 #include <unity/lib/gl_sframe.hpp>
 #include <unity/lib/gl_sgraph.hpp>
@@ -26,7 +28,7 @@ static void _to_serializable(flexible_type& data, schema_t& schema, flex_float i
   if (std::isnan(input)) {
     data = "NaN";
   } else {
-    assert(std::isinf(input));
+    CHECK(std::isinf(input));
     if (input > 0) {
       data = "Infinity";
     } else {
@@ -261,7 +263,7 @@ static void _any_to_serializable(flexible_type& data, schema_t& schema, const va
       _to_serializable(data, schema, variant_get_value<std::vector<variant_type>>(input));
       break;
     default:
-      throw "Unsupported type for to_serializable. Expected a flexible_type, SGraph, SFrame, SArray, dictionary, or list.";
+      log_and_throw("Unsupported type for to_serializable. Expected a flexible_type, SGraph, SFrame, SArray, dictionary, or list.");
   }
 }
 

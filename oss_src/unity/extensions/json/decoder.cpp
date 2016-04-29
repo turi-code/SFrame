@@ -1,6 +1,8 @@
 #include "decoder.hpp"
 #include "types.hpp"
 
+#include <logger/assertions.hpp>
+#include <logger/logger.hpp>
 #include <unity/lib/gl_sarray.hpp>
 #include <unity/lib/gl_sframe.hpp>
 #include <unity/lib/gl_sgraph.hpp>
@@ -8,8 +10,6 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/archive/iterators/binary_from_base64.hpp>
 #include <boost/archive/iterators/transform_width.hpp>
-
-#include <cassert>
 
 using namespace graphlab;
 
@@ -29,43 +29,23 @@ static flexible_type _dict_get(const flex_dict& dict, const flex_string& key) {
   msg << "Expected key \"";
   msg << key;
   msg << "\" was not present in dictionary input.";
-  throw msg.str();
-}
-
-static flexible_type _flexible_type_from_variant(const variant_type& v) {
-  switch (v.which()) {
-    case 0:
-      // flexible_type
-      return variant_get_value<flexible_type>(v);
-    default:
-      throw "Type mismatch: expected flexible_type as input to flex_from_variant.";
-  }
-}
-
-static flex_string _flex_string_from_variant(const variant_type& v) {
-  flexible_type f = _flexible_type_from_variant(v);
-  switch (f.get_type()) {
-    case flex_type_enum::STRING:
-      return f.get<flex_string>();
-    default:
-      throw "Type mismatch: expected flex_string as input to _flex_string_from_variant.";
-  }
+  log_and_throw(msg.str());
 }
 
 static std::string _get_type(const schema_t& schema) {
   variant_type schema_type_as_variant = schema.at("type");
-  return _flex_string_from_variant(schema_type_as_variant);
+  return variant_get_value<flex_string>(schema_type_as_variant);
 }
 
 static bool _is_type(const schema_t& schema, const std::string& type) {
   if(schema.size() == 0) {
-    throw "Malformed schema object provided. Expected a dictionary with at least one key named \"type\".";
+    log_and_throw("Malformed schema object provided. Expected a dictionary with at least one key named \"type\".");
   }
   return _get_type(schema) == type;
 }
 
 static void _check_type(const schema_t& schema, const std::string& type) {
-  assert(_is_type(schema, type));
+  CHECK(_is_type(schema, type));
 }
 
 static variant_type _list_from_serializable(const flexible_type& data, const schema_t& schema) {
@@ -197,7 +177,7 @@ static variant_type _dict_from_serializable(const flexible_type& data, const sch
     flex_list column_names = _dict_get(data_dict, "column_names");
     flex_list serializable_columns = _dict_get(data_dict, "columns");
     if (column_names.size() != serializable_columns.size()) {
-      throw "Array length mismatch in serializable SFrame data. Expected column_names to be the same length as columns.";
+      log_and_throw("Array length mismatch in serializable SFrame data. Expected column_names to be the same length as columns.");
     }
     for (size_t i=0; i<column_names.size(); i++) {
       std::string column_name = column_names[i];
@@ -251,7 +231,7 @@ static flexible_type _string_from_serializable(const flexible_type& data, const 
     } else if (data_str == "-Infinity") {
       return -std::numeric_limits<flex_float>::infinity();
     } else {
-      throw "Unexpected value to _string_from_serializable with float type tag. Expected \"NaN\", \"Infinity\", or \"-Infinity\".";
+      log_and_throw("Unexpected value to _string_from_serializable with float type tag. Expected \"NaN\", \"Infinity\", or \"-Infinity\".");
     }
   } else {
     _check_type(schema, JSON::types::STRING);
@@ -289,11 +269,16 @@ static variant_type _any_from_serializable(const flexible_type& data, const sche
       return _dict_from_serializable(data, schema);
     case flex_type_enum::DATETIME:
     case flex_type_enum::IMAGE:
-      throw "Unexpected input to _any_from_serializable: serializable flex_type does not include datetime or Image types.";
+      log_and_throw("Unexpected input to _any_from_serializable: serializable flex_type does not include datetime or Image types.");
   }
 }
 
 static schema_t schema_from_flex_dict(const flexible_type& f) {
+  ASSERT_EQ(
+    // have to cast because flex_type_enum is not printable
+    static_cast<size_t>(f.get_type()),
+    static_cast<size_t>(flex_type_enum::DICT)
+  );
   flex_dict d = f.get<flex_dict>();
   schema_t ret;
   for (const auto& pair : d) {
@@ -316,7 +301,7 @@ static schema_t schema_from_variant(const variant_type& v) {
       // dictionary
       return variant_get_value<schema_t>(v);
     default:
-      throw "Type mismatch: expected dictionary representation of schema.";
+      log_and_throw("Type mismatch: expected dictionary representation of schema.");
   }
 }
 
