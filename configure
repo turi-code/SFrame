@@ -319,7 +319,9 @@ if [[ $OSTYPE == msys ]]; then
   AR=`cygpath -m $AR`
 	CFLAGS="$CFLAGS -D CMAKE_AR=$AR"
         # a bunch of stuff needed for python
-        if [[ $python3 == 1 ]]; then
+        if [[ $python35 == 1 ]]; then
+            CFLAGS="$CFLAGS -D PYTHON_LIBRARY:FILEPATH=$PWD/deps/local/lib/python35.dll"
+        elif [[ $python3 == 1 ]]; then
             CFLAGS="$CFLAGS -D PYTHON_LIBRARY:FILEPATH=$PWD/deps/local/lib/python34.dll"
         else
             CFLAGS="$CFLAGS -D PYTHON_LIBRARY:FILEPATH=$PWD/deps/local/lib/python27.dll"
