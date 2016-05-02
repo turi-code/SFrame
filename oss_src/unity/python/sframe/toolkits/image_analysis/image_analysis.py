@@ -123,8 +123,9 @@ def resize(image, width, height, channels=None, decode=False):
     Resize an SArray of images
 
     >>> url ='s3://gl-testdata/images/nested'
-    >>> image_sarray = graphlab.image_analysis.load_images(url, "auto", with_path=False,
+    >>> image_sframe = graphlab.image_analysis.load_images(url, "auto", with_path=False,
     ...                                                    recursive=True)
+    >>> image_sarray = image_sframe["image"]
     >>> resized_images = graphlab.image_analysis.resize(image_sarray, 100, 100, 1)
     """
 

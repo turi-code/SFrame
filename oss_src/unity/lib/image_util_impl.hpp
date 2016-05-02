@@ -5,6 +5,9 @@
  * This software may be modified and distributed under the terms
  * of the BSD license. See the LICENSE file for details.
  */
+#ifndef IMAGE_UTIL_DETAIL_HPP
+#define IMAGE_UTIL_DETAIL_HPP
+
 #include <image/io.hpp>
 #ifndef png_infopp_NULL
 #define png_infopp_NULL (png_infopp)NULL
@@ -26,15 +29,21 @@ namespace image_util_detail {
 using namespace boost::gil;
 
 template<typename current_pixel_type, typename new_pixel_type>
-void resize_image_detail(const char* data, size_t& width, size_t& height, size_t channels, size_t& resized_width, size_t resized_height, size_t resized_channels, char** resized_data){
+void resize_image_detail(const char* data, size_t width, size_t height, size_t channels, size_t resized_width, size_t resized_height, size_t resized_channels, char** resized_data){
   if (data == NULL){
     log_and_throw("Trying to resize image with NULL data pointer");
   }
-  char* buf = new char[resized_height * resized_width * resized_channels];
-  auto view = interleaved_view(width, height, (current_pixel_type*)data, width * channels * sizeof(char));
-  auto resized_view = interleaved_view(resized_width, resized_height, (new_pixel_type*)buf,
-                                       resized_width * resized_channels * sizeof(char));
-  resize_view(color_converted_view<new_pixel_type>(view), (resized_view), nearest_neighbor_sampler());
+  size_t len = resized_height * resized_width * resized_channels;
+  char* buf = new char[len];
+  // Fast path when the sizes are equal.
+  if ((width == resized_width) && (height == resized_height) && (channels == resized_channels)) {
+    memcpy(buf, data, len);
+  } else {
+    auto view = interleaved_view(width, height, (current_pixel_type*)data, width * channels * sizeof(char));
+    auto resized_view = interleaved_view(resized_width, resized_height, (new_pixel_type*)buf,
+                                         resized_width * resized_channels * sizeof(char));
+    resize_view(color_converted_view<new_pixel_type>(view), (resized_view), nearest_neighbor_sampler());
+  }
   *resized_data = buf;
 }
 
@@ -42,7 +51,7 @@ void resize_image_detail(const char* data, size_t& width, size_t& height, size_t
 /**
  * Resize the image, and set resized_data to resized image data.
  */
-void resize_image_impl(const char* data, size_t& width, size_t& height, size_t& channels, size_t resized_width, size_t resized_height, size_t resized_channels, char** resized_data) {
+void resize_image_impl(const char* data, size_t width, size_t height, size_t channels, size_t resized_width, size_t resized_height, size_t resized_channels, char** resized_data) {
   // This code should be simplified
   if (channels == 1) {
     if (resized_channels == 1){
@@ -133,3 +142,4 @@ void encode_image_impl(image_type& image) {
 
 } // end of image_util_detail
 } // end of graphlab
+#endif

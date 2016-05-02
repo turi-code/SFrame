@@ -31,6 +31,13 @@ flexible_type sum(std::shared_ptr<unity_sarray> unity_data);
  */
 flexible_type generate_mean(std::shared_ptr<unity_sarray> unity_data);
 
+
+/**************************************************************************/
+/*                                                                        */
+/*                              Image Loader                              */
+/*                                                                        */
+/**************************************************************************/
+
 /**
  * Construct an sframe of flex_images, with url pointing to directory where images reside. 
  */
@@ -42,6 +49,13 @@ std::shared_ptr<unity_sframe> load_images(std::string url, std::string format,
  */
 flexible_type load_image(const std::string& url, const std::string format);
 
+
+/**************************************************************************/
+/*                                                                        */
+/*                           Encode and Decode                            */
+/*                                                                        */
+/**************************************************************************/
+
 /**
  * Decode the image data inplace
  */
@@ -50,7 +64,7 @@ void decode_image_inplace(image_type& data);
 /**
  * Decode the image into raw pixels
  */
-flexible_type decode_image(flexible_type data);
+flexible_type decode_image(const flexible_type& data);
 
 /**
  * Decode an sarray of flex_images into raw pixels
@@ -58,9 +72,22 @@ flexible_type decode_image(flexible_type data);
 std::shared_ptr<unity_sarray> decode_image_sarray(
     std::shared_ptr<unity_sarray> image_sarray);
 
+/**
+ * Encode the image into compressed format (losslessly)
+ * No effect on already encoded images, even if the format is different.
+ */
+flexible_type encode_image(const flexible_type& data);
+
+
+/**************************************************************************/
+/*                                                                        */
+/*                                 Resize                                 */
+/*                                                                        */
+/**************************************************************************/
+
 /** Reisze an sarray of flex_images with the new size.
  */
-flexible_type resize_image(flexible_type image, size_t resized_width, 
+flexible_type resize_image(const flexible_type& image, size_t resized_width, 
     size_t resized_height, size_t resized_channel, bool decode = false);
 
 /** Resize an sarray of flex_image with the new size.
@@ -68,6 +95,14 @@ flexible_type resize_image(flexible_type image, size_t resized_width,
 std::shared_ptr<unity_sarray> resize_image_sarray(
     std::shared_ptr<unity_sarray> image_sarray, size_t resized_width, 
     size_t resized_height, size_t resized_channels, bool decode = false);
+
+
+
+/**************************************************************************/
+/*                                                                        */
+/*                      Vector <-> Image Conversion                       */
+/*                                                                        */
+/**************************************************************************/
 
 /** Convert sarray of image data to sarray of vector
  */
