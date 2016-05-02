@@ -208,7 +208,19 @@ size_t csv_line_tokenizer::tokenize_line(char* str, size_t len,
 
 bool csv_line_tokenizer::parse_as(char** buf, size_t len, 
                                   flexible_type& out, bool recursive_parse) {
-  bool parse_success;
+
+  if (!na_values.empty()) {
+    // process missing values
+    // first, whether the parsed buffer matches the na values *exactly*
+    while(len > 0 && std::isspace((*buf)[len - 1])) len--;
+    for (const auto& na_value: na_values) {
+      if (na_value.length() == len && strncmp(*buf, na_value.c_str(), len) == 0) {
+        out.reset(flex_type_enum::UNDEFINED);
+        return true;
+      }
+    }
+  }
+  bool parse_success = false;
   // we are trying to parse a non-string, but this actually looks like a string
   // to me.  it might be some other type wrapped inside quote characters
   if (recursive_parse && 
@@ -229,15 +241,8 @@ bool csv_line_tokenizer::parse_as(char** buf, size_t len,
   }
 
   /*
-   * This is somewhat irregular:
    *  *buf does not get modified if parsing fails
-   *  *buf gets modified if parsing succeeds EXCEPT if the parse
-   *   result is a string in which case buf will not be modified.
-   *
-   *   This allows the section after the switch (na_value handling) to 
-   *   correctly handle the cases where:
-   *    - If the the raw string matches an na_value
-   *    - If the parsed string (with escapes removed) matches an na_value
+   *  *buf gets modified if parsing succeeds
    */
   switch(out.get_type()) {
    case flex_type_enum::INTEGER:
@@ -278,10 +283,6 @@ bool csv_line_tokenizer::parse_as(char** buf, size_t len,
      break;
    case flex_type_enum::UNDEFINED:
      {
-       // remember the original values
-       // may need them later. see the comment above the switch
-       char* original_buf = *buf;
-       size_t original_len = len;
        std::tie(out, parse_success) = parser->general_flexible_type_parse((const char**)buf, len);
        // can we recursively parse this if it is a string?
        if (recursive_parse && 
@@ -305,12 +306,6 @@ bool csv_line_tokenizer::parse_as(char** buf, size_t len,
            out = out2;
          }
        }
-       // output is a string. restore the pointers
-       if (out.get_type() == flex_type_enum::STRING) {
-         // restore the buffer pointers
-         (*buf) = original_buf;
-         original_len = len;
-       }
      }
      break;
    default:
@@ -319,19 +314,6 @@ bool csv_line_tokenizer::parse_as(char** buf, size_t len,
   }
 
   if (!na_values.empty()) {
-    // process missing values
-    // first, whether the parsed buffer matches the na values *exactly*
-    if ((parse_success == false && out.get_type() != flex_type_enum::STRING) || 
-        (parse_success == true && out.get_type() == flex_type_enum::STRING)) {
-      while(len > 0 && std::isspace((*buf)[len - 1])) len--;
-      for (const auto& na_value: na_values) {
-        if (na_value.length() == len && strncmp(*buf, na_value.c_str(), len) == 0) {
-          out.reset(flex_type_enum::UNDEFINED);
-          parse_success = true;
-          break;
-        }
-      }
-    }
     // if it is a string, if it matches the string that was parsed, it is also 
     // an na_value 
     if (parse_success == true && out.get_type() == flex_type_enum::STRING) {
