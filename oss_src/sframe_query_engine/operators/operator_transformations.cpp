@@ -56,4 +56,37 @@ pnode_ptr make_segmented_graph(pnode_ptr n, size_t segment_idx,
   return ret;
 }
 
+pnode_ptr make_sliced_graph(pnode_ptr n, size_t begin_index, size_t end_index,
+                            std::map<pnode_ptr, pnode_ptr>& memo) {
+  // only forward slice
+  ASSERT_LE(begin_index, end_index);
+
+  if (memo.count(n)) return memo[n];
+  pnode_ptr ret(new planner_node(*n));
+  if(is_source_node(n)) {
+    DASSERT_TRUE(n->operator_parameters.count("begin_index"));
+    DASSERT_TRUE(n->operator_parameters.count("end_index"));
+    size_t old_begin_index = n->operator_parameters.at("begin_index");
+    size_t old_end_index = n->operator_parameters.at("end_index");
+
+    // slice range can be recursive
+    size_t new_length = (end_index - begin_index);
+    begin_index = old_begin_index + begin_index;
+    end_index = begin_index + new_length;
+
+    // cannot slice beyond current range
+    ASSERT_LE(end_index, old_end_index);
+    ret->operator_parameters["begin_index"] = begin_index;
+    ret->operator_parameters["end_index"] = end_index;
+  } else {
+    for(size_t i = 0; i < ret->inputs.size(); ++i) {
+      ret->inputs[i] = make_sliced_graph(ret->inputs[i], begin_index, end_index, memo);
+    }
+  }
+  // forget any length  memoized
+  ret->any_operator_parameters.erase("__length_memo__");
+  memo[n] = ret;
+  return ret;
+}
+
 }}

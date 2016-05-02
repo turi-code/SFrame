@@ -31,7 +31,6 @@ REGISTER_GLOBAL(int64_t, SFRAME_MAX_LAZY_NODE_SIZE, true);
 static sframe execute_node_impl(pnode_ptr input_n, const materialize_options& exec_params) {
   // Either run directly, or split it up into a parallel section
   if(is_parallel_slicable(input_n) && (exec_params.num_segments != 0)) {
-
     size_t num_segments = exec_params.num_segments;
 
     std::vector<pnode_ptr> segments(num_segments);
@@ -241,6 +240,7 @@ static pnode_ptr partial_materialize(pnode_ptr ptip,
     return partial_materialize_impl(ptip, exec_params, memo);
   }
 }
+
 sframe planner::materialize(pnode_ptr ptip, 
                             materialize_options exec_params) {
   std::lock_guard<recursive_mutex> GLOBAL_LOCK(global_query_lock);
@@ -289,13 +289,12 @@ sframe planner::materialize(pnode_ptr ptip,
 
 void planner::materialize(std::shared_ptr<planner_node> tip, 
                           write_callback_type callback,
-                          size_t num_segments) {
-  materialize_options args;
+                          size_t num_segments,
+                          materialize_options args) {
   args.num_segments = num_segments;
   args.write_callback = callback;
   materialize(tip, args);
 };
-
 
   /** If this returns true, it is recommended to go ahead and
    *  materialize the sframe operations on the fly to prevent memory
@@ -315,6 +314,25 @@ std::shared_ptr<planner_node>  planner::materialize_as_planner_node(
   sframe res = materialize(tip, exec_params);
   return op_sframe_source::make_planner_node(res);
 }
+
+/**
+ * Materialize the output, returning the result as a planner node.
+ */
+std::shared_ptr<planner_node> planner::slice(
+    std::shared_ptr<planner_node>& tip, size_t begin, size_t end) {
+  std::map<pnode_ptr, pnode_ptr> memo;
+  if (!is_linear_graph(tip)) {
+    // Try partial materialize first
+    materialize_options exec_params;
+    tip = partial_materialize(tip, exec_params);
+    if (!is_linear_graph(tip)) {
+      tip = materialize_as_planner_node(tip);
+    }
+  }
+  ASSERT_TRUE(is_linear_graph(tip));
+  return make_sliced_graph(tip, begin, end, memo);
+}
+
 
 bool planner::test_equal_length(std::shared_ptr<planner_node> a,
                                 std::shared_ptr<planner_node> b) {

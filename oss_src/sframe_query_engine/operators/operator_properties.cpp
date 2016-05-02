@@ -332,6 +332,31 @@ std::vector<size_t> get_parallel_slicable_codes(const pnode_ptr& n) {
   return codes; 
 }
 
+bool _is_linear_graph(const pnode_ptr& n, std::map<pnode_ptr, bool>& memo) {
+  if (memo.count(n)) {
+    return memo[n];
+  }
+  bool ret = true;
+  if (!is_linear_transform(n) && !is_source_node(n)) {
+    ret = false;
+  } else {
+    for (const auto& input: n->inputs) {
+      if (!is_linear_graph(input)) {
+        ret = false;
+        break;
+      }
+    }
+  }
+  memo[n] = ret;
+  return ret;
+}
+
+bool is_linear_graph(const pnode_ptr& n) {
+  std::map<pnode_ptr, bool> memo;
+  bool ret = _is_linear_graph(n, memo);
+  return ret;
+}
+
 /**************************************************************************/
 /*                                                                        */
 /*                           prove_equal_length                           */
