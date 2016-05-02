@@ -2612,7 +2612,7 @@ create_sequential_sarray(ssize_t size, ssize_t start, bool reverse) {
     if (reverse == false) {
       // not reverse. just make a sequence operator from start to start+ size
       std::shared_ptr<unity_sarray> seq = std::make_shared<unity_sarray>();
-      seq->construct_from_planner_node(op_sequence::make_planner_node(start, start + size));
+      seq->construct_from_planner_node(op_range::make_planner_node(start, start + size));
       return seq;
     } else {
       // reverse. Do it by start_constant - seq(0, size)
@@ -2620,7 +2620,7 @@ create_sequential_sarray(ssize_t size, ssize_t start, bool reverse) {
       start_const->construct_from_const(start, size);
 
       std::shared_ptr<unity_sarray> seq = std::make_shared<unity_sarray>();
-      seq->construct_from_planner_node(op_sequence::make_planner_node(0, size));
+      seq->construct_from_planner_node(op_range::make_planner_node(0, size));
 
       return start_const->vector_operator(seq, "-");
     }
