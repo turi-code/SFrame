@@ -61,13 +61,13 @@ std::shared_ptr<unity_sarray> decode_image_sarray(
 /** Reisze an sarray of flex_images with the new size.
  */
 flexible_type resize_image(flexible_type image, size_t resized_width, 
-    size_t resized_height, size_t resized_channel, bool encode = true);
+    size_t resized_height, size_t resized_channel, bool decode = false);
 
 /** Resize an sarray of flex_image with the new size.
  */
 std::shared_ptr<unity_sarray> resize_image_sarray(
     std::shared_ptr<unity_sarray> image_sarray, size_t resized_width, 
-    size_t resized_height, size_t resized_channels);
+    size_t resized_height, size_t resized_channels, bool decode = false);
 
 /** Convert sarray of image data to sarray of vector
  */

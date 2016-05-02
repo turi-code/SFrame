@@ -75,7 +75,7 @@ def _decode(image_data):
 
 
 
-def resize(image, width, height, channels=None):
+def resize(image, width, height, channels=None, decode=False):
     """
     Resizes the image or SArray of Images to a specific width, height, and
     number of channels.
@@ -93,6 +93,9 @@ def resize(image, width, height, channels=None):
         The number of channels the image is resized to. 1 channel
         corresponds to grayscale, 3 channels corresponds to RGB, and 4
         channels corresponds to RGBA images.
+    decode : bool, optional
+        Whether to store the resized image in decoded format. Decoded takes
+        more space, but makes the resize and future the operation on the image faster.
 
     Returns
     -------
@@ -130,19 +133,18 @@ def resize(image, width, height, channels=None):
 
     from ...data_structures.sarray import SArray as _SArray
     from ... import extensions as _extensions
-    encode = True
     _mt._get_metric_tracker().track('image_analysis.resize')
     if type(image) is _Image:
         if channels is None:
             channels = image.channels
         if channels <= 0:
             raise ValueError("cannot resize images to 0 or fewer channels")
-        return _extensions.resize_image(image, width, height, channels, encode)
+        return _extensions.resize_image(image, width, height, channels, decode)
     elif type(image) is _SArray:
         if channels is None:
             channels = 3
         if channels <= 0:
             raise ValueError("cannot resize images to 0 or fewer channels")
-        return image.apply(lambda x: _extensions.resize_image(x, width, height, channels, encode))
+        return image.apply(lambda x: _extensions.resize_image(x, width, height, channels, decode))
     else:
         raise ValueError("Cannot call 'resize' on objects that are not either an Image or SArray of Images")
