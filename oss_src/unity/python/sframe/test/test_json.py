@@ -17,7 +17,7 @@ import sys
 import unittest
 
 from . import util
-from .. import _json as json
+from .. import _json
 
 if sys.version_info.major == 3:
     long = int
@@ -43,17 +43,13 @@ image_urls = [current_file_dir + x for x in [
 ]]
 image_info = [image_info(u) for u in image_urls]
 
-def _print_hex_bytes(s):
-    sep = ":"
-    format_str = "{:02x}"
-    print(sep.join(format_str.format(ord(c)) for c in s))
-
 _SFrameComparer = util.SFrameComparer()
 
 class JSONTest(unittest.TestCase):
     def _assertEquals(self, x, y):
         from ..data_structures.sarray import SArray
         from ..data_structures.sframe import SFrame
+        from ..data_structures.sgraph import SGraph
         if type(x) in [long,int]:
             self.assertTrue(type(y) in [long,int])
         else:
@@ -62,21 +58,34 @@ class JSONTest(unittest.TestCase):
             _SFrameComparer._assert_sarray_equal(x, y)
         elif isinstance(x, SFrame):
             _SFrameComparer._assert_sframe_equal(x, y)
+        elif isinstance(x, SGraph):
+            _SFrameComparer._assert_sgraph_equal(x, y)
+        elif isinstance(x, dict):
+            for (k1,v1),(k2,v2) in zip(x.items(), y.items()):
+                self._assertEquals(k1, k2)
+                self._assertEquals(v1, v2)
+        elif isinstance(x, list):
+            for v1,v2 in zip(x, y):
+                self._assertEquals(v1, v2)
         else:
             self.assertEquals(x, y)
 
     def _run_test_case(self, value):
         # test that JSON serialization is invertible with respect to both
         # value and type.
-        if isinstance(value, str):
-            print("Input string is:")
-            _print_hex_bytes(value)
-        j = json.dumps(value)
-        print("Serialized json is:")
-        #print(j)
-        print("as hex:")
-        _print_hex_bytes(j)
-        self._assertEquals(json.loads(j), value)
+        (data, schema) = _json.to_serializable(value)
+        print("----------------------------------")
+        print("Value: %s" % value)
+        print("Serializable Data: %s" % data)
+        print("Serializable Schema: %s" % schema)
+        result = _json.from_serializable(data, schema)
+        print("Deserialized Result: %s" % result)
+        print("----------------------------------")
+        self._assertEquals(result, value)
+        # test that JSON serialization gives expected result
+        serialized = _json.dumps(value)
+        deserialized = _json.loads(serialized)
+        self._assertEquals(deserialized, value)
 
     @unittest.skipIf(sys.platform == 'win32', "Windows long issue")
     def test_int(self):
@@ -101,8 +110,7 @@ class JSONTest(unittest.TestCase):
         ]]
         self.assertTrue(
             math.isnan(
-                json.loads(
-                    json.dumps(float('nan')))))
+                _json.from_serializable(*_json.to_serializable(float('nan')))))
 
     def test_string_to_json(self):
         [self._run_test_case(value) for value in [
@@ -110,19 +118,6 @@ class JSONTest(unittest.TestCase):
             "a'b",
             "a\"b",
             "ɖɞɫɷ",
-        ]]
-
-    @unittest.skipIf(sys.version_info.major != 2, """
-Python 3 SFrame doesn't support non-utf-8 strings with flexible_type.
-These test cases don't apply there.
-""")
-    def test_non_utf8_to_json(self):
-        [self._run_test_case(value) for value in [
-            # some unicode strings from http://www.alanwood.net/unicode/unicode_samples.html
-            u'ɖɞɫɷ'.encode('utf-8'),
-            u'ɖɞɫɷ'.encode('utf-16'),
-            u'ɖɞɫɷ'.encode('utf-32'),
-            'a\x00b', # with null byte
         ]]
 
     def test_vec_to_json(self):
@@ -205,24 +200,44 @@ These test cases don't apply there.
             ]),
         ]]
 
-    @unittest.skipIf(sys.version_info.major != 2, """
-Python 3 SFrame doesn't support non-utf-8 strings with flexible_type.
-These test cases don't apply there.
-""")
-    def test_non_utf8_sarray_to_json(self):
-        from ..data_structures.sarray import SArray
-        from ..data_structures.sframe import SFrame
-        [self._run_test_case(value) for value in [
-            SArray([
-                u'ɖɞɫɷ'.encode('utf-8'),
-                u'ɖɞɫɷ'.encode('utf-16'),
-                u'ɖɞɫɷ'.encode('utf-32'),
-            ]),
-        ]]
-
     def test_sframe_to_json(self):
         from ..data_structures.sframe import SFrame
         [self._run_test_case(value) for value in [
             SFrame(),
-            #sframe.SFrame({'foo': [1,2,3,4], 'bar': [None, "Hello", None, "World"]}),
+            SFrame({'foo': [1,2,3,4], 'bar': [None, "Hello", None, "World"]}),
+        ]]
+
+    def test_sgraph_to_json(self):
+        from ..data_structures.sframe import SFrame
+        from ..data_structures.sgraph import SGraph, Vertex, Edge
+
+        sg = SGraph()
+        self._run_test_case(sg)
+
+        sg = sg.add_vertices([Vertex(x) for x in [1,2,3,4]])
+        sg = sg.add_edges([Edge(x, x+1) for x in [1,2,3]])
+        self._run_test_case(sg)
+
+    def test_nested_to_json(self):
+        # not tested in the cases above: nested data, nested schema
+        # (but all flexible_type compatible)
+        [self._run_test_case(value) for value in [
+            {'foo': ['a','b','c'], 'bar': array.array('d', [0.0, float('inf'), float('-inf')])},
+            [['a','b','c'], array.array('d', [0.0, float('inf'), float('-inf')])],
+            {
+                'baz': {'foo': ['a','b','c'], 'bar': array.array('d', [0.0, float('inf'), float('-inf')])},
+                'qux': [['a','b','c'], array.array('d', [0.0, float('inf'), float('-inf')])],
+            }
+        ]]
+
+    def test_variant_to_json(self):
+        # not tested in the cases above: variant_type other than SFrame-like
+        # but containing SFrame-like (so cannot be a flexible_type)
+        from ..data_structures.sarray import SArray
+        from ..data_structures.sframe import SFrame
+        sf = SFrame({'col1': [1,2], 'col2': ['hello','world']})
+        sa = SArray([5.0,6.0,7.0])
+        [self._run_test_case(value) for value in [
+            {'foo': sf, 'bar': sa},
+            [sf, sa],
         ]]
