@@ -117,9 +117,11 @@ build_source() {
   # Configure
   cd ${WORKSPACE}
 
-  PY_MAJOR_VERSION=`python -V 2>&1 | perl -ne 'print m/^Python (\d)\.\d/'`
-  if [[ $PY_MAJOR_VERSION == 3 ]]; then
+  PY_MAJOR_VERSION=`python -V 2>&1 | perl -ne 'print m/^Python (\d\.\d)/'`
+  if [[ $PY_MAJOR_VERSION == 3.4 ]]; then
       ./configure ${toolchain} --python3
+  elif [[ $PY_MAJOR_VERSION == 3.5 ]]; then
+      ./configure ${toolchain} --python3.5
   else
       ./configure ${toolchain}
   fi
