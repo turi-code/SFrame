@@ -95,7 +95,7 @@ def resize(image, width, height, channels=None, decode=False):
         channels corresponds to RGBA images.
     decode : bool, optional
         Whether to store the resized image in decoded format. Decoded takes
-        more space, but makes the resize and future the operation on the image faster.
+        more space, but makes the resize and future operations on the image faster.
 
     Returns
     -------
