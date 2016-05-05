@@ -18,15 +18,6 @@ namespace query_eval {
 /**
  * A "constant" operator which simply generates "len" instances of a particular
  * value.
- *
- * This operator exists largely for demonstration purposes. It is not really
- * safe to use in an actual query execution context since 
- * spliting and parallelizing this operator actually requires additional work
- * computing the lengths of each parallel stream. 
- *
- * To correctly handle the constant operator requires the query evaluator
- * to support "infinite length streams" (which is probably another operator
- * attribute). 
  */
 template <>
 struct operator_impl<planner_node_type::CONSTANT_NODE> : public query_operator {
