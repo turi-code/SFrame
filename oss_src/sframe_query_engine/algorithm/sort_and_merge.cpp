@@ -19,7 +19,7 @@ namespace query_eval {
 /**
  * Gets the first row of a segment
  */
-size_t segment_start(
+static size_t segment_start(
   std::unique_ptr<sarray_reader<std::pair<flex_list, std::string>>>& reader,
   size_t segmentid) {
   size_t ret = 0;
@@ -27,7 +27,7 @@ size_t segment_start(
   return ret;
 }
 
-void read_one_chunk(
+static void read_one_chunk(
   std::unique_ptr<sarray_reader<std::pair<flex_list, std::string>>>& reader,
   size_t segment_id,
   size_t num_columns,
@@ -48,9 +48,9 @@ void read_one_chunk(
  * This function destructively modifies sort_row to turn it into a 
  * vector<flexible_type>.
  */
-void sort_row_to_output_row(std::pair<flex_list, std::string>& sort_row,
-                            std::vector<flexible_type>& output_row,
-                            size_t num_columns) {
+static void sort_row_to_output_row(std::pair<flex_list, std::string>& sort_row,
+                                   std::vector<flexible_type>& output_row,
+                                   size_t num_columns) {
   output_row.resize(num_columns);
   size_t i = sort_row.first.size();
   // first the key columns
@@ -66,9 +66,9 @@ void sort_row_to_output_row(std::pair<flex_list, std::string>& sort_row,
  * Moves permuted_row[permute_order[i]] to output_row[i]
  * permuted_row and output_row must not be the same object.
  */
-void permute_row(std::vector<flexible_type>& permuted_row,
-                 std::vector<flexible_type>& output_row,
-                 const std::vector<size_t>& permute_order) {
+static void permute_row(std::vector<flexible_type>& permuted_row,
+                        std::vector<flexible_type>& output_row,
+                        const std::vector<size_t>& permute_order) {
   // we can do this with an inplace permutation. But that is somewhat annoying
   // to implement
   output_row.resize(permuted_row.size());
@@ -77,7 +77,7 @@ void permute_row(std::vector<flexible_type>& permuted_row,
   }
 }
 
-void write_one_chunk(
+static void write_one_chunk(
   std::unique_ptr<sarray_reader<std::pair<flex_list, std::string>>>& reader,
   const std::vector<size_t>& permute_order,
   size_t segment_id,
@@ -95,7 +95,7 @@ void write_one_chunk(
   }
 }
 
-void write_one_chunk(
+static void write_one_chunk(
     std::vector<std::pair<flex_list, std::string>>& rows,
     const std::vector<size_t>& permute_order,
     sframe_output_iterator& output_iterator,

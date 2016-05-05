@@ -36,6 +36,7 @@ constexpr size_t ROW_SIZE_ESTIMATE = 32;
  * Create a quantile sketch for the key columns so that we can decide how to partition
  * the sframe
  */
+static 
 std::shared_ptr<sketches::streaming_quantile_sketch<flexible_type, less_than_full_function>>
 create_quantile_sketch(std::shared_ptr<planner_node>&  sframe_planner_node,
                        const std::vector<bool>&  sort_orders ) {
@@ -143,7 +144,7 @@ bool get_partition_keys(
  *   where the first element of the pair is the key and the 2nd element of the
  *   pair is the serialized values.
 **/
-std::shared_ptr<sarray<std::pair<flex_list, std::string> >> scatter_partition(
+static std::shared_ptr<sarray<std::pair<flex_list, std::string> >> scatter_partition(
   const std::shared_ptr<planner_node> sframe_planner_node,
   size_t num_sort_columns,
   const std::vector<bool>& sort_orders,
@@ -190,13 +191,14 @@ std::shared_ptr<sarray<std::pair<flex_list, std::string> >> scatter_partition(
 
       // find which partition the value belongs to
       size_t partition_id = num_partitions_keys - 1;
-      for(size_t i = 0; i < partition_keys.size() ; i++) {
-        const flex_list& partition_key = partition_keys[i].get<flex_list>();
-        if((sort_keys == partition_key) || less_than(sort_keys, partition_key)) {
-          partition_id = i;
-          break;
-        }
-      }
+      partition_id = std::distance(partition_keys.begin(),
+           std::lower_bound(partition_keys.begin(),
+                            partition_keys.end(),
+                            sort_keys,
+                            [&](const flexible_type& left, const std::vector<flexible_type>& right) {
+                              return less_than(left.get<flex_list>(), right);
+                            }
+                            )) ;
       DASSERT_TRUE(partition_id < num_partitions_keys);
 
       sorted_mutexes[partition_id].lock();

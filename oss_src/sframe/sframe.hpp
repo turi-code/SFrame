@@ -665,6 +665,15 @@ class sframe : public swriter_base<sframe_output_iterator> {
 
   bool delete_files_on_destruction();
 
+  /**
+   * Internal API.
+   * Used to obtain the internal writer object.
+   */
+  inline
+  std::shared_ptr<sarray_group_format_writer<flexible_type> > 
+  get_internal_writer() {
+    return group_writer;
+  }
  private:
 
   /**

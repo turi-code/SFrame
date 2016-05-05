@@ -29,6 +29,7 @@
 #include <sframe_query_engine/operators/all_operators.hpp>
 #include <sframe_query_engine/operators/operator_properties.hpp>
 #include <sframe_query_engine/algorithm/sort.hpp>
+#include <sframe_query_engine/algorithm/ec_sort.hpp>
 #include <sframe_query_engine/algorithm/groupby_aggregate.hpp>
 #include <sframe_query_engine/operators/operator_properties.hpp>
 #include <lambda/pylambda_function.hpp>
@@ -1130,10 +1131,10 @@ unity_sframe::sort(const std::vector<std::string>& sort_keys,
     b_sort_ascending.push_back((bool)sort_order);
   }
 
-  auto sorted_sf = graphlab::sort(this->get_planner_node(),
-                                  this->column_names(),
-                                  sort_indices,
-                                  b_sort_ascending);
+  auto sorted_sf = graphlab::ec_sort(this->get_planner_node(),
+                                     this->column_names(),
+                                     sort_indices,
+                                     b_sort_ascending);
   std::shared_ptr<unity_sframe> ret(new unity_sframe());
   ret->construct_from_sframe(*sorted_sf);
   return ret;
