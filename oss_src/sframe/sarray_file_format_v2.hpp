@@ -636,6 +636,52 @@ class sarray_group_format_writer_v2: public sarray_group_format_writer<T> {
   }
 
   /**
+   * Writes a collection of rows to a column
+   */
+  void write_column(size_t columnid, 
+                    size_t segmentid, 
+                    const std::vector<T>& t) {
+    DASSERT_LT(segmentid, m_nsegments);
+    DASSERT_LT(columnid, m_column_buffers.size());
+    DASSERT_EQ(m_array_open, true);
+
+    auto& buffer = m_column_buffers[columnid].segment_data[segmentid];
+    std::copy(t.begin(), t.end(), std::back_inserter(buffer));
+    if (m_column_buffers[columnid].segment_data[segmentid].size() >= 
+        m_column_buffers[columnid].elements_before_flush) {
+      flush_block(columnid, segmentid);
+    }
+  }
+
+  /**
+   * Writes a collection of rows to a column
+   */
+  void write_column(size_t columnid, 
+                    size_t segmentid, 
+                    std::vector<T>&& t) {
+    DASSERT_LT(segmentid, m_nsegments);
+    DASSERT_LT(columnid, m_column_buffers.size());
+    DASSERT_EQ(m_array_open, true);
+
+    auto& buffer = m_column_buffers[columnid].segment_data[segmentid];
+    if (buffer.size() + t.size() > m_column_buffers[columnid].elements_before_flush && 
+        buffer.size() > 0 &&
+        buffer.size() > m_column_buffers[columnid].elements_before_flush / 2) {
+      // fast move path
+      // if the buffer is sufficiently full.
+      // we flush it and move t in instead of an element by element copy.
+      flush_block(columnid, segmentid);
+      buffer = std::move(t);
+    } else {
+      std::copy(t.begin(), t.end(), std::back_inserter(buffer));
+    }
+    if (m_column_buffers[columnid].segment_data[segmentid].size() >= 
+        m_column_buffers[columnid].elements_before_flush) {
+      flush_block(columnid, segmentid);
+    }
+  }
+
+  /**
    * Writes a row to the array group
    */
   void write_segment(size_t columnid, 
@@ -821,7 +867,7 @@ inline void sarray_group_format_writer_v2<flexible_type>::write_segment(size_t s
   DASSERT_EQ(m_array_open, true);
 
   DASSERT_EQ(rows.num_columns(), m_column_buffers.size());
-  const auto cols = rows.cget_columns();
+  const auto& cols = rows.cget_columns();
   // reserve space in all buffers
   for (size_t i = 0;i < m_column_buffers.size(); ++i) {
     auto& buffer = m_column_buffers[i].segment_data[segmentid];

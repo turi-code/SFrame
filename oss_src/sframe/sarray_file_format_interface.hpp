@@ -216,6 +216,20 @@ class sarray_group_format_writer {
                              const sframe_rows& rows) = 0;
 
   /**
+   * Writes a collection of rows to a column
+   */
+  virtual void write_column(size_t columnid, 
+                            size_t segmentid, 
+                            const std::vector<T>& t) = 0;
+
+  /**
+   * Writes a collection of rows to a column
+   */
+  virtual void write_column(size_t columnid, 
+                            size_t segmentid, 
+                            std::vector<T>&& t) = 0;
+
+  /**
    * Flush all writes for a particular segment
    */
   virtual void flush_segment(size_t segmentid) { }

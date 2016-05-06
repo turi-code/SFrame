@@ -107,6 +107,8 @@ property that if (c,r-1,v) must be read before (c,r,v). Hence the
 rows are written in the correct order. (though how to do this in
 parallel is a question.)
 
+We will also have to generate a per-bucket forward_map using the same 
+scatter procedure.
 
 This requires a little bit of intelligence in the caching of the
 forward map SArray. If the forward map is small, we can keep it all
@@ -122,7 +124,7 @@ Sort
         Let T be the ending index of bucket b (i.e. (b+1)*N/k)
         Load forward_map[S:T] into memory
         For each (c,r,v) in bucket b
-            Output[forward_map(r) - S][c] = v
+            Output[per_bucket_forward_map(r) - S][c] = v
         Dump Output to an SFrame
 
 Advantages
