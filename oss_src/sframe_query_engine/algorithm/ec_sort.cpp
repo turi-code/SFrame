@@ -57,11 +57,39 @@ static std::vector<size_t> num_bytes_per_column(sframe& values) {
                                 block_number};
         column_num_bytes[i] += block_manager.get_block_info(block_address).block_size;
       }
+      block_manager.close_column(segment_address);
     }
   }
   return column_num_bytes;
 }
 
+static std::vector<size_t> column_row_boundaries(std::shared_ptr<sarray<flexible_type>> cur_column) {
+  std::vector<size_t> row_boundaries;
+  auto column_index = cur_column->get_index_info();
+  // for each segment in the column
+  size_t row_number = 0;
+  row_boundaries.push_back(row_number);
+  auto& block_manager = v2_block_impl::block_manager::get_instance();
+  for(auto segment_file: column_index.segment_files) {
+    auto segment_address = block_manager.open_column(segment_file);
+    auto num_blocks_in_current_segment =
+        block_manager.num_blocks_in_column(segment_address);
+    // for each block in the segment
+    for (size_t block_number = 0;
+         block_number < num_blocks_in_current_segment;
+         ++block_number) {
+      v2_block_impl::block_address block_address{
+                              std::get<0>(segment_address),
+                              std::get<1>(segment_address),
+                              block_number};
+      size_t nrows = block_manager.get_block_info(block_address).num_elem;
+      row_number += nrows;
+      row_boundaries.push_back(row_number);
+    }
+    block_manager.close_column(segment_address);
+  }
+  return row_boundaries;
+}
 /**
  * Given the storage requirements of a column (via num_bytes_per_column),
  * and its type, return an estimate of the number of bytes of memory required
@@ -115,6 +143,8 @@ static sframe ec_scatter_partitions(sframe input,
   //    Write (c,v) to bucket `bucket of forward_map(r)`
   //  - For each (c,r,v) in forward_map:
   //        Write (c,v) to bucket `bucket of forward_map(r)`
+  logstream(LOG_INFO) << "input size " << input.size() << std::endl;
+  logstream(LOG_INFO) << "forward map size " << forward_map->size() << std::endl;
   input = input.add_column(forward_map);
   auto num_buckets = (input.size() + rows_per_bucket - 1)/ rows_per_bucket;
   sframe output;
@@ -160,13 +190,24 @@ static sframe ec_scatter_partitions(sframe input,
                                   forward_map_buffer);
 
     // now in parallel over columns.
-    parallel_for(0, input.num_columns(), [&](size_t column_id) {
+    atomic<size_t> col_number = 0;
+    in_parallel([&](size_t unused, size_t unused2) {
+                    size_t column_id = col_number.inc_ret_last();
+                    if (column_id >= input.num_columns()) return;
+                    std::vector<size_t> boundaries = 
+                        column_row_boundaries(input.select_column(column_id));
                     std::vector<flexible_type> buffer;
-                    for (size_t row = forward_map_start;
-                         row < forward_map_end;
-                         row += SFRAME_READ_BATCH_SIZE) {
-                      size_t row_end = std::min(row + SFRAME_READ_BATCH_SIZE,
-                                              forward_map_end);
+
+                    for (size_t i = 0;
+                         i < boundaries.size() - 1;
+                         ++i) {
+                      size_t row = boundaries[i];
+                      size_t row_end = boundaries[i + 1];
+                      if (row_end < forward_map_start) continue;
+                      row = std::max(row, forward_map_start);
+                      row_end = std::min(row_end, forward_map_end);
+                      // we have ended on the right hand side. quit
+                      if (row >= row_end) break;
                       readers[column_id]->read_rows(row, row_end, buffer);
                       // scatter
                       for (size_t i= 0;i < buffer.size(); ++i) {
@@ -175,7 +216,7 @@ static sframe ec_scatter_partitions(sframe input,
                             forward_map_buffer[actual_row - forward_map_start].get<flex_int>();
                         size_t output_segment = output_row / rows_per_bucket;
                         if (output_segment >= num_buckets) output_segment = num_buckets - 1;
-                        writer->write_segment(column_id, output_segment, std::move(buffer[i]));
+                        writer->write_segment(column_id, output_segment, buffer[i]);
                       }
                     }
                  });
@@ -235,11 +276,12 @@ sframe ec_permute_partitions(sframe input,
 
   auto forward_map_reader = input.select_column(num_input_columns)->get_reader();
   size_t MAX_SORT_BUFFER = SFRAME_SORT_BUFFER_SIZE / thread::cpu_count(); 
-  atomic<size_t> atomic_bucket_id = 0;
 
+  atomic<size_t> atomic_bucket_id = 0;
   // for each bucket
-  parallel_for(0, num_buckets, [&](size_t unused) {
+  in_parallel([&](size_t unused, size_t unused2) {
     size_t bucket_id = atomic_bucket_id.inc_ret_last();
+    if (bucket_id >= num_buckets) return;
     size_t row_start = bucket_id * rows_per_bucket;
     size_t row_end = std::min(input.size(), row_start + rows_per_bucket);
     size_t num_rows = row_end - row_start;
@@ -321,6 +363,8 @@ sframe ec_permute_partitions(sframe input,
           ++row_number;
         }
       }
+
+      for(auto kv: column_id_from_column_address) block_manager.close_column(kv.first);
       logstream(LOG_INFO) << "Permute buffer fill in " << ti.current_time() << std::endl;
       ti.start();
       // write the permute buffer.
