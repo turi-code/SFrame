@@ -645,11 +645,14 @@ class sarray_group_format_writer_v2: public sarray_group_format_writer<T> {
     DASSERT_LT(columnid, m_column_buffers.size());
     DASSERT_EQ(m_array_open, true);
 
+    auto el_before_flush = m_column_buffers[columnid].elements_before_flush;
     auto& buffer = m_column_buffers[columnid].segment_data[segmentid];
-    std::copy(t.begin(), t.end(), std::back_inserter(buffer));
-    if (m_column_buffers[columnid].segment_data[segmentid].size() >= 
-        m_column_buffers[columnid].elements_before_flush) {
-      flush_block(columnid, segmentid);
+    for(const auto& elem: t) {
+      buffer.push_back(elem);
+      if (buffer.size() >= el_before_flush) {
+        flush_block(columnid, segmentid);
+        el_before_flush = m_column_buffers[columnid].elements_before_flush;
+      }
     }
   }
 
@@ -663,21 +666,14 @@ class sarray_group_format_writer_v2: public sarray_group_format_writer<T> {
     DASSERT_LT(columnid, m_column_buffers.size());
     DASSERT_EQ(m_array_open, true);
 
+    auto el_before_flush = m_column_buffers[columnid].elements_before_flush;
     auto& buffer = m_column_buffers[columnid].segment_data[segmentid];
-    if (buffer.size() + t.size() > m_column_buffers[columnid].elements_before_flush && 
-        buffer.size() > 0 &&
-        buffer.size() > m_column_buffers[columnid].elements_before_flush / 2) {
-      // fast move path
-      // if the buffer is sufficiently full.
-      // we flush it and move t in instead of an element by element copy.
-      flush_block(columnid, segmentid);
-      buffer = std::move(t);
-    } else {
-      std::copy(t.begin(), t.end(), std::back_inserter(buffer));
-    }
-    if (m_column_buffers[columnid].segment_data[segmentid].size() >= 
-        m_column_buffers[columnid].elements_before_flush) {
-      flush_block(columnid, segmentid);
+    for(const auto& elem: t) {
+      buffer.push_back(std::move(elem));
+      if (buffer.size() >= el_before_flush) {
+        flush_block(columnid, segmentid);
+        el_before_flush = m_column_buffers[columnid].elements_before_flush;
+      }
     }
   }
 
