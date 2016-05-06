@@ -191,12 +191,12 @@ static sframe ec_scatter_partitions(sframe input,
 
     // now in parallel over columns.
     atomic<size_t> col_number = 0;
-//     in_parallel([&](size_t unused, size_t unused2) {
-//                     size_t column_id = col_number.inc_ret_last();
-    parallel_for(0, input.num_columns(), [&](size_t column_id) {
-                    //if (column_id >= input.num_columns()) return;
+     in_parallel([&](size_t unused, size_t unused2) {
+                  while(1) {
+                    size_t column_id = col_number.inc_ret_last();
+                    if (column_id >= input.num_columns()) return;
                     std::vector<size_t> boundaries = 
-                        column_row_boundaries(input.select_column(column_id));
+                    column_row_boundaries(input.select_column(column_id));
                     std::vector<flexible_type> buffer;
 
                     for (size_t i = 0;
@@ -220,7 +220,8 @@ static sframe ec_scatter_partitions(sframe input,
                         writer->write_segment(column_id, output_segment, buffer[i]);
                       }
                     }
-                 });
+                  }
+                });
   }
   output.close();
   return output;
@@ -280,103 +281,102 @@ sframe ec_permute_partitions(sframe input,
 
   atomic<size_t> atomic_bucket_id = 0;
   // for each bucket
-  in_parallel([&](size_t unused, size_t unused2) {
-    size_t bucket_id = atomic_bucket_id.inc_ret_last();
-    if (bucket_id >= num_buckets) return;
-    size_t row_start = bucket_id * rows_per_bucket;
-    size_t row_end = std::min(input.size(), row_start + rows_per_bucket);
-    size_t num_rows = row_end - row_start;
+  parallel_for(0, num_buckets, [&](size_t bucket_id) {
+    {
+      size_t row_start = bucket_id * rows_per_bucket;
+      size_t row_end = std::min(input.size(), row_start + rows_per_bucket);
+      size_t num_rows = row_end - row_start;
 
-    logstream(LOG_INFO) << "Processing bucket " << bucket_id << std::endl;
-    // pull in the forward map
-    std::vector<flexible_type> forward_map_buffer;
-    forward_map_buffer.resize(num_rows);
-    forward_map_reader->read_rows(row_start, row_end, forward_map_buffer);
+      logstream(LOG_INFO) << "Processing bucket " << bucket_id << std::endl;
+      // pull in the forward map
+      std::vector<flexible_type> forward_map_buffer;
+      forward_map_buffer.resize(num_rows);
+      forward_map_reader->read_rows(row_start, row_end, forward_map_buffer);
 
 
-     size_t col_start = 0;
-     while(col_start < num_input_columns) {
-       size_t col_end = col_start + 1;
-       size_t memory_estimate = column_bytes_per_value[col_start] * num_rows;
-       while(memory_estimate < MAX_SORT_BUFFER && 
-             col_end < num_input_columns) {
-         size_t next_col_memory_estimate = column_bytes_per_value[col_end] * num_rows;
-         // if we can fit the next column in memory. good. Otherwise break;
-         if (next_col_memory_estimate + memory_estimate < MAX_SORT_BUFFER) {
-           memory_estimate += next_col_memory_estimate;
-           ++col_end;
-         } else {
-           break;
+       size_t col_start = 0;
+       while(col_start < num_input_columns) {
+         size_t col_end = col_start + 1;
+         size_t memory_estimate = column_bytes_per_value[col_start] * num_rows;
+         while(memory_estimate < MAX_SORT_BUFFER && 
+               col_end < num_input_columns) {
+           size_t next_col_memory_estimate = column_bytes_per_value[col_end] * num_rows;
+           // if we can fit the next column in memory. good. Otherwise break;
+           if (next_col_memory_estimate + memory_estimate < MAX_SORT_BUFFER) {
+             memory_estimate += next_col_memory_estimate;
+             ++col_end;
+           } else {
+             break;
+           }
          }
-       }
- 
-       logstream(LOG_INFO) << "  Columns " << col_start << " to " << col_end << std::endl;
+   
+         logstream(LOG_INFO) << "  Columns " << col_start << " to " << col_end << std::endl;
 
-       std::vector<std::vector<flexible_type> > 
-           permute_buffer(col_end - col_start,
-                          std::vector<flexible_type>(num_rows)); // buffer after permutation
+         std::vector<std::vector<flexible_type> > 
+             permute_buffer(col_end - col_start,
+                            std::vector<flexible_type>(num_rows)); // buffer after permutation
 
-      // this is the order I am going to read the blocks in this bucket
-      std::vector<v2_block_impl::block_address> block_read_order;
-      std::map<v2_block_impl::column_address, size_t> column_id_from_column_address;
-      std::vector<size_t> cur_row_number(col_end - col_start, 0);
-      timer ti;
-      for (size_t column_id = col_start; column_id < col_end ; ++column_id) {
-        // look in the segment file and list all the blocks
-        const auto column_index = input.select_column(column_id)->get_index_info();
-        auto segment_address = block_manager.open_column(column_index.segment_files[bucket_id]);
-        column_id_from_column_address[segment_address] = column_id;
+         // this is the order I am going to read the blocks in this bucket
+         std::vector<v2_block_impl::block_address> block_read_order;
+         std::map<v2_block_impl::column_address, size_t> column_id_from_column_address;
+         std::vector<size_t> cur_row_number(col_end - col_start, 0);
+         timer ti;
+         for (size_t column_id = col_start; column_id < col_end ; ++column_id) {
+           // look in the segment file and list all the blocks
+           const auto column_index = input.select_column(column_id)->get_index_info();
+           auto segment_address = block_manager.open_column(column_index.segment_files[bucket_id]);
+           column_id_from_column_address[segment_address] = column_id;
 
-        auto num_blocks_in_current_segment =
-            block_manager.num_blocks_in_column(segment_address);
-        // for each block in the segment
-        for (size_t block_number = 0;
-             block_number < num_blocks_in_current_segment;
-             ++block_number) {
-          block_read_order.push_back(v2_block_impl::block_address{
-                                     std::get<0>(segment_address),
-                                     std::get<1>(segment_address),
-                                     block_number});
-        }
+           auto num_blocks_in_current_segment =
+               block_manager.num_blocks_in_column(segment_address);
+           // for each block in the segment
+           for (size_t block_number = 0;
+                block_number < num_blocks_in_current_segment;
+                ++block_number) {
+             block_read_order.push_back(v2_block_impl::block_address{
+                                        std::get<0>(segment_address),
+                                        std::get<1>(segment_address),
+                                        block_number});
+           }
+         }
+         // now sort the block_read_order by the block info offset
+         std::sort(block_read_order.begin(), block_read_order.end(),
+                   [&](const v2_block_impl::block_address& left, 
+                       const v2_block_impl::block_address& right) {
+                     return block_manager.get_block_info(left).offset < 
+                                 block_manager.get_block_info(right).offset;
+                   });
+         ti.start();
+         // good. now we fetch the blocks in that order.
+         std::vector<flexible_type> buffer;
+         for (auto& block: block_read_order) {
+           block_manager.read_typed_block(block, buffer);
+           v2_block_impl::column_address col_address{std::get<0>(block), std::get<1>(block)};
+           size_t column_id = column_id_from_column_address.at(col_address);
+
+           size_t& row_number = cur_row_number[column_id - col_start];
+           for (size_t i = 0; i < buffer.size(); ++i) {
+             DASSERT_LT(row_number, forward_map_buffer.size());
+             DASSERT_GE(forward_map_buffer[row_number], row_start);
+             DASSERT_LT(forward_map_buffer[row_number], row_end);
+             size_t target = forward_map_buffer[row_number] - row_start;
+             permute_buffer[column_id - col_start][target] = std::move(buffer[i]);
+             ++row_number;
+           }
+         }
+
+         for(auto kv: column_id_from_column_address) block_manager.close_column(kv.first);
+         logstream(LOG_INFO) << "Permute buffer fill in " << ti.current_time() << std::endl;
+         ti.start();
+         // write the permute buffer.
+         for (size_t column_id = col_start; column_id < col_end ; ++column_id) {
+           writer->write_column(column_id, bucket_id, std::move(permute_buffer[column_id - col_start]));
+         }
+         logstream(LOG_INFO) << "write columns in " << ti.current_time() << std::endl;
+         ti.start();
+         writer->flush_segment(bucket_id);
+         col_start = col_end;
       }
-      // now sort the block_read_order by the block info offset
-      std::sort(block_read_order.begin(), block_read_order.end(),
-                [&](const v2_block_impl::block_address& left, 
-                    const v2_block_impl::block_address& right) {
-                  return block_manager.get_block_info(left).offset < 
-                              block_manager.get_block_info(right).offset;
-                });
-      ti.start();
-      // good. now we fetch the blocks in that order.
-      std::vector<flexible_type> buffer;
-      for (auto& block: block_read_order) {
-        block_manager.read_typed_block(block, buffer);
-        v2_block_impl::column_address col_address{std::get<0>(block), std::get<1>(block)};
-        size_t column_id = column_id_from_column_address.at(col_address);
-
-        size_t& row_number = cur_row_number[column_id - col_start];
-        for (size_t i = 0; i < buffer.size(); ++i) {
-          DASSERT_LT(row_number, forward_map_buffer.size());
-          DASSERT_GE(forward_map_buffer[row_number], row_start);
-          DASSERT_TRUE(forward_map_buffer[row_number] < row_end);
-          size_t target = forward_map_buffer[row_number] - row_start;
-          permute_buffer[column_id - col_start][target] = std::move(buffer[i]);
-          ++row_number;
-        }
-      }
-
-      for(auto kv: column_id_from_column_address) block_manager.close_column(kv.first);
-      logstream(LOG_INFO) << "Permute buffer fill in " << ti.current_time() << std::endl;
-      ti.start();
-      // write the permute buffer.
-      for (size_t column_id = col_start; column_id < col_end ; ++column_id) {
-        writer->write_column(column_id, bucket_id, std::move(permute_buffer[column_id - col_start]));
-      }
-      logstream(LOG_INFO) << "write columns in " << ti.current_time() << std::endl;
-      ti.start();
-      writer->flush_segment(bucket_id);
-      logstream(LOG_INFO) << bucket_id << " flush in " << ti.current_time() << std::endl;
-      col_start = col_end;
     }
   });
 
