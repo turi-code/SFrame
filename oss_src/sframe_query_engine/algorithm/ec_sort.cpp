@@ -191,9 +191,10 @@ static sframe ec_scatter_partitions(sframe input,
 
     // now in parallel over columns.
     atomic<size_t> col_number = 0;
-    in_parallel([&](size_t unused, size_t unused2) {
-                    size_t column_id = col_number.inc_ret_last();
-                    if (column_id >= input.num_columns()) return;
+//     in_parallel([&](size_t unused, size_t unused2) {
+//                     size_t column_id = col_number.inc_ret_last();
+    parallel_for(0, input.num_columns(), [&](size_t column_id) {
+                    //if (column_id >= input.num_columns()) return;
                     std::vector<size_t> boundaries = 
                         column_row_boundaries(input.select_column(column_id));
                     std::vector<flexible_type> buffer;
@@ -357,7 +358,7 @@ sframe ec_permute_partitions(sframe input,
         for (size_t i = 0; i < buffer.size(); ++i) {
           DASSERT_LT(row_number, forward_map_buffer.size());
           DASSERT_GE(forward_map_buffer[row_number], row_start);
-          DASSERT_LT(forward_map_buffer[row_number], row_end);
+          DASSERT_TRUE(forward_map_buffer[row_number] < row_end);
           size_t target = forward_map_buffer[row_number] - row_start;
           permute_buffer[column_id - col_start][target] = std::move(buffer[i]);
           ++row_number;
@@ -402,13 +403,13 @@ sframe permute_sframe(sframe &values_sframe,
   //                         a value in each columns
   // indirect_column : If true, we write a row number in scatter, and pick it
   //                   up again later.
-  std::__1::vector<size_t> column_bytes_per_value(num_value_columns, 0);
-  std::__1::vector<bool> indirect_column(num_value_columns, false);
+  std::vector<size_t> column_bytes_per_value(num_value_columns, 0);
+  std::vector<bool> indirect_column(num_value_columns, false);
   size_t num_buckets = 0;
   {
     // First lets get an estimate of the column sizes and we use that
     // to estimate the number of buckets needed.
-    std::__1::vector<size_t> column_num_bytes = num_bytes_per_column(values_sframe);
+    std::vector<size_t> column_num_bytes = num_bytes_per_column(values_sframe);
     for (size_t i = 0;i < column_bytes_per_value.size();++i) {
       column_bytes_per_value[i] =
               column_bytes_per_value_estimate(column_num_bytes[i],
@@ -417,12 +418,12 @@ sframe permute_sframe(sframe &values_sframe,
       // if bytes_per_value exceeds 256K, we use the indirect write.
       logstream(LOG_INFO) << "Est. bytes per value for column "
                           << value_column_names[i] << ": "
-                          << column_bytes_per_value[i] << std::__1::endl;
+                          << column_bytes_per_value[i] << std::endl;
       if (column_bytes_per_value[i] > 256 * 1024) {
         indirect_column[i] = true;
         column_bytes_per_value[i] = sizeof(flexible_type);
         logstream(LOG_INFO) << "Using indirect access for column "
-                            << value_column_names[i] << std::__1::endl;
+                            << value_column_names[i] << std::endl;
       }
       // update the number of bytes for the whole column
       column_num_bytes[i] = column_bytes_per_value[i] * num_rows;
@@ -436,10 +437,10 @@ sframe permute_sframe(sframe &values_sframe,
     // at least 1 bucket
     size_t HALF_SORT_BUFFER = SFRAME_SORT_BUFFER_SIZE / 2;
     num_buckets = (max_column_num_bytes + HALF_SORT_BUFFER - 1) / HALF_SORT_BUFFER;
-    num_buckets = std::__1::max<size_t>(1, num_buckets);
+    num_buckets = std::max<size_t>(1, num_buckets);
     num_buckets *= thread::cpu_count();
 
-    logstream(LOG_INFO) << "Generating " << num_buckets << " buckets" << std::__1::endl;
+    logstream(LOG_INFO) << "Generating " << num_buckets << " buckets" << std::endl;
 
     size_t max_column_bytes_per_value = *max_element(column_bytes_per_value.begin(),
                                                      column_bytes_per_value.end());
@@ -451,7 +452,7 @@ sframe permute_sframe(sframe &values_sframe,
      */
     size_t max_sort_rows =
             ((HALF_SORT_BUFFER * SFRAME_SORT_MAX_SEGMENTS) / max_column_bytes_per_value);
-    logstream(LOG_INFO) << "Maximum sort rows: " << max_sort_rows << std::__1::endl;
+    logstream(LOG_INFO) << "Maximum sort rows: " << max_sort_rows << std::endl;
     if (num_rows > max_sort_rows) {
       logstream(LOG_WARNING)
         << "With the current configuration of SFRAME_SORT_BUFFER_SIZE "
@@ -462,7 +463,7 @@ sframe permute_sframe(sframe &values_sframe,
         << "SFRAME_SORT_MAX_SEGMENTS can be increased by increasing the number of n"
         << "file handles via ulimit -n\n"
         << "SFRAME_SORT_BUFFER_SIZE can be increased with gl.set_runtime_config()"
-        << std::__1::endl;
+        << std::endl;
     }
   }
 
@@ -475,17 +476,17 @@ sframe permute_sframe(sframe &values_sframe,
   // The limiter is going to be the largest column.
   //
   // Here we create bucket_start[i] and bucket_end[i] for each bucket
-  std::__1::vector<size_t> bucket_start(num_buckets, 0);
+  std::vector<size_t> bucket_start(num_buckets, 0);
   // due rows_per_bucket being an integer, a degree of imbalance
   // (up to num_buckets) is expected. That's fine.
   size_t rows_per_bucket = size_t(num_rows) / num_buckets;
-  logstream(LOG_INFO) << "Rows per bucket: " << rows_per_bucket << std::__1::endl;
+  logstream(LOG_INFO) << "Rows per bucket: " << rows_per_bucket << std::endl;
   for (size_t i = 0;i < num_buckets;++i) {
     bucket_start[i] = i * rows_per_bucket;
   }
 
   ti.start();
-  logstream(LOG_INFO) << "Beginning scatter " << std::__1::endl;
+  logstream(LOG_INFO) << "Beginning scatter " << std::endl;
   // Scatter
   // -------
   //  - For each (c,r,v) in data:
@@ -494,7 +495,7 @@ sframe permute_sframe(sframe &values_sframe,
                                                 rows_per_bucket,
                                                 indirect_column,
                                                 forward_map);
-  logstream(LOG_INFO) << "Scatter finished in " << ti.current_time() << std::__1::endl;
+  logstream(LOG_INFO) << "Scatter finished in " << ti.current_time() << std::endl;
 
   sframe sorted_values_sframe = ec_permute_partitions(scatter_sframe,
                                                       values_sframe,
