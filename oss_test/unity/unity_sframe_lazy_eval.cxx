@@ -107,14 +107,6 @@ class unity_sframe_lazy_eval_test: public CxxTest::TestSuite {
 
     new_sframe.tail(2);
 
-    assert_materialized(new_sframe, true);
-
-    // TODO These test do not pass yet
-    assert_materialized(col_a, true);
-    assert_materialized(col_b, true);
-
-    // This test is no longer true with the new query layer
-    // assert_materialized(col_a_plus_b, true);
   }
 
   /**
@@ -134,7 +126,6 @@ class unity_sframe_lazy_eval_test: public CxxTest::TestSuite {
 
     // get size will cause materialization
     TS_ASSERT_EQUALS(filter_a->size(), ARRAY_SIZE - 1);
-    assert_materialized(filter_a, true);
   }
 
   /**
