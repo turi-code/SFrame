@@ -59,6 +59,8 @@ function print_help {
   echo
   echo "  --python3               Use Python 3.4, default is Python 2.7."
   echo
+  echo "  --python3.5             Use Python 3.5, default is Python 2.7."
+  echo
   echo "  --toolchain=[toolchain] Toolchain is either a dato-deps file on disk, "
   echo "                          or a URL to a toolchain. If toolchain is"
   echo "                          \"default\", a default one is selected"
@@ -129,6 +131,11 @@ if [ -e deps/local/bin/cc ]; then
   has_existing_toolchain=1
 fi
 
+if [[ $python35 == 1 && $python3 ]]; then
+    echo "Two versions of Python specified. Pick one."
+    exit 1
+fi
+
 dependency_bad_version=0
 if [ -e deps_version ]; then
         cur_version=`cat deps_version`
@@ -168,6 +175,7 @@ while [ $# -gt 0 ]
     --cmake_only)           cmake_only=1;;
     --python_only)          python_only=1;;
     --python3)              python3=1;;
+    --python3.5)            python35=1;;
     --R_integration)        R_integration=1;;
     --help)                 print_help ;;
     -D)                     CFLAGS="$CFLAGS -D $2"; shift ;;
@@ -210,6 +218,9 @@ fi
 if [[ $python3 == 1 ]]; then
   CFLAGS="$CFLAGS -D PYTHON_VERSION=\"python3.4m\""
   PYTHON_VERSION="python3.4m"
+elif [[ $python35 == 1 ]]; then
+  CFLAGS="$CFLAGS -D PYTHON_VERSION=\"python3.5m\""
+  PYTHON_VERSION="python3.5m"
 else
   CFLAGS="$CFLAGS -D PYTHON_VERSION=\"python2.7\""
   PYTHON_VERSION="python2.7"
@@ -308,7 +319,9 @@ if [[ $OSTYPE == msys ]]; then
   AR=`cygpath -m $AR`
 	CFLAGS="$CFLAGS -D CMAKE_AR=$AR"
         # a bunch of stuff needed for python
-        if [[ $python3 == 1 ]]; then
+        if [[ $python35 == 1 ]]; then
+            CFLAGS="$CFLAGS -D PYTHON_LIBRARY:FILEPATH=$PWD/deps/local/lib/python35.dll"
+        elif [[ $python3 == 1 ]]; then
             CFLAGS="$CFLAGS -D PYTHON_LIBRARY:FILEPATH=$PWD/deps/local/lib/python34.dll"
         else
             CFLAGS="$CFLAGS -D PYTHON_LIBRARY:FILEPATH=$PWD/deps/local/lib/python27.dll"

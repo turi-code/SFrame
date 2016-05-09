@@ -117,9 +117,11 @@ build_source() {
   # Configure
   cd ${WORKSPACE}
 
-  PY_MAJOR_VERSION=`python -V 2>&1 | perl -ne 'print m/^Python (\d)\.\d/'`
-  if [[ $PY_MAJOR_VERSION == 3 ]]; then
+  PY_MAJOR_VERSION=`python -V 2>&1 | perl -ne 'print m/^Python (\d\.\d)/'`
+  if [[ $PY_MAJOR_VERSION == 3.4 ]]; then
       ./configure ${toolchain} --python3
+  elif [[ $PY_MAJOR_VERSION == 3.5 ]]; then
+      ./configure ${toolchain} --python3.5
   else
       ./configure ${toolchain}
   fi
@@ -250,12 +252,19 @@ package_egg() {
   if [[ $OSTYPE == darwin* ]];then
     EGG_PATH=`ls ${WORKSPACE}/${build_type}/oss_src/unity/python/dist/SFrame-${VERSION_NUMBER}*.whl`
     temp=`echo $EGG_PATH | perl -ne 'print m/(^.*-).*$/'`
+    temp=${temp/-cpdarwin-/-cp35m-}
     platform_tag="macosx_10_5_x86_64.macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.macosx_10_11_x86_64.macosx_10_11_intel"
     NEW_EGG_PATH=${temp}${platform_tag}".whl"
     mv ${EGG_PATH} ${NEW_EGG_PATH}
     EGG_PATH=${NEW_EGG_PATH}
   elif [[ $OSTYPE == msys ]]; then
-    EGG_PATH=`ls ${WORKSPACE}/${build_type}/oss_src/unity/python/dist/SFrame-${VERSION_NUMBER}-*-none-win_amd64.whl`
+    EGG_PATH=`ls ${WORKSPACE}/${build_type}/oss_src/unity/python/dist/SFrame-${VERSION_NUMBER}-*-none-*.whl`
+    NEW_EGG_PATH=${EGG_PATH/-py3-/-cp35-}
+    NEW_EGG_PATH=${NEW_EGG_PATH/-any./-win_amd64.}
+    if [[ ! ${EGG_PATH} == ${NEW_EGG_PATH} ]]; then
+        mv ${EGG_PATH} ${NEW_EGG_PATH}
+        EGG_PATH=${NEW_EGG_PATH}
+    fi
   elif [[ $OSTYPE == linux-* ]]; then
     PYTHON_VERSION=`$PYTHON_EXECUTABLE -V 2>&1 | perl -ne 'print m/^Python (\d\.\d)/'`
     NEW_EGG_PATH=${WORKSPACE}/${build_type}/oss_src/unity/python/dist/SFrame-${VERSION_NUMBER}-py${PYTHON_VERSION}.${archive_file_ext}
