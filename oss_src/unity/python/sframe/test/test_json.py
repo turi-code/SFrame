@@ -61,7 +61,7 @@ class JSONTest(unittest.TestCase):
         elif isinstance(x, SGraph):
             _SFrameComparer._assert_sgraph_equal(x, y)
         elif isinstance(x, dict):
-            for (k1,v1),(k2,v2) in zip(x.items(), y.items()):
+            for (k1,v1),(k2,v2) in zip(sorted(x.items()), sorted(y.items())):
                 self._assertEquals(k1, k2)
                 self._assertEquals(v1, v2)
         elif isinstance(x, list):
