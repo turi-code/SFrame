@@ -170,7 +170,7 @@ static std::shared_ptr<sarray<std::pair<flex_list, std::string> >> scatter_parti
 
   // Create a mutex for each partition
   std::vector<mutex> outiter_mutexes(num_partitions_keys);
-  std::vector<spinlock> sorted_mutexes(num_partitions_keys);
+  std::vector<simple_spinlock> sorted_mutexes(num_partitions_keys);
   std::vector<flex_list> first_sort_key(num_partitions_keys);
   std::vector<size_t> partition_size_in_bytes(num_partitions_keys, 0);
   std::vector<size_t> partition_size_in_rows(num_partitions_keys, 0);
@@ -204,7 +204,16 @@ static std::shared_ptr<sarray<std::pair<flex_list, std::string> >> scatter_parti
                             [&](const flexible_type& left, const std::vector<flexible_type>& right) {
                               return less_than(left.get<flex_list>(), right);
                             }
-                            )) ;
+                            ));
+      // std::lower_bound returns the first element that is >= the sort_key
+      // On the other hand for the partition number, I need the last element that is <= the sort key
+      // So sometimes I need to decrement by one
+      // if partition_id is past the end, decrement by 1
+      // if sort_key < partition, decrement partition id
+      if (partition_id == partition_keys.size() ||
+          (partition_id > 0 && less_than(sort_keys, partition_keys[partition_id].get<flex_list>()))) {
+        --partition_id;
+      } 
       DASSERT_TRUE(partition_id < num_partitions_keys);
 
       // double checked locking optimization on partition sorted
