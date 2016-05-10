@@ -11,8 +11,12 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/integer_traits.hpp>
 #include <util/md5.hpp>
+
+
+#ifndef _WIN32
 #include <sys/socket.h>
 #include <sys/un.h>
+#endif
 
 namespace libfault {
 int SEND_TIMEOUT = 3000; 
