@@ -413,9 +413,11 @@ sframe ec_permute_partitions(sframe input,
           size_t& row_number = cur_row_number[column_id - col_start];
           for (size_t i = 0; i < buffer.size(); ++i) {
             ASSERT_LT(row_number, forward_map_buffer.size());
-            ASSERT_GE(forward_map_buffer[row_number], row_start);
-            ASSERT_LT(forward_map_buffer[row_number], row_end);
-            size_t target = forward_map_buffer[row_number] - row_start;
+            ASSERT_GE(forward_map_buffer[row_number].get<flex_int>(), row_start);
+            ASSERT_LT(forward_map_buffer[row_number].get<flex_int>(), row_end);
+            size_t target = forward_map_buffer[row_number].get<flex_int>() - row_start;
+            DASSERT_LT(column_id - col_start, permute_buffer.size());
+            DASSERT_LT(target, permute_buffer[column_id - col_start].size());
             permute_buffer[column_id - col_start][target] = std::move(buffer[i]);
             ++row_number;
           }
@@ -432,6 +434,7 @@ sframe ec_permute_partitions(sframe input,
             std::vector<flexible_type> indirect_buffer;
             // this column here contains integers. We need to read the values
             // from the original input. We do this one value at a time
+            DASSERT_LT(column_id - col_start, permute_buffer.size());
             for (auto& value: permute_buffer[column_id - col_start]) {
               ASSERT_EQ((int)(value.get_type()), (int)(flex_type_enum::INTEGER));
               flex_int row_number = value.get<flex_int>();
@@ -510,6 +513,11 @@ sframe permute_sframe(sframe &values_sframe,
     num_buckets = (max_column_num_bytes + HALF_SORT_BUFFER - 1) / HALF_SORT_BUFFER;
     num_buckets = std::max<size_t>(1, num_buckets);
     num_buckets *= thread::cpu_count();
+    if (num_buckets > num_rows) {
+      // we are going to have less than 1 row per bucket. 
+      // i.e. we have *really* few rows. lets just do 1 bucket.
+      num_buckets = 1;
+    }
 
     logstream(LOG_INFO) << "Generating " << num_buckets << " buckets" << std::endl;
 

@@ -42,13 +42,16 @@ std::shared_ptr<sframe> ec_sort(
   //      - value_column_types
   //
   size_t num_columns = column_names.size();
-  size_t num_rows = infer_planner_node_length(sframe_planner_node);
-  // fast path for 0 rows.
-  if (num_rows == 0) {
-    return std::make_shared<sframe>(planner().materialize(sframe_planner_node));
+  int64_t num_rows = infer_planner_node_length(sframe_planner_node);
+  if (num_rows == -1) {
+    planner().materialize(sframe_planner_node);
+    num_rows = infer_planner_node_length(sframe_planner_node);
   }
+  ASSERT_GE(num_rows, 0);
+  // fast path for 0 rows.
   // fast path for no value columns
-  if (key_column_indices.size() == column_names.size()) {
+  if (num_rows == 0 || 
+      key_column_indices.size() == column_names.size()) {
     return sort(sframe_planner_node, column_names, 
                 key_column_indices, sort_orders);
   }
