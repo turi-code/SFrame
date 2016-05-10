@@ -88,9 +88,9 @@ std::shared_ptr<sframe> ec_sort(
     value_column_type_set.erase(flex_type_enum::DATETIME);
     // little heuristic. If value columns are small and if there are relatively
     // few columns use the regular sort
-    // TODO: yes 10 is a magic number. On my Mac laptop this seems to 
+    // TODO: yes 20 is a magic number. On my Mac laptop this seems to 
     // roughly be the change over point.
-    if (value_column_types.size() < 10 && value_column_types.size() == 0) {
+    if (value_column_types.size() < 20 && value_column_types.size() == 0) {
       return sort(sframe_planner_node, column_names, 
                   key_column_indices, sort_orders);
     }
@@ -161,20 +161,30 @@ std::shared_ptr<sframe> ec_sort(
   }
 
 
-  // Here we generate some more variables we need for the rest of the process
   // values_sframe: The raw sframe containing just the value columns
   sframe values_sframe = planner().materialize(value_columns);
   for (size_t i = 0;i < values_sframe.num_columns(); ++i) {
     values_sframe.set_column_name(i, value_column_names[i]);
   }
-
+  // permute with the forward map
   sframe sorted_values_sframe = permute_sframe(values_sframe, forward_map);
 
-  sframe final_sframe = sorted_key_columns;
-  for (size_t i = 0;i < sorted_values_sframe.num_columns(); ++i) {
-    final_sframe = final_sframe.add_column(sorted_values_sframe.select_column(i),
-                                           sorted_values_sframe.column_name(i));
+  // generate the final sframe. combining the key and values sframes.
+  // order the columns so that they are in the right order as the input.
+  std::vector<std::shared_ptr<sarray<flexible_type>>> final_sframe_columns(num_columns);
+  std::map<std::string, std::shared_ptr<sarray<flexible_type>>> final_name_to_column;
+  for (size_t i = 0;i < sorted_key_columns.num_columns(); ++i) {
+    final_name_to_column[key_column_names[i]] = sorted_key_columns.select_column(i);
   }
+  for (size_t i = 0;i < sorted_values_sframe.num_columns(); ++i) {
+    final_name_to_column[value_column_names[i]] = sorted_values_sframe.select_column(i);
+  }
+  
+  for (size_t i = 0;i  < num_columns; ++i) {
+    ASSERT_TRUE(final_name_to_column.count(column_names[i]) > 0);
+    final_sframe_columns[i] = final_name_to_column[column_names[i]];
+  }
+  sframe final_sframe(final_sframe_columns, column_names);
   return std::make_shared<sframe>(final_sframe);
 }
 
