@@ -2707,3 +2707,10 @@ class SArrayTest(unittest.TestCase):
         sa = SArray([test_val])
         expected = [86401.0]
         self.__test_equal(sa, expected, float)
+
+    def test_materialize(self):
+        sa= SArray(range(100))
+        sa = sa[sa > 10]
+        self.assertFalse(sa.is_materialized())
+        sa.materialize()
+        self.assertTrue(sa.is_materialized())

@@ -1157,6 +1157,13 @@ class SArray(object):
         else:
             raise IndexError("Invalid type to use for indexing")
 
+    def materialize(self):
+        """
+        For a SArray that is lazily evaluated, force persist this sarray
+        to disk, committing all lazy evaluated operations.
+        """
+        return self.__materialize__()
+
     def __materialize__(self):
         """
         For a SArray that is lazily evaluated, force persist this sarray
@@ -1164,6 +1171,12 @@ class SArray(object):
         """
         with cython_context():
             self.__proxy__.materialize()
+
+    def is_materialized(self):
+        """
+        Returns whether or not the sarray has been materialized.
+        """
+        return self.__is_materialized__()
 
     def __is_materialized__(self):
         """
