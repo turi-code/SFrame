@@ -53,6 +53,13 @@ class SArrayTest(unittest.TestCase):
         self.assertEqual(len(_sarray), len(_data))
         self.assertSequenceEqual(list(_sarray.head(_sarray.size())), _data)
 
+    def __test_almost_equal(self, _sarray, _data, _type):
+        self.assertEqual(_sarray.dtype(), _type)
+        self.assertEqual(len(_sarray), len(_data))
+        l = list(_sarray)
+        for i in range(len(l)):
+            self.assertAlmostEqual(l[i], _data[i])
+
     def __test_creation(self, data, dtype, expected):
         """
         Create sarray from data with dtype, and test it equals to
@@ -809,7 +816,7 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(t / 2, list(s / 2.0), float)
         self.__test_equal(t * 2, list(s * 2), int)
         self.__test_equal(t ** 2, list(s ** 2), float)
-        self.__test_equal(t ** 0.5, list(s ** 0.5), float)
+        self.__test_almost_equal(t ** 0.5, list(s ** 0.5), float)
         self.__test_equal(((t ** 2) ** 0.5 + 1e-8).astype(int), list(s), int)
         self.__test_equal(t < 5, list(s < 5), int)
         self.__test_equal(t > 5, list(s > 5), int)
@@ -858,7 +865,7 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(t / t2, list(s.astype(float) / s2), float)
         self.__test_equal(t * t2, list(s * s2), int)
         self.__test_equal(t ** t2, list(s ** s2), float)
-        self.__test_equal(t ** (1.0 / t2), list(s ** (1.0 / s2)), float)
+        self.__test_almost_equal(t ** (1.0 / t2), list(s ** (1.0 / s2)), float)
         self.__test_equal(t > t2, list(s > s2), int)
         self.__test_equal(t <= t2, list(s <= s2), int)
         self.__test_equal(t >= t2, list(s >= s2), int)
