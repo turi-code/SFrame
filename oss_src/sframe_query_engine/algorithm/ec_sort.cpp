@@ -37,7 +37,6 @@ std::shared_ptr<sframe> ec_sort(
   //  - value column information
   //      - value_column_names
   //      - value_column_indices
-  //      - value_column_indices_set
   //      - value_columns
   //      - value_column_types
   //
@@ -79,8 +78,6 @@ std::shared_ptr<sframe> ec_sort(
                  [&](size_t i) {
                    value_column_names.push_back(column_names[i]);
                  });
-  std::set<size_t> value_column_indices_set(value_column_indices.begin(), 
-                                            value_column_indices.end());
   std::vector<flex_type_enum> value_column_types = infer_planner_node_type(value_columns);
   {
     std::set<flex_type_enum> value_column_type_set(value_column_types.begin(), 
@@ -89,11 +86,11 @@ std::shared_ptr<sframe> ec_sort(
     value_column_type_set.erase(flex_type_enum::INTEGER);
     value_column_type_set.erase(flex_type_enum::FLOAT);
     value_column_type_set.erase(flex_type_enum::DATETIME);
-    // little heuristic. If value columns are small and if there are relatively
-    // few columns use the regular sort
-    // TODO: yes 20 is a magic number. On my Mac laptop this seems to 
-    // roughly be the change over point.
-    if (value_column_types.size() < 20 && value_column_types.size() == 0) {
+    // little heuristic. If all value columns are small and if there are
+    // relatively few columns use the regular sort
+    // TODO: yes 20 is a magic number.
+    // On my Mac laptop this seems to roughly be the change over point.
+    if (value_column_types.size() < 20 && value_column_type_set.size() == 0) {
       return sort(sframe_planner_node, column_names, 
                   key_column_indices, sort_orders);
     }

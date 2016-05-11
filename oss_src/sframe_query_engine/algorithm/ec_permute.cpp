@@ -148,7 +148,7 @@ static sframe ec_scatter_partitions(sframe input,
                                     const std::vector<bool>& indirect_column,
                                     std::shared_ptr<sarray<flexible_type> > forward_map) {
   //  - For each (c,r,v) in data:
-  //    Write (c,v) to bucket `bucket of forward_map(r)`
+  //        Write (c,v) to bucket `bucket of forward_map(r)`
   //  - For each (c,r,v) in forward_map:
   //        Write (c,v) to bucket `bucket of forward_map(r)`
   //

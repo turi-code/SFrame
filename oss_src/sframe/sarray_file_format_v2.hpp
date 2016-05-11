@@ -645,13 +645,12 @@ class sarray_group_format_writer_v2: public sarray_group_format_writer<T> {
     DASSERT_LT(columnid, m_column_buffers.size());
     DASSERT_EQ(m_array_open, true);
 
-    auto el_before_flush = m_column_buffers[columnid].elements_before_flush;
+    auto& el_before_flush = m_column_buffers[columnid].elements_before_flush;
     auto& buffer = m_column_buffers[columnid].segment_data[segmentid];
     for(const auto& elem: t) {
       buffer.push_back(elem);
       if (buffer.size() >= el_before_flush) {
         flush_block(columnid, segmentid);
-        el_before_flush = m_column_buffers[columnid].elements_before_flush;
       }
     }
   }
