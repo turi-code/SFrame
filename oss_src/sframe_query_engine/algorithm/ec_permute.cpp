@@ -153,7 +153,6 @@ static sframe ec_scatter_partitions(sframe input,
   //        Write (c,v) to bucket `bucket of forward_map(r)`
   //
   //  In the implementation, each bucket corresponds to one segment.
-  
   logstream(LOG_INFO) << "input size " << input.size() << std::endl;
   logstream(LOG_INFO) << "forward map size " << forward_map->size() << std::endl;
   input = input.add_column(forward_map);
@@ -161,7 +160,8 @@ static sframe ec_scatter_partitions(sframe input,
   sframe output;
   auto out_column_types = input.column_types();
   for (size_t i = 0;i < out_column_types.size(); ++i) {
-    if (indirect_column[i]) out_column_types[i] = flex_type_enum::INTEGER;
+    if (i < indirect_column.size() &&
+        indirect_column[i]) out_column_types[i] = flex_type_enum::INTEGER;
   }
   output.open_for_write(input.column_names(), out_column_types, "", num_buckets);
   auto writer = output.get_internal_writer();
@@ -206,7 +206,7 @@ static sframe ec_scatter_partitions(sframe input,
             size_t column_id = col_number.inc_ret_last();
             if (column_id >= input.num_columns()) return;
 
-            if (indirect_column[column_id]) {
+            if (column_id < indirect_column.size() && indirect_column[column_id]) {
               // if this is to be an indirect column, 
               // we use write the row number as the value
               for (size_t actual_row = forward_map_start; actual_row < forward_map_end; ++actual_row) {
