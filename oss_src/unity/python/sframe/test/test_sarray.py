@@ -1537,6 +1537,18 @@ class SArrayTest(unittest.TestCase):
         self.assertEquals(list(g), [0] * 100)
         self.assertEqual(g.dtype(), int)
 
+        g = SArray.from_const(None, 100, float)
+        self.assertEquals(list(g), [None] * 100)
+        self.assertEqual(g.dtype(), float)
+
+        g = SArray.from_const(None, 100, int)
+        self.assertEquals(list(g), [None] * 100)
+        self.assertEqual(g.dtype(), int)
+
+        g = SArray.from_const(None, 100, list)
+        self.assertEquals(list(g), [None] * 100)
+        self.assertEqual(g.dtype(), list)
+
     def test_from_sequence(self):
         with self.assertRaises(TypeError):
             g = SArray.from_sequence()
