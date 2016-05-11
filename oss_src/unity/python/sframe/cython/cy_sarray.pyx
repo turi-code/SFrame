@@ -86,10 +86,11 @@ cdef class UnitySArrayProxy:
         with nogil:
             self.thisptr.construct_from_avro(url)
 
-    cpdef load_from_const(self, object value, size_t size):
+    cpdef load_from_const(self, object value, size_t size, type t):
         cdef flexible_type val = flexible_type_from_pyobject(value)
+        cdef flex_type_enum datatype = flex_type_enum_from_pytype(t)
         with nogil:
-            self.thisptr.construct_from_const(val, size)
+            self.thisptr.construct_from_const(val, size, datatype)
     
     cpdef save(self, _index_file):
         cdef string index_file = str_to_cpp(_index_file)

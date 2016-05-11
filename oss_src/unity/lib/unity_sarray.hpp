@@ -85,7 +85,8 @@ class unity_sarray: public unity_sarray_base {
   /**
    * Constructs a unity_sarray from a const value.
    */
-  void construct_from_const(const flexible_type& value, size_t size);
+  void construct_from_const(const flexible_type& value, size_t size,
+                            flex_type_enum type = flex_type_enum::UNDEFINED);
 
   /**
    * Constructs a unity_sarray from a parallel iterator generator.

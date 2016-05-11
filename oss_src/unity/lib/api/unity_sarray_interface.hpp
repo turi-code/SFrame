@@ -21,7 +21,7 @@ typedef std::map<std::string, flexible_type> func_options_map;
 
 GENERATE_INTERFACE_AND_PROXY(unity_sarray_base, unity_sarray_proxy,
       (void, construct_from_vector, (const std::vector<flexible_type>&)(flex_type_enum))
-      (void, construct_from_const, (const flexible_type&)(size_t))
+      (void, construct_from_const, (const flexible_type&)(size_t)(flex_type_enum))
       (void, construct_from_sarray_index, (std::string))
       (void, construct_from_files, (std::string)(flex_type_enum))
       (void, construct_from_autodetect, (std::string)(flex_type_enum))
