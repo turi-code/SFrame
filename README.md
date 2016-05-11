@@ -1,5 +1,11 @@
 SFrame
 ======
+<a href="https://pypi.python.org/pypi/SFrame">
+   <img src="https://img.shields.io/pypi/v/SFrame.svg" alt="latest release" />
+</a>
+<a href="https://travis-ci.org/dato-code/SFrame">
+   <img src="https://travis-ci.org/dato-code/SFrame.svg?branch=master" alt="travis build status" />
+</a>
 
 Scalable tabular (**SFrame**, **SArray**) and graph (**SGraph**) data-structures built for out-of-core data analysis. 
 
