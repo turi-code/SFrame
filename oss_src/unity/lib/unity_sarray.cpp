@@ -100,15 +100,25 @@ void unity_sarray::construct_from_vector(const std::vector<flexible_type>& vec,
   construct_from_sarray(sarray_ptr);
 }
 
-void unity_sarray::construct_from_const(const flexible_type& value, size_t size) {
+void unity_sarray::construct_from_const(const flexible_type& value, size_t size,
+                                        flex_type_enum type) {
   log_func_entry();
   clear();
-  auto type = value.get_type();
-  // if I get a None, lets make a constant column of float, all None
+  if (type == flex_type_enum::UNDEFINED) {
+    type = value.get_type();
+  }
+  // if type is still unknown, lets make a constant column of float, all None
   if (type == flex_type_enum::UNDEFINED) {
     type = flex_type_enum::FLOAT;
   }
-  m_planner_node = op_constant::make_planner_node(value, type, size);
+
+  flexible_type converted_value(type);
+  if (value.get_type() != flex_type_enum::UNDEFINED && value.get_type() != type) {
+    converted_value.soft_assign(value);
+  } else {
+    converted_value = value;
+  }
+  m_planner_node = op_constant::make_planner_node(converted_value, type, size);
 }
 
 void unity_sarray::construct_from_sarray(std::shared_ptr<sarray<flexible_type>> s_ptr) {
@@ -2661,7 +2671,7 @@ create_sequential_sarray(ssize_t size, ssize_t start, bool reverse) {
     } else {
       // reverse. Do it by start_constant - seq(0, size)
       std::shared_ptr<unity_sarray> start_const = std::make_shared<unity_sarray>();
-      start_const->construct_from_const(start, size);
+      start_const->construct_from_const(start, size, flex_type_enum::INTEGER);
 
       std::shared_ptr<unity_sarray> seq = std::make_shared<unity_sarray>();
       seq->construct_from_planner_node(op_range::make_planner_node(0, size));

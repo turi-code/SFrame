@@ -21,7 +21,7 @@ cdef extern from "<unity/lib/api/unity_sarray_interface.hpp>" namespace 'graphla
     cdef cppclass unity_sarray_proxy nogil:
         unity_sarray_proxy(comm_client) except +
         void construct_from_vector(const flex_list&, flex_type_enum) except +
-        void construct_from_const(const flexible_type&, size_t) except +
+        void construct_from_const(const flexible_type&, size_t, flex_type_enum) except +
         void construct_from_files(string, flex_type_enum) except +
         void construct_from_sarray_index(string) except +
         void construct_from_autodetect(string, flex_type_enum) except +
@@ -101,7 +101,7 @@ cdef class UnitySArrayProxy:
 
     cpdef load_from_sarray_index(self, index_file)
 
-    cpdef load_from_const(self, object value, size_t size)
+    cpdef load_from_const(self, object value, size_t size, type t)
 
     cpdef load_autodetect(self, url, type t)
 
