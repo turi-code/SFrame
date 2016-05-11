@@ -2556,6 +2556,63 @@ std::shared_ptr<unity_sarray_base> unity_sarray::subslice(flexible_type start,
       }, dtype, skip_undefined, seed);
 }
 
+std::shared_ptr<unity_sarray_base> 
+unity_sarray::ternary_operator(std::shared_ptr<unity_sarray_base> is_true_,
+                               std::shared_ptr<unity_sarray_base> is_false_) {
+
+  std::shared_ptr<unity_sarray> is_true =
+      std::static_pointer_cast<unity_sarray>(is_true_);
+  std::shared_ptr<unity_sarray> is_false =
+      std::static_pointer_cast<unity_sarray>(is_false_);
+
+  auto equal_length = query_eval::planner().test_equal_length(this->get_planner_node(),
+                                                              is_true->get_planner_node());
+  
+  if (!equal_length) {
+    log_and_throw("Condition SArray must be of the same length as the true result");
+  }
+
+  equal_length = query_eval::planner().test_equal_length(this->get_planner_node(),
+                                                         is_false->get_planner_node());
+
+  if (!equal_length) {
+    log_and_throw("Condition SArray must be of the same length as the false result");
+  }
+
+  if (is_true->dtype() != is_false->dtype()) {
+    log_and_throw("is_true and is_false must be of the same type");
+  }
+
+  auto ret = std::make_shared<unity_sarray>();
+  ret->construct_from_planner_node(
+      op_ternary_operator::make_planner_node(m_planner_node,
+                                             is_true->m_planner_node,
+                                             is_false->m_planner_node));
+  return ret;
+}
+
+std::shared_ptr<unity_sarray_base> 
+unity_sarray::to_const(const flexible_type& value, flex_type_enum type) {
+  // check type
+  flexible_type converted_value(type);
+  if (value.get_type() != flex_type_enum::UNDEFINED && value.get_type() != type) {
+    converted_value.soft_assign(value);
+  } else {
+    converted_value = value;
+  }
+
+  auto length = infer_planner_node_length(m_planner_node);
+  if (length >= 0) {
+    auto ret = std::make_shared<unity_sarray>();
+    ret->construct_from_const(converted_value, length, type);
+    return ret;
+  } else {
+    return transform_lambda([=](const flexible_type&){ return converted_value; },
+                           type,
+                           false,
+                           0); 
+  }
+}
 std::vector<flexible_type> unity_sarray::iterator_get_next(size_t len) {
   Dlog_func_entry();
   std::vector<flexible_type> ret;

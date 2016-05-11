@@ -468,3 +468,18 @@ cdef class UnitySArrayProxy:
         with nogil:
             proxy = (self.thisptr.subslice(fstart, fstep, fstop))
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
+
+    cpdef ternary_operator(self, UnitySArrayProxy istrue, UnitySArrayProxy isfalse):
+        cdef unity_sarray_base_ptr proxy
+        with nogil:
+            proxy = (self.thisptr.ternary_operator(istrue._base_ptr, isfalse._base_ptr))
+        return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
+
+    cpdef to_const(self, object value, type t):
+        cdef flexible_type val = flexible_type_from_pyobject(value)
+        cdef flex_type_enum datatype = flex_type_enum_from_pytype(t)
+        cdef unity_sarray_base_ptr proxy
+        with nogil:
+            proxy = self.thisptr.to_const(val, datatype)
+        return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
+

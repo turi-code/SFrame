@@ -646,6 +646,26 @@ class unity_sarray: public unity_sarray_base {
    */
   std::shared_ptr<unity_sarray_base> subslice(flexible_type start, flexible_type step, flexible_type stop);
 
+
+   /**
+    * is_true and is_false and this SArray must be the same size.
+    * Returns an SArray of the same size.
+    *
+    * For each non-zero value in this SArray, it picks up the corresponding value from is_true.
+    * For each zero value in this SArray, it picks up the corresponding value from is_false.
+    */
+  std::shared_ptr<unity_sarray_base> ternary_operator(std::shared_ptr<unity_sarray_base> is_true,
+                                                      std::shared_ptr<unity_sarray_base> is_false);
+
+
+  /**
+   * Returns an SArray of the same length but with all constant values. 
+   * Does so without materializing the SArray.
+   *
+   * \note This is really only useful for internal use
+   */
+  std::shared_ptr<unity_sarray_base> to_const(const flexible_type& value, flex_type_enum dtype);
+
   /**
    * Begin iteration through the SArray.
    *
@@ -701,7 +721,6 @@ class unity_sarray: public unity_sarray_base {
    * test hook to check if the array is materialized
    **/
    bool is_materialized();
-
    /**
     * Returns an integer which attempts to uniquely identifies the contents of
     * the SArray.

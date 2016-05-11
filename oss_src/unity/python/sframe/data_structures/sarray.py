@@ -559,6 +559,19 @@ class SArray(object):
         proxy.load_from_avro(filename)
         return cls(_proxy = proxy)
 
+    @classmethod
+    def where(cls, condition, istrue, isfalse):
+        true_is_sarray = isinstance(istrue, SArray)
+        false_is_sarray = isinstance(isfalse, SArray)
+        if not true_is_sarray and false_is_sarray:
+            istrue = cls(_proxy=condition.__proxy__.to_const(istrue, isfalse.dtype()))
+        if true_is_sarray and not false_is_sarray:
+            isfalse = cls(_proxy=condition.__proxy__.to_const(isfalse, istrue.dtype()))
+        if not true_is_sarray and not false_is_sarray:
+            if type(istrue) != type(isfalse):
+                raise TypeError("true and false inputs are of different types")
+        return cls(_proxy=condition.__proxy__.ternary_operator(istrue.__proxy__, isfalse.__proxy__))
+
     def to_numpy(self):
         """
         Converts this SArray to a numpy array
