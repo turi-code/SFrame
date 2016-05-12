@@ -17,8 +17,12 @@
 #include<parallel/pthread_tools.hpp>
 #include<process/process.hpp>
 #include<cppipc/client/comm_client.hpp>
+#include<timer/timer.hpp>
 
 namespace graphlab {
+
+extern double LAMBDA_WORKER_CONNECTION_TIMEOUT;
+
 namespace lambda {
 
 /**
@@ -91,43 +95,114 @@ std::unique_ptr<worker_process<ProxyType>> spawn_worker(std::vector<std::string>
 
   // Step 2: create cppipc client and connect it to the launched process 
   size_t retry = 0;
-  size_t max_retry = 3;
+
+  timer conn_timer;
+  conn_timer.start();
+
   std::unique_ptr<cppipc::comm_client> new_client;
-  while (retry < max_retry) {
-    // Make sure the server process is still around
+
+  auto check_process_exists = [&]() -> bool {
+    // Make sure the server process is still around.
     if (!new_process->exists()) {
-      logstream(LOG_ERROR) << "Lambda worker process terminated unexpectedly" << std::endl;
-      break;
+      int ret_code = new_process->get_return_code();
+
+      std::ostringstream ss;
+      ss << "Lambda worker process " << new_process->get_pid()
+      << " terminated unexpectedly with code " << ret_code
+      << "; conn attempt time = " << conn_timer.current_time()
+      << "; attempt count = " << retry;
+
+      logstream(LOG_ERROR) << ss.str() << std::endl;
+      return false;
+    } else {
+      return true;
     }
+  };
+
+  auto log_exception = [&](const std::string& e) {
+    std::ostringstream ss;
+    ss << "Error starting CPPIPC connection in connecting to lambda worker at "
+       << worker_address
+       << " (conn_time = " << conn_timer.current_time()
+       << "; attempt count = " << retry << "): " << e;
+    logstream(LOG_ERROR) << ss.str() << std::endl;
+  };
+
+  // The actual timeout is controlled by conn_timer, so that should be
+  // what causes the loop to exit in case of failure.  However, put in
+  // a really large number here in case of infinite-loop programming
+  // errors.
+  while (retry < 1000000) {
+
+    // Do initial check to make sure the process exists.
+    if(!check_process_exists()) { break; }
+
     // Try connecting to the server
     retry++;
     try {
-      std::unique_ptr<cppipc::comm_client> tmp_cli(new cppipc::comm_client({}, worker_address, connection_timeout));
+      std::unique_ptr<cppipc::comm_client> tmp_cli(
+          new cppipc::comm_client({}, worker_address, connection_timeout));
+
       cppipc::reply_status status = tmp_cli->start();
+
       if (status == cppipc::reply_status::OK) {
         // Success
-        logstream(LOG_INFO) << "Connected to worker at " << worker_address << std::endl;
+        std::ostringstream ss;
+        ss  << "Connected to worker " << new_process->get_pid()
+            << " at " << worker_address
+            << "; conn_time = " << conn_timer.current_time()
+            << "; attempt count = " << retry;
+
+        logstream(LOG_INFO) << ss.str() << std::endl;
+
         new_client.swap(tmp_cli);
         break;
       } else {
         // Connecting to server failed
-        logstream(LOG_ERROR) << "Fail connecting to worker at " << worker_address
-          << ". Status: " << cppipc::reply_status_to_string(status) 
-          << ". Retry: " << retry << std::endl;
+        logstream(LOG_ERROR)
+            << "CPPIPC failure connecting to worker at " << worker_address
+            << ". status = " << cppipc::reply_status_to_string(status)
+            << "; conn_time = " << conn_timer.current_time()
+            << "; attempt count = " << retry << std::endl;
       }
-      // Exception happended during comm_client construction/starting
+      // Exception happened during comm_client construction/starting
     } catch (std::string error) {
-      logstream(LOG_ERROR) << error << std::endl;
+      log_exception(error + " (0)");
+      check_process_exists();
+      break;
+    } catch (const char* error) {
+      log_exception(std::string(error) + " (1)");
+      check_process_exists();
       break;
     } catch (const std::exception& e) {
-      logstream(LOG_ERROR) << "Error Starting cppipc client at " << worker_address << ". Error: \"" << e.what() << "\"\n";
+      check_process_exists();
+      log_exception(std::string(e.what()) + " (2)");
     } catch (...) {
-      logstream(LOG_ERROR) << "Error starting cppipc client at " << worker_address << std::endl;
+      check_process_exists();
+      log_exception("Unknown Error");
+      break;
+    }
+    // Check again if the process exists.  Thus we are less likely to
+    // error out on timeout if the process actually crashed.
+    if(!check_process_exists()) { break; }
+
+    // Exit if we are out of time.
+    if(LAMBDA_WORKER_CONNECTION_TIMEOUT >= 0
+       && (conn_timer.current_time() >= LAMBDA_WORKER_CONNECTION_TIMEOUT)) {
+
+      std::ostringstream ss;
+      ss << "Timeout connecting to lambda worker process" << new_process->get_pid()
+         << "; conn attempt time = " << conn_timer.current_time()
+         << "; timeout = " << LAMBDA_WORKER_CONNECTION_TIMEOUT
+         << "; retry count = " << retry;
+
+      logstream(LOG_ERROR) << ss.str() << std::endl;
       break;
     }
   } // end of while
+
   if (new_client == nullptr) {
-    throw std::string("Fail launching lambda worker. Reached maximum retry.");
+    throw std::string("Failure launching lambda workers; see log for details. ");
   }
 
   // Step 3. Create proxy object
@@ -292,7 +367,7 @@ public:
 
   /**
    * Call the function on all worker in parallel and return the results.
-   * Block until all workers are avaiable.
+   * Block until all workers are available.
    */
   template<typename RetType, typename Fn>
   std::vector<RetType> call_all_workers(Fn f) {
