@@ -448,7 +448,7 @@ def get_library_name():
     Returns either sframe or graphlab depending on which library
     this file is bundled with.
     """
-    from os.path import split, abspath, expanduser, join
+    from os.path import split, abspath
     
     __lib_name = split(split(abspath(sys.modules[__name__].__file__))[0])[1]
 
@@ -463,7 +463,7 @@ def get_config_file():
     variables are written.
     """
     import os
-    from os.path import split, abspath, expanduser, join, exists
+    from os.path import abspath, expanduser, join, exists
 
     __lib_name = get_library_name()
 

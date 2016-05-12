@@ -71,7 +71,8 @@ else:
 
         run_file = join(test_dir, "run_test.py")
 
-        open(run_file, 'w').write(run_script)
+        with open(run_file, 'w') as f:
+            f.write(run_script)
 
         env = make_unity_server_env()
         env["GRAPHLAB_CONFIG_FILE"] = config_file
