@@ -14,6 +14,8 @@ make_library(sframe_query_engine
    algorithm/sort.cpp
    algorithm/sort_and_merge.cpp
    algorithm/groupby_aggregate.cpp
+   algorithm/ec_sort.cpp
+   algorithm/ec_permute.cpp
    query_engine_lock.cpp
    REQUIRES
      sframe flexible_type pylambda

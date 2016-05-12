@@ -7,6 +7,7 @@
  */
 #include <functional>
 #include <algorithm>
+#include <util/dense_bitset.hpp>
 #include <parallel/thread_pool.hpp>
 #include <parallel/lambda_omp.hpp>
 #include <random/random.hpp>
@@ -36,6 +37,7 @@ constexpr size_t ROW_SIZE_ESTIMATE = 32;
  * Create a quantile sketch for the key columns so that we can decide how to partition
  * the sframe
  */
+static 
 std::shared_ptr<sketches::streaming_quantile_sketch<flexible_type, less_than_full_function>>
 create_quantile_sketch(std::shared_ptr<planner_node>&  sframe_planner_node,
                        const std::vector<bool>&  sort_orders ) {
@@ -143,13 +145,13 @@ bool get_partition_keys(
  *   where the first element of the pair is the key and the 2nd element of the
  *   pair is the serialized values.
 **/
-std::shared_ptr<sarray<std::pair<flex_list, std::string> >> scatter_partition(
+static std::shared_ptr<sarray<std::pair<flex_list, std::string> >> scatter_partition(
   const std::shared_ptr<planner_node> sframe_planner_node,
   size_t num_sort_columns,
   const std::vector<bool>& sort_orders,
   const std::vector<flexible_type>& partition_keys,
   std::vector<size_t>& partition_sizes,
-  std::vector<bool>& partition_sorted) {
+  dense_bitset& partition_sorted) {
 
   log_func_entry();
 
@@ -168,7 +170,7 @@ std::shared_ptr<sarray<std::pair<flex_list, std::string> >> scatter_partition(
 
   // Create a mutex for each partition
   std::vector<mutex> outiter_mutexes(num_partitions_keys);
-  std::vector<mutex> sorted_mutexes(num_partitions_keys);
+  std::vector<simple_spinlock> sorted_mutexes(num_partitions_keys);
   std::vector<flex_list> first_sort_key(num_partitions_keys);
   std::vector<size_t> partition_size_in_bytes(num_partitions_keys, 0);
   std::vector<size_t> partition_size_in_rows(num_partitions_keys, 0);
@@ -178,11 +180,16 @@ std::shared_ptr<sarray<std::pair<flex_list, std::string> >> scatter_partition(
   size_t num_threads = thread::cpu_count();
   less_than_full_function less_than(sort_orders);
 
+  // thread local buffers 
+  std::vector<std::vector<flexible_type>> 
+      sort_keys_buffers(thread::cpu_count(), std::vector<flexible_type>(num_sort_columns));
+  std::vector<std::string> arcout_buffers(thread::cpu_count());
+  std::vector<oarchive> oarc_buffers(thread::cpu_count());
   auto partial_sort_callback = [&](size_t segment_id,
                                    const std::shared_ptr<sframe_rows>& data) {
-    oarchive oarc;
-    std::vector<flexible_type> sort_keys(num_sort_columns);
-    for(auto& item: (*data)) {
+    oarchive& oarc = oarc_buffers[thread::thread_id()];
+    std::vector<flexible_type>& sort_keys = sort_keys_buffers[thread::thread_id()];
+    for(const auto& item: (*data)) {
       // extract sort key
       for(size_t i = 0; i < num_sort_columns; i++) {
         sort_keys[i] = item[i];
@@ -190,30 +197,45 @@ std::shared_ptr<sarray<std::pair<flex_list, std::string> >> scatter_partition(
 
       // find which partition the value belongs to
       size_t partition_id = num_partitions_keys - 1;
-      for(size_t i = 0; i < partition_keys.size() ; i++) {
-        const flex_list& partition_key = partition_keys[i].get<flex_list>();
-        if((sort_keys == partition_key) || less_than(sort_keys, partition_key)) {
-          partition_id = i;
-          break;
-        }
-      }
+      partition_id = std::distance(partition_keys.begin(),
+           std::lower_bound(partition_keys.begin(),
+                            partition_keys.end(),
+                            sort_keys,
+                            [&](const flexible_type& left, const std::vector<flexible_type>& right) {
+                              return less_than(left.get<flex_list>(), right);
+                            }
+                            ));
+      // std::lower_bound returns the first element that is >= the sort_key
+      // On the other hand for the partition number, I need the last element that is <= the sort key
+      // So sometimes I need to decrement by one
+      // if partition_id is past the end, decrement by 1
+      // if sort_key < partition, decrement partition id
+      if (partition_id == partition_keys.size() ||
+          (partition_id > 0 && less_than(sort_keys, partition_keys[partition_id].get<flex_list>()))) {
+        --partition_id;
+      } 
       DASSERT_TRUE(partition_id < num_partitions_keys);
 
-      sorted_mutexes[partition_id].lock();
-      if(partition_sorted[partition_id]) {
-        if(first_sort_key[partition_id].size() == 0) {
-          first_sort_key[partition_id] = sort_keys;
-        } else {
-          if(first_sort_key[partition_id] != sort_keys) {
-            partition_sorted[partition_id] = false;
+      // double checked locking optimization on partition sorted
+      if(partition_sorted.get(partition_id)) {
+        sorted_mutexes[partition_id].lock();
+        if(partition_sorted.get(partition_id)) {
+          if(first_sort_key[partition_id].size() == 0) {
+            first_sort_key[partition_id] = sort_keys;
+          } else {
+            if(first_sort_key[partition_id] != sort_keys) {
+              partition_sorted.set(partition_id, false);
+            }
           }
+          sorted_mutexes[partition_id].unlock();
         }
       }
-      sorted_mutexes[partition_id].unlock();
 
       // stream the key and value to output segment
+      oarc.off = 0;
       for (size_t i = num_sort_columns; i < item.size(); ++i) oarc << item[i];
-      std::string arcout = std::string(oarc.buf, oarc.off);
+      std::string& arcout = arcout_buffers[thread::thread_id()];
+      arcout.assign(oarc.buf, oarc.off);
 
       // write to coresponding output segment
       outiter_mutexes[partition_id].lock();
@@ -225,17 +247,16 @@ std::shared_ptr<sarray<std::pair<flex_list, std::string> >> scatter_partition(
           oarc.off + (num_sort_columns * CELL_SIZE_ESTIMATE) + ROW_SIZE_ESTIMATE; 
       ++partition_size_in_rows[partition_id];
 
-      *(outiter_vector[partition_id]) = {sort_keys, std::move(arcout)};
+      *(outiter_vector[partition_id]) = {sort_keys, arcout};
       ++outiter_vector[partition_id];
 
       outiter_mutexes[partition_id].unlock();
-      oarc.off = 0;
     }
-    free(oarc.buf);
     return false;
   };
 
   planner().materialize(sframe_planner_node, partial_sort_callback, num_threads);
+  for (auto& oarc: oarc_buffers) free(oarc.buf);
   parted_array->close();
 
 
@@ -381,7 +402,8 @@ std::shared_ptr<sframe> sort(
   // In the case where all sort keys in a given partition are the same, then
   // there is no need to sort the partition. This information is derived from
   // scattering
-  std::vector<bool> partition_sorted(num_partitions, true);
+  dense_bitset partition_sorted(num_partitions);
+  partition_sorted.fill();
 
   // We perform the scatter.
   // rebuild the sframe so that the key columns are the lowest column indices
@@ -433,10 +455,14 @@ std::shared_ptr<sframe> sort(
   for (size_t i = 0;i < sort_column_indices.size(); ++i) {
     permute_ordering[sort_column_indices[i]] = i;
   }
-
+  
+  std::vector<bool> partition_sorted_vec_bool(partition_sorted.size());
+  for (size_t i = 0;i < partition_sorted.size(); ++i) {
+    partition_sorted_vec_bool[i] = partition_sorted.get(i);
+  }
   auto ret = sort_and_merge(
     partition_array,
-    partition_sorted,
+    partition_sorted_vec_bool,
     partition_sizes,
     sort_orders,
     permute_ordering,
