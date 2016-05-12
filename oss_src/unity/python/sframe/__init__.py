@@ -21,8 +21,10 @@ of the BSD license. See the LICENSE file for details.
 '''
 
 # Important to call this before everything else
-import .sys_util as _sys_util
-_sys_util.setup_environment_from_config_file()
+from .sys_util import setup_environment_from_config_file \
+     as _setup_environment_from_config_file
+     
+_setup_environment_from_config_file()
 
 
 from . import util
