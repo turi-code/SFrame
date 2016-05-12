@@ -3188,7 +3188,7 @@ class SFrame(object):
         >>> len(sf.sample(.3, seed=5))
         1783
         """
-        if not seed:
+        if seed is None:
             seed = int(time.time())
 
         if (fraction > 1 or fraction < 0):

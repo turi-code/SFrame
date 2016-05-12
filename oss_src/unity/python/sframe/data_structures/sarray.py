@@ -1845,7 +1845,7 @@ class SArray(object):
             raise ValueError('Invalid sampling rate: ' + str(fraction))
         if (self.size() == 0):
             return SArray()
-        if not seed:
+        if seed is None:
             seed = time.time()
 
 
