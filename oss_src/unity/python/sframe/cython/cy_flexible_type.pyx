@@ -1388,7 +1388,7 @@ cdef flexible_type _ft_translate(object v, int tr_code) except *:
     elif tr_code == FT_BUFFER_TYPE or tr_code == FT_ARRAY_TYPE:
         tr_buffer_to_ft(ret, v)
         return ret
-
+    
     # Now, versions of the above with a cast and/or check.
     elif tr_code == (FT_INT_TYPE + FT_SAFE):
         ret.set_int(v)
@@ -1473,6 +1473,32 @@ cdef flexible_type flexible_type_from_pyobject(object v) except *:
     check_list_to_vector_translation(ret)
     return ret
 
+cdef flexible_type flexible_type_from_pyobject_hint(object v, type t) except *:
+    """
+    Converting python object into flexible_type, with type hint.
+    Possible types are int, float, dict, list, str, array.array,
+    datetime.datetime, type(None), and image.Image.
+    """
+
+    cdef object_ptr optr = <object_ptr>t
+    cdef map[object_ptr,int].iterator it = _code_by_map_force.find(optr)
+    cdef int tr_code
+
+    if it !=  _code_by_map_force.end():
+        tr_code = deref(it).second
+    else:
+        raise TypeError("Type '%s' not valid type hint." % str(t))
+
+    cdef flexible_type ret
+    
+    ret = _ft_translate(v, tr_code)
+    return ret
+
+def _check_ft_pyobject_hint_path(object v, type t):
+    cdef flexible_type ft = flexible_type_from_pyobject_hint(v, t)
+    assert ft.get_type() == flex_type_enum_from_pytype(t)
+
+    
 
 ################################################################################
 # Translation from various flexible types to the corresponding types.

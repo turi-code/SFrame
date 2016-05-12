@@ -2766,9 +2766,9 @@ class SFrameTest(unittest.TestCase):
         with self.assertRaises(IndexError):
             s[len(s)]
 
-    def test_sort(self):
+    def sort_n_rows(self, nrows=100):
+        nrows += 1
         sf = SFrame()
-        nrows = 100
         sf['a'] = range(1, nrows)
         sf['b'] = [float(i) for i in range(1,nrows)]
         sf['c'] = [str(i) for i in range(1,nrows)]
@@ -2798,8 +2798,16 @@ class SFrameTest(unittest.TestCase):
         result = sf.sort('a')
         assert_frame_equal(sf.to_dataframe(), result.to_dataframe());
 
+        # try a lazy input
+        result = sf[sf['a'] > 10].sort('a')
+        assert_frame_equal(sf[sf['a'] > 10].to_dataframe(), result.to_dataframe());
+
         result = sf.sort('a', ascending = False)
         assert_frame_equal(reversed_sf.to_dataframe(), result.to_dataframe());
+        
+        # lazy reversed
+        result = sf[sf['a'] > 10].sort('a', ascending = False)
+        assert_frame_equal(reversed_sf[reversed_sf['a'] > 10].to_dataframe(), result.to_dataframe());
 
         # sort two columns
         result = sf.sort(['a', 'b'])
@@ -2817,6 +2825,11 @@ class SFrameTest(unittest.TestCase):
         # empty sort should not throw
         sf = SFrame({'x':[]})
         sf.sort('x')
+
+    def test_sort(self):
+        #self.sort_n_rows(100)
+        for i in range(1, 10):
+            self.sort_n_rows(i)
 
     def test_dropna(self):
         # empty case
@@ -3284,6 +3297,15 @@ class SFrameTest(unittest.TestCase):
         bad_paramstyle.paramstyle = 'foo'
         with self.assertRaises(TypeError):
             self.sf_all_types.to_sql(conn, "ins_test", dbapi_module=bad_paramstyle)
+
+
+    def test_materialize(self):
+        sf = SFrame({'a':range(100)})
+        sf = sf[sf['a'] > 10]
+        self.assertFalse(sf.is_materialized())
+        sf.materialize()
+        self.assertTrue(sf.is_materialized())
+
 if __name__ == "__main__":
 
     import sys
