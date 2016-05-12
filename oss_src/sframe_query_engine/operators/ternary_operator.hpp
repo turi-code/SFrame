@@ -127,8 +127,8 @@ class operator_impl<planner_node_type::TERNARY_OPERATOR> : public query_operator
       std::shared_ptr<planner_node> isfalse) {
     
     return planner_node::make_shared(planner_node_type::TERNARY_OPERATOR, 
-                                     {},
-                                     {},
+                                     std::map<std::string, flexible_type>(),
+                                     std::map<std::string, any>(),
                                      {condition, istrue, isfalse});
   }
 
