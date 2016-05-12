@@ -55,7 +55,7 @@ FOOTER_STRS = ['Note: Only the head of the SFrame is printed.',
                'You can use print_rows(num_rows=m, num_columns=n) to print more rows and columns.']
 
 LAZY_FOOTER_STRS = ['Note: Only the head of the SFrame is printed. This SFrame is lazily evaluated.',
-                    'You can use len(sf) to force materialization.']
+                    'You can use sf.materialize() to force materialization.']
 root_package_name = __import__(__name__.split('.')[0]).__name__
 SFRAME_ROOTS = [# Binary/lib location in production egg
                 os.path.abspath(os.path.join(os.path.dirname(
@@ -4121,6 +4121,13 @@ class SFrame(object):
         """
         self.remove_column(key)
 
+    def materialize(self):
+        """
+        For an SFrame that is lazily evaluated, force the persistence of the
+        SFrame to disk, committing all lazy evaluated operations.
+        """
+        return self.__materialize__()
+
     def __materialize__(self):
         """
         For an SFrame that is lazily evaluated, force the persistence of the
@@ -4128,6 +4135,12 @@ class SFrame(object):
         """
         with cython_context():
             self.__proxy__.materialize()
+
+    def is_materialized(self):
+        """
+        Returns whether or not the SFrame has been materialized.
+        """
+        return self.__is_materialized__()
 
     def __is_materialized__(self):
         """

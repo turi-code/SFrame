@@ -3297,6 +3297,15 @@ class SFrameTest(unittest.TestCase):
         bad_paramstyle.paramstyle = 'foo'
         with self.assertRaises(TypeError):
             self.sf_all_types.to_sql(conn, "ins_test", dbapi_module=bad_paramstyle)
+
+
+    def test_materialize(self):
+        sf = SFrame({'a':range(100)})
+        sf = sf[sf['a'] > 10]
+        self.assertFalse(sf.is_materialized())
+        sf.materialize()
+        self.assertTrue(sf.is_materialized())
+
 if __name__ == "__main__":
 
     import sys
