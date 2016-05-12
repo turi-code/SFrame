@@ -20,6 +20,11 @@ This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
 
+# Important to call this before everything else
+import sys_util as _sys_util
+_sys_util.setup_environment_from_config_file()
+
+
 from . import util
 from .util import set_runtime_config
 from .util import get_runtime_config
