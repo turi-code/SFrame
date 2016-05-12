@@ -17,6 +17,7 @@ from ..cython.cy_flexible_type import _translate_through_flexible_type as _flexi
 from ..cython.cy_flexible_type import _translate_through_flex_list as _tr_flex_list
 from ..cython.cy_flexible_type import infer_type_of_list
 from ..cython.cy_flexible_type import _get_inferred_column_type, _all_convertable
+from ..cython.cy_flexible_type import _check_ft_pyobject_hint_path
 from ..util.timezone import GMT
 import datetime
 from itertools import product
@@ -508,3 +509,19 @@ class FlexibleTypeTest(unittest.TestCase):
         sa_sec = sa.apply(lambda x: x.second)
         for i in range(len(sa_sec)):
             self.assertEqual(sa[i].second, sa_sec[i])
+
+    def test_flexible_type_hint(self):
+
+        _check_ft_pyobject_hint_path(1, int)
+        _check_ft_pyobject_hint_path(1, float)
+        _check_ft_pyobject_hint_path(1.5, float)
+
+        _check_ft_pyobject_hint_path([], list)
+        _check_ft_pyobject_hint_path([1], list)
+        _check_ft_pyobject_hint_path((1,2), list)
+        
+        _check_ft_pyobject_hint_path({1:1}, dict)
+        _check_ft_pyobject_hint_path(array.array('i', [1,2]), array.array)
+        _check_ft_pyobject_hint_path(array.array('d', [1,2]), array.array)
+        
+                    
