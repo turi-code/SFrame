@@ -495,22 +495,25 @@ def setup_environment_from_config_file():
 
     if not exists(config_file):
         return
-    
-    config = _ConfigParser.SafeConfigParser()
-    config.read(config_file)
 
-    __section = "Environment"
-    
-    if config.has_section(__section):
-        items = config.items(__section)
+    try:
+        config = _ConfigParser.SafeConfigParser()
+        config.read(config_file)
 
-        for k, v in items:
-            try:
-                os.environ[k.upper()] = v
-            except Exception as e:
-                print(("WARNING: Error setting environment variable "
-                       "'%s = %s' from config file '%s': %s.")
-                      % (k, str(v), config_file, str(e)) )
+        __section = "Environment"
+
+        if config.has_section(__section):
+            items = config.items(__section)
+
+            for k, v in items:
+                try:
+                    os.environ[k.upper()] = v
+                except Exception as e:
+                    print(("WARNING: Error setting environment variable "
+                           "'%s = %s' from config file '%s': %s.")
+                          % (k, str(v), config_file, str(e)) )
+    except Exception as e:
+        print "WARNING: Error reading config file '%s': %s." % (config_file, str(e))
                       
 
 def write_config_file_value(key, value):
