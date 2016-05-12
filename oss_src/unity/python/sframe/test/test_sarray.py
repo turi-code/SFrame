@@ -990,7 +990,11 @@ class SArrayTest(unittest.TestCase):
         a.astype(str).hash().__materialize__()
 
         a.apply(lambda x: [x], list).hash().__materialize__()
-
+        
+        # Nones hash too!
+        a = SArray([None, None, None], int).hash()
+        self.assertTrue(a[0] is not None)
+        self.assertTrue((a == a[0]).all())
 
     def test_random_integers(self):
         a = SArray.random_integers(0)
