@@ -115,6 +115,7 @@ cpdef type infer_type_of_sequence(object t)
 #/*                                                                        */
 #/**************************************************************************/
 cdef flexible_type flexible_type_from_pyobject(object) except *
+cdef flexible_type flexible_type_from_pyobject_hint(object, type) except *
 cdef gl_options_map gl_options_map_from_pydict(dict) except *
 cdef flex_list common_typed_flex_list_from_iterable(object, flex_type_enum* common_type) except *
 cdef flex_list flex_list_from_iterable(object) except *
