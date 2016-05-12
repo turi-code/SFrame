@@ -705,30 +705,36 @@ size_t unity_sarray::num_missing() {
 
 bool unity_sarray::all() {
   log_func_entry();
-  
+  class early_termination{};
   auto reductionfn = [](const flexible_type& f, int& segment_all)->void {
     segment_all &= !f.is_zero();
+    if (segment_all == 0) {
+      throw early_termination();
+    }
   };
-
-  return query_eval::reduce<int>(m_planner_node, 
-                                 reductionfn, reductionfn, 1) > 0;
+  try {
+    return query_eval::reduce<int>(m_planner_node,
+                                   reductionfn, reductionfn, 1) > 0;
+  } catch (early_termination) {
+    return false;
+  }
 }
 
 bool unity_sarray::any() {
   log_func_entry();
-  auto reductionfn = [](const flexible_type& f, int& segment_all)->bool {
+  class early_termination{};
+  auto reductionfn = [](const flexible_type& f, int& segment_all)->void {
     segment_all |= !f.is_zero();
-    // keep continuing if we have not
-    // hit a non-empty case.
-    // \note Earlier versions of reduce allowed for early stopping by
-    // returning false. This is currently, not yet supported in the new
-    // query evaluator and is simply ignored. We will maintain it this way
-    // for now, pending future enhancements to the query evaluator.
-    return !segment_all; 
+    if (segment_all == 1) {
+      throw early_termination();
+    }
   };
-
-  return query_eval::reduce<int>(m_planner_node, 
-                                 reductionfn, reductionfn, 0) > 0;
+  try {
+    return query_eval::reduce<int>(m_planner_node,
+                                   reductionfn, reductionfn, 0) > 0;
+  } catch (early_termination) {
+    return true;
+  }
 }
 
 flexible_type unity_sarray::max() {
