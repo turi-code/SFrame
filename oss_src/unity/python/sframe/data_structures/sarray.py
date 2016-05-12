@@ -560,7 +560,68 @@ class SArray(object):
         return cls(_proxy = proxy)
 
     @classmethod
-    def where(cls, condition, istrue, isfalse):
+    def where(cls, condition, istrue, isfalse, dtype=None):
+        """
+        Selects elements from either istrue or isfalse depending on the value 
+        of the condition SArray.
+
+        Parameters
+        ----------
+        condition : SArray
+        An SArray of values such that for each value, if non-zero, yields a 
+        value from istrue, otherwise from isfalse.
+
+        istrue : SArray or constant
+        The elements selected if condition is true. If istrue is an SArray,
+        this must be of the same length as condition.
+
+        isfalse : SArray or constant
+        The elements selected if condition is false. If istrue is an SArray,
+        this must be of the same length as condition.
+
+        dtype : type
+        The type of result SArray. This is required if both istrue and isfalse
+        are constants of ambiguous types.
+
+        Examples
+        --------
+        
+        Returns an SArray with the same values as g with values above 10 
+        clipped to 10
+
+        >>> g = SArray([6,7,8,9,10,11,12,13])
+        >>> SArray.where(g > 10, 10, g)
+        dtype: int
+        Rows: 8
+        [6, 7, 8, 9, 10, 10, 10, 10]
+
+        Returns an SArray with the same values as g with values below 10 
+        clipped to 10
+
+        >>> SArray.where(g > 10, g, 10)
+        dtype: int
+        Rows: 8
+        [10, 10, 10, 10, 10, 11, 12, 13]
+
+        Returns an SArray with the same values of g with all values == 1
+        replaced by None
+
+        >>> g = SArray([1,2,3,4,1,2,3,4])
+        >>> SArray.where(g == 1, None, g)
+        dtype: int
+        Rows: 8
+        [None, 2, 3, 4, None, 2, 3, 4]
+
+        Returns an SArray with the same values of g, but with each missing value
+        replaced by its corresponding element in replace_none
+
+        >>> g = SArray([1,2,None,None])
+        >>> replace_none = SArray([3,3,2,2])
+        >>> SArray.where(g != None, g, replace_none)
+        dtype: int
+        Rows: 4
+        [1, 2, 2, 2]
+        """
         true_is_sarray = isinstance(istrue, SArray)
         false_is_sarray = isinstance(isfalse, SArray)
         if not true_is_sarray and false_is_sarray:
@@ -568,8 +629,19 @@ class SArray(object):
         if true_is_sarray and not false_is_sarray:
             isfalse = cls(_proxy=condition.__proxy__.to_const(isfalse, istrue.dtype()))
         if not true_is_sarray and not false_is_sarray:
-            if type(istrue) != type(isfalse):
-                raise TypeError("true and false inputs are of different types")
+            if dtype is None:
+                if istrue is None:
+                    dtype = type(isfalse)
+                elif isfalse is None:
+                    dtype = type(istrue)
+                elif type(istrue) != type(isfalse):
+                    raise TypeError("true and false inputs are of different types")
+                elif type(istrue) == type(isfalse):
+                    dtype = type(istrue)
+            if dtype is None:
+                raise TypeError("Both true and false are None. Resultant type cannot be inferred.")
+            istrue = cls(_proxy=condition.__proxy__.to_const(istrue, dtype))
+            isfalse = cls(_proxy=condition.__proxy__.to_const(isfalse, dtype))
         return cls(_proxy=condition.__proxy__.ternary_operator(istrue.__proxy__, isfalse.__proxy__))
 
     def to_numpy(self):

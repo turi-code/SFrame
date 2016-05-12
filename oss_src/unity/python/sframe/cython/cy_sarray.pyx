@@ -12,6 +12,7 @@ from cython.operator cimport dereference as deref
 from .cy_flexible_type cimport flex_type_enum_from_pytype
 from .cy_flexible_type cimport pytype_from_flex_type_enum
 from .cy_flexible_type cimport flexible_type_from_pyobject
+from .cy_flexible_type cimport flexible_type_from_pyobject_hint
 from .cy_flexible_type cimport flex_list_from_iterable
 from .cy_flexible_type cimport flex_list_from_typed_iterable
 from .cy_flexible_type cimport common_typed_flex_list_from_iterable
@@ -87,8 +88,15 @@ cdef class UnitySArrayProxy:
             self.thisptr.construct_from_avro(url)
 
     cpdef load_from_const(self, object value, size_t size, type t):
-        cdef flexible_type val = flexible_type_from_pyobject(value)
+        cdef flexible_type val
         cdef flex_type_enum datatype = flex_type_enum_from_pytype(t)
+        # if value is None, the hinted type coercion is bad. 
+        # We do want to keep val as None
+        # If t is None or NoneType, we assume there is no hint
+        if value is None or t is None or t is type(None):
+            val = flexible_type_from_pyobject(value)
+        else:
+            val = flexible_type_from_pyobject_hint(value, t)
         with nogil:
             self.thisptr.construct_from_const(val, size, datatype)
     
@@ -476,8 +484,16 @@ cdef class UnitySArrayProxy:
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
 
     cpdef to_const(self, object value, type t):
-        cdef flexible_type val = flexible_type_from_pyobject(value)
+        cdef flexible_type val
         cdef flex_type_enum datatype = flex_type_enum_from_pytype(t)
+        # if value is None, the hinted type coercion is bad. 
+        # We do want to keep val as None
+        # If t is None or NoneType, we assume there is no hint
+        if value is None or t is None or t is type(None):
+            val = flexible_type_from_pyobject(value)
+        else:
+            val = flexible_type_from_pyobject_hint(value, t)
+
         cdef unity_sarray_base_ptr proxy
         with nogil:
             proxy = self.thisptr.to_const(val, datatype)

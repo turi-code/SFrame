@@ -31,7 +31,7 @@ class operator_impl<planner_node_type::TERNARY_OPERATOR> : public query_operator
   
   planner_node_type type() const { return planner_node_type::TERNARY_OPERATOR; } 
 
-  static std::string name() { return "binary_transform"; }
+  static std::string name() { return "ternary"; }
         
   static query_operator_attributes attributes() {
     query_operator_attributes ret;
@@ -90,32 +90,34 @@ class operator_impl<planner_node_type::TERNARY_OPERATOR> : public query_operator
         out_columns.clear();
         out_columns.push_back(input->cget_columns()[0]);
         context.emit(output_buffer);
-      } 
-      
-      auto isfalse = context.get_next(ISFALSE_INPUT);
-      auto istrue = context.get_next(ISTRUE_INPUT);
-      ASSERT_TRUE(istrue != nullptr && isfalse != nullptr);
-      ASSERT_EQ(isfalse->num_rows(), condition_column.size());
-      ASSERT_EQ(istrue->num_rows(), condition_column.size());
-      ASSERT_EQ(isfalse->num_columns(), 1);
-      ASSERT_EQ(istrue->num_columns(), 1);
+      } else {
+        
+        auto isfalse = context.get_next(ISFALSE_INPUT);
+        auto istrue = context.get_next(ISTRUE_INPUT);
+        ASSERT_TRUE(istrue != nullptr);
+        ASSERT_TRUE(isfalse != nullptr);
+        ASSERT_EQ(isfalse->num_rows(), condition_column.size());
+        ASSERT_EQ(istrue->num_rows(), condition_column.size());
+        ASSERT_EQ(isfalse->num_columns(), 1);
+        ASSERT_EQ(istrue->num_columns(), 1);
 
-      output_buffer->resize(1, condition_column.size());
+        output_buffer->resize(1, condition_column.size());
 
-      auto istrue_iter = istrue->cbegin();
-      auto isfalse_iter = isfalse->cbegin();
-      auto out_iter = output_buffer->begin();
-      for (auto& cval : condition_column) {
-        if (cval.is_zero()) {
-            (*out_iter)[0] = (*isfalse_iter)[0];
-        } else {
-            (*out_iter)[0] = (*istrue_iter)[0];
+        auto istrue_iter = istrue->cbegin();
+        auto isfalse_iter = isfalse->cbegin();
+        auto out_iter = output_buffer->begin();
+        for (auto& cval : condition_column) {
+          if (cval.is_zero()) {
+              (*out_iter)[0] = (*isfalse_iter)[0];
+          } else {
+              (*out_iter)[0] = (*istrue_iter)[0];
+          }
+          ++istrue_iter;
+          ++isfalse_iter;
+          ++out_iter;
         }
-        ++istrue_iter;
-        ++isfalse_iter;
-        ++out_iter;
+        context.emit(output_buffer);
       }
-      context.emit(output_buffer);
     }
   }
 
@@ -141,7 +143,7 @@ class operator_impl<planner_node_type::TERNARY_OPERATOR> : public query_operator
 
   static std::vector<flex_type_enum> infer_type(std::shared_ptr<planner_node> pnode) {
     ASSERT_EQ((int)pnode->operator_type, (int)planner_node_type::TERNARY_OPERATOR);
-    return infer_planner_node_type(pnode->inputs[0]);
+    return infer_planner_node_type(pnode->inputs[1]);
   }
 
   static int64_t infer_length(std::shared_ptr<planner_node> pnode) {
