@@ -17,6 +17,8 @@ void set_recv_timeout(int ms);
 
 void set_conservative_socket_parameters(void* socket);
 
+extern int64_t FORCE_IPC_TO_TCP_FALLBACK;
+
 /**
  * Normalizes an zeromq address. 
  * On windows, this converts IPc addresses to localhost address.

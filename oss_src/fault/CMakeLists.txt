@@ -23,6 +23,7 @@ make_library(fault_comm
   util
   parallel
   logger
+  globals
 )
 set_property(TARGET fault_comm APPEND PROPERTY COMPILE_DEFINITIONS FAKE_ZOOKEEPER) 
 
@@ -50,6 +51,7 @@ make_library(fault_comm_zookeeper
   util
   parallel
   logger
+  globals
 )
 else()
   make_empty_library(fault_comm_zookeeper fault_comm)
