@@ -2,6 +2,7 @@ project(lambda)
 
 make_library(pylambda
   SOURCES
+    worker_pool.cpp
     lambda_constants.cpp
     lambda_master.cpp
     pylambda_function.cpp
