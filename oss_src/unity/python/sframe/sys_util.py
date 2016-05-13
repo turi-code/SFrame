@@ -513,7 +513,7 @@ def setup_environment_from_config_file():
                            "'%s = %s' from config file '%s': %s.")
                           % (k, str(v), config_file, str(e)) )
     except Exception as e:
-        print "WARNING: Error reading config file '%s': %s." % (config_file, str(e))
+        print("WARNING: Error reading config file '%s': %s." % (config_file, str(e)))
                       
 
 def write_config_file_value(key, value):
