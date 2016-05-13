@@ -705,34 +705,34 @@ size_t unity_sarray::num_missing() {
 
 bool unity_sarray::all() {
   log_func_entry();
-  class early_termination{};
+  class early_termination_has_a_zero_value{};
   auto reductionfn = [](const flexible_type& f, int& segment_all)->void {
     segment_all &= !f.is_zero();
     if (segment_all == 0) {
-      throw early_termination();
+      throw early_termination_has_a_zero_value();
     }
   };
   try {
     return query_eval::reduce<int>(m_planner_node,
                                    reductionfn, reductionfn, 1) > 0;
-  } catch (early_termination) {
+  } catch (early_termination_has_a_zero_value) {
     return false;
   }
 }
 
 bool unity_sarray::any() {
   log_func_entry();
-  class early_termination{};
+  class early_termination_has_a_one_value{};
   auto reductionfn = [](const flexible_type& f, int& segment_all)->void {
     segment_all |= !f.is_zero();
     if (segment_all == 1) {
-      throw early_termination();
+      throw early_termination_has_a_one_value();
     }
   };
   try {
     return query_eval::reduce<int>(m_planner_node,
                                    reductionfn, reductionfn, 0) > 0;
-  } catch (early_termination) {
+  } catch (early_termination_has_a_one_value) {
     return true;
   }
 }
