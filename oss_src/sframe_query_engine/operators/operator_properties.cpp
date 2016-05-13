@@ -50,6 +50,8 @@ RetType extract_field(planner_node_type ptype, CallArgs... call_args) {
       return FieldExtractionVisitor<planner_node_type::REDUCE_NODE>::get(call_args...);
     case planner_node_type::GENERALIZED_UNION_PROJECT_NODE:
       return FieldExtractionVisitor<planner_node_type::GENERALIZED_UNION_PROJECT_NODE>::get(call_args...);
+    case planner_node_type::TERNARY_OPERATOR:
+      return FieldExtractionVisitor<planner_node_type::TERNARY_OPERATOR>::get(call_args...);
     case planner_node_type::IDENTITY_NODE:
       return FieldExtractionVisitor<planner_node_type::IDENTITY_NODE>::get(call_args...);
     case planner_node_type::INVALID:
