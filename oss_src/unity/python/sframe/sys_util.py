@@ -15,6 +15,10 @@ import subprocess as _subprocess
 from ._scripts import _pylambda_worker
 from copy import copy
 
+if sys.version_info.major == 2:
+    import ConfigParser as _ConfigParser
+else:
+    import configparser as _ConfigParser
 
 def make_unity_server_env():
     """
@@ -166,7 +170,6 @@ def test_pylambda_worker():
     proc.wait()
 
     ################################################################################
-
 
     # Write out the current system path.
     open(join(temp_dir, "sys_path_1.log"), "w").write(
@@ -439,3 +442,101 @@ def _get_expanded_classpath(classpath):
                     for path in classpath.split(os.path.pathsep))
     logging.getLogger(__name__).debug('classpath being used: %s' % jars)
     return jars
+
+def get_library_name():
+    """
+    Returns either sframe or graphlab depending on which library
+    this file is bundled with.
+    """
+    from os.path import split, abspath
+    
+    __lib_name = split(split(abspath(sys.modules[__name__].__file__))[0])[1]
+
+    assert __lib_name in ["sframe", "graphlab"]
+
+    return __lib_name
+
+
+def get_config_file():
+    """
+    Returns the file name of the config file from which the environment
+    variables are written.
+    """
+    import os
+    from os.path import abspath, expanduser, join, exists
+
+    __lib_name = get_library_name()
+
+    assert __lib_name in ["sframe", "graphlab"]
+
+    __default_config_path = join(expanduser("~"), ".%s" % __lib_name, "config")
+
+    if "GRAPHLAB_CONFIG_FILE" in os.environ:
+        __default_config_path = abspath(expanduser(os.environ["GRAPHLAB_CONFIG_FILE"]))
+
+        if not exists(__default_config_path):
+            print(("WARNING: Config file specified in environment variable "
+                   "'GRAPHLAB_CONFIG_FILE' as "
+                   "'%s', but this path does not exist.") % __default_config_path)
+
+    return __default_config_path
+
+
+def setup_environment_from_config_file():
+    """
+    Imports the environmental configuration settings from the
+    config file, if present, and sets the environment
+    variables to test it.
+    """
+
+    from os.path import exists
+    
+    config_file = get_config_file()
+
+    if not exists(config_file):
+        return
+
+    try:
+        config = _ConfigParser.SafeConfigParser()
+        config.read(config_file)
+
+        __section = "Environment"
+
+        if config.has_section(__section):
+            items = config.items(__section)
+
+            for k, v in items:
+                try:
+                    os.environ[k.upper()] = v
+                except Exception as e:
+                    print(("WARNING: Error setting environment variable "
+                           "'%s = %s' from config file '%s': %s.")
+                          % (k, str(v), config_file, str(e)) )
+    except Exception as e:
+        print("WARNING: Error reading config file '%s': %s." % (config_file, str(e)))
+                      
+
+def write_config_file_value(key, value):
+    """
+    Writes an environment variable configuration to the current
+    config file.  This will be read in on the next restart.
+    The config file is created if not present.
+
+    Note: The variables will not take effect until after restart.
+    """
+
+    filename = get_config_file()
+
+    config = _ConfigParser.SafeConfigParser()
+    config.read(filename)
+
+    __section = "Environment"
+    
+    if not(config.has_section(__section)):
+        config.add_section(__section)
+        
+    config.set(__section, key, value)
+
+    with open(filename, 'w') as config_file:
+        config.write(config_file)
+    
