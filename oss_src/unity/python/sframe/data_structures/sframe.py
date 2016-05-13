@@ -3038,8 +3038,8 @@ class SFrame(object):
         if dtype is None:
             dtype = SArray(dryrun).dtype()
 
-        if not seed:
-            seed = int(time.time())
+        if seed is None:
+            seed = abs(hash("%0.20f" % time.time())) % (2 ** 31)
 
 
         nativefn = None
@@ -3120,8 +3120,8 @@ class SFrame(object):
         [6 rows x 2 columns]
         """
         assert callable(fn), "Input must be callable"
-        if not seed:
-            seed = int(time.time())
+        if seed is None:
+            seed = abs(hash("%0.20f" % time.time())) % (2 ** 31)
 
 
         # determine the column_types
@@ -3189,7 +3189,7 @@ class SFrame(object):
         1783
         """
         if seed is None:
-            seed = int(time.time())
+            seed = abs(hash("%0.20f" % time.time())) % (2 ** 31)
 
         if (fraction > 1 or fraction < 0):
             raise ValueError('Invalid sampling rate: ' + str(fraction))

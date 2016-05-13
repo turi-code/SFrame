@@ -996,6 +996,10 @@ class SArrayTest(unittest.TestCase):
         self.assertTrue(a[0] is not None)
         self.assertTrue((a == a[0]).all())
 
+        # different seeds give different hash values
+        self.assertTrue((a.hash(seed=0) != a.hash(seed=1)).all())
+
+
     def test_random_integers(self):
         a = SArray.random_integers(0)
         self.assertEqual(len(a), 0)

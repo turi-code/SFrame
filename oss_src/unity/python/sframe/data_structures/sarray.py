@@ -1855,8 +1855,8 @@ class SArray(object):
         dryrun = [fn(i) for i in self.head(100) if i is not None]
         if dtype == None:
             dtype = infer_type_of_list(dryrun)
-        if not seed:
-            seed = time.time()
+        if seed is None:
+            seed = abs(hash("%0.20f" % time.time())) % (2 ** 31)
 
         # log metric
 
@@ -1914,8 +1914,8 @@ class SArray(object):
         [1, 2]
         """
         assert callable(fn), "Input must be callable"
-        if not seed:
-            seed = time.time()
+        if seed is None:
+            seed = abs(hash("%0.20f" % time.time())) % (2 ** 31)
 
 
         with cython_context():
@@ -1952,7 +1952,7 @@ class SArray(object):
         if (self.size() == 0):
             return SArray()
         if seed is None:
-            seed = time.time()
+            seed = abs(hash("%0.20f" % time.time())) % (2 ** 31)
 
 
         with cython_context():
@@ -1985,7 +1985,7 @@ class SArray(object):
         Returns an SArray with random integer values.
         """
         if seed is None:
-            seed = time.time()
+            seed = abs(hash("%0.20f" % time.time())) % (2 ** 31)
         return SArray.from_sequence(size).hash(seed)
 
     def _save_as_text(self, url):
