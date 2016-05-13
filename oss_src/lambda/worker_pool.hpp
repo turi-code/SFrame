@@ -106,13 +106,11 @@ std::unique_ptr<worker_process<ProxyType>> spawn_worker(std::vector<std::string>
     if (!new_process->exists()) {
       int ret_code = new_process->get_return_code();
 
-      std::ostringstream ss;
-      ss << "Lambda worker process " << new_process->get_pid()
-      << " terminated unexpectedly with code " << ret_code
-      << "; conn attempt time = " << conn_timer.current_time()
-      << "; attempt count = " << retry;
-
-      logstream(LOG_ERROR) << ss.str() << std::endl;
+      logstream(LOG_ERROR) << "Lambda worker process " << new_process->get_pid()
+                           << " terminated unexpectedly with code " << ret_code
+                           << "; conn attempt time = " << conn_timer.current_time()
+                           << "; attempt count = " << retry
+                           << std::endl;
       return false;
     } else {
       return true;
@@ -120,19 +118,15 @@ std::unique_ptr<worker_process<ProxyType>> spawn_worker(std::vector<std::string>
   };
 
   auto log_exception = [&](const std::string& e) {
-    std::ostringstream ss;
-    ss << "Error starting CPPIPC connection in connecting to lambda worker at "
+    logstream(LOG_ERROR)
+       << "Error starting CPPIPC connection in connecting to lambda worker at "
        << worker_address
        << " (conn_time = " << conn_timer.current_time()
-       << "; attempt count = " << retry << "): " << e;
-    logstream(LOG_ERROR) << ss.str() << std::endl;
+       << "; attempt count = " << retry << "): " << e
+       << std::endl;
   };
 
-  // The actual timeout is controlled by conn_timer, so that should be
-  // what causes the loop to exit in case of failure.  However, put in
-  // a really large number here in case of infinite-loop programming
-  // errors.
-  while (retry < 1000000) {
+  while (true) {
 
     // Do initial check to make sure the process exists.
     if(!check_process_exists()) { break; }
@@ -147,13 +141,12 @@ std::unique_ptr<worker_process<ProxyType>> spawn_worker(std::vector<std::string>
 
       if (status == cppipc::reply_status::OK) {
         // Success
-        std::ostringstream ss;
-        ss  << "Connected to worker " << new_process->get_pid()
+        logstream(LOG_INFO)
+            << "Connected to worker " << new_process->get_pid()
             << " at " << worker_address
             << "; conn_time = " << conn_timer.current_time()
-            << "; attempt count = " << retry;
-
-        logstream(LOG_INFO) << ss.str() << std::endl;
+            << "; attempt count = " << retry
+            << std::endl;
 
         new_client.swap(tmp_cli);
         break;
@@ -163,7 +156,8 @@ std::unique_ptr<worker_process<ProxyType>> spawn_worker(std::vector<std::string>
             << "CPPIPC failure connecting to worker at " << worker_address
             << ". status = " << cppipc::reply_status_to_string(status)
             << "; conn_time = " << conn_timer.current_time()
-            << "; attempt count = " << retry << std::endl;
+            << "; attempt count = " << retry
+            << std::endl;
       }
       // Exception happened during comm_client construction/starting
     } catch (std::string error) {
@@ -189,14 +183,13 @@ std::unique_ptr<worker_process<ProxyType>> spawn_worker(std::vector<std::string>
     // Exit if we are out of time.
     if(LAMBDA_WORKER_CONNECTION_TIMEOUT >= 0
        && (conn_timer.current_time() >= LAMBDA_WORKER_CONNECTION_TIMEOUT)) {
-
-      std::ostringstream ss;
-      ss << "Timeout connecting to lambda worker process" << new_process->get_pid()
+      
+      logstream(LOG_ERROR)
+         << "Timeout connecting to lambda worker process" << new_process->get_pid()
          << "; conn attempt time = " << conn_timer.current_time()
          << "; timeout = " << LAMBDA_WORKER_CONNECTION_TIMEOUT
-         << "; retry count = " << retry;
-
-      logstream(LOG_ERROR) << ss.str() << std::endl;
+         << "; retry count = " << retry
+         << std::endl;
       break;
     }
   } // end of while
