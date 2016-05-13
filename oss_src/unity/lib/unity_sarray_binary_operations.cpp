@@ -299,9 +299,32 @@ get_binary_operator(flex_type_enum left, flex_type_enum right, std::string op) {
       return [](const flexible_type& l, const flexible_type& r)->flexible_type {
         if (l.get_type() == flex_type_enum::INTEGER &&
             r.get_type() == flex_type_enum::INTEGER) {
-          auto rightval = r.get<flex_int>();
-          if (rightval != 0) return l.get<flex_int>() % rightval;
-          else return FLEX_UNDEFINED;
+          flex_int rightval = r.get<flex_int>();
+          flex_int leftval = l.get<flex_int>();
+          /*
+           * desired result
+           * 1 % 3 == 1
+           * -1 % 3 == 2
+           * 1 % -3 == -2
+           * -1 % -3 == -1
+           */
+          if (rightval > 0) {
+            // Result of remainder operator is implementation dependent. It
+            // could be negative or positive. We lock it to positive.
+            // That makes more sense.
+            auto res = leftval % rightval;
+            if (res < 0) res += rightval;
+            return res;
+          } else if (rightval < 0) {
+            // if the rightval is negative that is also implementation
+            // dependent. We lock it to negative. This matches Python's
+            // definition
+            auto res = leftval % (-rightval);
+            if (res > 0) res += rightval; // remember rightval is negative here
+            return res;
+          } else {
+            return FLEX_UNDEFINED;
+          }
         } else {
           return 0;
         }
@@ -356,6 +379,8 @@ get_binary_operator(flex_type_enum left, flex_type_enum right, std::string op) {
             for (const auto& elem: dict) {
               if (elem.first == r) return 1;
             }
+            return 0;
+          } else {
             return 0;
           }
         };

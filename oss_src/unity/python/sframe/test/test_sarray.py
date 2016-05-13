@@ -854,6 +854,12 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(s == None, [0,0,0,0,1], int)
         self.__test_equal(s != None, [1,1,1,1,0], int)
 
+    def test_modulus_operator(self):
+        l = [-5,-4,-3,-2,-1,0,1,2,3,4,5]
+        t = SArray(l, int)
+        self.__test_equal(t % 2, [i % 2 for i in l], int)
+        self.__test_equal(t % -2, [i % -2 for i in l], int)
+
     def test_vector_operators(self):
         s=np.array([1,2,3,4,5,6,7,8,9,10]);
         s2=np.array([5,4,3,2,1,10,9,8,7,6]);
