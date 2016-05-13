@@ -11,6 +11,9 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/integer_traits.hpp>
 #include <util/md5.hpp>
+#include <globals/globals.hpp>
+#include <logger/logger.hpp>
+#include <export.hpp>
 
 
 #ifndef _WIN32
@@ -94,50 +97,80 @@ std::string hash_string_to_tcp_address(const std::string& s) {
                    << (int)(addr[2]) << "."
                    << (int)(addr[3]) << ":"
                    << (int)(port);
-  return strm.str();
+
+  std::string s_out = strm.str();
+
+  logstream(LOG_INFO) << "normalize_address: Hashed ipc address '" << s << "' to '"
+                      << s_out << "'." << std::endl;
+  return s_out;
 }
 
+EXPORT int64_t FORCE_IPC_TO_TCP_FALLBACK = 0;
+
+REGISTER_GLOBAL(int64_t, FORCE_IPC_TO_TCP_FALLBACK, true);
+
 std::string normalize_address(const std::string& address) {
+
+  bool use_tcp_fallback = (FORCE_IPC_TO_TCP_FALLBACK != 0);
+
+  std::string address_out;
+
 #ifdef _WIN32
-  if (boost::starts_with(address, "ipc://")) {
-    return hash_string_to_tcp_address(address);
-  } else {
-    return address;
-  }
-#else
-  /*
-   *
-  ipc sockets on Linux and Mac use Unix domain sockets which have a maximum
-  length defined by
-
-  #include <iostream>
-  #include <sys/socket.h>
-  #include <sys/un.h>
-
-  int main() {
-    struct sockaddr_un my_addr;
-    std::cout << sizeof(my_addr.sun_path) << std::endl;
-  }
-  This appears to be 104 on Mac OS X 10.11 and 108 on a Ubuntu machine
-  (length includes the null terminator).
-
-  See http://man7.org/linux/man-pages/man7/unix.7.html
-  */
-  struct sockaddr_un un_addr;
-  size_t max_length = sizeof(un_addr.sun_path) - 1;  // null terminator
-  if (boost::starts_with(address, "ipc://") &&
-      address.length() > max_length) { // strictly this leaves a 5 char buffer
-                                       // since we didn't strip the ipc://
-     // we hash it to a file we put in /tmp
-     // we could use $TMPDIR but that might be a bad idea.
-     // since $TMPDIR could bump the length much bigger again.
-     // with /tmp the length is bounded to strlen("/tmp") + md5 length.
-    std::string md5_hash = graphlab::md5(address);
-    return "ipc:///tmp/" + md5_hash;
-  } else {
-    return address;
-  }
+  use_tcp_fallback = true;
 #endif
+
+  if(use_tcp_fallback) {
+
+    logstream(LOG_INFO) << "normalize_address: Using TCP fallback mode." << std::endl;
+    
+    if (boost::starts_with(address, "ipc://")) {
+      address_out = hash_string_to_tcp_address(address);
+    } else {
+      address_out = address;
+    }
+  } else {
+    /*
+     *
+     ipc sockets on Linux and Mac use Unix domain sockets which have a maximum
+     length defined by
+
+     #include <iostream>
+     #include <sys/socket.h>
+     #include <sys/un.h>
+
+     int main() {
+     struct sockaddr_un my_addr;
+     std::cout << sizeof(my_addr.sun_path) << std::endl;
+     }
+     This appears to be 104 on Mac OS X 10.11 and 108 on a Ubuntu machine
+     (length includes the null terminator).
+
+     See http://man7.org/linux/man-pages/man7/unix.7.html
+    */
+    struct sockaddr_un un_addr;
+    size_t max_length = sizeof(un_addr.sun_path) - 1;  // null terminator
+    if (boost::starts_with(address, "ipc://") &&
+        address.length() > max_length) { // strictly this leaves a 5 char buffer
+      // since we didn't strip the ipc://
+      // we hash it to a file we put in /tmp
+      // we could use $TMPDIR but that might be a bad idea.
+      // since $TMPDIR could bump the length much bigger again.
+      // with /tmp the length is bounded to strlen("/tmp") + md5 length.
+      std::string md5_hash = graphlab::md5(address);
+      address_out = "ipc:///tmp/" + md5_hash;
+    } else {
+      address_out = address;
+    }
+  }
+
+  if(address_out == address) {
+    logstream(LOG_INFO) << "normalize_address: kept '" << address_out << "'." << std::endl;
+  } else {
+    logstream(LOG_INFO) << "normalize_address: '" << address << "' --> '"
+                        << address_out << "'." << std::endl;
+  }
+
+  return address_out;
 }
 
 };
