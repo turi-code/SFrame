@@ -1980,13 +1980,13 @@ class SArray(object):
             return SArray(_proxy=self.__proxy__.hash(seed))
 
     @classmethod
-    def random_integers(self, size, seed=None):
+    def random_integers(cls, size, seed=None):
         """
         Returns an SArray with random integer values.
         """
         if seed is None:
             seed = abs(hash("%0.20f" % time.time())) % (2 ** 31)
-        return SArray.from_sequence(size).hash(seed)
+        return cls.from_sequence(size).hash(seed)
 
     def _save_as_text(self, url):
         """
