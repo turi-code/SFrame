@@ -1855,8 +1855,8 @@ class SArray(object):
         dryrun = [fn(i) for i in self.head(100) if i is not None]
         if dtype == None:
             dtype = infer_type_of_list(dryrun)
-        if not seed:
-            seed = time.time()
+        if seed is None:
+            seed = abs(hash("%0.20f" % time.time())) % (2 ** 31)
 
         # log metric
 
@@ -1914,8 +1914,8 @@ class SArray(object):
         [1, 2]
         """
         assert callable(fn), "Input must be callable"
-        if not seed:
-            seed = time.time()
+        if seed is None:
+            seed = abs(hash("%0.20f" % time.time())) % (2 ** 31)
 
 
         with cython_context():
@@ -1952,11 +1952,41 @@ class SArray(object):
         if (self.size() == 0):
             return SArray()
         if seed is None:
-            seed = time.time()
+            seed = abs(hash("%0.20f" % time.time())) % (2 ** 31)
 
 
         with cython_context():
             return SArray(_proxy=self.__proxy__.sample(fraction, seed))
+
+    def hash(self, seed=0):
+        """
+        Returns an SArray with a hash of each element. seed can be used
+        to change the hash function to allow this method to be used for
+        random number generation.
+
+        Parameters
+        ----------
+        seed : int
+            Defaults to 0. Can be changed to different values to get 
+            different hash results.
+
+        Returns
+        -------
+        out : SArray
+            An integer SArray with a hash value for each element. Identical
+            elements are hashed to the same value
+        """
+        with cython_context():
+            return SArray(_proxy=self.__proxy__.hash(seed))
+
+    @classmethod
+    def random_integers(cls, size, seed=None):
+        """
+        Returns an SArray with random integer values.
+        """
+        if seed is None:
+            seed = abs(hash("%0.20f" % time.time())) % (2 ** 31)
+        return cls.from_sequence(size).hash(seed)
 
     def _save_as_text(self, url):
         """
