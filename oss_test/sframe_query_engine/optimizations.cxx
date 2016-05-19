@@ -9,6 +9,7 @@
 #include <sframe_query_engine/planning/planner_node.hpp>
 #include <sframe_query_engine/operators/all_operators.hpp>
 #include <sframe_query_engine/util/aggregates.hpp>
+#include <sframe_query_engine/operators/operator_transformations.hpp>
 #include <sframe/sarray.hpp>
 #include <cxxtest/TestSuite.h>
 
@@ -28,12 +29,15 @@ static const size_t n = 17;
  *   .v[2] -- opt
  *   .v[3] -- opt, with many nodes in the history pre-materialized.
  *   .v[4] -- opt with zero length sframes to test this corner case.
+ *   .v[5] -- opt with truncated sframes to test indexing and slicing, 0-n/2
+ *   .v[6] -- opt with truncated sframes to test indexing and slicing, n/4-3*n/4
+ *   .v[7] -- opt with truncated sframes to test indexing and slicing, n/2-n
  */
 
 // Actually using arrays to make sure full + no-opt + no-opt-naive are all the same
 
 struct node {
-  std::array<std::shared_ptr<planner_node>, 5> v;
+  std::array<std::shared_ptr<planner_node>, 8> v;
   std::set< std::array<std::shared_ptr<planner_node>, 2> > history;
   
   void pull_history(const std::vector<node>& nv) {
@@ -47,6 +51,14 @@ struct node {
 
 ////////////////////////////////////////////////////////////////////////////////
 // General sources
+
+std::map<pnode_ptr, pnode_ptr> sliced_graph_memo; 
+
+static void add_sliced_info(node& ret, size_t m) {
+  ret.v[5] = query_eval::make_sliced_graph(ret.v[0], 0, m / 2, sliced_graph_memo);
+  ret.v[6] = query_eval::make_sliced_graph(ret.v[0], m / 4, (3 * m) / 4, sliced_graph_memo);
+  ret.v[7] = query_eval::make_sliced_graph(ret.v[0], m / 2, m, sliced_graph_memo);
+};
 
 static node source_sarray() {
   std::vector<flexible_type> data(n);
@@ -75,6 +87,8 @@ static node source_sarray() {
     ret.v[4] = op_sarray_source::make_planner_node(sa);
   }
 
+  add_sliced_info(ret, n);
+  
   ret.history.insert({ret.v[0], ret.v[3]});
 
   return ret;
@@ -92,6 +106,8 @@ static node empty_sarray() {
     n = op_sarray_source::make_planner_node(sa);
 
   ret.history.insert({ret.v[0], ret.v[3]});
+
+  add_sliced_info(ret, 0);
   
   return ret;
 }
@@ -124,6 +140,8 @@ static node zero_source_sarray() {
     ret.v[4] = op_sarray_source::make_planner_node(sa);
   }
 
+  add_sliced_info(ret, data.size());
+  
   ret.history.insert({ret.v[0], ret.v[3]});
   
   return ret;
@@ -157,6 +175,8 @@ static node binary_source_sarray() {
     ret.v[4] = op_sarray_source::make_planner_node(sa);
   }
 
+  add_sliced_info(ret, data.size());
+  
   ret.history.insert({ret.v[0], ret.v[3]});
   
   return ret;
@@ -206,6 +226,8 @@ static node source_sframe(size_t n_columns) {
     ret.v[4] = op_sframe_source::make_planner_node(sframe(sa_l));
   }
 
+  add_sliced_info(ret, data.size());
+  
   ret.history.insert({ret.v[0], ret.v[3]});
 
   return ret;
@@ -254,6 +276,8 @@ static node shifted_source_sframe(size_t n_columns) {
     ret.v[4] = op_sframe_source::make_planner_node(sframe(sa_l));
   }
 
+  add_sliced_info(ret, n);
+  
   ret.history.insert({ret.v[0], ret.v[3]});
 
   return ret;
@@ -277,6 +301,8 @@ static node empty_sframe(size_t n_columns) {
   for(auto& n : ret.v)
     n = op_sframe_source::make_planner_node(sframe(sa_l));
 
+  add_sliced_info(ret, 0);
+  
   ret.history.insert({ret.v[0], ret.v[3]});
   
   return ret;
