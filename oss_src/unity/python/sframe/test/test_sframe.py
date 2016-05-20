@@ -3311,6 +3311,7 @@ class SFrameTest(unittest.TestCase):
         g=SFrame({'a':range(100)})[:10]
         g['b'] = g['a'] + 1
         g['b'].materialize()
+        g.materialize()
         
 if __name__ == "__main__":
 
