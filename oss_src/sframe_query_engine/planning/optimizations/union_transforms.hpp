@@ -88,8 +88,13 @@ class opt_union_on_source : public opt_union_transform {
     // Now, do a second pass to make sure that at least some of the
     // sources can be merged.  This isn't always the case.
 
+    typedef std::array<size_t, 3> key_type;
+    
+    std::vector<key_type> input_keys(n->inputs.size());
+
+    // Go though and extract the keys, and test for uniqueness.
     {
-      std::set<std::pair<size_t, size_t> > distinct_input_ranges;
+      std::set<key_type> distinct_input_ranges;
 
       for(size_t i = 0; i < n->inputs.size(); ++i) {
         auto t = n->inputs[i]->type;
@@ -99,10 +104,23 @@ class opt_union_on_source : public opt_union_transform {
           size_t begin_index = n->inputs[i]->p("begin_index");
           size_t end_index   = n->inputs[i]->p("end_index");
 
-          distinct_input_ranges.insert({begin_index, end_index});
+          size_t size = 0;
+
+          if(t == planner_node_type::SFRAME_SOURCE_NODE) {
+            // Get the size of the sframe
+            size = n->inputs[i]->any_p<sframe>("sframe").num_rows();
+          } else {
+            // Get the size of the sarray
+            size = n->inputs[i]->any_p<std::shared_ptr<sarray<flexible_type> > >("sarray")->size();
+          }
+
+          // Store the key, since it's somewhat expensive to extract.
+          input_keys[i] = key_type{begin_index, end_index, size};
+          
+          distinct_input_ranges.insert(input_keys[i]);
         }
       }
-
+      
       if(distinct_input_ranges.size() == num_sources_present) {
         return false;
       }
@@ -128,7 +146,7 @@ class opt_union_on_source : public opt_union_transform {
     };
 
     std::vector<merge_info> map_info;
-    std::map<std::pair<size_t, size_t>, size_t> merge_groups;
+    std::map<key_type, size_t> merge_groups;
 
     size_t current_output_idx = 0;
     for(size_t i = 0; i < n->inputs.size(); ++i) {
@@ -139,9 +157,10 @@ class opt_union_on_source : public opt_union_transform {
         size_t begin_index = n->inputs[i]->p("begin_index");
         size_t end_index   = n->inputs[i]->p("end_index");
 
-        auto key = std::make_pair(begin_index, end_index);
-
+        const auto& key = input_keys[i];
+        
         auto it = merge_groups.find(key);
+        
         size_t map_idx;
         if(it == merge_groups.end()) {
           merge_groups[key] = map_idx = map_info.size();

@@ -3306,6 +3306,13 @@ class SFrameTest(unittest.TestCase):
         sf.materialize()
         self.assertTrue(sf.is_materialized())
 
+    def test_materialization_slicing(self):
+        # Has been known to fail.
+        g=SFrame({'a':range(100)})[:10]
+        g['b'] = g['a'] + 1
+        g['b'].materialize()
+        g.materialize()
+        
 if __name__ == "__main__":
 
     import sys
