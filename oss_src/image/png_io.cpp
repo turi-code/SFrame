@@ -269,7 +269,16 @@ void encode_png(const char* data ,size_t width, size_t height, size_t channels, 
 
   //Copying buffer to output
   out_length = destination.length; 
-  *out_data = destination.data;
+
+  /**
+   * destination.data is allocated using malloc realloc. This cannot
+   * be used directly because `image_type`
+   * requires C++ char[] for proper resource management.
+   */
+  // Make a copy into char[]
+  *out_data = new char[out_length];
+  memcpy(*out_data, destination.data, out_length);
+  free(destination.data);
 
   //Cleanup
   for (size_t y = 0; y < height; y++){
@@ -278,7 +287,6 @@ void encode_png(const char* data ,size_t width, size_t height, size_t channels, 
   png_free(png_ptr, row_pointers);
 
   png_destroy_write_struct(&png_ptr, &info_ptr); 
-
 }
 
 void decode_png(const char* data, size_t length, char** out_data, size_t& out_length) {
