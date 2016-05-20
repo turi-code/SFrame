@@ -282,6 +282,10 @@ class CURLReadStreamBase : public SeekStream {
                            CURL *ecurl,
                            curl_slist **slist) = 0;
 
+ protected:
+  // the total size of the file
+  size_t expect_file_size_ = 0;
+
  private:
   /*!
    * \brief called by child class to initialize read
@@ -337,6 +341,34 @@ size_t CURLReadStreamBase::Read(void *ptr, size_t size) {
   }
   size_t read_bytes = size - nleft;
   curr_bytes_ += read_bytes;
+
+  // safety check, re-establish connection if failure happens
+  if (at_end_ && expect_file_size_ != 0 &&
+      curr_bytes_ != expect_file_size_) {
+    int nretry = 0;
+    ASSERT_EQ(buffer_.length(), 0);
+    while (true) {
+      logstream(LOG_WARNING) << "Re-establishing connection to Amazon S3, retry " << nretry << std::endl;;
+      size_t rec_curr_bytes = curr_bytes_;
+      this->Cleanup();
+      this->Init(rec_curr_bytes);
+      if (this->FillBuffer(1) != 0) break;
+      ++nretry;
+      if (nretry >= 50) {
+        logstream(LOG_ERROR) << "Unable to re-establish connection to read full file"
+                             << ", expect_file_size=" << expect_file_size_
+                             << ", curr_bytes=" << curr_bytes_ << std::endl;
+        log_and_throw_io_failure("Bad S3 connection");
+      }
+      // sleep 100ms
+#ifdef _WIN32
+      Sleep(100);
+#else
+      struct timeval wait = { 0, 100 * 1000 };
+      select(0, NULL, NULL, NULL, &wait);
+#endif
+    } // end while
+  }
   return read_bytes;
 }
 
@@ -399,19 +431,13 @@ int CURLReadStreamBase::FillBuffer(size_t nwant) {
     FD_ZERO(&fdwrite);
     FD_ZERO(&fdexcep);
     int maxfd = -1;
+    // Curl default timeout as in: https://curl.haxx.se/libcurl/c/curl_multi_timeout.html
     timeval timeout;
-    timeout.tv_sec = 60;
-    timeout.tv_usec = 0;
-    long curl_timeo;
+    long curl_timeo = 0;
     curl_multi_timeout(mcurl_, &curl_timeo);
-    if (curl_timeo >= 0) {
-      timeout.tv_sec = curl_timeo / 1000;
-      if(timeout.tv_sec > 1) {
-        timeout.tv_sec = 1;
-      } else {
-        timeout.tv_usec = (curl_timeo % 1000) * 1000;
-      }
-    }
+    if (curl_timeo < 0) curl_timeo = 980;
+    timeout.tv_sec = curl_timeo / 1000;
+    timeout.tv_usec = (curl_timeo % 1000) * 1000;
     ASSERT_TRUE(curl_multi_fdset(mcurl_, &fdread, &fdwrite, &fdexcep, &maxfd) == CURLM_OK);
     int rc;
     if (maxfd == -1) {
@@ -466,8 +492,10 @@ class ReadStream : public CURLReadStreamBase {
  public:
   ReadStream(const URI &path,
              const std::string &aws_id,
-             const std::string &aws_key)
+             const std::string &aws_key,
+             size_t file_size)
       : path_(path), aws_id_(aws_id), aws_key_(aws_key) {
+        this->expect_file_size_ = file_size;
   }
   virtual ~ReadStream(void) {}
 
@@ -508,7 +536,7 @@ void ReadStream::InitRequest(size_t begin_bytes,
   ASSERT_TRUE(curl_easy_setopt(ecurl, CURLOPT_URL, surl.str().c_str()) == CURLE_OK);
   ASSERT_TRUE(curl_easy_setopt(ecurl, CURLOPT_HTTPGET, 1L) == CURLE_OK);
   ASSERT_TRUE(curl_easy_setopt(ecurl, CURLOPT_HEADER, 0L) == CURLE_OK);
-  curl_easy_setopt(ecurl, CURLOPT_NOSIGNAL, 1);
+  ASSERT_TRUE(curl_easy_setopt(ecurl, CURLOPT_NOSIGNAL, 1) == CURLE_OK);
 }
 
 /*! \brief simple http read stream to check */
@@ -522,7 +550,7 @@ class HttpReadStream : public CURLReadStreamBase {
                            curl_slist **slist) {
     ASSERT_MSG(begin_bytes == 0, " HttpReadStream: do not support Seek");
     ASSERT_TRUE(curl_easy_setopt(ecurl, CURLOPT_URL, path_.str().c_str()) == CURLE_OK);
-    curl_easy_setopt(ecurl, CURLOPT_NOSIGNAL, 1);
+    ASSERT_TRUE(curl_easy_setopt(ecurl, CURLOPT_NOSIGNAL, 1) == CURLE_OK);
   }
   
  private:
@@ -799,7 +827,7 @@ void ListObjects(const URI &path,
   ASSERT_TRUE(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteSStreamCallback) == CURLE_OK);
   ASSERT_TRUE(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result) == CURLE_OK);
   set_curl_options(curl);
-  curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
+  ASSERT_TRUE(curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1) == CURLE_OK);
   ASSERT_TRUE(curl_easy_perform(curl) == CURLE_OK);
   curl_slist_free_all(slist);
   curl_easy_cleanup(curl);
@@ -919,7 +947,7 @@ SeekStream *S3FileSystem::OpenForRead(const URI &path) {
   ASSERT_MSG((path.protocol == "s3://"), " S3FileSystem.Open");
   FileInfo info;
   if (TryGetPathInfo(path, &info) && info.type == kFile) {
-    return new s3::ReadStream(path, aws_access_id_, aws_secret_key_);
+    return new s3::ReadStream(path, aws_access_id_, aws_secret_key_, info.size);
   } else {    
     return NULL;
   }
