@@ -52,9 +52,9 @@ struct node {
 ////////////////////////////////////////////////////////////////////////////////
 // General sources
 
-std::map<pnode_ptr, pnode_ptr> sliced_graph_memo; 
 
 static void add_sliced_info(node& ret, size_t m) {
+  static std::map<pnode_ptr, pnode_ptr> sliced_graph_memo;
   ret.v[5] = query_eval::make_sliced_graph(ret.v[0], 0, m / 2, sliced_graph_memo);
   ret.v[6] = query_eval::make_sliced_graph(ret.v[0], m / 4, (3 * m) / 4, sliced_graph_memo);
   ret.v[7] = query_eval::make_sliced_graph(ret.v[0], m / 2, m, sliced_graph_memo);
