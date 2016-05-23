@@ -99,16 +99,34 @@ class gl_sframe_test: public CxxTest::TestSuite {
     }  
     void test_sample_split() {
       gl_sframe sf(_make_reference_frame());
-      gl_sframe sfa, sfb;
-      std::tie(sfa, sfb) = sf.random_split(0.3);
-      gl_sframe sfc = sfa.append(sfb);
-      _assert_sframe_equals(sf, sfc.sort("a"));
+      {
+        gl_sframe sfa, sfb;
+        std::tie(sfa, sfb) = sf.random_split(0.3);
+        gl_sframe sfc = sfa.append(sfb);
+        _assert_sframe_equals(sf, sfc.sort("a"));
+      }
+
       {
         auto sf = gl_sframe({{"id", gl_sarray::from_sequence(0, 1024)}});
         gl_sframe sf_train, sf_test;
         std::tie(sf_train, sf_test) = sf.random_split(.95, 12345);
         std::cout <<  sf_test.size() << " " << sf_train.size() << "\n";
       }
+
+      {
+        gl_sframe sfa, sfb;
+        std::tie(sfa, sfb) = sf.random_split(0);
+        TS_ASSERT_EQUALS(sfa.size(), 0);
+        _assert_sframe_equals(sf, sfb);
+      }
+
+      {
+        gl_sframe sfa, sfb;
+        std::tie(sfa, sfb) = sf.random_split(1);
+        TS_ASSERT_EQUALS(sfb.size(), 0);
+        _assert_sframe_equals(sf, sfa);
+      }
+
     }
 
     void test_groupby() {
