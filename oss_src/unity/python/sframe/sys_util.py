@@ -44,7 +44,7 @@ def make_unity_server_env():
         env["CLASSPATH"] = classpath
 
     # Add python syspath
-    env['__GL_SYS_PATH__'] = (os.path.pathsep).join(sys.path)
+    env['__GL_SYS_PATH__'] = (os.path.pathsep).join(sys.path + [os.getcwd()])
 
     # Add the python executable to the runtime config
     env['__GL_PYTHON_EXECUTABLE__'] = os.path.abspath(sys.executable)
