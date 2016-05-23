@@ -128,7 +128,10 @@ std::string normalize_address(const std::string& address) {
     } else {
       address_out = address;
     }
-  } else {
+  }
+#ifndef _WIN32
+  // sockaddr_un not defined on windows.
+  else {
     /*
      *
      ipc sockets on Linux and Mac use Unix domain sockets which have a maximum
@@ -162,6 +165,11 @@ std::string normalize_address(const std::string& address) {
       address_out = address;
     }
   }
+#else
+  else {
+    address_out = address;
+  }
+#endif
 
   if(address_out == address) {
     logstream(LOG_INFO) << "normalize_address: kept '" << address_out << "'." << std::endl;
