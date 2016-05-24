@@ -996,7 +996,7 @@ class SArrayTest(unittest.TestCase):
         a.astype(str).hash().__materialize__()
 
         a.apply(lambda x: [x], list).hash().__materialize__()
-        
+
         # Nones hash too!
         a = SArray([None, None, None], int).hash()
         self.assertTrue(a[0] is not None)
@@ -2786,23 +2786,23 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(SArray.where(a > 10, a, a), lista, int)
 
         # clip lower
-        self.__test_equal(SArray.where(a > 10, a, 10), 
+        self.__test_equal(SArray.where(a > 10, a, 10),
                           [i if i > 10 else 10 for i in lista], int)
 
         # clip upper
-        self.__test_equal(SArray.where(a > 10, 10, a), 
+        self.__test_equal(SArray.where(a > 10, 10, a),
                           [10 if i > 10 else i for i in lista], int)
 
         # constants
-        self.__test_equal(SArray.where(a > 10, 10, 9), 
+        self.__test_equal(SArray.where(a > 10, 10, 9),
                           [10 if i > 10 else 9 for i in lista], int)
 
         # constant float
-        self.__test_equal(SArray.where(a > 10, 10.0, 9.0), 
+        self.__test_equal(SArray.where(a > 10, 10.0, 9.0),
                           [10.0 if i > 10 else 9.0 for i in lista], float)
 
         # constant str
-        self.__test_equal(SArray.where(a > 10, "10", "9"), 
+        self.__test_equal(SArray.where(a > 10, "10", "9"),
                           ["10" if i > 10 else "9" for i in lista], str)
 
         #inconsistent types
@@ -2814,16 +2814,16 @@ class SArrayTest(unittest.TestCase):
             SArray.where(a > 10, a, "9") # expecting an integer for "a"
 
         # technically different types but type coercion happened
-        self.__test_equal(SArray.where(a > 10, a, 10.0), 
+        self.__test_equal(SArray.where(a > 10, a, 10.0),
                           [i if i > 10 else 10 for i in lista], int)
 
         # list types
-        self.__test_equal(SArray.where(a > 10, [], [1], list), 
+        self.__test_equal(SArray.where(a > 10, [], [1], list),
                           [[] if i > 10 else [1] for i in lista], list)
 
-        # really the same as the above, but using an SArray in place 
-        # of a constant in istrue. And hoping the type coercion 
+        # really the same as the above, but using an SArray in place
+        # of a constant in istrue. And hoping the type coercion
         # will take care of [1]
         b = SArray([[] for i in range(1000)])
-        self.__test_equal(SArray.where(a > 10, b, [1]), 
+        self.__test_equal(SArray.where(a > 10, b, [1]),
                           [[] if i > 10 else [1] for i in lista], list)

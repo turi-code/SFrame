@@ -52,7 +52,7 @@ void check_operation_feasibility(flex_type_enum left,
     // boolean operations are always feasible
     operation_is_feasible = true;
   } else if (op == "in") {
-    // note that while the op is "in", the direction of the operator is 
+    // note that while the op is "in", the direction of the operator is
     // [BIGGER_LIST "in" element] rather than ["element" in BIGGER_LIST]
     // yes. slightly disconcerting I know. Sorry.
     operation_is_feasible = (left == flex_type_enum::STRING && right == flex_type_enum::STRING) ||
@@ -335,7 +335,7 @@ get_binary_operator(flex_type_enum left, flex_type_enum right, std::string op) {
 /*                                                                        */
 /**************************************************************************/
     } else if (op == "in") {
-      // note that while the op is "in", the direction of the operator is 
+      // note that while the op is "in", the direction of the operator is
       // [BIGGER_LIST "in" element] rather than ["element" in BIGGER_LIST]
       // yes. slightly disconcerting I know. Sorry.
       if (left == flex_type_enum::STRING && right == flex_type_enum::STRING) {
@@ -349,7 +349,7 @@ get_binary_operator(flex_type_enum left, flex_type_enum right, std::string op) {
             return 0;
           }
         };
-      } else if (left == flex_type_enum::VECTOR && 
+      } else if (left == flex_type_enum::VECTOR &&
                  (right == flex_type_enum::FLOAT || right == flex_type_enum::INTEGER)) {
         return [](const flexible_type& l, const flexible_type& r)->flexible_type {
           if (l.get_type() == flex_type_enum::VECTOR &&

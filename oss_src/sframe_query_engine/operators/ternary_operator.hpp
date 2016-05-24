@@ -15,37 +15,37 @@
 #include <sframe_query_engine/execution/query_context.hpp>
 #include <sframe_query_engine/operators/operator_properties.hpp>
 
-namespace graphlab { 
+namespace graphlab {
 namespace query_eval {
 
 /**
- * An element-wise "ternary operator". 
+ * An element-wise "ternary operator".
  * Takes 3 columns: condition, istrue, isfalse.
- * For each row, 
+ * For each row,
  *    if condition == True, the corresponding row is selected from istrue
  *    if condition == False, the corresponding row is selected from isfalse
  */
 template<>
 class operator_impl<planner_node_type::TERNARY_OPERATOR> : public query_operator {
  public:
-  
-  planner_node_type type() const { return planner_node_type::TERNARY_OPERATOR; } 
+
+  planner_node_type type() const { return planner_node_type::TERNARY_OPERATOR; }
 
   static std::string name() { return "ternary"; }
-        
+
   static query_operator_attributes attributes() {
     query_operator_attributes ret;
     ret.attribute_bitfield = query_operator_attributes::LINEAR;
     ret.num_inputs = 3;
     return ret;
   }
-  
-  inline operator_impl() { } 
+
+  inline operator_impl() { }
 
   inline std::shared_ptr<query_operator> clone() const {
     return std::make_shared<operator_impl>(*this);
   }
-  
+
   inline void execute(query_context& context) {
     constexpr size_t CONDITION_INPUT = 0;
     constexpr size_t ISTRUE_INPUT = 1;
@@ -91,7 +91,7 @@ class operator_impl<planner_node_type::TERNARY_OPERATOR> : public query_operator
         out_columns.push_back(input->cget_columns()[0]);
         context.emit(output_buffer);
       } else {
-        
+
         auto isfalse = context.get_next(ISFALSE_INPUT);
         auto istrue = context.get_next(ISTRUE_INPUT);
         ASSERT_TRUE(istrue != nullptr);
@@ -125,8 +125,8 @@ class operator_impl<planner_node_type::TERNARY_OPERATOR> : public query_operator
       std::shared_ptr<planner_node> condition,
       std::shared_ptr<planner_node> istrue,
       std::shared_ptr<planner_node> isfalse) {
-    
-    return planner_node::make_shared(planner_node_type::TERNARY_OPERATOR, 
+
+    return planner_node::make_shared(planner_node_type::TERNARY_OPERATOR,
                                      std::map<std::string, flexible_type>(),
                                      std::map<std::string, any>(),
                                      {condition, istrue, isfalse});
@@ -134,7 +134,7 @@ class operator_impl<planner_node_type::TERNARY_OPERATOR> : public query_operator
 
   static std::shared_ptr<query_operator> from_planner_node(
       std::shared_ptr<planner_node> pnode) {
-    
+
     ASSERT_EQ((int)pnode->operator_type, (int)planner_node_type::TERNARY_OPERATOR);
     ASSERT_EQ(pnode->inputs.size(), 3);
 
@@ -150,7 +150,7 @@ class operator_impl<planner_node_type::TERNARY_OPERATOR> : public query_operator
     ASSERT_EQ((int)pnode->operator_type, (int)planner_node_type::TERNARY_OPERATOR);
     return infer_planner_node_length(pnode->inputs[0]);
   }
-  
+
 };
 
 typedef operator_impl<planner_node_type::TERNARY_OPERATOR> op_ternary_operator;

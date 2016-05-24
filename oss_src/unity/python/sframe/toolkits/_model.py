@@ -159,8 +159,7 @@ def _get_default_options_wrapper(unity_server_model_name,
                                                           unity_server_model_name)
 
         for k in response.keys():
-            response[k] = json.loads(response[k],
-               parse_int = lambda x: float(x) if type(int(x)) is long else int(x))
+            response[k] = json.loads(response[k])
 
         if output_type == 'json':
           return response

@@ -275,7 +275,7 @@ void async_reply_socket::process_job(thread_data* data, zmq_msg_vector* msg) {
   if (zk_keyval) {
     std::string s = msg->extract_front();
     if(registered_keys.count(s) == 0) {
-      logstream(LOG_ERROR) << "Received message "<< s 
+      logstream(LOG_ERROR) << "Received message "<< s
                            << " destined for a different object!" << std::endl;
       delete msg;
       return;
@@ -297,7 +297,7 @@ void async_reply_socket::process_job(thread_data* data, zmq_msg_vector* msg) {
     rc = send.send(data->inproc_push_socket);
 
     if (rc != 0) {
-      logstream(LOG_ERROR) << "Failed to push message: " << zmq_strerror(rc) 
+      logstream(LOG_ERROR) << "Failed to push message: " << zmq_strerror(rc)
                            << std::endl;
     }
   }

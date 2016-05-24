@@ -8,4 +8,3 @@ namespace graphlab {
     variant_type to_serializable(variant_type input);
   }
 }
-

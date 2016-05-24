@@ -194,7 +194,11 @@ void sframe::create_arrays_for_reading(
   for(const auto &i : columns) {
     // number of rows must match
     if(i->size() != index_info.nrows) {
-      log_and_throw(std::string("Columns do not have the same length!"));
+      std::stringstream msg;
+      msg << "Columns do not have the same length! ";
+      msg << "Expected " << index_info.nrows;
+      msg << ", found " << i->size() << ".";
+      log_and_throw(msg.str());
     }
   }
 

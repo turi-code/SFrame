@@ -62,8 +62,8 @@ sframe make_random_sframe(size_t n_rows, std::string column_types, bool create_t
 
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename T>
-std::vector<T> testing_extract_column(std::shared_ptr<sarray<flexible_type> > col) {
+template <typename T, typename U>
+std::vector<T> testing_extract_column(std::shared_ptr<sarray<U> > col) {
 
   auto reader = col->get_reader();
 
@@ -81,6 +81,45 @@ std::vector<T> testing_extract_column(std::shared_ptr<sarray<flexible_type> > co
   }
 
   return ret;
+}
+
+template <typename T>
+std::vector<T> testing_extract_column_non_flex(std::shared_ptr<sarray<T> > col) {
+
+  auto reader = col->get_reader();
+
+  size_t num_segments = col->num_segments();
+
+  std::vector<T> ret;
+  ret.reserve(col->size());
+
+  for(size_t sidx = 0; sidx < num_segments; ++sidx) {
+    auto src_it     = reader->begin(sidx);
+    auto src_it_end = reader->end(sidx);
+
+    for(; src_it != src_it_end; ++src_it)
+      ret.push_back(T(*src_it));
+  }
+
+  return ret;
+}
+
+// Turn a vector into an sarray (non flexible_type version).
+template <typename T>
+std::shared_ptr<sarray<T> > make_testing_sarray(const std::vector<T>& col) {
+  std::shared_ptr<sarray<T> > new_x(new sarray<T>);
+
+  new_x->open_for_write(1);
+  auto it_out = new_x->get_output_iterator(0);
+
+  for(const auto& row : col) {
+    *it_out = row;
+    ++it_out;
+  }
+
+  new_x->close();
+
+  return new_x;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -195,9 +195,9 @@ class basic_end_to_end: public CxxTest::TestSuite {
       size_t begin = SLICE_LENGTH;
       size_t end = begin + SLICE_LENGTH;
       auto root = op_sarray_source::make_planner_node(sa);
-      auto add_one = 
+      auto add_one =
         op_transform::make_planner_node(
-            root, 
+            root,
             [](const sframe_rows::row& a)->flexible_type {
               return a[0] + 1;
             },
@@ -221,9 +221,9 @@ class basic_end_to_end: public CxxTest::TestSuite {
       size_t end = begin + SLICE_LENGTH;
       auto root = op_sarray_source::make_planner_node(sa);
       // even_selector = root % 2 == 0
-      auto even_selector = 
+      auto even_selector =
           op_transform::make_planner_node(
-              root, 
+              root,
               [](const sframe_rows::row& a)->flexible_type {
                 return (flex_int)(a[0]) % 2 == 0;
               },
@@ -243,9 +243,9 @@ class basic_end_to_end: public CxxTest::TestSuite {
     // Non linear Plan
     {
       auto root = op_sarray_source::make_planner_node(sa);
-      auto add_one = 
+      auto add_one =
           op_transform::make_planner_node(
-              root, 
+              root,
               [](const sframe_rows::row& a)->flexible_type {
                 return a[0] + 1;
               },

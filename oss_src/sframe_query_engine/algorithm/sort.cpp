@@ -37,7 +37,7 @@ constexpr size_t ROW_SIZE_ESTIMATE = 32;
  * Create a quantile sketch for the key columns so that we can decide how to partition
  * the sframe
  */
-static 
+static
 std::shared_ptr<sketches::streaming_quantile_sketch<flexible_type, less_than_full_function>>
 create_quantile_sketch(std::shared_ptr<planner_node>&  sframe_planner_node,
                        const std::vector<bool>&  sort_orders ) {
@@ -180,8 +180,8 @@ static std::shared_ptr<sarray<std::pair<flex_list, std::string> >> scatter_parti
   size_t num_threads = thread::cpu_count();
   less_than_full_function less_than(sort_orders);
 
-  // thread local buffers 
-  std::vector<std::vector<flexible_type>> 
+  // thread local buffers
+  std::vector<std::vector<flexible_type>>
       sort_keys_buffers(thread::cpu_count(), std::vector<flexible_type>(num_sort_columns));
   std::vector<std::string> arcout_buffers(thread::cpu_count());
   std::vector<oarchive> oarc_buffers(thread::cpu_count());
@@ -213,7 +213,7 @@ static std::shared_ptr<sarray<std::pair<flex_list, std::string> >> scatter_parti
       if (partition_id == partition_keys.size() ||
           (partition_id > 0 && less_than(sort_keys, partition_keys[partition_id].get<flex_list>()))) {
         --partition_id;
-      } 
+      }
       DASSERT_TRUE(partition_id < num_partitions_keys);
 
       // double checked locking optimization on partition sorted
@@ -455,7 +455,7 @@ std::shared_ptr<sframe> sort(
   for (size_t i = 0;i < sort_column_indices.size(); ++i) {
     permute_ordering[sort_column_indices[i]] = i;
   }
-  
+
   std::vector<bool> partition_sorted_vec_bool(partition_sorted.size());
   for (size_t i = 0;i < partition_sorted.size(); ++i) {
     partition_sorted_vec_bool[i] = partition_sorted.get(i);

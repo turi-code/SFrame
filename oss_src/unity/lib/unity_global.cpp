@@ -121,6 +121,8 @@ namespace graphlab {
       log_and_throw_io_failure(message);
     } catch (std::string& e) {
       log_and_throw(std::string("Unable to load model from ") + sanitize_url(url) + ": " + e);
+    } catch (const std::exception& e) {
+      log_and_throw(std::string("Unable to load model from ") + sanitize_url(url) + ": " + e.what());
     } catch (...) {
       log_and_throw(std::string("Unknown Error: Unable to load model from ") + sanitize_url(url));
     }

@@ -665,7 +665,7 @@ class unity_sarray: public unity_sarray_base {
 
 
   /**
-   * Returns an SArray of the same length but with all constant values. 
+   * Returns an SArray of the same length but with all constant values.
    * Does so without materializing the SArray.
    *
    * \note This is really only useful for internal use

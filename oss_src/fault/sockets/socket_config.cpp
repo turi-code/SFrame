@@ -122,7 +122,7 @@ std::string normalize_address(const std::string& address) {
   if(use_tcp_fallback) {
 
     logstream(LOG_INFO) << "normalize_address: Using TCP fallback mode." << std::endl;
-    
+
     if (boost::starts_with(address, "ipc://")) {
       address_out = hash_string_to_tcp_address(address);
     } else {

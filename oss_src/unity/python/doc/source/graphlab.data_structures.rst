@@ -9,11 +9,11 @@ Data Engineering
 .. currentmodule:: graphlab
 
 
-Scalable Data Structure
------------------------
+Data Structures
+---------------
 .. autosummary::
-  :toctree: generated/
   :nosignatures:
+  :toctree: generated/
 
   SArray
   SFrame
@@ -21,49 +21,21 @@ Scalable Data Structure
   TimeSeries
 
 Data Types
------------------------
+----------
 .. autosummary::
-  :toctree: generated/
   :nosignatures:
+  :toctree: generated/
 
   Image
-
-Summarization
--------------
-.. autosummary::
-  :toctree: generated/
-  :nosignatures:
-
-  Sketch
-
-Aggregation
------------
-.. toctree::
-  :maxdepth: 2
-
-  graphlab.data_structures.aggregation
-
-
-Connectors
-----------
-.. toctree::
-  :maxdepth: 2
-
-  graphlab.data_structures.connectors
-
-
-Utilities
----------
-.. autosummary::
-  :toctree: generated/
-  :nosignatures:
-
-  load_sgraph
-  load_sframe
-  load_timeseries
-  TimeSeries.save
-  SArray.save
-  SFrame.save
-  SGraph.save
   Vertex
   Edge
+
+Aggregation & Summarization
+---------------------------
+.. autosummary::
+  :nosignatures:
+  :toctree: generated/
+
+  Sketch
+  aggregate
+

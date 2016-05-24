@@ -218,15 +218,15 @@ class sarray_group_format_writer {
   /**
    * Writes a collection of rows to a column
    */
-  virtual void write_column(size_t columnid, 
-                            size_t segmentid, 
+  virtual void write_column(size_t columnid,
+                            size_t segmentid,
                             const std::vector<T>& t) = 0;
 
   /**
    * Writes a collection of rows to a column
    */
-  virtual void write_column(size_t columnid, 
-                            size_t segmentid, 
+  virtual void write_column(size_t columnid,
+                            size_t segmentid,
                             std::vector<T>&& t) = 0;
 
   /**

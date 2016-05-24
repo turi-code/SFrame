@@ -90,7 +90,7 @@ cdef class UnitySArrayProxy:
     cpdef load_from_const(self, object value, size_t size, type t):
         cdef flexible_type val
         cdef flex_type_enum datatype = flex_type_enum_from_pytype(t)
-        # if value is None, the hinted type coercion is bad. 
+        # if value is None, the hinted type coercion is bad.
         # We do want to keep val as None
         # If t is None or NoneType, we assume there is no hint
         if value is None or t is None or t is type(None):
@@ -492,7 +492,7 @@ cdef class UnitySArrayProxy:
     cpdef to_const(self, object value, type t):
         cdef flexible_type val
         cdef flex_type_enum datatype = flex_type_enum_from_pytype(t)
-        # if value is None, the hinted type coercion is bad. 
+        # if value is None, the hinted type coercion is bad.
         # We do want to keep val as None
         # If t is None or NoneType, we assume there is no hint
         if value is None or t is None or t is type(None):
@@ -504,4 +504,3 @@ cdef class UnitySArrayProxy:
         with nogil:
             proxy = self.thisptr.to_const(val, datatype)
         return create_proxy_wrapper_from_existing_proxy(self._cli, proxy)
-

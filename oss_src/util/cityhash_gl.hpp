@@ -1057,6 +1057,22 @@ static inline uint64_t hash64_combine(uint64_t h1, uint64_t h2) {
 }
 
 /**
+ *  When hash64 is used as a random number function, it is nice to be
+ *  able to do the following to get a proportion:
+ *
+ *  uint64_t threshold = hash64_proportion_cutoff(proportion);
+ *  // ...
+ *  if(hash64(...) < threshold) {
+ *     // do something that happens `proportion` of the time.
+ *  }
+ *
+ *  Unfortunately, this computation of the proportion is prone to
+ *  numerical issues due to the 48 bits of precision of the double,
+ *  which this function gets around.
+ */
+uint64_t hash64_proportion_cutoff(double proportion);
+
+/**
  * Updates an existing 64 bit hash in a simple, order dependent way.
  *
  * \param h First hash value

@@ -263,6 +263,7 @@ extern void __print_back_trace();
 #define DASSERT_TRUE(cond)
 #define DASSERT_FALSE(cond)
 #define DASSERT_EQ(val1, val2)
+#define DASSERT_DELTA(val1, val2, delta)
 #define DASSERT_NE(val1, val2)
 #define DASSERT_LE(val1, val2)
 #define DASSERT_LT(val1, val2)

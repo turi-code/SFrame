@@ -313,7 +313,7 @@ flexible_type decode_image(const flexible_type& image) {
 };
 
 /**
- * Encode the image into compressed format.(losslessly) 
+ * Encode the image into compressed format.(losslessly)
  */
 flexible_type encode_image(const flexible_type& image) {
   if (!image.get<flex_image>().is_decoded()) {

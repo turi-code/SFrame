@@ -11,7 +11,7 @@
 namespace libfault {
 
 void print_zmq_error(const char* prefix) {
-  logstream(LOG_ERROR) << prefix << ": Unexpected socket error(" << zmq_errno() 
+  logstream(LOG_ERROR) << prefix << ": Unexpected socket error(" << zmq_errno()
             << ") = " << zmq_strerror(zmq_errno()) << std::endl;
 }
 

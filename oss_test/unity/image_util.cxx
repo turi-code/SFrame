@@ -82,7 +82,7 @@ class image_util_test: public CxxTest::TestSuite {
     // Test down sample
     _test_resize_impl(image_wrapped, height * .5, width * .5, channels, true);
     _test_resize_impl(image_wrapped, height * .5, width * .5, channels, false);
-    // Test same size 
+    // Test same size
     _test_resize_impl(image_wrapped, height, width, channels, true);
     _test_resize_impl(image_wrapped, height, width, channels, false);
 

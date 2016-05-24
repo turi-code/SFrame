@@ -132,6 +132,7 @@ void publish_socket::unregister_all_keys() {
 
 
 void publish_socket::send(zmq_msg_vector& msg) {
+  std::lock_guard<std::mutex> lock(z_mutex);
   msg.send(z_socket);
 }
 

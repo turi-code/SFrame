@@ -12,5 +12,6 @@ endif()
 
 make_cxxtest(fast_power_test.cxx REQUIRES util logger random)
 
-make_cxxtest(cityhash_gl.cxx REQUIRES util logger random)
+make_cxxtest(cityhash_gl.cxx REQUIRES util logger random flexible_type)
+make_cxxtest(2d_sparse_parallel_array.cxx REQUIRES util logger random)
 make_cxxtest(lru_test.cxx) 

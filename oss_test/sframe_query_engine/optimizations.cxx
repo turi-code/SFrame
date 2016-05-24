@@ -88,7 +88,7 @@ static node source_sarray() {
   }
 
   add_sliced_info(ret, n);
-  
+
   ret.history.insert({ret.v[0], ret.v[3]});
 
   return ret;
@@ -141,7 +141,7 @@ static node zero_source_sarray() {
   }
 
   add_sliced_info(ret, data.size());
-  
+
   ret.history.insert({ret.v[0], ret.v[3]});
   
   return ret;
@@ -176,7 +176,7 @@ static node binary_source_sarray() {
   }
 
   add_sliced_info(ret, data.size());
-  
+
   ret.history.insert({ret.v[0], ret.v[3]});
   
   return ret;
@@ -227,7 +227,7 @@ static node source_sframe(size_t n_columns) {
   }
 
   add_sliced_info(ret, data.size());
-  
+
   ret.history.insert({ret.v[0], ret.v[3]});
 
   return ret;
@@ -277,7 +277,7 @@ static node shifted_source_sframe(size_t n_columns) {
   }
 
   add_sliced_info(ret, n);
-  
+
   ret.history.insert({ret.v[0], ret.v[3]});
 
   return ret;
@@ -302,7 +302,7 @@ static node empty_sframe(size_t n_columns) {
     n = op_sframe_source::make_planner_node(sframe(sa_l));
 
   add_sliced_info(ret, 0);
-  
+
   ret.history.insert({ret.v[0], ret.v[3]});
   
   return ret;

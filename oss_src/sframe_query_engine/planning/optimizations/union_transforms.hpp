@@ -89,7 +89,7 @@ class opt_union_on_source : public opt_union_transform {
     // sources can be merged.  This isn't always the case.
 
     typedef std::array<size_t, 3> key_type;
-    
+
     std::vector<key_type> input_keys(n->inputs.size());
 
     // Go though and extract the keys, and test for uniqueness.
@@ -116,7 +116,7 @@ class opt_union_on_source : public opt_union_transform {
 
           // Store the key, since it's somewhat expensive to extract.
           input_keys[i] = key_type{begin_index, end_index, size};
-          
+
           distinct_input_ranges.insert(input_keys[i]);
         }
       }
@@ -158,9 +158,9 @@ class opt_union_on_source : public opt_union_transform {
         size_t end_index   = n->inputs[i]->p("end_index");
 
         const auto& key = input_keys[i];
-        
+
         auto it = merge_groups.find(key);
-        
+
         size_t map_idx;
         if(it == merge_groups.end()) {
           merge_groups[key] = map_idx = map_info.size();

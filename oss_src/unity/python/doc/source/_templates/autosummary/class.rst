@@ -1,3 +1,5 @@
+:orphan:
+
 ..
   This template is borrowed from Pandas documentation:
   https://github.com/pydata/pandas/blob/master/doc/_templates/autosummary/class.rst
