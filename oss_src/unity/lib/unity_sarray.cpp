@@ -1612,10 +1612,10 @@ std::shared_ptr<unity_sarray_base> unity_sarray::make_uniform_boolean_array(size
   auto seq = std::static_pointer_cast<unity_sarray>(
     unity_sarray::create_sequential_sarray(size, 0, false));
 
-  flex_int seed_hash = flexible_type((flex_int)(random_seed)).hash();
-  size_t sample_limit = std::numeric_limits<size_t>::max() * percent;
+  uint64_t seed_hash = flexible_type((flex_int)(random_seed)).hash();
+  uint64_t sample_limit = hash64_proportion_cutoff(percent);
   auto filter_fn = [sample_limit, seed_hash](const flexible_type& val)->flexible_type {
-        size_t d = hash64(val.get<flex_int>() ^ seed_hash);
+        uint64_t d = hash64(val.get<flex_int>() ^ seed_hash);
         return d <= sample_limit;
       };
   return seq->transform_lambda(filter_fn, flex_type_enum::INTEGER, false, 0);
