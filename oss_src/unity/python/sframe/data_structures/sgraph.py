@@ -271,6 +271,9 @@ class SGraph(object):
     def __copy__(self):
         return SGraph(_proxy=self.__proxy__)
 
+    def __deepcopy__(self, memo):
+        return self.__copy__()
+
     def copy(self):
         """
         Returns a shallow copy of the SGraph.

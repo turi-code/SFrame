@@ -4177,3 +4177,16 @@ class SArray(object):
         from .. import extensions
         agg_op = "__builtin__cum_var__"
         return SArray(_proxy = self.__proxy__.builtin_cumulative_aggregate(agg_op))
+
+    def __copy__(self):
+        """
+        Returns a shallow copy of the sarray.
+        """
+        return SArray(_proxy = self.__proxy__)
+
+    def __deepcopy__(self, memo):
+        """
+        Returns a deep copy of the sarray. As the data in an SArray is
+        immutable, this is identical to __copy__.
+        """
+        return SArray(_proxy = self.__proxy__)

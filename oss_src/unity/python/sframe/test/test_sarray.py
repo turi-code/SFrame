@@ -2975,3 +2975,21 @@ class SArrayTest(unittest.TestCase):
         (train, test) = sa.random_split(0.8, seed=12423)
         self.assertEqual(list(train), [0, 1, 2, 3, 5, 7, 8, 9])
         self.assertEqual(list(test), [4,6])
+        
+    def test_copy(self):
+        from copy import copy
+        sa = SArray(range(1000))
+        sa_copy = copy(sa)
+
+        assert sa is not sa_copy
+
+        assert (sa == sa_copy).all()
+
+    def test_deepcopy(self):
+        from copy import deepcopy
+        sa = SArray(range(1000))
+        sa_copy = deepcopy(sa)
+
+        assert sa is not sa_copy
+
+        assert (sa == sa_copy).all()

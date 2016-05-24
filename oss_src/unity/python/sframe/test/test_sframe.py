@@ -10,7 +10,7 @@ from ..data_structures.sframe import SFrame
 from ..data_structures.sarray import SArray
 from ..data_structures.image import Image
 from ..connect import main as glconnect
-from ..util import _assert_sframe_equal
+from ..util import _assert_sframe_equal, generate_random_sframe
 from .. import _launch, load_sframe, aggregate
 from . import util
 
@@ -3316,6 +3316,24 @@ class SFrameTest(unittest.TestCase):
         g['b'] = g['a'] + 1
         g['b'].materialize()
         g.materialize()
+
+    def test_copy(self):
+        from copy import copy
+        sf = generate_random_sframe(100, "Cns")
+        sf_copy = copy(sf)
+
+        assert sf is not sf_copy
+
+        _assert_sframe_equal(sf, sf_copy)
+
+    def test_deepcopy(self):
+        from copy import deepcopy
+        sf = generate_random_sframe(100, "Cns")
+        sf_copy = deepcopy(sf)
+
+        assert sf is not sf_copy
+
+        _assert_sframe_equal(sf, sf_copy)
 
 if __name__ == "__main__":
 

@@ -2771,6 +2771,13 @@ class SFrame(object):
         """
         return self.select_columns(self.column_names())
 
+    def __deepcopy__(self, memo):
+        """
+        Returns a deep copy of the sframe. As the data in an SFrame is
+        immutable, this is identical to __copy__.
+        """
+        return self.__copy__()
+
     def copy(self):
         """
         Returns a shallow copy of the sframe.
