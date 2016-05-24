@@ -2827,3 +2827,10 @@ class SArrayTest(unittest.TestCase):
         b = SArray([[] for i in range(1000)])
         self.__test_equal(SArray.where(a > 10, b, [1]),
                           [[] if i > 10 else [1] for i in lista], list)
+
+    def test_shape(self):
+        sa = SArray()
+        self.assertEqual(sa.shape, (0,))
+        for i in [0,1,2,10,345]:
+            sa = SArray(range(i))
+            self.assertEqual(sa.shape, (i,))
