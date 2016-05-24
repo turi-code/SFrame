@@ -2900,6 +2900,44 @@ class SArray(object):
         with cython_context():
             return SArray(_proxy = self.__proxy__.item_length())
 
+    def random_split(self, fraction, seed=None):
+        """
+        Randomly split the rows of an SArray into two SArrays. The first SArray
+        contains *M* rows, sampled uniformly (without replacement) from the
+        original SArray. *M* is approximately the fraction times the original
+        number of rows. The second SArray contains the remaining rows of the
+        original SArray.
+
+        Parameters
+        ----------
+        fraction : float
+            Approximate fraction of the rows to fetch for the first returned
+            SArray. Must be between 0 and 1.
+
+        seed : int, optional
+            Seed for the random number generator used to split.
+
+        Returns
+        -------
+        out : tuple [SArray]
+            Two new SArrays.
+
+        Examples
+        --------
+        Suppose we have an SArray with 1,024 rows and we want to randomly split
+        it into training and testing datasets with about a 90%/10% split.
+
+        >>> sa = graphlab.SArray(range(1024))
+        >>> sa_train, sa_test = sa.random_split(.9, seed=5)
+        >>> print(len(sa_train), len(sa_test))
+        922 102
+        """
+        from .sframe import SFrame
+        temporary_sf = SFrame()
+        temporary_sf['X1'] = self
+        (train, test) = temporary_sf.random_split(fraction, seed)
+        return (train['X1'], test['X1'])
+
     def split_datetime(self, column_name_prefix = "X", limit=None, tzone=False):
         """
         Splits an SArray of datetime type to multiple columns, return a
