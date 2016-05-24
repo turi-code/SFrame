@@ -28,8 +28,14 @@
  *
  */
 
+#ifndef GRAPHLAB_PARALLEL_PARALLEL_ALL_HPP_
+#define GRAPHLAB_PARALLEL_PARALLEL_ALL_HPP_
 
+#include <parallel/atomic.hpp>
+#include <parallel/atomic_ops.hpp>
+#include <parallel/atomic_add_vector2.hpp>
+#include <parallel/pthread_tools.hpp>
+#include <parallel/lambda_omp.hpp>
+#include <parallel/mutex.hpp>
 
-// #include <atomic.hpp>
-// #include <parallel/pthread_tools.hpp>
-
+#endif
