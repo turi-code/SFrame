@@ -52,7 +52,7 @@ REQUIRES
   flexible_type sframe fileio python_callbacks 
 )
 
-file(DOWNLOAD http://s3-us-west-2.amazonaws.com/glbin-engine/spark_unity_0.7.jar ${CMAKE_CURRENT_BINARY_DIR}/spark_unity.jar
-      EXPECTED_MD5 92d0078d8382eb6e4b1bde8f13db6006)
+file(DOWNLOAD http://s3-us-west-2.amazonaws.com/glbin-engine/spark_unity_0.8.jar ${CMAKE_CURRENT_BINARY_DIR}/spark_unity.jar
+      EXPECTED_MD5 658ace82ec18489239c19e9e3101ed9a)
 
 
