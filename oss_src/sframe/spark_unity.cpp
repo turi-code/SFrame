@@ -612,14 +612,12 @@ int tordd_main(std::string & _output_directory, size_t & numPartitions, size_t &
 
   auto sframe_len = sframe_ptr->size();
   const std::vector<std::string>& column_names = sframe_ptr->column_names();
-  auto partition_size = sframe_len/numPartitions;
-  if(partId < (sframe_len % numPartitions)) { 
-    partition_size +=1;
-  }
-  size_t row_start = partition_size * partId; 
+  
+  // Calculate the partition size for the current partition (partId)
+  auto partition_size = sframe_len / numPartitions;
+  size_t row_start = partition_size * partId;
   size_t row_end = row_start + partition_size;
-  if(row_end > sframe_len)
-    row_end = sframe_len;
+  if (partId == numPartitions - 1) row_end = sframe_len; // last partition
 
   write_all_rows(*sframe_ptr, row_start, row_end);
   python::check_for_python_exception();
