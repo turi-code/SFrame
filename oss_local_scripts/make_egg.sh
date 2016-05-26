@@ -259,7 +259,14 @@ package_egg() {
     EGG_PATH=${NEW_EGG_PATH}
   elif [[ $OSTYPE == msys ]]; then
     EGG_PATH=`ls ${WORKSPACE}/${build_type}/oss_src/unity/python/dist/SFrame-${VERSION_NUMBER}-*-none-*.whl`
-    NEW_EGG_PATH=${EGG_PATH/-py3-/-cp35-}
+
+    NEW_EGG_PATH=${EGG_PATH}
+    if [[ $PY_MAJOR_VERSION == 3.4 ]]; then
+        NEW_EGG_PATH=${EGG_PATH/-py3-/-cp34-}
+    elif [[ $PY_MAJOR_VERSION == 3.5 ]]; then
+        NEW_EGG_PATH=${EGG_PATH/-py3-/-cp35-}
+    fi
+
     NEW_EGG_PATH=${NEW_EGG_PATH/-any./-win_amd64.}
     if [[ ! ${EGG_PATH} == ${NEW_EGG_PATH} ]]; then
         mv ${EGG_PATH} ${NEW_EGG_PATH}
