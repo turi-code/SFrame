@@ -47,9 +47,9 @@ std::shared_ptr<sframe> ec_sort(
     num_rows = infer_planner_node_length(sframe_planner_node);
   }
   ASSERT_GE(num_rows, 0);
-  // fast path for 0 rows.
+  // fast path for few number of rows.
   // fast path for no value columns
-  if (num_rows == 0 ||
+  if (num_rows < 1000 ||
       key_column_indices.size() == column_names.size()) {
     return sort(sframe_planner_node, column_names,
                 key_column_indices, sort_orders);
