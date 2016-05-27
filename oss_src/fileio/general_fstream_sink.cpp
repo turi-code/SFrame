@@ -39,6 +39,25 @@ bool general_fstream_sink::is_open() const {
 
 std::streamsize general_fstream_sink::write(const char* c, 
                                             std::streamsize bufsize) {
+#ifdef _WIN32
+// windows has interesting issues if bufsize >= 2GB
+// we cut up the buffer and read it in 1GB increments
+  const std::streamsize WIN_WRITE_LIMIT = 1LL*1024*1024*1024; // 1GB
+  // cut into smaller buffers
+  std::streamsize remaining_size = bufsize;
+  while(remaining_size > 0) {
+    std::streamsize limit = std::min(remaining_size, WIN_WRITE_LIMIT);
+    if (is_gzip_compressed) {
+      compressor->write(*underlying_stream, c, limit);
+    } else {
+      underlying_stream->write(c, limit);
+      if (underlying_stream->fail()) return 0;
+    }
+    remaining_size -= limit;
+    c += limit;
+  }
+  return bufsize;
+#else
   if (is_gzip_compressed) {
     return compressor->write(*underlying_stream, c, bufsize);
   } else {
@@ -46,6 +65,7 @@ std::streamsize general_fstream_sink::write(const char* c,
     if (underlying_stream->fail()) return 0;
     else return bufsize;
   }
+#endif
 }
 
 general_fstream_sink::~general_fstream_sink() {
