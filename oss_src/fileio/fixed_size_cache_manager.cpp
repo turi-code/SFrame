@@ -15,18 +15,6 @@
 namespace graphlab {
 
 namespace fileio {
-
-std::new_handler previous_new_handler = nullptr;
-
-void cache_new_handler() {
-  std::set_new_handler(previous_new_handler);
-  // evict everything larger than 1MB
-  // we restore our handler only IF we managed to free something
-  // Otherwise this could be an infinite loop.
-  if (fixed_size_cache_manager::get_instance().force_evict(1024*1024)) {
-    std::set_new_handler(cache_new_handler);
-  }
-}
 /*************************************************************************/
 /*                                                                       */
 /*                         Cache Block implementation                    */
@@ -146,10 +134,7 @@ void cache_new_handler() {
    return *instance;
  }
 
-  fixed_size_cache_manager::fixed_size_cache_manager() {
-    previous_new_handler = std::get_new_handler();
-    std::set_new_handler(cache_new_handler);
-  }
+  fixed_size_cache_manager::fixed_size_cache_manager() { }
 
   fixed_size_cache_manager::~fixed_size_cache_manager() {
     clear();
@@ -160,7 +145,7 @@ void cache_new_handler() {
   }
 
  EXPORT cache_id_type fixed_size_cache_manager::get_temp_cache_id(std::string suffix) {
-    std::lock_guard<graphlab::recursive_mutex> scoped_lock(mutex);
+    std::lock_guard<graphlab::mutex> scoped_lock(mutex);
     std::stringstream ss;
     ss << std::setfill('0') << std::setw(6) << temp_cache_counter;
     ++temp_cache_counter;
@@ -169,7 +154,7 @@ void cache_new_handler() {
   }
 
   std::shared_ptr<cache_block> fixed_size_cache_manager::new_cache(cache_id_type cache_id) {
-    std::lock_guard<graphlab::recursive_mutex> lck(mutex);
+    std::lock_guard<graphlab::mutex> lck(mutex);
     logstream_ontick(5, LOG_INFO) << "Cache Utilization:" << get_cache_utilization() << std::endl;
     // if we have exceeded, we try to evict
     if (current_cache_utilization.value >= FILEIO_MAXIMUM_CACHE_CAPACITY) try_cache_evict();
@@ -210,7 +195,7 @@ void cache_new_handler() {
 
   void fixed_size_cache_manager::free(std::shared_ptr<cache_block> block) {
     logstream(LOG_DEBUG) << "Free cache block " << block->cache_id << std::endl;
-    std::lock_guard<graphlab::recursive_mutex> lck(mutex);
+    std::lock_guard<graphlab::mutex> lck(mutex);
     cache_id_type id = block->cache_id;
     auto iter = cache_blocks.find(id);
     ASSERT_TRUE(iter != cache_blocks.end());
@@ -219,7 +204,7 @@ void cache_new_handler() {
 
   std::shared_ptr<cache_block> fixed_size_cache_manager::get_cache(cache_id_type cache_id) {
     logstream(LOG_DEBUG) << "Get cache block " << cache_id << std::endl;
-    std::lock_guard<graphlab::recursive_mutex> lck(mutex);
+    std::lock_guard<graphlab::mutex> lck(mutex);
     if (cache_blocks.find(cache_id) != cache_blocks.end()) {
       return cache_blocks[cache_id];
     }
@@ -232,25 +217,6 @@ void cache_new_handler() {
 
   void fixed_size_cache_manager::decrement_utilization(ssize_t increment) {
     current_cache_utilization.dec(increment);
-  }
-
-  bool fixed_size_cache_manager::force_evict(size_t minimum_size) {
-    bool freed_stuff = false;
-    std::lock_guard<graphlab::recursive_mutex> lck(mutex);
-    for (auto& iter: cache_blocks) {
-      // we can only evict if we are the only pointers to the cache block
-      if (iter.second.unique() && iter.second->is_pointer()) {
-        if (iter.second->get_pointer_size() >= minimum_size) {
-          logstream(LOG_INFO) << "Evicting " << iter.first
-                              << " with size " << iter.second->get_pointer_size() << std::endl;
-          iter.second->write_to_file();
-          freed_stuff = true;
-        }
-      }
-    }
-    logstream(LOG_INFO) << "Cache Utilization:" << get_cache_utilization()
-                        << std::endl;
-    return freed_stuff;
   }
 
   void fixed_size_cache_manager::try_cache_evict() {

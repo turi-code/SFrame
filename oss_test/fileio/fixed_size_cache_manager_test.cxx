@@ -125,7 +125,6 @@ class cache_eviction_test: public CxxTest::TestSuite {
  public:
   void test_cache_eviction_mechanism() {
     // set cache cap to 64K
-    global_logger().set_log_level(LOG_INFO);
     auto& cache_instance = fixed_size_cache_manager::get_instance();
     graphlab::fileio::FILEIO_MAXIMUM_CACHE_CAPACITY = 64*1024;
     graphlab::fileio::FILEIO_MAXIMUM_CACHE_CAPACITY_PER_FILE = 32*1024;
@@ -168,18 +167,5 @@ class cache_eviction_test: public CxxTest::TestSuite {
     TS_ASSERT_EQUALS(cache_instance.get_cache(size_to_file[4*1024])->is_pointer(), true);
     TS_ASSERT_EQUALS(cache_instance.get_cache(size_to_file[2*1024])->is_pointer(), true);
     TS_ASSERT_EQUALS(cache_instance.get_cache(size_to_file[1*1024])->is_pointer(), true);
-    fin.close();
-    TS_ASSERT_EQUALS(cache_instance.force_evict(16*1024), true);
-    TS_ASSERT_EQUALS(cache_instance.get_cache(size_to_file[16*1024])->is_pointer(), false);
-    TS_ASSERT_EQUALS(cache_instance.get_cache(size_to_file[8*1024])->is_pointer(), true);
-    TS_ASSERT_EQUALS(cache_instance.get_cache(size_to_file[4*1024])->is_pointer(), true);
-    TS_ASSERT_EQUALS(cache_instance.get_cache(size_to_file[2*1024])->is_pointer(), true);
-    TS_ASSERT_EQUALS(cache_instance.get_cache(size_to_file[1*1024])->is_pointer(), true);
-    TS_ASSERT_EQUALS(cache_instance.force_evict(16*1024), false);
-
-    // cleanup
-    for (auto i : size_to_file) {
-      graphlab::fileio::delete_path(i.second);
-    }
   }
 };

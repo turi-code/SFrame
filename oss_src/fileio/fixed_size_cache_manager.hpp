@@ -231,12 +231,6 @@ class fixed_size_cache_manager {
   void free(std::shared_ptr<cache_block> block);
 
   /**
-   * Forces to evict all blocks larger than a certain size.
-   * Returns true if blocks were evicted and false otherwise.
-   */
-  bool force_evict(size_t minimum_size);
-
-  /**
    * Clear all cache blocks in the manager. Reset to initial state.
    */
   void clear();
@@ -264,10 +258,7 @@ class fixed_size_cache_manager {
 
   atomic<size_t> current_cache_utilization;
 
-  // this is a recursive mutex due to the use of std::new_handler
-  // An allocation failure can happen anytime; perhaps even while a
-  // lock was acquired by the same thread.
-  graphlab::recursive_mutex mutex;
+  graphlab::mutex mutex;
   std::unordered_map<std::string, std::shared_ptr<cache_block> > cache_blocks;
 
   /**
