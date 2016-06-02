@@ -120,10 +120,7 @@ if __name__ == '__main__':
                          "Operating System :: POSIX :: BSD",
                          "Operating System :: Unix"]
     elif cur_platform.startswith('win'):
-        classifiers += ["Operating System :: Microsoft :: Windows",
-                        "Operating System :: Microsoft :: Windows 7",
-                        "Operating System :: Microsoft :: Windows Server 2008",
-                        "Operating System :: Microsoft :: Windows Vista"]
+        classifiers += ["Operating System :: Microsoft :: Windows"]
     else:
         msg = (
             "Unsupported Platform: '%s'. SFrame is only supported on Windows, Mac OSX, and Linux." % cur_platform
