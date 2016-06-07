@@ -248,13 +248,13 @@ gl_sframe _generate_random_sframe(size_t n_rows, std::string column_types,
 
           // Everything is deterministic from a random set (1, ...,
           // pool_size), allowing for limiting the number of random things available
-          size_t x = hash64(++_rng_state) % pool_size;
+          size_t x = hash64(random_seed, hash64(++_rng_state) % pool_size);
   
           std::string ret;
           ret.reserve(length);
       
           for(size_t i = 0; i < length; i += 8) {
-            size_t number = x;
+            uint64_t number = x;
 
             for(size_t j = 0; j < 16; ++j) {
               ret.push_back(charset[number & 0xF]);
@@ -311,7 +311,8 @@ gl_sframe _generate_random_sframe(size_t n_rows, std::string column_types,
             m[index] = value;
           }
 
-          flex_dict d(m.size());
+          flex_dict d;
+          d.reserve(m.size());
           char key[16];
           
           for(const auto& p : m) {
