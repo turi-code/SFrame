@@ -31,8 +31,6 @@ print_help() {
   echo 
   echo "  --debug                  Use debug build instead of release"
   echo
-  echo "  --prod                   Enable production metrics for the egg"
-  echo
   echo "  --toolchain=[toolchain]  Specify the toolchain for the configure"
   echo
   echo "  --num_procs=n            Specify the number of proceses to run in parallel"
@@ -55,7 +53,6 @@ while [ $# -gt 0 ]
     --skip_build)           SKIP_BUILD=1;;
     --skip_doc)             SKIP_DOC=1;;
     --debug)                build_type="debug";;
-    --prod)                 IS_PROD=1;;
     --help)                 print_help ;;
     *) unknown_option $1 ;;
   esac
@@ -218,13 +215,6 @@ package_egg() {
   # cleanup old builds
   rm -rf *.egg-info
   rm -rf dist
-
-  # package with prod environment
-  if [[ $IS_PROD ]]; then
-      cp conf/prod.py sframe/util/graphlab_env.py
-  else
-      cp conf/qa.py sframe/util/graphlab_env.py
-  fi
 
   # strip binaries
   if [[ ! $OSTYPE == darwin* ]]; then
