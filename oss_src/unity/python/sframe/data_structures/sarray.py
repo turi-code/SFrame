@@ -800,6 +800,21 @@ class SArray(object):
         """
         return (self == item).any()
 
+    @property
+    def shape(self):
+        """
+        The shape of the SArray, in a tuple. The first entry is the number of
+        rows. This matches the SFrame shape() method in API but returns no
+        additional information vs. SArray.size().
+
+        Examples
+        --------
+        >>> sa = graphlab.SArray([1,2,3])
+        >>> sa.shape
+        (3,)
+        """
+        return (self.size(),)
+
     def contains(self, item):
         """
         Performs an element-wise search of "item" in the SArray.
