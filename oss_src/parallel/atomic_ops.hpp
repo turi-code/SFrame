@@ -189,94 +189,149 @@ namespace graphlab {
     return __sync_lock_test_and_set(&a, newval);
   };
 
-   /**  Atomically sets the max.  Equivalent to:
-    * 
-    *   max_value = std::max(max_value, new_value); 
+   /** Atomically sets the max, returning the value of the atomic
+    *  prior to setting the max value, or the existing value if
+    *  nothing changed.  Atomic equivalent to:
+    *
+    *   old_max_value = max_value;
+    *   max_value = std::max(max_value, new_value);
+    *   return old_max_value;
     *
     */
   template<typename T> 
-  void atomic_set_max(T& max_value, T new_value) {
-    size_t v = max_value;
+  T atomic_set_max(T& max_value, T new_value) {
+    T v = max_value;
+    T oldval = v;
     if(v < new_value) { 
       do {
-        size_t oldval = atomic_compare_and_swap_val(max_value, v, new_value);
+        oldval = atomic_compare_and_swap_val(max_value, v, new_value);
 
-        if(oldval == v)
+        if(oldval == v) {
+          // Change successful
           break;
-
-        v = oldval;
+        } else { 
+          // Change not successful, reset.
+          v = oldval;
+        }
       } while(v < new_value);
     }
+    
+    return oldval;
   }
 
-   /**  Atomically sets the max.  Equivalent to:
-    * 
-    *   max_value = std::max(max_value, new_value); 
+   /** Atomically sets the max, returning the value of the atomic
+    *  prior to this operation, or the existing value if
+    *  nothing changed.  Atomic equivalent to:
     *
+    *   old_max_value = max_value;
+    *   max_value = std::max(max_value, new_value);
+    *   return old_max_value;
+    *
+    *  \overload
     */
   template<typename T> 
-  void atomic_set_max(volatile T& max_value, T new_value) {
-    size_t v = max_value;
+  T atomic_set_max(volatile T& max_value, T new_value) {
+    T v = max_value;
+    T oldval = v;
     if(v < new_value) { 
       do {
-        size_t oldval = atomic_compare_and_swap_val(max_value, v, new_value);
+        oldval = atomic_compare_and_swap_val(max_value, v, new_value);
 
-        if(oldval == v)
+        if(oldval == v) {
+          // Change successful
           break;
-
-        v = oldval;
+        } else { 
+          // Change not successful, reset.
+          v = oldval;
+        }
       } while(v < new_value);
     }
+    return oldval;
   }
 
-   /**  Atomically sets the min.  Equivalent to:
-    * 
-    *   min_value = std::min(min_value, new_value); 
+   /** Atomically sets the min, returning the value of the atomic
+    *  prior to this operation.  Atomic equivalent to:
     *
+    *    old_min_value = min_value; 
+    *    min_value = std::min(min_value, new_value);
+    *    return old_min_value;
+    *
+    *  \overload
     */
   template<typename T> 
-  void atomic_set_min(T& min_value, T new_value) {
-    size_t v = min_value;
+  T atomic_set_min(T& min_value, T new_value) {
+    T v = min_value;
+    T oldval = v;
     if(v > new_value) { 
       do {
-        size_t oldval = atomic_compare_and_swap_val(min_value, v, new_value);
+        oldval = atomic_compare_and_swap_val(min_value, v, new_value);
 
-        if(oldval == v)
+        if(oldval == v) {
+          // Change successful
           break;
-
-        v = oldval;
+        } else { 
+          // Change not successful, reset.
+          v = oldval;
+        }
       } while(v > new_value);
     }
+    return oldval;
   }
 
-   /**  Atomically sets the min.  Equivalent to:
-    * 
-    *   min_value = std::min(min_value, new_value); 
+   /** Atomically sets the min, returning the value of the atomic
+    *  prior to this operation.  Atomic equivalent to:
     *
+    *    old_min_value = min_value; 
+    *    min_value = std::min(min_value, new_value);
+    *    return old_min_value;
+    *
+    *  \overload
     */
   template<typename T> 
-  void atomic_set_min(volatile T& min_value, T new_value) {
-    size_t v = min_value;
+  T atomic_set_min(volatile T& min_value, T new_value) {
+    T v = min_value;
+    T oldval = v;
     if(v > new_value) { 
       do {
-        size_t oldval = atomic_compare_and_swap_val(min_value, v, new_value);
+        oldval = atomic_compare_and_swap_val(min_value, v, new_value);
 
-        if(oldval == v)
+        if(oldval == v) {
+          // Change successful
           break;
-
-        v = oldval;
+        } else {
+          // Change not successful, reset.
+          v = oldval;
+        }
       } while(v > new_value);
     }
+    return oldval;
   }
 
-
-  /**  Atomically increments the value.  Equivalent to value += increment;
-    */
+  /**  Atomically increments the value, and returns the value of the
+   *   atomic prior to this operation.   Equivalent to
+   *
+   *     old_value = value;
+   *     value += increment;
+   *     return value;
+   */
   template<typename T>
-  void atomic_increment(T& value, int increment = 1) {
-    __sync_fetch_and_add(&value, increment);
+  T atomic_increment(T& value, int increment = 1) {
+    return __sync_fetch_and_add(&value, increment);
   }
 
+  /**  Atomically increments the value, and returns the value of the
+   *   atomic prior to this operation.   Equivalent to
+   *
+   *     old_value = value;
+   *     value += increment;
+   *     return value;
+   *
+   *   \overload
+   */
+  template<typename T>
+  T atomic_increment(volatile T& value, int increment = 1) {
+    return __sync_fetch_and_add(&value, increment);
+  }
 
 
 }
