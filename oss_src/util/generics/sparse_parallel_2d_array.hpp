@@ -19,9 +19,7 @@
 
 #include <graphlab/util/bitops.hpp>
 #include <util/cityhash_gl.hpp>
-#include <parallel/pthread_tools.hpp>
-#include <parallel/atomic.hpp>
-#include <parallel/lambda_omp.hpp>
+#include <parallel/parallel_all.hpp>
 #include <sparsehash/dense_hash_set>
 
 namespace graphlab {
