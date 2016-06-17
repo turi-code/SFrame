@@ -657,7 +657,7 @@ class SArray(object):
             A Numpy Array containing all the values of the SArray
 
         """
-        assert HAS_NUMPY
+        assert HAS_NUMPY, 'numpy is not installed.'
         import numpy
         return numpy.asarray(self)
 

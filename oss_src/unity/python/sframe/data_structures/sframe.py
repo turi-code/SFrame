@@ -2917,7 +2917,7 @@ class SFrame(object):
         out : pandas.DataFrame
             The dataframe which contains all rows of SFrame
         """
-        assert HAS_PANDAS
+        assert HAS_PANDAS, 'pandas is not installed.'
         df = pandas.DataFrame()
         for i in range(self.num_columns()):
             column_name = self.column_names()[i]
@@ -2939,7 +2939,7 @@ class SFrame(object):
             A Numpy Array containing all the values of the SFrame
 
         """
-        assert HAS_NUMPY
+        assert HAS_NUMPY, 'numpy is not installed.'
         import numpy
         return numpy.transpose(numpy.asarray([self[x] for x in self.column_names()]))
 
@@ -3151,7 +3151,7 @@ class SFrame(object):
 
             column_types = list(types.pop())
 
-        assert type(column_types) is list
+        assert type(column_types) is list, "'column_types' must be a list."
         assert len(column_types) == len(column_names), "Number of output columns must match the size of column names"
         with cython_context():
             return SFrame(_proxy=self.__proxy__.flat_map(fn, column_names, column_types, seed))
