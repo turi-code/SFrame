@@ -835,6 +835,11 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(2.5 * t, list(2.5 * s), float)
         self.__test_equal(2**t, list(2**s), float)
 
+        s_neg = np.array([-1,-2,-3,5,6,7,8,9,10]);
+        t_neg = SArray(s_neg, int)
+        self.__test_equal(t_neg // 5, list(s_neg // 5), int)
+        self.__test_equal(t_neg % 5, list(s_neg % 5), int)
+        
         s=["a","b","c"]
         t = SArray(s, str)
         self.__test_equal(t + "x", [i + "x" for i in s], str)
@@ -884,6 +889,7 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(s * s, [array.array('d', [float(j) * float(j) for j in i]) for i in self.vec_data], array.array)
         self.__test_equal(s / s, [array.array('d', [float(j) / float(j) for j in i]) for i in self.vec_data], array.array)
         self.__test_equal(s ** s, [array.array('d', [float(j) ** float(j) for j in i]) for i in self.vec_data], array.array)
+        self.__test_equal(s // s, [array.array('d', [float(j) // float(j) for j in i]) for i in self.vec_data], array.array)
         t = SArray(self.float_data, float)
 
         self.__test_equal(s + t, [array.array('d', [float(j) + i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
@@ -891,14 +897,143 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(s * t, [array.array('d', [float(j) * i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
         self.__test_equal(s / t, [array.array('d', [float(j) / i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
         self.__test_equal(s ** t, [array.array('d', [float(j) ** i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
+        self.__test_equal(s // t, [array.array('d', [float(j) // i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
         self.__test_equal(+s, [array.array('d', [float(j) for j in i]) for i in self.vec_data], array.array)
         self.__test_equal(-s, [array.array('d', [-float(j) for j in i]) for i in self.vec_data], array.array)
 
+        neg_float_data = [-v for v in self.float_data]
+        t = SArray(neg_float_data, float)
+        self.__test_equal(s + t, [array.array('d', [float(j) + i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
+        self.__test_equal(s - t, [array.array('d', [float(j) - i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
+        self.__test_equal(s * t, [array.array('d', [float(j) * i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
+        self.__test_equal(s / t, [array.array('d', [float(j) / i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
+        self.__test_equal(s ** t, [array.array('d', [float(j) ** i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
+        self.__test_equal(s // t, [array.array('d', [float(j) // i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
+        self.__test_equal(t // s, [array.array('d', [i[1] // float(j) for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
+        
         s = SArray([1,2,3,4,None])
         self.assertTrue((s==s).all())
         s = SArray([1,2,3,4,None])
         self.assertFalse((s!=s).any())
 
+    def test_div_corner(self):
+
+        def try_eq_sa_val(left_val, right_val):
+            if type(left_val) is list:
+                left_val = array.array('d', left_val)
+            if type(right_val) is list:
+                right_val = array.array('d', right_val)
+            
+            left_type = type(left_val)
+            v1 = (SArray([left_val], left_type) // right_val)[0]
+            
+            if type(right_val) is array.array:
+                if type(left_val) is array.array:
+                    v2 = array.array('d', [lv // rv for lv, rv in zip(left_val, right_val)])
+                else:
+                    v2 = array.array('d', [left_val // rv for rv in right_val])
+            else:
+                if type(left_val) is array.array:
+                    v2 = array.array('d', [lv // right_val for lv in left_val])
+                else:
+                    v2 = left_val // right_val
+                
+            self.assertEqual(type(v1), type(v2))
+            self.assertEqual(v1, v2)
+
+        try_eq_sa_val(1, 2)
+        try_eq_sa_val(1.0, 2)
+        try_eq_sa_val(1, 2.0)
+        try_eq_sa_val(1.0, 2.0)
+
+        try_eq_sa_val(-1, 2)
+        try_eq_sa_val(-1.0, 2)
+        try_eq_sa_val(-1, 2.0)
+        try_eq_sa_val(-1.0, 2.0)
+
+        try_eq_sa_val([1, -1], 2)
+        try_eq_sa_val([1, -1], 2.0)
+
+        try_eq_sa_val(2,[3, -3])
+        try_eq_sa_val(2.0,[3, -3])
+                
+
+    def test_floodiv_corner(self):
+
+        def try_eq_sa_val(left_val, right_val):
+            if type(left_val) is list:
+                left_val = array.array('d', left_val)
+            if type(right_val) is list:
+                right_val = array.array('d', right_val)
+            
+            left_type = type(left_val)
+            v1 = (SArray([left_val], left_type) // right_val)[0]
+            
+            if type(right_val) is array.array:
+                if type(left_val) is array.array:
+                    v2 = array.array('d', [lv // rv for lv, rv in zip(left_val, right_val)])
+                else:
+                    v2 = array.array('d', [left_val // rv for rv in right_val])
+            else:
+                if type(left_val) is array.array:
+                    v2 = array.array('d', [lv // right_val for lv in left_val])
+                else:
+                    v2 = left_val // right_val
+                
+            self.assertEqual(type(v1), type(v2))
+            self.assertEqual(v1, v2)
+
+        try_eq_sa_val(1, 2)
+        try_eq_sa_val(1.0, 2)
+        try_eq_sa_val(1, 2.0)
+        try_eq_sa_val(1.0, 2.0)
+
+        try_eq_sa_val(-1, 2)
+        try_eq_sa_val(-1.0, 2)
+        try_eq_sa_val(-1, 2.0)
+        try_eq_sa_val(-1.0, 2.0)
+
+        try_eq_sa_val([1, -1], 2)
+        try_eq_sa_val([1, -1], 2.0)
+
+        try_eq_sa_val(2,[3, -3])
+        try_eq_sa_val(2.0,[3, -3])
+
+        from math import isnan
+        
+        def try_eq_sa_correct(left_val, right_val, correct):
+            if type(left_val) is list:
+                left_val = array.array('d', left_val)
+            if type(right_val) is list:
+                right_val = array.array('d', right_val)
+            
+            left_type = type(left_val)
+            v1 = (SArray([left_val], left_type) // right_val)[0]
+
+            if type(correct) is not list:
+                v1 = [v1]
+                correct = [correct]
+
+            for v, c in zip(v1, correct):
+                if type(v) is float and isnan(v):
+                    assert isnan(c)
+                else:
+                    self.assertEqual(type(v), type(c))
+                    self.assertEqual(v, c)
+        
+        try_eq_sa_correct(1, 0, None)
+        try_eq_sa_correct(0, 0, None)
+        try_eq_sa_correct(-1, 0, None)
+        
+        try_eq_sa_correct(1.0, 0, float('inf'))
+        try_eq_sa_correct(0.0, 0, float('nan'))
+        try_eq_sa_correct(-1.0, 0, float('-inf'))
+                
+        try_eq_sa_correct([1.0,0,-1], 0, [float('inf'), float('nan'), float('-inf')])
+        try_eq_sa_correct(1, [1.0, 0], [1., float('inf')])
+        try_eq_sa_correct(-1, [1.0, 0], [-1., float('-inf')])
+        try_eq_sa_correct(0, [1.0, 0], [0., float('nan')])
+        
     def test_logical_ops(self):
         s=np.array([0,0,0,0,1,1,1,1]);
         s2=np.array([0,1,0,1,0,1,0,1]);

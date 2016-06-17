@@ -33,7 +33,7 @@ void check_operation_feasibility(flex_type_enum left,
   } else if (op == "%") {
     operation_is_feasible = left == flex_type_enum::INTEGER &&
                             right == flex_type_enum::INTEGER;
-  } else if (op == "**") {
+  } else if (op == "**" || op == "//") {
     operation_is_feasible = (
         (left == flex_type_enum::FLOAT
          || left == flex_type_enum::INTEGER
@@ -99,6 +99,15 @@ flex_type_enum get_output_type(flex_type_enum left,
       return flex_type_enum::VECTOR;
     } else {
       return flex_type_enum::FLOAT;
+    }
+  } else if (op == "//") {
+    if (left == flex_type_enum::VECTOR || right == flex_type_enum::VECTOR) {
+      // vector operations always return vector
+      return flex_type_enum::VECTOR;
+    } else if (left == flex_type_enum::FLOAT || right == flex_type_enum::FLOAT) {
+      return flex_type_enum::FLOAT;
+    } else { 
+      return flex_type_enum::INTEGER;
     }
   } else if (op == "%") {
     return flex_type_enum::INTEGER;
@@ -290,6 +299,62 @@ get_binary_operator(flex_type_enum left, flex_type_enum right, std::string op) {
         }
       };
     }
+  } else if (op == "//") {
+
+    if (left == flex_type_enum::VECTOR && right == flex_type_enum::VECTOR) {
+     return [](const flexible_type& l, const flexible_type& r)->flexible_type{
+       const flex_vec& lv = l.get<flex_vec>();
+       const flex_vec& rv = r.get<flex_vec>();
+       if (lv.size() != rv.size()) return FLEX_UNDEFINED;
+       flex_vec ret(lv.size());
+       for(size_t i = 0; i < lv.size(); ++i) {
+         flex_float res = lv[i] / rv[i];
+         ret[i] = std::isfinite(res) ? std::floor(res) : res;
+       }
+       return flexible_type(std::move(ret));
+     };
+    } else if (left == flex_type_enum::VECTOR) {
+     return [](const flexible_type& l, const flexible_type& r)->flexible_type{
+       const flex_vec& lv = l.get<flex_vec>();
+       flex_float rd = r.to<flex_float>();
+       flex_vec ret(lv.size());
+       for(size_t i = 0; i < lv.size(); ++i) {
+         flex_float res = lv[i] / rd;
+         ret[i] = std::isfinite(res) ? std::floor(res) : res;
+       }
+       return flexible_type(std::move(ret));
+     };
+    } else if (right == flex_type_enum::VECTOR) {
+     return [](const flexible_type& l, const flexible_type& r)->flexible_type{
+       flex_float ld = l.to<flex_float>();
+       const flex_vec& rv = r.get<flex_vec>();
+       flex_vec ret(rv.size());
+       for(size_t i = 0; i < rv.size(); ++i) {
+         flex_float res = ld / rv[i];
+         ret[i] = std::isfinite(res) ? std::floor(res) : res;
+       }
+       return flexible_type(std::move(ret));
+     };
+    } else if (right == flex_type_enum::FLOAT || left == flex_type_enum::FLOAT) { 
+      return [](const flexible_type& l, const flexible_type& r)->flexible_type {
+       flex_float ld = l.to<flex_float>();
+       flex_float rd = r.to<flex_float>();
+       flex_float res = ld / rd;
+       
+       return std::isfinite(res) ? std::floor(res) : res;
+      };
+    } else {
+      return [](const flexible_type& l, const flexible_type& r)->flexible_type {
+       flex_float ld = l.to<flex_float>();
+       flex_float rd = r.to<flex_float>();
+       flex_float res = ld / rd;
+       
+       return (std::isfinite(res)
+               ? flexible_type(flex_int(std::floor(res)))
+               : FLEX_UNDEFINED);
+      };
+    }
+    
 /**************************************************************************/
 /*                                                                        */
 /*                               Operator %                               */

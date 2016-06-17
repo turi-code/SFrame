@@ -986,9 +986,9 @@ class SArray(object):
         """
         with cython_context():
             if type(other) is SArray:
-                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '/')).astype(int)
+                return SArray(_proxy = self.__proxy__.vector_operator(other.__proxy__, '//'))
             else:
-                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '/')).astype(int)
+                return SArray(_proxy = self.__proxy__.left_scalar_operator(other, '//'))
 
     def __pow__(self, other):
         """
