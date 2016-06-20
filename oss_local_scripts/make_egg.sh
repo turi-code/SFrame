@@ -31,8 +31,6 @@ print_help() {
   echo 
   echo "  --debug                  Use debug build instead of release"
   echo
-  echo "  --prod                   Enable production metrics for the egg"
-  echo
   echo "  --toolchain=[toolchain]  Specify the toolchain for the configure"
   echo
   echo "  --num_procs=n            Specify the number of proceses to run in parallel"
@@ -55,7 +53,6 @@ while [ $# -gt 0 ]
     --skip_build)           SKIP_BUILD=1;;
     --skip_doc)             SKIP_DOC=1;;
     --debug)                build_type="debug";;
-    --prod)                 IS_PROD=1;;
     --help)                 print_help ;;
     *) unknown_option $1 ;;
   esac
@@ -219,13 +216,6 @@ package_egg() {
   rm -rf *.egg-info
   rm -rf dist
 
-  # package with prod environment
-  if [[ $IS_PROD ]]; then
-      cp conf/prod.py sframe/util/graphlab_env.py
-  else
-      cp conf/qa.py sframe/util/graphlab_env.py
-  fi
-
   # strip binaries
   if [[ ! $OSTYPE == darwin* ]]; then
     cd ${WORKSPACE}/${build_type}/oss_src/unity/python/sframe
@@ -260,14 +250,7 @@ package_egg() {
   elif [[ $OSTYPE == msys ]]; then
     EGG_PATH=`ls ${WORKSPACE}/${build_type}/oss_src/unity/python/dist/SFrame-${VERSION_NUMBER}-*-none-*.whl`
 
-    NEW_EGG_PATH=${EGG_PATH}
-    if [[ $PY_MAJOR_VERSION == 3.4 ]]; then
-        NEW_EGG_PATH=${EGG_PATH/-py3-/-cp34-}
-    elif [[ $PY_MAJOR_VERSION == 3.5 ]]; then
-        NEW_EGG_PATH=${EGG_PATH/-py3-/-cp35-}
-    fi
-
-    NEW_EGG_PATH=${NEW_EGG_PATH/-any./-win_amd64.}
+    NEW_EGG_PATH=${EGG_PATH/-any./-win_amd64.}
     if [[ ! ${EGG_PATH} == ${NEW_EGG_PATH} ]]; then
         mv ${EGG_PATH} ${NEW_EGG_PATH}
         EGG_PATH=${NEW_EGG_PATH}
@@ -278,6 +261,20 @@ package_egg() {
     mv ${EGG_PATH} ${NEW_EGG_PATH}
     EGG_PATH=${NEW_EGG_PATH}
   fi
+
+  # Set Python Language Version Number
+    NEW_EGG_PATH=${EGG_PATH}
+    if [[ $PY_MAJOR_VERSION == 3.4 ]]; then
+        NEW_EGG_PATH=${EGG_PATH/-py3-/-cp34-}
+    elif [[ $PY_MAJOR_VERSION == 3.5 ]]; then
+        NEW_EGG_PATH=${EGG_PATH/-py3-/-cp35-}
+    elif [[ $PY_MAJOR_VERSION == 2.7 ]]; then
+        NEW_EGG_PATH=${EGG_PATH/-py2-/-cp27-}
+    fi
+    if [[ ! ${EGG_PATH} == ${NEW_EGG_PATH} ]]; then
+        mv ${EGG_PATH} ${NEW_EGG_PATH}
+        EGG_PATH=${NEW_EGG_PATH}
+    fi
 
   # Install the egg and do a sanity check
   $PIP_EXECUTABLE install --force-reinstall --ignore-installed ${EGG_PATH}
