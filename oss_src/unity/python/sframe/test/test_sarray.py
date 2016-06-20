@@ -2969,3 +2969,9 @@ class SArrayTest(unittest.TestCase):
         for i in [0,1,2,10,345]:
             sa = SArray(range(i))
             self.assertEqual(sa.shape, (i,))
+
+    def test_random_split(self):
+        sa = SArray(range(10))
+        (train, test) = sa.random_split(0.8, seed=12423)
+        self.assertEqual(list(train), [0, 1, 2, 3, 5, 7, 8, 9])
+        self.assertEqual(list(test), [4,6])

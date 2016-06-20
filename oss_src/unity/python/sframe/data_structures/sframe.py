@@ -3230,7 +3230,7 @@ class SFrame(object):
 
         >>> sf = graphlab.SFrame({'id': range(1024)})
         >>> sf_train, sf_test = sf.random_split(.9, seed=5)
-        >>> print len(sf_train), len(sf_test)
+        >>> print(len(sf_train), len(sf_test))
         922 102
         """
         if (fraction > 1 or fraction < 0):
