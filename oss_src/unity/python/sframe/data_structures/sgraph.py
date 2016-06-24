@@ -181,12 +181,13 @@ class SGraph(object):
     ----------
     vertices : SFrame, optional
         Vertex data. Must include an ID column with the name specified by
-        `vid_field.` Additional columns are treated as vertex attributes.
+        the `vid_field` parameter. Additional columns are treated as vertex
+        attributes.
 
     edges : SFrame, optional
         Edge data. Must include source and destination ID columns as specified
-        by `src_field` and `dst_field`. Additional columns are treated as edge
-        attributes.
+        by `src_field` and `dst_field` parameters. Additional columns are treated
+        as edge attributes.
 
     vid_field : str, optional
         The name of vertex ID column in the `vertices` SFrame.
