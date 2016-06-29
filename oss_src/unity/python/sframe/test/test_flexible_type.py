@@ -18,6 +18,7 @@ from ..cython.cy_flexible_type import _translate_through_flex_list as _tr_flex_l
 from ..cython.cy_flexible_type import infer_type_of_list
 from ..cython.cy_flexible_type import _get_inferred_column_type, _all_convertable
 from ..cython.cy_flexible_type import _check_ft_pyobject_hint_path
+from ..cython.cy_flexible_type import pytype_from_type_name
 from ..util.timezone import GMT
 import datetime
 from itertools import product
@@ -525,3 +526,16 @@ class FlexibleTypeTest(unittest.TestCase):
         _check_ft_pyobject_hint_path({1:1}, dict)
         _check_ft_pyobject_hint_path(array.array('i', [1,2]), array.array)
         _check_ft_pyobject_hint_path(array.array('d', [1,2]), array.array)
+
+    def test_pytype_from_type_name(self):
+
+        self.assertEquals(pytype_from_type_name("str"), str)
+        self.assertEquals(pytype_from_type_name("string"), str)
+        self.assertEquals(pytype_from_type_name("float"), float)
+        self.assertEquals(pytype_from_type_name("datetime"), datetime.datetime)
+        self.assertEquals(pytype_from_type_name("image"), image.Image)
+        self.assertEquals(pytype_from_type_name("list"), list)
+        self.assertEquals(pytype_from_type_name("undefined"), type(None))
+
+        self.assertRaises(ValueError, lambda: pytype_from_type_name("happiness"))
+        

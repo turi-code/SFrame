@@ -10,6 +10,7 @@ of the BSD license. See the LICENSE file for details.
 
 import array
 import datetime
+import json # Python built-in JSON module
 import math
 import os
 import pytz
@@ -17,7 +18,7 @@ import sys
 import unittest
 
 from . import util
-from .. import _json
+from .. import _json # graphlab._json
 
 if sys.version_info.major == 3:
     long = int
@@ -74,6 +75,11 @@ class JSONTest(unittest.TestCase):
         # test that JSON serialization is invertible with respect to both
         # value and type.
         (data, schema) = _json.to_serializable(value)
+
+        # ensure that resulting value is actually naively serializable
+        data = json.loads(json.dumps(data, allow_nan=False))
+        schema = json.loads(json.dumps(schema, allow_nan=False))
+
         #print("----------------------------------")
         #print("Value: %s" % value)
         #print("Serializable Data: %s" % data)
@@ -125,6 +131,7 @@ class JSONTest(unittest.TestCase):
             array.array('d'),
             array.array('d', [1.5]),
             array.array('d', [2.1,2.5,3.1]),
+            array.array('d', [float('-inf'), float('inf')]),
         ]]
 
     def test_list_to_json(self):
@@ -139,6 +146,7 @@ class JSONTest(unittest.TestCase):
             ["hello", 3, None],
             [3.14159, None],
             [{}, {'x': 1, 'y': 2}],
+            ["hello", float('-inf'), float('inf')],
         ]]
 
     def test_dict_to_json(self):

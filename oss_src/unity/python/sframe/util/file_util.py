@@ -21,6 +21,7 @@ import logging
 import shutil
 import tempfile
 import subprocess
+import re
 from subprocess import PIPE
 from boto.exception import S3ResponseError
 from .type_checks import _is_string
@@ -108,6 +109,14 @@ def copy_from_local(localpath, remotepath, aws_credentials = {}, is_dir = False,
             shutil.copy(localpath, remotepath)
     else:
         raise ValueError('Unsupported protocol %s' % remotepath)
+
+def find(directory, filename):
+    if is_local_path(directory):
+        return local_find(directory, filename)
+    elif is_hdfs_path(directory):
+        return hdfs_find(directory, filename)
+    else:
+        raise ValueError('Unsupported protocol %s' % path)
 
 def is_local_path(path):
     '''Returns True if the path indicates a local path, otherwise False'''
@@ -388,6 +397,17 @@ def s3_touch(path, aws_credentials = {}):
     with tempfile.NamedTemporaryFile() as f:
         upload_to_s3(f.name, path, aws_credentials=aws_credentials, silent=True)
 
+def get_hadoop_cmd():
+    '''Attempt to find hadoop command from os.environ'''
+    if os.environ.has_key('HADOOP_PREFIX'):
+        return os.sep.join( [os.environ['HADOOP_PREFIX'], 'bin', 'hadoop']) 
+    elif os.environ.has_key('HADOOP_HOME'):
+        return os.sep.join( [os.environ['HADOOP_HOME'], 'bin', 'hadoop'])
+    else:
+        #If we can't find it anywhere, assume its in the PATH
+        return 'hadoop '
+
+
 def read_file_to_string_hdfs(hdfs_path, max_size=None, hadoop_conf_dir=None):
     ''' Read a file from hdfs and return the string content
     '''
@@ -397,10 +417,9 @@ def read_file_to_string_hdfs(hdfs_path, max_size=None, hadoop_conf_dir=None):
         return None
     if max_size and long(file_info[0]['size']) > max_size:
         raise RuntimeError("Cannot read file larger than max size %s." % str(max_size))
-
-    base_command = 'hadoop fs -cat '
+    base_command = '%s fs -cat ' % get_hadoop_cmd()
     if hadoop_conf_dir:
-        base_command = 'hadoop --config %s fs -cat ' % hadoop_conf_dir
+        base_command = '%s --config %s fs -cat ' % (get_hadoop_cmd(), hadoop_conf_dir)
 
     base_command += '\"%s\" ' % hdfs_path
     exit_code, stdo, stde = _hdfs_exec_command(base_command)
@@ -409,12 +428,12 @@ def read_file_to_string_hdfs(hdfs_path, max_size=None, hadoop_conf_dir=None):
     return None
 
 def remove_hdfs(hdfs_path, hadoop_conf_dir=None, recursive=False):
-    base_command = 'hadoop fs -rm -f '
+    base_command = '%s fs -rm -f ' % get_hadoop_cmd()
     '''
     Remove all file/files in the given path, recursively.
     '''
     if hadoop_conf_dir:
-        base_command = 'hadoop --config %s fs -rm -f ' % hadoop_conf_dir
+        base_command = '%s --config %s fs -rm -f ' % (get_hadoop_cmd(), hadoop_conf_dir )
     if recursive:
         base_command += '-r '
 
@@ -426,9 +445,9 @@ def remove_hdfs(hdfs_path, hadoop_conf_dir=None, recursive=False):
                            'Output from the command: \n%s\n%s' % (base_command, stdo, stde))
 
 def list_hdfs(hdfs_path, hadoop_conf_dir=None):
-    base_command = 'hadoop fs -ls '
+    base_command = '%s fs -ls ' % get_hadoop_cmd()
     if hadoop_conf_dir:
-        base_command = 'hadoop --config %s fs -ls ' % hadoop_conf_dir
+        base_command = '%s --config %s fs -ls ' % (get_hadoop_cmd(), hadoop_conf_dir)
 
     base_command += '\"%s\" ' % hdfs_path
     exit_code, stdo, stde = _hdfs_exec_command(base_command)
@@ -449,9 +468,9 @@ def list_hdfs(hdfs_path, hadoop_conf_dir=None):
     return None
 
 def copy_to_hdfs(src_hdfs_path, dst_hdfs_path, hadoop_conf_dir=None, force=False):
-    base_command = 'hadoop fs -cp '
+    base_command = '%s fs -cp ' % get_hadoop_cmd()
     if hadoop_conf_dir:
-        base_command = 'hadoop --config %s fs -cp ' % hadoop_conf_dir
+        base_command = '%s --config %s fs -cp ' % (get_hadoop_cmd(), hadoop_conf_dir)
     if force:
         base_command += ' -f'
 
@@ -461,9 +480,9 @@ def copy_to_hdfs(src_hdfs_path, dst_hdfs_path, hadoop_conf_dir=None, force=False
         raise RuntimeError("Failed to copy hdfs %s -> hdfs %s: %s" % (src_hdfs_path, dst_hdfs_path, stde))
 
 def upload_to_hdfs(local_path, hdfs_path, hadoop_conf_dir=None, force=False, silent = True):
-    base_command = 'hadoop fs -put '
+    base_command = '%s fs -put ' % get_hadoop_cmd()
     if hadoop_conf_dir:
-        base_command = 'hadoop --config %s fs -put ' % hadoop_conf_dir
+        base_command = '%s --config %s fs -put ' % (get_hadoop_cmd(), hadoop_conf_dir)
     if force:
         base_command += ' -f'
 
@@ -476,9 +495,9 @@ def upload_folder_to_hdfs(local_path, hdfs_path, hadoop_conf_dir=None):
     if not os.path.isdir(local_path):
         raise RuntimeError("'%s' has to be a directory" % local_path)
 
-    base_command = 'hadoop fs '
+    base_command = '%s fs ' % get_hadoop_cmd()
     if hadoop_conf_dir:
-        base_command = 'hadoop --config %s fs ' % hadoop_conf_dir
+        base_command = '%s --config %s fs ' % (get_hadoop_cmd(), hadoop_conf_dir )
 
     cp_command = '%s -copyFromLocal %s %s ' % (base_command, local_path, hdfs_path)
     exit_code, stdo, stde = _hdfs_exec_command(cp_command)
@@ -497,9 +516,9 @@ def download_from_hdfs(hdfs_path, local_path, hadoop_conf_dir=None, is_dir = Fal
         hdfs_path = '%s/*' % hdfs_path
 
     if hadoop_conf_dir:
-        base_command = 'hadoop --config %s fs -get \"%s\" \"%s\" ' % (hadoop_conf_dir, hdfs_path, local_path)
+        base_command = '%s --config %s fs -get \"%s\" \"%s\" ' % (get_hadoop_cmd(), hadoop_conf_dir, hdfs_path, local_path)
     else:
-        base_command = 'hadoop fs -get \"%s\" \"%s\" ' % (hdfs_path, local_path)
+        base_command = '%s fs -get \"%s\" \"%s\" ' % (get_hadoop_cmd(), hdfs_path, local_path)
     exit_code, stdo, stde = _hdfs_exec_command(base_command)
 
     if exit_code != 0:
@@ -512,7 +531,7 @@ def hdfs_touch(path, hadoop_conf_dir=None):
     """
     Create an empty file in HDFS
     """
-    base_command = 'hadoop'
+    base_command = get_hadoop_cmd()
     if hadoop_conf_dir:
         base_command += ' --config %s' % hadoop_conf_dir
 
@@ -529,7 +548,7 @@ def hdfs_mkdir(dirname, hadoop_conf_dir=None):
     if isinstance(dirname, list):
         dirname = " ".join(dirname)
 
-    base_command = 'hadoop'
+    base_command = get_hadoop_cmd()
     if hadoop_conf_dir:
         base_command += ' --config %s' % hadoop_conf_dir
 
@@ -544,6 +563,46 @@ def hdfs_mkdir(dirname, hadoop_conf_dir=None):
     exit_code, stdo, stde = _hdfs_exec_command(chang_permission_cmd)
     if exit_code != 0:
         raise RuntimeError("error changing permissions %s" % stde)
+
+
+def hdfs_find(dirname, pattern, hadoop_conf_dir=None):
+    if not is_hdfs_path(dirname):
+        raise ValueError("Input must be HDFS path.")
+
+    not_filename_re = re.compile("^Found [0-9]+ items.")
+    given_pattern_re = re.compile(pattern)
+
+    base_command = 'hadoop'
+    if hadoop_conf_dir:
+        base_command += ' --config %s' % hadoop_conf_dir
+
+    # Can't use hdfs find since it is too new a feature right now to be
+    # included in hadoop clients we are targeting.
+    ls_cmd = base_command + " fs -ls %s" % dirname
+
+    exit_code, stdo, stde = _hdfs_exec_command(ls_cmd)
+    if exit_code != 0:
+        raise RuntimeError("error executing find '%s', error: %s" % (dirname, stde))
+
+    files = []
+    for line in stdo.splitlines():
+        if not_filename_re.match(line):
+            continue
+        filepath = line.split()[-1]
+        filename = filepath.split('/')[-1]
+        if given_pattern_re.match(filename):
+            files.append(filename)
+
+    return files
+
+def local_find(dirname, pattern):
+    find_cmd = 'find %s -name "%s" -print' % (dirname, pattern)
+
+    exit_code, stdo, stde = _hdfs_exec_command(find_cmd)
+    if exit_code != 0:
+        raise RuntimeError("error executing find '%s', error: %s" % (dirname, stde))
+
+    return stdo.split()
 
 def _intra_s3_copy_model(s3_src_path, s3_dest_path, aws_credentials = {}):
     assert(is_s3_path(s3_src_path) and is_s3_path(s3_dest_path))
@@ -776,9 +835,9 @@ def hdfs_test_url(hdfs_url, test='e', hadoop_conf_dir=None):
     """
 
     if hadoop_conf_dir is None:
-        command = "hadoop fs -test -%s %s" % (test, hdfs_url)
+        command = "%s fs -test -%s %s" % (get_hadoop_cmd(), test, hdfs_url)
     else:
-        command = "hadoop --config %s fs -test -%s %s" % (hadoop_conf_dir, test, hdfs_url)
+        command = "%s --config %s fs -test -%s %s" % (get_hadoop_cmd(), hadoop_conf_dir, test, hdfs_url)
     exit_code, stdo, stde = _hdfs_exec_command(command)
     return exit_code == 0
 
@@ -833,3 +892,4 @@ def retry(tries=3, delay=1, backoff=1, retry_exception=None):
             return f(*args, **kargs)  # last retry
         return f_retry
     return deco_retry
+

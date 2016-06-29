@@ -21,6 +21,7 @@ import itertools as _itertools
 import uuid as _uuid
 import datetime as _datetime
 import sys as _sys
+import subprocess as _subprocess
 
 from .sframe_generation import generate_random_sframe
 from .sframe_generation import generate_random_regression_sframe
@@ -811,3 +812,145 @@ def pytype_to_printf(in_type):
         return 'f'
     else:
         return 's'
+
+def subprocess_exe(exe, args, setup=None, teardown=None,
+                   local_log_prefix=None,
+                   out_log_prefix=None,
+                   environment_variables=None):
+    """
+    Wrapper function to execute an external program.
+    This function is exception safe, and always catches
+    the error.
+
+    Parameters
+    ----------
+    exe : str
+        The command to run
+    args : list[str]
+        Arguments to passed to the command
+    setup : function
+        Setup function to run before executing the command
+    teardown : function
+        Teardown function to run after executing the command
+    local_log_prefix: str
+        The prefix of a local file path to the log file while the program is running:
+        <prefix>_commander.stdout
+        <prefix>_commander.stderr
+        <prefix>_worker0.stdout
+        <prefix>_worker0.stderr
+        If "out_log_prefix" is set, the files will be copied into out_log_prefix
+        when the process terminates.
+    out_log_prefix: str
+        The path prefix to the final saved log file.
+        If set, the logs will be save to the following locations:
+            <prefix>.stdout
+            <prefix>.stderr
+        and the return value will contain paths to the log files.
+        The path can be local or hdfs or s3.
+
+    Return
+    ------
+    out : dict
+        A dictionary containing the following keys:
+
+        success : bool
+            True if the command succeeded
+        return_code : int
+            The return code of the command
+        stderr : str
+            Path to the stderr log of the process
+        stdout : str
+            Path to the stdout log of the process
+        python_exception : Exception
+            Python exception
+    """
+    import logging
+    import os
+    ret = {'success': True,
+           'return_code': None,
+           'stdout': None,
+           'stderr': None,
+           'python_exception': None,
+           'proc_object' : None}
+    blocking = True
+
+    # Creates local running log file
+    try:
+        if local_log_prefix in [_subprocess.PIPE,
+                                _subprocess.STDOUT]:
+            local_log_stdout = local_log_prefix
+            local_log_stderr = local_log_prefix
+            blocking = False
+            if out_log_prefix is not None:
+                raise ValueError("Cannot pipe output and set an output log!")
+        elif local_log_prefix:
+            local_log_stdout = open(local_log_prefix + '.stdout', 'w')
+            local_log_stderr = open(local_log_prefix + '.stderr', 'w')
+        else:
+            local_log_stdout = _tempfile.NamedTemporaryFile(delete=False)
+            local_log_stderr = _tempfile.NamedTemporaryFile(delete=False)
+    except Exception as e:
+        ret['success'] = False
+        ret['python_exception'] = e
+
+   # Run setup
+    try:
+        if setup is not None:
+            setup()
+    except Exception as e:
+        ret['success'] = False
+        ret['python_exception'] = e
+
+   # Executes the command
+    if ret['success']:
+        try:
+            if environment_variables is not None:
+                environment_variables = os.environ.copy().update(environment_variables)
+            proc = _subprocess.Popen([exe] + args,
+                                    stdout=local_log_stdout,
+                                    stderr=local_log_stderr,
+                                    env=environment_variables)
+            if blocking:
+                proc.communicate()
+                ret['success'] = proc.returncode == 0
+                ret['return_code'] = proc.returncode
+            else:
+                ret['success'] = None
+                ret['stdout'] = proc.stdout
+                ret['stderr'] = proc.stderr
+                ret['proc_object'] = proc
+        except Exception as e:
+            ret['success'] = False
+            ret['python_exception'] = e
+        finally:
+            if blocking:
+                try:
+                    local_log_stdout.close()
+                    local_log_stderr.close()
+                    if out_log_prefix is not None:
+                        # persistent logfiles. When local log closed,
+                        # they will be loaded to the corresponding hdfs or s3 path
+                        file_log_stdout = out_log_prefix + '.stdout'
+                        file_log_stderr = out_log_prefix + '.stderr'
+                        # copy to target log path
+                        file_util.copy_from_local(local_log_stdout.name, file_log_stdout)
+                        file_util.copy_from_local(local_log_stderr.name, file_log_stderr)
+                        ret['stdout'] = file_log_stdout
+                        ret['stderr'] = file_log_stderr
+                    else:
+                        ret['stdout'] = open(local_log_stdout.name).read()
+                        ret['stderr'] = open(local_log_stderr.name).read()
+                except Exception as e:
+                    ret['_save_log_exception'] = e
+                    logging.warn(str(e))
+
+    # Teardown
+    if teardown is not None:
+        try:
+            teardown()
+        except Exception as e:
+            ret['_tear_down_exception'] = e
+            logging.warn(str(e))
+
+    return ret
+

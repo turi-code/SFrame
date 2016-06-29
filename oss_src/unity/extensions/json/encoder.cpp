@@ -41,7 +41,10 @@ static void _to_serializable(flexible_type& data, schema_t& schema, const flex_v
   schema.insert(std::make_pair("type", JSON::types::VECTOR));
   flex_list ret;
   for (const auto& value : input) {
-    ret.push_back(value);
+    flexible_type serialized_value;
+    schema_t serialized_schema;
+    _any_to_serializable(serialized_value, serialized_schema, value);
+    ret.push_back(serialized_value);
   }
   data = ret;
 }

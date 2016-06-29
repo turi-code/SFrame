@@ -198,6 +198,17 @@ class ImageClassTest(unittest.TestCase):
         for i in range(len(sa_width)):
             self.assertEqual(sa[i].width, sa_width[i])
 
+        # Lambda returning height
+        sa_height = sa.apply(lambda x: x.height)
+        for i in range(len(sa_height)):
+            self.assertEqual(sa[i].height, sa_height[i])
+
+        # Lambda returning channels
+        sa_channels = sa.apply(lambda x: x.channels)
+        for i in range(len(sa_channels)):
+            self.assertEqual(sa[i].channels, sa_channels[i])
+
+
         # Lambda returning resized self
         sa_resized = sa.apply(lambda x: image_analysis.resize(x, int(x.width / 2), int(x.height / 2)))
         for i in range(len(sa_resized)):
@@ -218,3 +229,15 @@ class ImageClassTest(unittest.TestCase):
 
         self.assertEqual(average, img3)
         self.assertEqual(average2, img2)
+
+    def test_pixel_data(self):
+        fifties = bytearray([50] * 100)
+        img = image.Image(_image_data=fifties, _channels=1, _height=1, _width=100, _image_data_size=100, _format_enum=2)
+        pixel_data = img.pixel_data.flatten()
+        self.assertEqual(pixel_data.shape, (100,))
+
+        self.assertEqual(len(pixel_data), len(fifties))
+        for p in range(len(pixel_data)):
+            self.assertEqual(pixel_data[p], 50)
+
+

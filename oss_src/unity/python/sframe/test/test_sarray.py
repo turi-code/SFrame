@@ -27,6 +27,7 @@ import warnings
 import functools
 import tempfile
 import sys
+import six
 from nose.tools import nottest
 
 #######################################################
@@ -58,7 +59,11 @@ class SArrayTest(unittest.TestCase):
         self.assertEqual(len(_sarray), len(_data))
         l = list(_sarray)
         for i in range(len(l)):
-            self.assertAlmostEqual(l[i], _data[i])
+            if type(l[i]) in (list, array.array): 
+                for j in range(len(l[i])):
+                    self.assertAlmostEqual(l[i][j], _data[i][j])
+            else:
+                self.assertAlmostEqual(l[i], _data[i])
 
     def __test_creation(self, data, dtype, expected):
         """
@@ -884,32 +889,32 @@ class SArrayTest(unittest.TestCase):
         self.__test_equal(t != t2, list(s != s2), int)
 
         s = SArray(self.vec_data, array.array)
-        self.__test_equal(s + s, [array.array('d', [float(j) + float(j) for j in i]) for i in self.vec_data], array.array)
-        self.__test_equal(s - s, [array.array('d', [float(j) - float(j) for j in i]) for i in self.vec_data], array.array)
-        self.__test_equal(s * s, [array.array('d', [float(j) * float(j) for j in i]) for i in self.vec_data], array.array)
-        self.__test_equal(s / s, [array.array('d', [float(j) / float(j) for j in i]) for i in self.vec_data], array.array)
-        self.__test_equal(s ** s, [array.array('d', [float(j) ** float(j) for j in i]) for i in self.vec_data], array.array)
-        self.__test_equal(s // s, [array.array('d', [float(j) // float(j) for j in i]) for i in self.vec_data], array.array)
+        self.__test_almost_equal(s + s, [array.array('d', [float(j) + float(j) for j in i]) for i in self.vec_data], array.array)
+        self.__test_almost_equal(s - s, [array.array('d', [float(j) - float(j) for j in i]) for i in self.vec_data], array.array)
+        self.__test_almost_equal(s * s, [array.array('d', [float(j) * float(j) for j in i]) for i in self.vec_data], array.array)
+        self.__test_almost_equal(s / s, [array.array('d', [float(j) / float(j) for j in i]) for i in self.vec_data], array.array)
+        self.__test_almost_equal(s ** s, [array.array('d', [float(j) ** float(j) for j in i]) for i in self.vec_data], array.array)
+        self.__test_almost_equal(s // s, [array.array('d', [float(j) // float(j) for j in i]) for i in self.vec_data], array.array)
         t = SArray(self.float_data, float)
 
-        self.__test_equal(s + t, [array.array('d', [float(j) + i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
-        self.__test_equal(s - t, [array.array('d', [float(j) - i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
-        self.__test_equal(s * t, [array.array('d', [float(j) * i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
-        self.__test_equal(s / t, [array.array('d', [float(j) / i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
-        self.__test_equal(s ** t, [array.array('d', [float(j) ** i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
-        self.__test_equal(s // t, [array.array('d', [float(j) // i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
-        self.__test_equal(+s, [array.array('d', [float(j) for j in i]) for i in self.vec_data], array.array)
-        self.__test_equal(-s, [array.array('d', [-float(j) for j in i]) for i in self.vec_data], array.array)
+        self.__test_almost_equal(s + t, [array.array('d', [float(j) + i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
+        self.__test_almost_equal(s - t, [array.array('d', [float(j) - i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
+        self.__test_almost_equal(s * t, [array.array('d', [float(j) * i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
+        self.__test_almost_equal(s / t, [array.array('d', [float(j) / i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
+        self.__test_almost_equal(s ** t, [array.array('d', [float(j) ** i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
+        self.__test_almost_equal(s // t, [array.array('d', [float(j) // i[1] for j in i[0]]) for i in zip(self.vec_data, self.float_data)], array.array)
+        self.__test_almost_equal(+s, [array.array('d', [float(j) for j in i]) for i in self.vec_data], array.array)
+        self.__test_almost_equal(-s, [array.array('d', [-float(j) for j in i]) for i in self.vec_data], array.array)
 
         neg_float_data = [-v for v in self.float_data]
         t = SArray(neg_float_data, float)
-        self.__test_equal(s + t, [array.array('d', [float(j) + i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
-        self.__test_equal(s - t, [array.array('d', [float(j) - i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
-        self.__test_equal(s * t, [array.array('d', [float(j) * i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
-        self.__test_equal(s / t, [array.array('d', [float(j) / i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
-        self.__test_equal(s ** t, [array.array('d', [float(j) ** i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
-        self.__test_equal(s // t, [array.array('d', [float(j) // i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
-        self.__test_equal(t // s, [array.array('d', [i[1] // float(j) for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
+        self.__test_almost_equal(s + t, [array.array('d', [float(j) + i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
+        self.__test_almost_equal(s - t, [array.array('d', [float(j) - i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
+        self.__test_almost_equal(s * t, [array.array('d', [float(j) * i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
+        self.__test_almost_equal(s / t, [array.array('d', [float(j) / i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
+        self.__test_almost_equal(s ** t, [array.array('d', [float(j) ** i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
+        self.__test_almost_equal(s // t, [array.array('d', [float(j) // i[1] for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
+        self.__test_almost_equal(t // s, [array.array('d', [i[1] // float(j) for j in i[0]]) for i in zip(self.vec_data, neg_float_data)], array.array)
         
         s = SArray([1,2,3,4,None])
         self.assertTrue((s==s).all())
@@ -938,7 +943,10 @@ class SArrayTest(unittest.TestCase):
                 else:
                     v2 = left_val // right_val
                 
-            self.assertEqual(type(v1), type(v2))
+            if type(v1) in six.integer_types:
+                self.assertTrue(type(v2) in six.integer_types)
+            else:
+                self.assertEqual(type(v1), type(v2))
             self.assertEqual(v1, v2)
 
         try_eq_sa_val(1, 2)
@@ -980,7 +988,11 @@ class SArrayTest(unittest.TestCase):
                 else:
                     v2 = left_val // right_val
                 
-            self.assertEqual(type(v1), type(v2))
+            if type(v1) in six.integer_types:
+                self.assertTrue(type(v2) in six.integer_types)
+            else:
+                self.assertEqual(type(v1), type(v2))
+
             self.assertEqual(v1, v2)
 
         try_eq_sa_val(1, 2)
