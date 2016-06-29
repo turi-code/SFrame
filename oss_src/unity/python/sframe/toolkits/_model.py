@@ -22,7 +22,6 @@ from pickle import PicklingError
 import shutil as _shutil
 import os as _os
 import tempfile
-import json
 
 
 def load_model(location):
@@ -106,9 +105,9 @@ def _get_default_options_wrapper(unity_server_model_name,
             The output can be of the following types.
 
             - `sframe`: A table description each option used in the model.
-            - `json`: A list of option dictionaries.
+            - `json`: A list of option dictionaries suitable for JSON serialization.
 
-            | Each dictionary/row in the JSON/SFrame object describes the
+            | Each dictionary/row in the dictionary/SFrame object describes the
               following parameters of the given model.
 
             +------------------+-------------------------------------------------------+
@@ -131,7 +130,7 @@ def _get_default_options_wrapper(unity_server_model_name,
 
         Returns
         -------
-        out : JSON/SFrame
+        out : dict/SFrame
 
         See Also
         --------
@@ -146,7 +145,7 @@ def _get_default_options_wrapper(unity_server_model_name,
           # SFrame formatted output.
           >>> out_sframe = graphlab.{module_name}.get_default_options()
 
-          # JSON formatted output.
+          # dict formatted output suitable for JSON serialization.
           >>> out_sframe = graphlab.{module_name}.get_default_options('json')
         """
         _mt._get_metric_tracker().track('toolkit.%s.get_default_options' % module_name)
@@ -157,9 +156,6 @@ def _get_default_options_wrapper(unity_server_model_name,
         else:
             response = _extensions._toolkits_get_default_options(
                                                           unity_server_model_name)
-
-        for k in response.keys():
-            response[k] = json.loads(response[k])
 
         if output_type == 'json':
           return response

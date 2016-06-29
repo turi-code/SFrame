@@ -78,7 +78,10 @@ static variant_type _list_from_serializable(const flexible_type& data, const sch
     _check_type(schema, JSON::types::VECTOR);
     flex_vec ret;
     for (const auto& value : data_list) {
-      ret.push_back(value);
+      schema_t value_schema;
+      value_schema.insert(std::make_pair("type", JSON::types::FLOAT));
+      variant_type deserialized_value = _any_from_serializable(value, value_schema);
+      ret.push_back(variant_get_value<flex_float>(deserialized_value));
     }
     return ret;
   } else {

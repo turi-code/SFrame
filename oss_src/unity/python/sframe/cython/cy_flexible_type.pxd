@@ -88,6 +88,7 @@ cdef extern from "<flexible_type/flexible_type.hpp>" namespace "graphlab":
         void reset()
 
     cdef flexible_type FLEX_UNDEFINED
+
     cdef void swap "std::swap"(flexible_type&, flexible_type&)
 
     cdef int TIMEZONE_RESOLUTION_IN_SECONDS "graphlab::flex_date_time::TIMEZONE_RESOLUTION_IN_SECONDS"
@@ -102,6 +103,7 @@ ctypedef map[string, flexible_type] gl_options_map
 # If we just want to work with the enum types, use these.
 cdef flex_type_enum flex_type_enum_from_pytype(type t) except *
 cdef type pytype_from_flex_type_enum(flex_type_enum e)
+cpdef type pytype_from_type_name(str)
 cpdef type pytype_from_dtype(object dt)
 cdef flex_type_enum flex_type_from_dtype(object dt)
 cpdef type pytype_from_array_typecode(str a)

@@ -6,9 +6,9 @@ This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 '''
 try:
-    import io as _StringIO
+    from io import BytesIO as _StringIO
 except ImportError:
-    import StringIO as _StringIO
+    from StringIO import StringIO as _StringIO
 
 from ..deps import numpy as _np, HAS_NUMPY as _HAS_NUMPY
 import array as _array
@@ -175,8 +175,6 @@ class Image(object):
         """
 
         try:
-            global _PIL_image
-            from PIL import Image as _PIL_image
             pil_img = self._to_pil_image()
             if _HAS_NUMPY:
                 return _np.asarray(pil_img)
@@ -209,17 +207,18 @@ class Image(object):
         return ret
 
     def _to_pil_image(self):
+        from PIL import Image as _PIL_image
         if self._format_enum == _format[_RAW]:
             if self.channels == 1:
-                img = _PIL_image.frombytes('L', (self._width, self._height), str(self._image_data))
+                img = _PIL_image.frombytes('L', (self._width, self._height), bytes(self._image_data))
             elif self.channels == 3:
-                img = _PIL_image.frombytes('RGB', (self._width, self._height), str(self._image_data))
+                img = _PIL_image.frombytes('RGB', (self._width, self._height), bytes(self._image_data))
             elif self.channels == 4:
-                img = _PIL_image.frombytes('RGBA', (self._width, self._height), str(self._image_data))
+                img = _PIL_image.frombytes('RGBA', (self._width, self._height), bytes(self._image_data))
             else:
                 raise ValueError('Unsupported channel size: ' + str(self.channels))
         else:
-            img = _PIL_image.open(_StringIO.StringIO(self._image_data))
+            img = _PIL_image.open(_StringIO(self._image_data))
         return img
 
     def show(self):
@@ -248,8 +247,6 @@ from ..visualization import show, show_dispatch as _show_dispatch
 @_show_dispatch(Image)
 def show(obj):
     try:
-        global _PIL_image
-        from PIL import Image as _PIL_image
         img = obj._to_pil_image()
         img.show()
     except ImportError:

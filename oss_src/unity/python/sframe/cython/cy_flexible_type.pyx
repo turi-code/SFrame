@@ -428,6 +428,34 @@ cdef type pytype_from_flex_type_enum(flex_type_enum e):
     return _type_lookup_by_type_enum[<int> e]
 
 ################################################################################
+# Name of enum type only
+
+cdef dict _type_lookup_by_type_enum_name = {
+    "integer"    : int,
+    "datetime"   : datetime_type,
+    "dictionary" : dict,
+    "float"      : float,
+    "string"     : str,
+    "array"      : array_type,
+    "list"       : list,
+    "image"      : _image_type,
+    "undefined"  : none_type}
+    
+# Also add in the names of each of the types in order to recognize
+# them as well.
+for _t in list(_type_lookup_by_type_enum_name.values()):
+    _type_lookup_by_type_enum_name[_t.__name__.lower()] = _t
+    
+cpdef type pytype_from_type_name(str s):
+    global _type_lookup_by_type_enum_name
+    try:
+        return _type_lookup_by_type_enum_name[s.lower()]
+    except KeyError:
+        raise ValueError("'%s' not a recogizable type name; valid names are %s."
+                         % (s, ','.join(sorted(set(_type_lookup_by_type_enum_name.keys())))))
+
+
+################################################################################
 # Looking up the translation code to enum type
 
 cdef vector[flex_type_enum] _enum_tr_codes = vector[flex_type_enum](FT_FAILURE + 1)

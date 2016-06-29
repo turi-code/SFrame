@@ -30,6 +30,35 @@ _proxy_map = {UnitySFrameProxy: (lambda x: _SFrame(_proxy=x)),
               UnitySArrayProxy: (lambda x: _SArray(_proxy=x)),
               UnityGraphProxy: (lambda x: _SGraph(_proxy=x))}
 
+def _toolkit_serialize_summary_struct(model, sections, section_titles):
+    """
+      Serialize model summary into a dict with ordered lists of sections and section titles
+
+    Parameters
+    ----------
+    model : Model object
+    sections : Ordered list of lists (sections) of tuples (field,value)
+      [
+        [(field1, value1), (field2, value2)],
+        [(field3, value3), (field4, value4)],
+
+      ]
+    section_titles : Ordered list of section titles
+
+
+    Returns
+    -------
+    output_dict : A dict with two entries:
+                    'sections' : ordered list with tuples of the form ('label',value)
+                    'section_titles' : ordered list of section labels
+    """
+    output_dict = dict()
+    output_dict['sections'] = [ [ ( field[0], __extract_model_summary_value(model, field[1]) ) \
+                                                                            for field in section ]
+                                                                            for section in sections ]
+    output_dict['section_titles'] = section_titles
+    return output_dict
+
 
 def _add_docstring(format_dict):
   """
@@ -186,36 +215,33 @@ def __extract_model_summary_value(model, value):
             pass
     return field_value
 
-def _toolkit_serialize_summary_struct(model, sections, section_titles):
+def _make_repr_table_from_sframe(X):
     """
-      Serialize model summary into a dict with ordered lists of sections and section titles
-
-    Parameters
-    ----------
-    model : Model object
-    sections : Ordered list of lists (sections) of tuples (field,value)
-      [
-        [(field1, value1), (field2, value2)],
-        [(field3, value3), (field4, value4)],
-
-      ]
-    section_titles : Ordered list of section titles
-
-
-    Returns
-    -------
-    output_dict : A dict with two entries:
-                    'sections' : ordered list with tuples of the form ('label',value)
-                    'section_titles' : ordered list of section labels
+    Serializes an SFrame to a list of strings, that, when printed, creates a well-formatted table.
     """
-    output_dict = dict()
-    output_dict['sections'] = [ [ ( field[0], __extract_model_summary_value(model, field[1]) ) \
-                                                                            for field in section ]
-                                                                            for section in sections ]
-    output_dict['section_titles'] = section_titles
-    return output_dict
 
-def _toolkit_repr_print(model, fields, section_titles, width=20):
+    assert isinstance(X, _SFrame)
+
+    column_names = X.column_names()
+
+    out_data = [ [None]*len(column_names) for i in range(X.num_rows())]
+
+    column_sizes = [len(s) for s in column_names]
+
+    for i, c in enumerate(column_names):
+        for j, e in enumerate(X[c]):
+            out_data[j][i] = str(e)
+            column_sizes[i] = max(column_sizes[i], len(e))
+
+    # now, go through and pad everything.
+    out_data = ([ [cn.ljust(k, ' ') for cn, k in zip(column_names, column_sizes)],
+                  ["-"*k for k in column_sizes] ]
+                + [ [e.ljust(k, ' ') for e, k in zip(row, column_sizes)] for row in out_data] )
+
+    return ['  '.join(row) for row in out_data]
+
+
+def _toolkit_repr_print(model, fields, section_titles, width = None):
     """
     Display a toolkit repr according to some simple rules.
 
@@ -257,25 +283,49 @@ def _toolkit_repr_print(model, fields, section_titles, width=20):
 
         _toolkit_repr_print(model, fields, section_titles)
     """
-    key_str = "{:<{}}: {}"
 
-    ret = []
-    ret.append(key_str.format("Class", width, model.__class__.__name__) + '\n')
     assert len(section_titles) == len(fields), \
         "The number of section titles ({0}) ".format(len(section_titles)) +\
         "doesn't match the number of groups of fields, {0}.".format(len(fields))
 
-    summary_dict = _toolkit_serialize_summary_struct(model, fields, section_titles)
+    out_fields = [ ("Class", model.__class__.__name__), ""]
 
-    for index, section_title in enumerate(summary_dict['section_titles']):
-        ret.append(section_title)
-        bar = '-' * len(section_title)
-        ret.append(bar)
-        section = summary_dict['sections'][index]
-        for (field_title, field_value) in section:
-            ret.append(key_str.format(str(field_title), width, field_value))
-        ret.append("")
-    return '\n'.join(ret)
+    # Record the max_width so that if width is not provided, we calculate it.
+    max_width = len("Class")
+
+    for index, (section_title, field_list) in enumerate(zip(section_titles, fields)):
+
+        # Add in the section header.
+        out_fields += [section_title, "-"*len(section_title)]
+
+        # Add in all the key-value pairs
+        for f in field_list:
+            if isinstance(f, tuple):
+                f = (str(f[0]), f[1])
+                out_fields.append( (f[0], __extract_model_summary_value(model, f[1])) )
+                max_width = max(max_width, len(f[0]))
+            elif isinstance(f, _SFrame):
+                out_fields.append("")
+                out_fields += _make_repr_table_from_sframe(f)
+                out_fields.append("")
+            else:
+                raise TypeError("Type of field %s not recognized." % str(f))
+
+        # Add in the empty footer.
+        out_fields.append("")
+
+    if width is None:
+        width = max_width
+
+    # Now, go through and format the key_value pairs nicely.
+    def format_key_pair(key, value):
+        if type(key) is list:
+            key = ','.join(str(k) for k in key)
+        return key.ljust(width, ' ') + ' : ' + str(value)
+
+    out_fields = [s if type(s) is str else format_key_pair(*s) for s in out_fields]
+
+    return '\n'.join(out_fields)
 
 def _map_unity_proxy_to_object(value):
     """
