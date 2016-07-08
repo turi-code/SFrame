@@ -5,8 +5,8 @@ See the attached LICENSE.txt file to see the license under which GraphLab Predic
 References
 ==========
 A lot more documentation regarding the GraphLab Create is available here:
-https://dato.com and on our Forum at http://forum.dato.com
+https://turi.com and on our Forum at http://forum.turi.com
 
 Contributors
 ============
-Dato Team, https://dato.com
+Turi Team, https://turi.com

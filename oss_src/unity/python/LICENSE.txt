@@ -1,8 +1,8 @@
-DATO, INC.
+Turi
 
 END USER LICENSE AGREEMENT
 
-This Dato, Inc. End User License Agreement (this “Agreement”) governs your
+This Turi End User License Agreement (this “Agreement”) governs your
 use of our binaries, Python source files, and directories of Python modules,
 application programming interfaces (APIs), executables, cloud web services,
 online, command-line, and print documentation, development and data importation
@@ -10,11 +10,11 @@ tools, and other materials that we make available to you under this Agreement
 (collectively, the “GraphLab Create™ Product).
 
 1. Acceptance of Agreement. This Agreement is a binding contract between you
-   and Dato, Inc., a Delaware corporation (“Dato,” “we,” or “us”)which
+   and Turi, a Delaware corporation (Turi,” “we,” or “us”)which
    makes available for your use the GraphLab Create™ Product and which allows
-   you to interact with Dato’s web-services made available to you by
-   Dato (the “Service”)subject to the applicable terms of service located
-   at dato.com/legal/terms_of_use.html (the “Terms of Service”)For purposes of
+   you to interact with Turi’s web-services made available to you by
+   Turi (the “Service”)subject to the applicable terms of service located
+   at turi.com/legal/terms_of_use.html (the “Terms of Service”)For purposes of
    this Agreement, “you” means you individually and, if applicable, the company
    you represent.  BY CHECKING THE “I ACCEPT” CHECKBOX AND INDICATING YOUR
    ACCEPTANCE OF THIS AGREEMENT, YOU AGREE TO ALL OF THE TERMS AND CONDITIONS
@@ -27,8 +27,8 @@ tools, and other materials that we make available to you under this Agreement
 2. Modifications to Agreement. We may modify the terms and conditions of this
    Agreement or the Terms of Service at any time upon written (electronic mail
    sufficient) notice to you, and the Terms of Service may be modified at any
-   time upon Dato’s  posting of such amended Terms of Service on the
-   Dato Web Site from time to time.  We will provide this notice via email
+   time upon Turi’s  posting of such amended Terms of Service on the
+   Turi Web Site from time to time.  We will provide this notice via email
    to the address you give us when you register as a GraphLab Create™ Product
    user (which is required in order to use the GraphLab Create™ Product and the
    Service).  Your continued use of the GraphLab Create™ Product or the Service
@@ -44,7 +44,7 @@ tools, and other materials that we make available to you under this Agreement
   accordance with: 
     (1) the terms and conditions of this Agreement; and 
     (2) any published specifications or guidelines that we make available for
-    the GraphLab Create™ Product. Dato hereby reserves all rights not
+    the GraphLab Create™ Product. Turi hereby reserves all rights not
     expressly granted in this Agreement.
 
 3.2 Permitted Use. Subject to the limitations set forth in this Agreement and
@@ -54,7 +54,7 @@ tools, and other materials that we make available to you under this Agreement
   available the GraphLab Create™ Product to any third party.
 
 3.3 Scope of Agreement. For avoidance of doubt, this Agreement does not grant
-  you any right to use any current or future paid version of a Dato product
+  you any right to use any current or future paid version of a Turi product
   offering that may include the GraphLab Create™ Product or any other that we
   may release from time to time. 
 
@@ -68,19 +68,19 @@ tools, and other materials that we make available to you under this Agreement
     communications;
     (c) use the GraphLab Create™ Product other than in compliance with all
     applicable federal, state, and local laws; 
-    (d) interfere with the Dato Web Site properties or disrupt any other
-    user’s access to Dato’s cloud services account, Dato Web Site or
+    (d) interfere with the Turi Web Site properties or disrupt any other
+    user’s access to Turi’s cloud services account, Turi Web Site or
     GraphLab Create™ Product, including by submitting a high volume of
-    automated calls or queries to the Dato Web Site or the Service; 
+    automated calls or queries to the Turi Web Site or the Service; 
     (e) reverse engineer, attempt to gain unauthorized access to the Service or
     the GraphLab Create™ Product, or attempt to discover the underlying source
     code or structure of the GraphLab Create™ Product; 
-    (f) use the GraphLab Create™ Product to submit to the Dato Web Site any
+    (f) use the GraphLab Create™ Product to submit to the Turi Web Site any
     content or data that is false, misleading, defamatory, threatening,
     offensive, or infringing of intellectual property rights, or that contains
     political campaigning, commercial solicitation, mass mailings, or any form
     of “spam”; 
-    (g) submit to the Dato Web Site any routine, device or other
+    (g) submit to the Turi Web Site any routine, device or other
     undisclosed feature, including a so-called time bomb, virus, software lock,
     drop dead device, malicious  logic, worm, Trojan horse or trap or back door
     or software routine, that is designed to delete, disable, deactivate,
@@ -88,7 +88,7 @@ tools, and other materials that we make available to you under this Agreement
     system or service, or which is intended to provide unauthorized access or
     to produce unauthorized modifications; or 
     (h) use any robot, spider, data gathering, scraping or extraction tools, or
-    similar mechanisms with respect to the Dato Web Site or GraphLab
+    similar mechanisms with respect to the Turi Web Site or GraphLab
     Create™ Product.
 
 4. Term and Termination.
@@ -137,7 +137,7 @@ tools, and other materials that we make available to you under this Agreement
   Application.  You acknowledge that we may modify the GraphLab Create™ Product
   from time to time, and that we are not obligated to notify you of any such
   modification. You are solely responsible to ensure the compatibility of Your
-  Application with the Service, the Dato Web Site, and GraphLab Create™
+  Application with the Service, the Turi Web Site, and GraphLab Create™
   Product.  YOU FURTHER ACKNOWLEDGE THAT WE MAY TERMINATE THIS AGREEMENT, AND
   DISCONTINUE YOUR ACCESS TO THE GRAPHLAB CREATE™ PRODUCT, AT ANY TIME PURSUANT
   TO SECTION 4.2, AND THAT YOUR APPLICATION MAY CEASE TO INTERACT WITH THE
@@ -148,16 +148,16 @@ tools, and other materials that we make available to you under this Agreement
 6. Trademarks.  
 
 6.1 Ownership. You acknowledge that the GraphLab Create™ Product may include
-  our trademarks or logos (“Dato Trademarks”), and that your use of the
-  GraphLab Create™ Product may cause Dato Trademarks to appear within Your
-  Application.  You agree not to remove or obscure any Dato Trademarks in
+  our trademarks or logos (“Turi Trademarks”), and that your use of the
+  GraphLab Create™ Product may cause Turi Trademarks to appear within Your
+  Application.  You agree not to remove or obscure any Turi Trademarks in
   connection with using GraphLab Create™ Product.
 
-6.2 License. We grant you a limited, revocable license to display Dato
+6.2 License. We grant you a limited, revocable license to display Turi
   Trademarks as they appear in portions of the GraphLab Create™ Product that
   you display in Your Application using the GraphLab Create™ Product, subject
   to the specific limitations and requirements of this Agreement, and only
-  during the term of this Agreement.  Dato hereby reserves all rights not
+  during the term of this Agreement.  Turi hereby reserves all rights not
   expressly granted herein.
 
 7. Intellectual Property. 
@@ -174,7 +174,7 @@ tools, and other materials that we make available to you under this Agreement
   components of the GraphLab Create™ Product are incorporated into it).  
 
 7.3 Feedback. If you provide or communicate any suggestions for improvements
-  to the Dato Web Site, the Service,  or the GraphLab Create™ Product
+  to the Turi Web Site, the Service,  or the GraphLab Create™ Product
   (collectively, “Feedback”), we will own all right, title, and interest in and
   to the Feedback, and we will be entitled to use the Feedback without
   restriction or any obligation of compensation to you. You hereby irrevocably
@@ -199,9 +199,9 @@ tools, and other materials that we make available to you under this Agreement
     Information without breach of any obligation owed to us.
 
 9. Product Instrumentation and Metrics. The GraphLab Create™ Product will
-periodically send usage data and metrics back to Dato for the purposes of
+periodically send usage data and metrics back to Turi for the purposes of
 improving the GraphLab Create™ Product, bug fixing, and crash reporting.
-Dato retains all right, title, and interest to this usage data and metrics
+Turi retains all right, title, and interest to this usage data and metrics
 (excluding any personally identifying information except to the extent
 aggregated and anonymized).
 
@@ -228,7 +228,7 @@ claim that, if true, would establish your breach of this Agreement.
 
 12. Notices. All notices permitted or required under this Agreement may be
 given in writing via email. Notices from you to us will be sent to
-contact@dato.com; and notices from us to you will be sent to the contact
+contact@turi.com; and notices from us to you will be sent to the contact
 name and address or email address that you provide when you register to use the
 GraphLab Create™ Product and accept this Agreement.  
 
@@ -253,7 +253,7 @@ the Service. This Agreement may be modified only in accordance with Section 2
 above. You agree to abide by and conform to 
     (a) all applicable laws and regulations with respect to the use of the
     GraphLab Create™ Product and the Service; and 
-    (b) the Terms of Service (available at dato.com/legal/terms_of_use.html);,
+    (b) the Terms of Service (available at turi.com/legal/terms_of_use.html);,
     in each case as they relate to your use of the GraphLab Create™ Product and
     the Service.
 

@@ -51,8 +51,9 @@ def get_sys_info():
     sys_info['python_build'] = _tup_to_flat_str(platform.python_build())
     sys_info['python_executable'] = sys.executable
 
-    # Dato specific stuff
+    # Launcher specific stuff
     sys_info['dato_launcher'] = 'DATO_LAUNCHER' in os.environ
+    sys_info['graphlab_create_launcher'] = 'GRAPHLAB_CREATE_LAUNCHER' in os.environ
 
     # Get architecture info
     sys_info['architecture'] = _tup_to_flat_str(platform.architecture())

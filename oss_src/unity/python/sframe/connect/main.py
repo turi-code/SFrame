@@ -3,7 +3,7 @@ This module contains the main logic for start, query, stop graphlab server clien
 """
 
 '''
-Copyright (C) 2015 Dato, Inc.
+Copyright (C) 2016 Turi
 All rights reserved.
 
 This software may be modified and distributed under the terms
@@ -25,7 +25,7 @@ __LOGGER__ = logging.getLogger(__name__)
 __UNITY_GLOBAL_PROXY__ = None
 
 ENGINE_START_ERROR_MESSAGE = 'Cannot connect to SFrame engine. ' + \
-    'If you believe this to be a bug, check https://github.com/dato-code/SFrame/issues for known issues.'
+    'If you believe this to be a bug, check https://github.com/turi-code/SFrame/issues for known issues.'
 
 
 # Decorator which catch the exception and output to log error.

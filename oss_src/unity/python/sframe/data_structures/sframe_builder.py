@@ -3,11 +3,11 @@ An interface for creating an SFrame over time.
 """
 
 '''
-Copyright (C) 2015 Dato, Inc.
+Copyright (C) 2016 Turi
 All rights reserved.
 
 This software may be modified and distributed under the terms
-of the BSD license. See the DATO-PYTHON-LICENSE file for details.
+of the BSD license. See the TURI-PYTHON-LICENSE file for details.
 '''
 
 from ..connect import main as glconnect

@@ -4,11 +4,11 @@ See the attached LICENSE.txt file to see the license under which SFrame is distr
 
 References
 ==========
-The code for this package is located here: https://github.com/dato-code/SFrame
+The code for this package is located here: https://github.com/turi-code/SFrame
 
 A lot more documentation regarding the SFrame is available here:
-https://dato.com and on our Forum at http://forum.dato.com
+https://turi.com and on our Forum at http://forum.turi.com
 
 Contributors
 ============
-Dato Team, https://dato.com
+Turi Team, https://turi.com

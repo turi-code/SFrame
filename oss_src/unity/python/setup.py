@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 '''
-Copyright (C) 2015 Dato, Inc.
+Copyright (C) 2016 Turi
 All rights reserved.
 
 This software may be modified and distributed under the terms
-of the BSD license. See the DATO-PYTHON-LICENSE file for details.
+of the BSD license. See the TURI-PYTHON-LICENSE file for details.
 '''
 
 import os
@@ -133,8 +133,8 @@ if __name__ == '__main__':
     setup(
         name="SFrame",
         version=version_number,
-        author='Dato, Inc.',
-        author_email='contact@dato.com',
+        author='Turi',
+        author_email='contact@turi.com',
         cmdclass=dict(install=InstallEngine),
         distclass=BinaryDistribution,
         package_data={
@@ -145,7 +145,7 @@ if __name__ == '__main__':
                      ]},
         packages=find_packages(
             exclude=["*.tests", "*.tests.*", "tests.*", "tests", "*.test", "*.test.*", "test.*", "test"]),
-        url='https://dato.com',
+        url='https://turi.com',
         license='BSD',
         description='SFrame is an scalable, out-of-core dataframe, which allows you to work with datasets that are larger than the amount of RAM on your system.',
         # long_description=open('README.txt').read(),

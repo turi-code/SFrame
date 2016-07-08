@@ -25,8 +25,8 @@ Create. The SDK provides:
 
 It also provides a way for certain SFrame / SGraph Python operators which take
 functions (like
-<a href="https://dato.com/products/create/docs/generated/graphlab.SArray.apply.html#graphlab.SArray.apply">SArray.apply</a>,
-or <a href="https://dato.com/products/create/docs/generated/graphlab.SGraph.triple_apply.html#graphlab.SGraph.triple_apply">SGraph.triple_apply</a>)
+<a href="https://turi.com/products/create/docs/generated/graphlab.SArray.apply.html#graphlab.SArray.apply">SArray.apply</a>,
+or <a href="https://turi.com/products/create/docs/generated/graphlab.SGraph.triple_apply.html#graphlab.SGraph.triple_apply">SGraph.triple_apply</a>)
 to use native functions instead of Python functions.
 
 \subsection mainpage_minimum_requirements Minimum Requirements
@@ -201,7 +201,7 @@ boost.
 \section mainpage_license License
 This SDK is provided under the 3-clause BSD license.
 
-Copyright (c) 2016 Dato, Inc.
+Copyright (c) 2016 Turi
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:

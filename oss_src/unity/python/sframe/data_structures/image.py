@@ -1,5 +1,5 @@
 '''
-Copyright (C) 2015 Dato, Inc.
+Copyright (C) 2016 Turi
 All rights reserved.
 
 This software may be modified and distributed under the terms
@@ -53,7 +53,7 @@ class Image(object):
     Examples
     --------
 
-    >>> img = graphlab.Image('http://s3.amazonaws.com/gl-testdata/images/sample.jpg')
+    >>> img = graphlab.Image('https://static.turi.com/datasets/images/sample.jpg')
     >>> graphlab.SArray([img]).show()
     """
 
@@ -93,7 +93,7 @@ class Image(object):
         Examples
         --------
 
-        >>> img = graphlab.Image('http://s3.amazonaws.com/gl-testdata/images/sample.jpg')
+        >>> img = graphlab.Image('https://static.turi.com/datasets/images/sample.jpg')
         >>> img.height
 
         """
@@ -116,7 +116,7 @@ class Image(object):
         Examples
         --------
 
-        >>> img = graphlab.Image('http://s3.amazonaws.com/gl-testdata/images/sample.jpg')
+        >>> img = graphlab.Image('https://static.turi.com/datasets/images/sample.jpg')
         >>> img.width
 
         """
@@ -139,7 +139,7 @@ class Image(object):
         Examples
         --------
 
-        >>> img = graphlab.Image('https://s3.amazonaws.com/gl-testdata/images/sample.jpg')
+        >>> img = graphlab.Image('https://static.turi.com/datasets/images/sample.jpg')
         >>> img.channels
 
         """
@@ -170,7 +170,7 @@ class Image(object):
         Examples
         --------
 
-        >>> img = graphlab.Image('http://s3.amazonaws.com/gl-testdata/images/sample.jpg')
+        >>> img = graphlab.Image('https://static.turi.com/datasets/images/sample.jpg')
         >>> image_array = img.pixel_data
         """
 
@@ -235,7 +235,7 @@ class Image(object):
         Examples
         --------
 
-        >>> img = graphlab.Image('http://s3.amazonaws.com/gl-testdata/images/sample.jpg')
+        >>> img = graphlab.Image('https://static.turi.com/datasets/images/sample.jpg')
         >>> img.show()
 
         """

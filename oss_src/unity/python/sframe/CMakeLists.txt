@@ -14,9 +14,14 @@ project(unity)
 #
 #  These variables are set as directory properties so they persist.
 
-set(INSTALLATION_BINARY_FILES
+if(NOT WIN32)
+  set(INSTALLATION_BINARY_FILES
     ${CMAKE_SOURCE_DIR}/deps/local/lib/libhdfs.so
     ${CMAKE_CURRENT_BINARY_DIR}/../../../sframe/spark_unity.jar)
+else()
+  set(INSTALLATION_BINARY_FILES
+    ${CMAKE_SOURCE_DIR}/deps/local/lib/libhdfs.so)
+endif()
 
 # extensions
 set(INSTALLATION_EXTENSIONS)

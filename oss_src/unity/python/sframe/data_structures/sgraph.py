@@ -1,7 +1,4 @@
 """
-.. warning:: This product is currently in a beta release. The API reference is
-subject to change.
-
 This package defines the GraphLab Create SGraph, Vertex, and Edge objects. The SGraph
 is a directed graph, consisting of a set of Vertex objects and Edges that
 connect pairs of Vertices. The methods in this module are available from the top
@@ -10,7 +7,7 @@ level import of the graphlab package.
 """
 
 '''
-Copyright (C) 2015 Dato, Inc.
+Copyright (C) 2016 Turi
 All rights reserved.
 
 This software may be modified and distributed under the terms
@@ -174,7 +171,7 @@ class SGraph(object):
     SFrames not used as vertex IDs are assumed to be vertex or edge attributes.
 
     Please see the `User Guide
-    <https://dato.com/learn/userguide/sgraph/sgraph.html>`_
+    <https://turi.com/learn/userguide/sgraph/sgraph.html>`_
     for a more detailed introduction to creating and working with SGraphs.
 
     Parameters
@@ -1161,7 +1158,7 @@ class SGraph(object):
           displayed as-is. For such graphs, construct a subgraph by selecting
           some vertices and edges, then call this method on the result.
         - See the `user guide
-          <https://dato.com/learn/userguide/sframe/visualization.html>`_ for more details and extended examples.
+          <https://turi.com/learn/userguide/sframe/visualization.html>`_ for more details and extended examples.
 
         Examples
         --------
