@@ -8,12 +8,12 @@ cleaning the data, developing features, training a model, and creating and
 maintaining a predictive service. GraphLab Create does all of this in one
 platform. It is easy to use, fast, and powerful.
 
-For more details on the GraphLab Create see http://dato.com, including
+For more details on the GraphLab Create see http://turi.com, including
 documentation, tutorial, etc.
 """
 
 '''
-Copyright (C) 2015 Dato, Inc.
+Copyright (C) 2016 Turi
 All rights reserved.
 
 This software may be modified and distributed under the terms

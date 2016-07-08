@@ -7,7 +7,7 @@ The data is immutable, homogeneous, and is stored on the GraphLab Server side.
 """
 
 '''
-Copyright (C) 2015 Dato, Inc.
+Copyright (C) 2016 Turi
 All rights reserved.
 
 This software may be modified and distributed under the terms
@@ -2419,7 +2419,7 @@ class SArray(object):
         from 0 to 255. If we just convert without scaling, all values below one would be cast to
         0.
 
-        >>> mnist_array = graphlab.SArray('http://s3.amazonaws.com/dato-datasets/mnist/mnist_vec_sarray')
+        >>> mnist_array = graphlab.SArray('https://static.turi.com/datasets/mnist/mnist_vec_sarray')
         >>> scaled_mnist_array = mnist_array * 255
         >>> mnist_img_sarray = gl.SArray.pixel_array_to_image(scaled_mnist_array, 28, 28, 1, allow_rounding = True)
 

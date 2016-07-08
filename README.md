@@ -3,8 +3,8 @@ SFrame
 <a href="https://pypi.python.org/pypi/SFrame">
    <img src="https://img.shields.io/pypi/v/SFrame.svg" alt="latest release" />
 </a>
-<a href="https://travis-ci.org/dato-code/SFrame">
-   <img src="https://travis-ci.org/dato-code/SFrame.svg?branch=master" alt="travis build status" />
+<a href="https://travis-ci.org/turi-code/SFrame">
+   <img src="https://travis-ci.org/turi-code/SFrame.svg?branch=master" alt="travis build status" />
 </a>
 
 Scalable tabular (**SFrame**, **SArray**) and graph (**SGraph**) data-structures built for out-of-core data analysis. 
@@ -18,14 +18,14 @@ The SFrame package provides the complete implementation of:
 Introduction
 ------------
 
-The SFrame contains the open source components [GraphLab Create](https://dato.com/products/create/) from [Dato](http://dato.com). 
+The SFrame contains the open source components [GraphLab Create](https://turi.com/products/create/) from [Turi](https://turi.com). 
 
 Some documentation to help get started:
-- [Getting started with SFrame](https://dato.com/learn/gallery/notebooks/introduction_to_sframes.html)
-- [SFrame user guide](https://dato.com/learn/userguide/sframe/tabular-data.html)
-- [SGraph user guide](https://dato.com/learn/userguide/sgraph/sgraph.html) 
+- [Getting started with SFrame](https://turi.com/learn/gallery/notebooks/introduction_to_sframes.html)
+- [SFrame user guide](https://turi.com/learn/userguide/sframe/tabular-data.html)
+- [SGraph user guide](https://turi.com/learn/userguide/sgraph/sgraph.html) 
 
-For more details on GraphLab Create (including documentation and tutorials) see http://dato.com.
+For more details on GraphLab Create (including documentation and tutorials) see http://turi.com.
 
 Some of the key features of this package are.
 
@@ -205,4 +205,4 @@ To build an egg for your platform, run
 
 SDK
 ---
-See: https://github.com/dato-code/GraphLab-Create-SDK
+See: https://github.com/turi-code/GraphLab-Create-SDK

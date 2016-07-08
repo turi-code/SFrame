@@ -9,7 +9,7 @@ and is stored column wise on the GraphLab Server side.
 """
 
 '''
-Copyright (C) 2015 Dato, Inc.
+Copyright (C) 2016 Turi
 All rights reserved.
 
 This software may be modified and distributed under the terms
@@ -84,7 +84,6 @@ RDD_SUPPORT = True
 PRODUCTION_RUN = False
 REMOTE_OS = None
 SPARK_SUPPORT_NAMES = {'RDD_JAR_PATH': 'spark_unity.jar'}
-SQL_HAS_BEEN_USED = False
 
 first = True
 for i in SFRAME_ROOTS:
@@ -100,7 +99,8 @@ for i in SFRAME_ROOTS:
 
 for name in SPARK_SUPPORT_NAMES.keys():
     if (name not in BINARY_PATHS):
-        __LOGGER__.warn("GraphLab engine cannot find %s" % SPARK_SUPPORT_NAMES[name])
+        if sys.platform != 'win32':
+            __LOGGER__.warn("GraphLab engine cannot find %s" % SPARK_SUPPORT_NAMES[name])
 
 if not all(name in BINARY_PATHS for name in SPARK_SUPPORT_NAMES.keys()):
     RDD_SUPPORT = False
@@ -180,7 +180,7 @@ def __rdd_support_init__(sprk_ctx,graphlab_util_ref):
         STAGING_DIR = unity.get_current_cache_file_location()
         if STAGING_DIR is None:
             raise RuntimeError("Could not retrieve local staging directory! \
-                    Please contact us on http://forum.dato.com.")
+                    Please contact us on http://forum.turi.com.")
     else:
         raise RuntimeError("Your spark context's master is '" +
                 str(sprk_ctx.master) +
@@ -233,15 +233,6 @@ def _get_global_dbapi_info(dbapi_module, conn):
     "I found '{0}' which doesn't have the global variable '{1}'.\n"+\
     "To avoid this confusion, you can pass the module as a parameter using\n"+\
     "the 'dbapi_module' argument to either from_sql or to_sql."
-    global SQL_HAS_BEEN_USED
-    if not SQL_HAS_BEEN_USED:
-        SQL_HAS_BEEN_USED = True
-        __LOGGER__.warn("SFrame's DBAPI2 support is currently in beta and only"+
-                " known to work with these modules:"+
-                " sqlite3, psycopg2, MySQLdb.\n"+
-                " If you encounter an issue, please let us know by creating a"+
-                " support ticket here:\n"+
-                "https://dato.com/support/create-support-ticket.html")
 
     if dbapi_module is None:
         dbapi_module = get_module_from_object(conn)
@@ -336,11 +327,11 @@ class SFrame(object):
     * HTTP(S).
 
     Only basic examples of construction are covered here. For more information
-    and examples, please see the `User Guide <https://dato.com/learn/user
+    and examples, please see the `User Guide <https://turi.com/learn/user
     guide/index.html#Working_with_data_Tabular_data>`_, `API Translator
-    <https://dato.com/learn/translator>`_, `How-Tos
-    <https://dato.com/learn/how-to>`_, and data science `Gallery
-    <https://dato.com/learn/gallery>`_.
+    <https://turi.com/learn/translator>`_, `How-Tos
+    <https://turi.com/learn/how-to>`_, and data science `Gallery
+    <https://turi.com/learn/gallery>`_.
 
     Parameters
     ----------
@@ -1322,7 +1313,7 @@ class SFrame(object):
 
         Examples
         --------
-        >>> bad_url = 'https://s3.amazonaws.com/gl-testdata/bad_csv_example.csv'
+        >>> bad_url = 'https://static.turi.com/datasets/bad_csv_example.csv'
         >>> (sf, bad_lines) = graphlab.SFrame.read_csv_with_errors(bad_url)
         >>> sf
         +---------+----------+--------+
@@ -1338,7 +1329,7 @@ class SFrame(object):
         [98 rows x 3 columns]
 
         >>> bad_lines
-        {'https://s3.amazonaws.com/gl-testdata/bad_csv_example.csv': dtype: str
+        {'https://static.turi.com/datasets/bad_csv_example.csv': dtype: str
          Rows: 1
          ['x,y,z,a,b,c']}
        """
@@ -1477,7 +1468,7 @@ class SFrame(object):
         Read a regular csv file, with all default options, automatically
         determine types:
 
-        >>> url = 'http://s3.amazonaws.com/gl-testdata/rating_data_example.csv'
+        >>> url = 'https://static.turi.com/datasets/rating_data_example.csv'
         >>> sf = graphlab.SFrame.read_csv(url)
         >>> sf
         Columns:
@@ -1608,7 +1599,7 @@ class SFrame(object):
 
         Throw error on parse failure:
 
-        >>> bad_url = 'https://s3.amazonaws.com/gl-testdata/bad_csv_example.csv'
+        >>> bad_url = 'https://static.turi.com/datasets/bad_csv_example.csv'
         >>> sf = graphlab.SFrame.read_csv(bad_url, error_bad_lines=True)
         RuntimeError: Runtime Exception. Unable to parse line "x,y,z,a,b,c"
         Set error_bad_lines=False to skip bad lines
@@ -4314,7 +4305,7 @@ class SFrame(object):
         Suppose we have an SFrame with movie ratings by many users.
 
         >>> import graphlab.aggregate as agg
-        >>> url = 'http://s3.amazonaws.com/gl-testdata/rating_data_example.csv'
+        >>> url = 'https://static.turi.com/datasets/rating_data_example.csv'
         >>> sf = graphlab.SFrame.read_csv(url)
         >>> sf
         +---------+----------+--------+

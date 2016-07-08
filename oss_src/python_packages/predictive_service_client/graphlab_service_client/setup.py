@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Copyright 2014 Dato, Inc.
+Copyright (C) 2016 Turi
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,10 +29,10 @@ if __name__ == '__main__':
     setup(
         name="GraphLab-Service-Client",
         version=VERSION,
-        author='Dato, Inc.',
-        author_email='contact@dato.com',
+        author='Turi',
+        author_email='contact@turi.com',
         packages=find_packages(),
-        url='https://dato.com',
+        url='https://turi.com',
         license='LICENSE.txt',
         description='GraphLab Service Client makes it easy to make REST API calls to GraphLab Predictive Services',
         classifiers=[

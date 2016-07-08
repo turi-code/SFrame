@@ -52,7 +52,7 @@ class GLPicklingTest(unittest.TestCase):
             self.assertEqual(obj, obj_ret)
 
     @unittest.skipIf(sys.platform == 'win32' and sys.version_info.major == 3,
-                     'See: https://github.com/dato-code/SFrame/issues/176')
+                     'See: https://github.com/turi-code/SFrame/issues/176')
     def test_pickling_sarray_types(self):
 
         sarray_list = [
@@ -103,7 +103,7 @@ class GLPicklingTest(unittest.TestCase):
             assert_sframe_equal(obj.get_edges(), obj_ret.get_edges())
 
     @unittest.skipIf(sys.platform == 'win32' and sys.version_info.major == 3,
-                     'See: https://github.com/dato-code/SFrame/issues/176')
+                     'See: https://github.com/turi-code/SFrame/issues/176')
     def test_combination_gl_python_types(self):
 
         sg_test_1 = SGraph().add_vertices([

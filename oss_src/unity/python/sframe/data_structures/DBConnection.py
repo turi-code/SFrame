@@ -1,5 +1,5 @@
 '''
-Copyright (C) 2015 Dato, Inc.
+Copyright (C) 2016 Turi
 All rights reserved.
 
 This software may be modified and distributed under the terms
@@ -12,7 +12,7 @@ def connect_odbc(conn_str):
 
     An ODBC driver manager program (unixODBC) must be installed with one or
     more functional drivers in order to use this feature.  Please see the `User Guide 
-    <https://dato.com/learn/userguide/data_formats_and_sources/odbc_integration.html>`_
+    <https://turi.com/learn/userguide/data_formats_and_sources/odbc_integration.html>`_
     for more details.
 
     Parameters

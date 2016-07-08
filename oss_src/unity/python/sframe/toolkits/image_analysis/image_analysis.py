@@ -1,5 +1,5 @@
 '''
-Copyright (C) 2015 Dato, Inc.
+Copyright (C) 2016 Turi
 All rights reserved.
 
 This software may be modified and distributed under the terms
@@ -51,7 +51,7 @@ def load_images(url, format='auto', with_path=True, recursive=True, ignore_failu
     Examples
     --------
 
-    >>> url ='s3://gl-testdata/images/nested'
+    >>> url ='https://static.turi.com/datasets/images/nested'
     >>> image_sarray = graphlab.image_analysis.load_images(url, "auto", with_path=False,
     ...                                                    recursive=True)
     """
@@ -117,12 +117,12 @@ def resize(image, width, height, channels=None, decode=False):
 
     Resize a single image
 
-    >>> img = graphlab.Image('http://s3.amazonaws.com/gl-testdata/images/sample.jpg')
+    >>> img = graphlab.Image('https://static.turi.com/datasets/images/sample.jpg')
     >>> resized_img = graphlab.image_analysis.resize(img,100,100,1)
 
     Resize an SArray of images
 
-    >>> url ='s3://gl-testdata/images/nested'
+    >>> url ='https://static.turi.com/datasets/images/nested'
     >>> image_sframe = graphlab.image_analysis.load_images(url, "auto", with_path=False,
     ...                                                    recursive=True)
     >>> image_sarray = image_sframe["image"]

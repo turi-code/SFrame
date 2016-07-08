@@ -1,5 +1,5 @@
 '''
-Copyright (C) 2015 Dato, Inc.
+Copyright (C) 2016 Turi
 All rights reserved.
 
 This software may be modified and distributed under the terms
@@ -17,8 +17,8 @@ def print_callback(val):
     """
     Internal function.
     This function is called via a call back returning from IPC to Cython
-    to Python. It tries to perform incremental printing to IPython Notebook and
-    when all else fails, just prints locally.
+    to Python. It tries to perform incremental printing to IPython Notebook or 
+    Jupyter Notebook and when all else fails, just prints locally.
     """
     success = False
     try:

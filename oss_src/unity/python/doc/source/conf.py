@@ -58,7 +58,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'SFrame API'
-copyright = u'2015, Dato, Inc.'
+copyright = u'2016, Turi'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -150,11 +150,11 @@ html_copy_source = False
 # A shorter title for the navigation bar.  Default is the same as html_title.
 html_short_title = "SFrame"
 
-org_url="https://dato.com"
+org_url="https://turi.com"
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = '../images/dato_logo_white.png'
+html_logo = '../images/turi_logo_white.png'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
@@ -208,7 +208,7 @@ html_show_sphinx = False
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'DatoCoredoc'
+htmlhelp_basename = 'TuriCoredoc'
 
 # -- Options for LaTeX output --------------------------------------------------
 
@@ -226,8 +226,8 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'DatoCore.tex', u'SFrame Documentation',
-   u'Dato, Inc.', 'manual'),
+  ('index', 'TuriCore.tex', u'SFrame Documentation',
+   u'Turi', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -256,8 +256,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'datocore', u'SFrame Documentation',
-     [u'Dato, Inc.'], 1)
+    ('index', 'TuriCore', u'SFrame Documentation',
+     [u'Turi'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -270,8 +270,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'DatoCore', u'SFrame Documentation',
-   u'Dato, Inc.', 'DatoCore', 'One line description of project.',
+  ('index', 'TuriCore', u'SFrame Documentation',
+   u'Turi', 'TuriCore', 'One line description of project.',
    'Miscellaneous'),
 ]
 
