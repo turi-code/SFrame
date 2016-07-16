@@ -15,6 +15,7 @@ subdirs(
   network
   process
   fault
+  nanosockets
   random
   timer
   rpc

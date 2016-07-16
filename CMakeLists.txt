@@ -1,6 +1,5 @@
 project(GraphLab)
 
-
 # We require the most recent version of cmake and automatically
 # install the correct version when using the cmake lists
 cmake_minimum_required(VERSION 2.8.3)
@@ -43,8 +42,10 @@ include(CheckCXXSourceCompiles)
 #**************************************************************************/
 include_directories(SYSTEM
   ${CMAKE_SOURCE_DIR}/cxxtest
-  ${CMAKE_SOURCE_DIR}/deps/local/include)
+  ${CMAKE_SOURCE_DIR}/deps/local/include
+  /usr/local/include)
 
+link_directories(/usr/local/lib)
 link_directories(${CMAKE_SOURCE_DIR}/deps/local/lib)
 if (EXISTS ${CMAKE_SOURCE_DIR}/deps/local/lib64)
   link_directories(${CMAKE_SOURCE_DIR}/deps/local/lib64)
