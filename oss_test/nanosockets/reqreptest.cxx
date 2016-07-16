@@ -54,8 +54,9 @@ void start_server(){
   while (done == false) sleep(1);
 }
 
-void test_client(async_request_socket& sock) {
+void test_client(async_request_socket& sock, size_t id = 0) {
   for (size_t i = 0;i < 100000; ++i) {
+    if (i % 1000 == 0) std::cout << id <<": " << i << std::endl;
     zmq_msg_vector req;
     zmq_msg_vector response;
     set_value(req, i);
@@ -63,19 +64,29 @@ void test_client(async_request_socket& sock) {
     TS_ASSERT_EQUALS(rc, 0);
     TS_ASSERT_EQUALS(get_value(response), i + 1);
   }
+  std::cout << "Finished " << id << std::endl;
 }
 
 class reqrep_test: public CxxTest::TestSuite {  
  public:
-  void test_single_thread() {
+  void _test_single_threaded() {
     thread_group grp;
     grp.launch(start_server);
     thread_group grp2;
     async_request_socket req(ADDRESS);
-    grp2.launch([&]() { test_client(req); });
-    grp2.launch([&]() { test_client(req); });
-    grp2.launch([&]() { test_client(req); });
-    grp2.launch([&]() { test_client(req); });
+    test_client(req);
+    done = true;    
+    grp.join();
+  }
+  void test_multi_thread() {
+    thread_group grp;
+    grp.launch(start_server);
+    thread_group grp2;
+    async_request_socket req(ADDRESS);
+    grp2.launch([&]() { test_client(req,0); });
+    grp2.launch([&]() { test_client(req,1); });
+    grp2.launch([&]() { test_client(req,2); });
+    grp2.launch([&]() { test_client(req,3); });
     grp2.join();
     done = true;    
     grp.join();

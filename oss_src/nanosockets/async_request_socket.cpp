@@ -70,9 +70,18 @@ int async_request_socket::request_master(zmq_msg_vector& msgs,
   available.pop_back();
   lock.unlock();
   create_socket(wait_socket);
-  int rc = msgs.send(sockets[wait_socket].z_socket, SEND_TIMEOUT);
+  int rc = 0;
+  // retry a few times
+  for (size_t retry = 0; retry < 3; ++retry) {
+    do {
+      rc = msgs.send(sockets[wait_socket].z_socket, SEND_TIMEOUT);
+    } while(errno == EAGAIN);
+    if (rc == 0) break;
+  }
   if (rc == 0) {
     rc = ret.recv(sockets[wait_socket].z_socket);
+  } else {
+    return rc;
   }
 
   // restore available socket

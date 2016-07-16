@@ -44,8 +44,8 @@ async_reply_socket::async_reply_socket(callback_type callback,
                              this));
                              
   }
-//   threads.launch(std::bind(&async_reply_socket::poll_function,
-//                              this));
+  threads.launch(std::bind(&async_reply_socket::poll_function,
+                           this));
 }
 
 void async_reply_socket::close() {
@@ -89,20 +89,21 @@ void async_reply_socket::poll_function() {
     hdr.msg_iov = &iov;
     hdr.msg_iovlen = 1;
     hdr.msg_control = reinterpret_cast<void*>(&(j.control));
-    
-    std::unique_lock<mutex> socklock(socketlock);
-    int rc = nn_recvmsg(z_socket, &hdr, 0);
-    if (rc == -1) {
-      print_zmq_error("async_reply_socket poll: ");
-      continue;
+    hdr.msg_controllen = NN_MSG;
+    { 
+      std::unique_lock<mutex> socklock(socketlock);
+      int rc = nn_recvmsg(z_socket, &hdr, 0);
+      if (rc == -1) {
+        print_zmq_error("async_reply_socket poll: ");
+        continue;
+      }
+      j.datalen = rc;
     }
-    j.datalen = rc;
-    socketlock.unlock();
-
-    std::unique_lock<mutex> lock(queuelock);
-    jobqueue.push(j);
-    queuecond.signal();
-    lock.unlock();
+    {
+      std::unique_lock<mutex> lock(queuelock);
+      jobqueue.push(j);
+      queuecond.signal();
+    }
   }
 }
 
@@ -134,86 +135,33 @@ void async_reply_socket::process_job(job j) {
   int rc = nn_sendmsg(z_socket, &hdr, 0);
   free(oarc.buf);
   nn_freemsg(j.data);
-  nn_freemsg(j.control);
   if (rc == -1) print_zmq_error("send failure : ");
 }
-// 
-// void async_reply_socket::thread_function() {
-//   std::unique_lock<mutex> lock(queuelock);
-//   while(1) {
-//     while(jobqueue.empty() && !queue_terminate) {
-//       queuecond.wait(lock);
-//     }
-//     // at this point, we have the lock, either
-//     // jobqueue has something, or queue_terminate is set
-//     if (queue_terminate) break;
-//     assert(!jobqueue.empty());
-//     job j = jobqueue.front();
-//     jobqueue.pop();
-//     // we process the job outside of the lock
-//     lock.unlock();
-// 
-//     // this function also frees msg
-//     process_job(j);
-// 
-//     lock.lock();
-//   }
-// }
-// 
 
 void async_reply_socket::thread_function() {
-  while(!queue_terminate) {
+  std::unique_lock<mutex> lock(queuelock);
+  while(1) {
+    while(jobqueue.empty() && !queue_terminate) {
+      queuecond.wait(lock);
+    }
+    // at this point, we have the lock, either
     // jobqueue has something, or queue_terminate is set
     if (queue_terminate) break;
-    char* body;
-    void* control;
-    struct nn_iovec iov;
-    struct nn_msghdr hdr;
+    assert(!jobqueue.empty());
+    job j = jobqueue.front();
+    jobqueue.pop();
+    // we process the job outside of the lock
+    lock.unlock();
 
-    memset (&hdr, 0, sizeof (hdr));
-    control = NULL;
-    iov.iov_base = &body;
-    iov.iov_len = NN_MSG;
-    hdr.msg_iov = &iov;
-    hdr.msg_iovlen = 1;
-    hdr.msg_control = reinterpret_cast<void*>(&control);
-    hdr.msg_controllen = NN_MSG;
+    // this function also frees msg
+    process_job(j);
 
-    int rc = nn_recvmsg (z_socket, &hdr, 0);
-    if (rc < 0) {
-      if (nn_errno() == EAGAIN || nn_errno() == EINTR || nn_errno() == ETIMEDOUT) {
-        continue;
-      } else {
-        print_zmq_error("Unexpected error in recvmsg:");
-        break;
-      }
-    }
-
-    zmq_msg_vector query, reply;
-    // deserialize query and perform the call
-    iarchive iarc(body, rc);
-    iarc >> query;
-    bool hasreply = callback(query, reply);
-    // release some memory
-    nn_freemsg(body);
-    query.clear();
-
-    // serialize the reply
-    oarchive oarc;
-    oarc << reply;
-
-    iov.iov_base = oarc.buf;
-    iov.iov_len = oarc.off;
-    hdr.msg_iovlen = 1;
-    rc = nn_sendmsg (z_socket, &hdr, 0);
-    free(oarc.buf);
-    if (rc < 0) {
-      print_zmq_error("Unexpected error in sendmsg:");
-      break;
-    }
-
+    lock.lock();
   }
 }
+
+
+
 
 std::string async_reply_socket::get_bound_address() {
   return local_address;
