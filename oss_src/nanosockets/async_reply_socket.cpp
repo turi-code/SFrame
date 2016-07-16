@@ -55,8 +55,8 @@ void async_reply_socket::close() {
     queue_terminate = true;
     queuecond.notify_all();
     queuelock.unlock();
-    threads.join();
     nn_close(z_socket);
+    threads.join();
     z_socket = -1;
   }
 }

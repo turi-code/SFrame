@@ -10,6 +10,8 @@ make_library(nanosockets
   print_zmq_error.cpp
   zmq_msg_vector.cpp
   socket_config.cpp
+  subscribe_socket.cpp
+  publish_socket.cpp
   REQUIRES 
   network
   util
