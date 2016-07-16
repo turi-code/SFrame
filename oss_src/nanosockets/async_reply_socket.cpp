@@ -206,6 +206,7 @@ void async_reply_socket::thread_function() {
     iov.iov_len = oarc.off;
     hdr.msg_iovlen = 1;
     rc = nn_sendmsg (z_socket, &hdr, 0);
+    free(oarc.buf);
     if (rc < 0) {
       print_zmq_error("Unexpected error in sendmsg:");
       break;
