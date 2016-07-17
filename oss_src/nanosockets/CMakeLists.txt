@@ -15,6 +15,7 @@ make_library(nanosockets
   REQUIRES 
   network
   util
+  timer
   parallel
   logger
   globals

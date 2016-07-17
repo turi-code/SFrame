@@ -36,8 +36,10 @@ void subscribe_socket::close() {
     nn_close(z_socket);
     z_socket = -1;
   }
-  shutting_down = true;
-  thr.join();
+  if (shutting_down == false) {
+    shutting_down = true;
+    thr.join();
+  }
 }
 
 subscribe_socket::~subscribe_socket() {

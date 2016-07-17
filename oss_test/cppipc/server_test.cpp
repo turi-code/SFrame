@@ -15,7 +15,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include <cppipc/cppipc.hpp>
-#include <cppipc/common/authentication_token_method.hpp>
 #include "test_object_base.hpp"
 
 int main(int argc, char** argv) {
@@ -30,9 +29,6 @@ int main(int argc, char** argv) {
   server.register_type<test_object_base>([](){ 
                                            return new test_object_impl;
                                          });
-  if (argc >= 2) {
-    server.add_auth_method(std::make_shared<cppipc::authentication_token_method>(argv[1]));
-  }
   server.start();
   getchar();
 }

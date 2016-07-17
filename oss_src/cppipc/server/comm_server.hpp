@@ -19,31 +19,18 @@
 #include <atomic>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/lock_guard.hpp>
+#include <nanosockets/socket_errors.hpp>
+#include <nanosockets/async_reply_socket.hpp>
+#include <nanosockets/publish_socket.hpp>
 #include <cppipc/common/status_types.hpp>
 #include <cppipc/server/dispatch.hpp>
 #include <cppipc/server/cancel_ops.hpp>
 
-// forward declaration of key_value
-namespace graphlab {
-namespace zookeeper_util {
-class key_value;
-}
-}
-
-
-namespace libfault {
-class async_reply_socket;
-class publish_socket;
-class socket_receive_pollset;
-struct message_reply;
-class zmq_msg_vector;
-} // libfault
 
 namespace cppipc {
+namespace nanosockets = graphlab::nanosockets;
 struct reply_message;
 struct call_message;
-class authentication_base;
-class authentication_token_method;
 
 // some annoying forward declarations I need to get by some circular references
 class object_factory_impl;
@@ -164,17 +151,12 @@ class EXPORT comm_server {
   // true if start was called
   bool started;
 
-  // the zeroMQ context
-  void* zmq_ctx;
-
-  graphlab::zookeeper_util::key_value* keyval;
-  libfault::async_reply_socket* object_socket;
-  libfault::async_reply_socket* control_socket;
-  libfault::publish_socket* publishsock;
-  libfault::socket_receive_pollset* pollset;
+  nanosockets::async_reply_socket* object_socket;
+  nanosockets::async_reply_socket* control_socket;
+  nanosockets::publish_socket* publishsock;
 
   /// Internal callback for messages received from zeromq
-  bool callback(libfault::zmq_msg_vector& recv, libfault::zmq_msg_vector& reply);
+  bool callback(nanosockets::zmq_msg_vector& recv, nanosockets::zmq_msg_vector& reply);
 
   std::map<std::string, dispatch*> dispatch_map;
   boost::mutex registered_object_lock;
@@ -192,16 +174,6 @@ class EXPORT comm_server {
 
   bool comm_server_debug_mode = false;
 
-  /**
-   * A series of authentication methods to apply to the messages.
-   */
-  std::vector<std::shared_ptr<authentication_base> > auth_stack;
-
-  /// Applies the authentication stack on the call message
-  void apply_auth(reply_message& reply);
-
-  /// Validates the authentication stack on the reply message
-  bool validate_auth(call_message& call);
 
   /**
    * Registers a mapping from a type name to a constructor call which returns
@@ -272,26 +244,6 @@ class EXPORT comm_server {
   /// Destructor. Stops receiving messages, and closes all communication
   ~comm_server();
 
-  /**
-   *  Adds a security configuration. Multiple auth methods can be added
-   *  in which case they "stack".
-   *  See \ref authentication_config and \ref authentication_method 
-   *  for details.
-   */
-  void add_auth_method(std::shared_ptr<authentication_base> config);
-
-
-  /**
-   *  Adds a token security configuration. Synonym for
-   *  \code
-   *  add_auth_method(std::make_shared<authentication_token_method>(authtoken));
-   *  \endcode
-   *  Multiple auth methods can be added in which case they stack.
-   *  See \ref authentication_config and \ref authentication_method 
-   *  for details.
-   */
-  void add_auth_method_token(std::string authtoken);
-
 
   /** Start receiving messages. Message processing occurs on a seperate
    * thread, so this function returns immediately..
@@ -320,7 +272,7 @@ class EXPORT comm_server {
   std::string get_status_address();
 
   /**
-   * Gets the zeromq context.
+   * Gets the zeromq context.. Deprecated. Returns NULL.
    */
   void* get_zmq_context();
 

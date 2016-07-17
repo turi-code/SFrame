@@ -26,7 +26,7 @@ namespace nanosockets {
 
 async_request_socket::async_request_socket(std::string target_connection,
                                            size_t num_connections) {
-  server = target_connection;
+  server = normalize_address(target_connection);
   sockets.resize(num_connections);
   for (size_t i = 0;i < sockets.size(); ++i) {
     available.push_back(i);
@@ -55,8 +55,13 @@ async_request_socket::~async_request_socket() {
 }
 
 
+void async_request_socket::set_receive_poller(boost::function<bool()> fn) {
+  receive_poller = fn;
+}
+
 int async_request_socket::request_master(zmq_msg_vector& msgs,
-                                         zmq_msg_vector& ret) {
+                                         zmq_msg_vector& ret,
+                                         size_t timeout) {
   // find a free target to lock
   std::unique_lock<mutex> lock(global_lock);
   while(available.size() == 0 && sockets.size() > 0) {
@@ -75,15 +80,17 @@ int async_request_socket::request_master(zmq_msg_vector& msgs,
   for (size_t retry = 0; retry < 3; ++retry) {
     do {
       rc = msgs.send(sockets[wait_socket].z_socket, SEND_TIMEOUT);
-    } while(errno == EAGAIN);
+    } while(rc == EAGAIN);
     if (rc == 0) break;
   }
   if (rc == 0) {
-    rc = ret.recv(sockets[wait_socket].z_socket);
-  } else {
-    return rc;
-  }
-
+    timer ti;
+    do {
+      rc = ret.recv(sockets[wait_socket].z_socket, 1000);
+      if (rc != 0 && receive_poller != nullptr && receive_poller() == false) break;
+      if (rc != 0 && timeout > 0 && ti.current_time() > timeout) break;
+    } while(rc == EAGAIN);
+  } 
   // restore available socket
   lock.lock();
   available.push_back(wait_socket);
@@ -92,7 +99,6 @@ int async_request_socket::request_master(zmq_msg_vector& msgs,
 
   // return
   if (rc != 0) {
-    print_zmq_error("Unexpected error on sending");
     return rc;
   } else {
     return 0;

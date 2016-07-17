@@ -39,7 +39,6 @@ namespace nanosockets {
  * are maintained for maximal backward compatibility
  */
 typedef std::string nn_msg_t;
-
 class EXPORT zmq_msg_vector {
  public:
    zmq_msg_vector():read_index(0) { }
