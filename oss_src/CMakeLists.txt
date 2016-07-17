@@ -14,7 +14,7 @@ subdirs(
   globals
   network
   process
-  fault
+  # fault
   nanosockets
   random
   timer
