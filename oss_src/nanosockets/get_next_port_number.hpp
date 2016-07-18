@@ -9,10 +9,12 @@
 #define FAULT_SOCKETS_GET_NEXT_PORT_NUMBER_HPP
 #include <stdint.h>
 #include <cstdlib>
+namespace graphlab {
 namespace nanosockets {
 
 size_t get_next_port_number();
 
 } // namespace nanosockets
+}
 #endif
 

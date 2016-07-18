@@ -87,7 +87,7 @@ int async_request_socket::request_master(zmq_msg_vector& msgs,
     timer ti;
     do {
       rc = ret.recv(sockets[wait_socket].z_socket, 1000);
-      if (rc != 0 && receive_poller != nullptr && receive_poller() == false) break;
+      if (rc != 0 && receive_poller && receive_poller() == false) break;
       if (rc != 0 && timeout > 0 && ti.current_time() > timeout) break;
     } while(rc == EAGAIN);
   } 

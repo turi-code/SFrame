@@ -10,6 +10,8 @@
 #include <nanosockets/socket_config.hpp>
 #include <nanosockets/publish_socket.hpp>
 #include <nanosockets/print_zmq_error.hpp>
+#include <nanosockets/get_next_port_number.hpp>
+#include <network/net_util.hpp>
 #include <mutex>
 #include <serialization/oarchive.hpp>
 extern "C" {
@@ -22,11 +24,32 @@ publish_socket::publish_socket(std::string bind_address) {
   // create a socket
   z_socket = nn_socket(AF_SP, NN_PUB);
   set_conservative_socket_parameters(z_socket);
-  local_address = normalize_address(bind_address);
-  int rc = nn_bind(z_socket, local_address.c_str());
-  if (rc == -1) {
-    print_zmq_error("publish_socket construction: ");
-    assert(rc == 0);
+  if (bind_address.length() > 0) {
+    local_address = normalize_address(bind_address);
+    int rc = nn_bind(z_socket, local_address.c_str());
+    if (rc < 0) {
+      print_zmq_error("publish_socket construction: ");
+      assert(rc >= 0);
+    }
+  } else {
+    std::string localip = graphlab::get_local_ip_as_str(true);
+    bool ok = false;
+    while (!ok) {
+      size_t port = get_next_port_number();
+      char port_as_string[128];
+      sprintf(port_as_string, "%ld", port);
+      local_address = "tcp://" + localip + ":" + port_as_string;
+      // try to bind
+      int rc = nn_bind(z_socket, local_address.c_str());
+      ok = (rc >= 0);
+      /*if (rc == EADDRINUSE) {
+        std::cout << local_address << " in use. Trying another port.\n";
+        continue;
+      } else if (rc != 0) {
+        std::cout << "Unable to bind to " << local_address << ". "
+                  << "Error(" << rc << ") = " << zmq_strerror(rc) << "\n";
+      }*/
+    }
   }
 }
 

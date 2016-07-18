@@ -37,18 +37,12 @@ std::string generate_aux_address(std::string addr, std::string addon) {
   if (boost::starts_with(addr, "ipc://")) {
     status_address = addr + addon;
   } else if (boost::starts_with(addr, "tcp://")) {
-    // has port number?
-    size_t port_delimiter = addr.find_last_of(':'); 
-    if (port_delimiter != std::string::npos) {
-      // has port number
-      status_address = addr.substr(0, port_delimiter) + ":*";
-    } else {
-      status_address = addr + ":*";
-    }
+    // not supported by nanomsg
+    status_address = "";
   } else if (boost::starts_with(addr, "inproc://")){
     status_address = addr + addon;
   } else {
-    ASSERT_TRUE(false);
+    status_address = "";
   }
   return status_address;
 }
@@ -70,9 +64,6 @@ comm_server::comm_server(std::vector<std::string> zkhosts,
           1, // 2 threads. one to handle pings, one to handle real messages
           alternate_bind_address);
 
-  if(alternate_bind_address.size() == 0) {
-    alternate_bind_address = object_socket->get_bound_address();
-  }
   logstream(LOG_INFO) << "my alt bind address: " << alternate_bind_address << std::endl;
   control_socket = new nanosockets::async_reply_socket(
         boost::bind(&comm_server::callback, this, _1, _2), 1,
@@ -158,6 +149,8 @@ comm_server::~comm_server() {
 void comm_server::start() {
   log_func_entry();
   if (!started) {
+    control_socket->start_polling();
+    object_socket->start_polling();
     started = true;
   }
 }
@@ -165,6 +158,8 @@ void comm_server::start() {
 void comm_server::stop() {
   log_func_entry();
   if (started) {
+    control_socket->stop_polling();
+    object_socket->stop_polling();
     started = false;
   }
 
