@@ -7,6 +7,7 @@ subdirs(
   timer
   random
   fault
+  nanosockets
   fileio
   graphlab
   shmipc

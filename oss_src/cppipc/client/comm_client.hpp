@@ -16,28 +16,20 @@
 #include <boost/thread/thread.hpp>
 #include <boost/thread/locks.hpp>
 #include <boost/thread/lock_types.hpp>
-#include <fault/sockets/socket_errors.hpp>
-#include <fault/sockets/async_request_socket.hpp>
-#include <fault/sockets/subscribe_socket.hpp>
+#include <nanosockets/socket_errors.hpp>
+#include <nanosockets/async_request_socket.hpp>
+#include <nanosockets/subscribe_socket.hpp>
 #include <cppipc/common/message_types.hpp>
 #include <cppipc/common/status_types.hpp>
 #include <cppipc/client/issue.hpp>
-#include <cppipc/common/authentication_base.hpp>
-#include <cppipc/common/authentication_token_method.hpp>
 #include <cppipc/common/ipc_deserializer.hpp>
 #include <cppipc/client/console_cancel_handler.hpp>
 #include <exceptions/error_types.hpp>
 #include <cctype>
 #include <atomic>
 
-// forward declaration of key_value
-namespace graphlab {
-namespace zookeeper_util {
-class key_value;
-}
-}
-
 namespace cppipc {
+namespace nanosockets = graphlab::nanosockets;
 
 std::atomic<size_t>& get_running_command();
 std::atomic<size_t>& get_cancelled_command();
@@ -208,15 +200,11 @@ class object_factory_proxy;
  */
 class EXPORT comm_client {
  private:
-  void* zmq_ctx;
-  bool owns_zmq_ctx = true;
-  graphlab::zookeeper_util::key_value* keyval;
-  libfault::async_request_socket object_socket;
+  nanosockets::async_request_socket object_socket;
   // This is a pointer because the endpoint address must be received from the
   // server, so it cannot be constructed in the constructor
-  libfault::async_request_socket *control_socket = NULL;
-  libfault::subscribe_socket subscribesock;
-  libfault::socket_receive_pollset pollset;
+  nanosockets::async_request_socket *control_socket = NULL;
+  nanosockets::subscribe_socket subscribesock;
   graphlab::atomic<size_t> m_command_id;
   
   // a map of a string representation of the function pointer 
@@ -244,25 +232,10 @@ class EXPORT comm_client {
    */
   int internal_call(call_message& call, reply_message& reply, bool control=false);
 
-
-  /**
-   * Issue a call to the remote machine.
-   * As a side effect, the call and reply message structures will be cleared.
-   * Returns 0 on success and an error code on failure
-   */
-  boost::shared_future<libfault::message_reply*> internal_call_future(
-      call_message& call, bool control);
-
-  /**
-   * A series of authentication methods to apply to the messages.
-   */
-  std::vector<std::shared_ptr<authentication_base> > auth_stack;
-
-  /// Applies the authentication stack on the call message
-  void apply_auth(call_message& call);
-
-  /// Validates the authentication stack on the reply message
-  bool validate_auth(reply_message& reply);
+  int internal_call_impl(call_message& call, 
+                         nanosockets::zmq_msg_vector& ret, 
+                         bool control,
+                         size_t timeout = 0);
 
   /** Checks is the pid set with set_server_alive_watch_pid is running.
    * Sets server_running to false if pid is no longer running.
@@ -320,7 +293,7 @@ class EXPORT comm_client {
   /**
    * Callback issued when server reports status
    */ 
-  void subscribe_callback(libfault::zmq_msg_vector& msg);
+  void subscribe_callback(const std::string& msg);
 
   /**
    * The point in time that must have passed for us to sync our tracked objects
@@ -404,7 +377,6 @@ class EXPORT comm_client {
    * and comm_server are required to have the same zmq_ctx.
    *
    * \param name The inproc socket address, must start with inproc://
-   * \param zmq_ctx The same zeromq context as the comm_server.
    */
   comm_client(std::string name, void* zmq_ctx);
 
@@ -554,32 +526,9 @@ class EXPORT comm_client {
   void clear_status_watch(); 
 
   /**
-   *  Adds a security configuration. Multiple auth methods can be added
-   *  in which case they "stack".
-   *  See \ref authentication_config and \ref authentication_method 
-   *  for details.
-   */
-  inline void add_auth_method(std::shared_ptr<authentication_base> config) {
-    auth_stack.push_back(config);
-  }
-
-  /**
    * Stops the ping thread.
    */
   void stop_ping_thread();
-
-  /**
-   *  Adds a token security configuration. Synonym for
-   *  \code
-   *  add_auth_method(std::make_shared<authentication_token_method>(authtoken));
-   *  \endcode
-   *  Multiple auth methods can be added in which case they stack.
-   *  See \ref authentication_config and \ref authentication_method 
-   *  for details.
-   */
-  inline void add_auth_method_token(std::string authtoken) {
-    auth_stack.push_back(std::make_shared<authentication_token_method>(authtoken));
-  }
 
   /**
    * Tries to synchronize the list of tracked objects with the server by

@@ -16,7 +16,6 @@
 */
 #include <cppipc/cppipc.hpp>
 #include <cppipc/common/object_factory_base.hpp>
-#include <cppipc/common/authentication_token_method.hpp>
 #include "test_object_base.hpp"
 
 int main(int argc, char** argv) {
@@ -26,9 +25,6 @@ int main(int argc, char** argv) {
   cppipc::comm_client client({}, 
                              "ipc:///tmp/cppipc_server_test");
                              */
-  if (argc >= 2) {
-    client.add_auth_method(std::make_shared<cppipc::authentication_token_method>(argv[1]));
-  }
   client.start();
   client.add_status_watch(WATCH_COMM_SERVER_INFO, 
                           [](std::string message) {
