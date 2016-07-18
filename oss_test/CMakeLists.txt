@@ -6,7 +6,7 @@ subdirs(
   logger
   timer
   random
-  fault
+  # fault
   nanosockets
   fileio
   graphlab

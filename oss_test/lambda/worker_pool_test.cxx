@@ -19,7 +19,7 @@
 #include <lambda/worker_pool.hpp>
 #include <parallel/lambda_omp.hpp>
 #include <fileio/fs_utils.hpp>
-#include <fault/sockets/socket_config.hpp>
+#include <nanosockets/socket_config.hpp>
 #include "dummy_worker_interface.hpp"
 
 using namespace graphlab;
@@ -32,7 +32,7 @@ class worker_pool_test: public CxxTest::TestSuite {
     // Manually set this one.
     char* use_fallback = std::getenv("GRAPHLAB_FORCE_IPC_TO_TCP_FALLBACK");
     if(use_fallback != nullptr && std::string(use_fallback) == "1") {
-      libfault::FORCE_IPC_TO_TCP_FALLBACK = true;
+      nanosockets::FORCE_IPC_TO_TCP_FALLBACK = true;
     }
   }
   void test_spawn_workers() {

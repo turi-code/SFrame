@@ -8,11 +8,11 @@ GRAPHLAB_HOME=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 DEPS_PREFIX=$PWD/deps/local
 
 if [[ $OSTYPE == linux* ]]; then
-        DEFAULT_DATO_DEPS_VERSION=11
+        DEFAULT_DATO_DEPS_VERSION=12
 elif [[ $OSTYPE == darwin* ]]; then
-        DEFAULT_DATO_DEPS_VERSION=11
+        DEFAULT_DATO_DEPS_VERSION=12
 elif [[ $OSTYPE == msys ]]; then
-        DEFAULT_DATO_DEPS_VERSION=11
+        DEFAULT_DATO_DEPS_VERSION=12
 fi
 
 
