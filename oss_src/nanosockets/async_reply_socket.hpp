@@ -47,6 +47,9 @@ class EXPORT async_reply_socket {
                      size_t nthreads = 4,
                      std::string bind_address = "");
 
+  void start_polling();
+  void stop_polling();
+
   /**
    * Closes the socket. Once closed. It cannot be opened again
    */
@@ -80,6 +83,7 @@ class EXPORT async_reply_socket {
 
   void process_job(job j);
   thread_group threads;
+  thread_group poll_thread;
 };
 
 } // nanosockets

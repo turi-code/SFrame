@@ -56,6 +56,7 @@ volatile bool done = false;
 
 void start_server(std::string address){  
   async_reply_socket reply(server_handler, 4, address);
+  reply.start_polling();
   while (done == false) sleep(1);
 }
 

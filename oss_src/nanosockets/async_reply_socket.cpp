@@ -17,6 +17,7 @@
 #include <nanosockets/socket_config.hpp>
 #include <nanosockets/async_reply_socket.hpp>
 #include <nanosockets/print_zmq_error.hpp>
+#include <nanosockets/get_next_port_number.hpp>
 #include <network/net_util.hpp>
 extern "C" {
 #include <nanomsg/nn.h>
@@ -32,29 +33,55 @@ async_reply_socket::async_reply_socket(callback_type callback,
   this->callback = callback;
   z_socket = nn_socket(AF_SP_RAW, NN_REP);
   set_conservative_socket_parameters(z_socket);
-  local_address = normalize_address(bind_address);
-  int rc = nn_bind(z_socket, local_address.c_str());
-  if (rc == -1) {
-    print_zmq_error("async_reply_socket construction: ");
-    assert(rc == 0);
+  if (bind_address.length() > 0) {
+    local_address = normalize_address(bind_address);
+    int rc = nn_bind(z_socket, local_address.c_str());
+    if (rc < 0) {
+      print_zmq_error("async_reply_socket construction: ");
+      assert(rc >= 0);
+    }
+  } else {
+    std::string localip = graphlab::get_local_ip_as_str(true);
+    bool ok = false;
+    while (!ok) {
+      size_t port = get_next_port_number();
+      char port_as_string[128];
+      sprintf(port_as_string, "%ld", port);
+      local_address = "tcp://" + localip + ":" + port_as_string;
+      // try to bind
+      int rc = nn_bind(z_socket, local_address.c_str());
+      ok = (rc >= 0);
+      /*if (rc == EADDRINUSE) {
+        std::cout << local_address << " in use. Trying another port.\n";
+        continue;
+      } else if (rc != 0) {
+        std::cout << "Unable to bind to " << local_address << ". "
+                  << "Error(" << rc << ") = " << zmq_strerror(rc) << "\n";
+      }*/
+    }
   }
 
   for (size_t i = 0;i < nthreads; ++i) {
     threads.launch(std::bind(&async_reply_socket::thread_function,
                              this));
-                             
   }
-  threads.launch(std::bind(&async_reply_socket::poll_function,
+}
+void async_reply_socket::start_polling() {
+  poll_thread.launch(std::bind(&async_reply_socket::poll_function,
                            this));
+}
+void async_reply_socket::stop_polling() {
+  queuelock.lock();
+  queue_terminate = true;
+  queuecond.notify_all();
+  queuelock.unlock();
+  poll_thread.join();
 }
 
 void async_reply_socket::close() {
   if (z_socket != -1) {
     // kill all threads
-    queuelock.lock();
-    queue_terminate = true;
-    queuecond.notify_all();
-    queuelock.unlock();
+    stop_polling();
     nn_close(z_socket);
     threads.join();
     z_socket = -1;

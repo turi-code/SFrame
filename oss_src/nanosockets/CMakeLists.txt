@@ -12,6 +12,7 @@ make_library(nanosockets
   socket_config.cpp
   subscribe_socket.cpp
   publish_socket.cpp
+  get_next_port_number.cpp
   REQUIRES 
   network
   util
