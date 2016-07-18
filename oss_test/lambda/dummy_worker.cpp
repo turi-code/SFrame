@@ -17,7 +17,7 @@
 #include <cppipc/cppipc.hpp>
 #include <process/process_util.hpp>
 #include "dummy_worker_interface.hpp"
-#include <fault/sockets/socket_config.hpp>
+#include <nanosockets/socket_config.hpp>
 #include <thread>
 
 using namespace graphlab;
@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
   // Manually set this one.
   char* use_fallback = std::getenv("GRAPHLAB_FORCE_IPC_TO_TCP_FALLBACK");
   if(use_fallback != nullptr && std::string(use_fallback) == "1") {
-    libfault::FORCE_IPC_TO_TCP_FALLBACK = true;
+    nanosockets::FORCE_IPC_TO_TCP_FALLBACK = true;
   }
 
   size_t parent_pid = get_parent_pid();

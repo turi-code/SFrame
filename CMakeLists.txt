@@ -96,8 +96,7 @@ endif()
 set(MINGW_ROOT "/mingw64/bin")
 # Separate variable so that cython's CMakeLists.txt can use it too
 if (WIN32)
-        set(INSTALLATION_SYSTEM_BINARY_FILES ${CMAKE_SOURCE_DIR}/deps/local/bin/libzmq.dll
-        ${CMAKE_SOURCE_DIR}/deps/local/bin/libsodium-13.dll
+        set(INSTALLATION_SYSTEM_BINARY_FILES 
         ${MINGW_ROOT}/libiconv-2.dll
         ${MINGW_ROOT}/libssh2-1.dll
         ${MINGW_ROOT}/zlib1.dll
@@ -105,10 +104,6 @@ if (WIN32)
         ${MINGW_ROOT}/libgcc_s_seh-1.dll
         ${MINGW_ROOT}/libstdc++-6.dll
         ${MINGW_ROOT}/libeay32.dll)
-else()
-        if (EXISTS ${CMAKE_SOURCE_DIR}/deps/local/lib64/libgomp.so.1)
-                list(APPEND INSTALLATION_SYSTEM_BINARY_FILES ${CMAKE_SOURCE_DIR}/deps/local/lib64/libgomp.so.1)
-        endif()
 endif()
 
 
@@ -131,27 +126,10 @@ add_definitions(-DFUSION_MAX_VECTOR_SIZE=20)
 #*                             Locate OpenMP                              */
 #*                                                                        */
 #**************************************************************************/
-if (EXISTS ${CMAKE_SOURCE_DIR}/deps/local/lib/libgomp.so)
-   add_library(libgomp.so SHARED IMPORTED)
-  set_property(TARGET libgomp.so PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/deps/local/lib/libgomp.so)
-  add_library(openmp INTERFACE)
-
-  target_compile_options(openmp INTERFACE "-fopenmp")
-  target_link_libraries(openmp INTERFACE libgomp.so)
-  message(STATUS "OpenMP Library Found")
-elseif (EXISTS ${CMAKE_SOURCE_DIR}/deps/local/lib64/libgomp.so)
-  add_library(libgomp.so SHARED IMPORTED)
-  set_property(TARGET libgomp.so PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/deps/local/lib64/libgomp.so)
-
-  add_library(openmp INTERFACE)
-  target_compile_options(openmp INTERFACE "-fopenmp")
-  target_link_libraries(openmp INTERFACE libgomp.so)
-  message(STATUS "OpenMP Library Found")
-else()
-  add_library(openmp INTERFACE)
-  target_compile_definitions(openmp INTERFACE __NO_OPENMP__)
-  message(WARNING "OpenMP Libraries were not found")
-endif()
+# disable openmp
+add_library(openmp INTERFACE)
+target_compile_definitions(openmp INTERFACE __NO_OPENMP__)
+message(WARNING "OpenMP Libraries were not found")
 
 #**************************************************************************/
 #*                                                                        */
