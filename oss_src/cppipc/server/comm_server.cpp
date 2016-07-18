@@ -15,18 +15,10 @@
 #include <cppipc/common/status_types.hpp>
 #include <cppipc/common/message_types.hpp>
 #include <cppipc/common/object_factory_impl.hpp>
-#include <cppipc/common/authentication_base.hpp>
-#include <cppipc/common/authentication_token_method.hpp>
-#include <fault/sockets/socket_errors.hpp>
-#include <fault/sockets/async_reply_socket.hpp>
-#include <fault/sockets/publish_socket.hpp>
-#include <fault/sockets/socket_receive_pollset.hpp>
+#include <nanosockets/socket_errors.hpp>
+#include <nanosockets/async_reply_socket.hpp>
+#include <nanosockets/publish_socket.hpp>
 
-#ifdef FAKE_ZOOKEEPER
-#include <fault/fake_key_value.hpp>
-#else
-#include <zookeeper_util/key_value.hpp>
-#endif
 
 namespace cppipc {
 
@@ -69,58 +61,31 @@ comm_server::comm_server(std::vector<std::string> zkhosts,
                          std::string secret_key):
 
     started(false),
-    zmq_ctx(zmq_ctx_new()), 
-    keyval(zkhosts.empty() ?  // make a keyval only if zkhosts is not empty
-               NULL :         // null otherwise
-           new graphlab::zookeeper_util::key_value(zkhosts, "cppipc", name)),
     comm_server_debug_mode(std::getenv("GRAPHLAB_COMM_SERVER_DEBUG_MODE") != NULL)
     {
 
 
-  object_socket = new libfault::async_reply_socket(zmq_ctx, keyval,
+  object_socket = new nanosockets::async_reply_socket(
           boost::bind(&comm_server::callback, this, _1, _2),
           1, // 2 threads. one to handle pings, one to handle real messages
-          alternate_bind_address, secret_key);
+          alternate_bind_address);
+
   if(alternate_bind_address.size() == 0) {
     alternate_bind_address = object_socket->get_bound_address();
   }
   logstream(LOG_INFO) << "my alt bind address: " << alternate_bind_address << std::endl;
-  control_socket = new libfault::async_reply_socket(zmq_ctx, keyval,
+  control_socket = new nanosockets::async_reply_socket(
         boost::bind(&comm_server::callback, this, _1, _2), 1,
-        (keyval==NULL && alternate_control_address.length()==0) ?
-        generate_aux_address(alternate_bind_address, "_control") :
-        alternate_control_address);
-  publishsock = new libfault::publish_socket(zmq_ctx, keyval,
-        // honestly, this syntax is *terrible*.
-        // If Zookeeper is not used, and alternate_publish_address not
-        // provided, we generate one based on the bind address
-        (keyval==NULL && alternate_publish_address.length()==0) ?
-        generate_aux_address(alternate_bind_address, "_status") :
-        alternate_publish_address);
+        (alternate_control_address.length()==0) ?
+            generate_aux_address(alternate_bind_address, "_control") :
+            alternate_control_address);
+  publishsock = new nanosockets::publish_socket(
+        (alternate_publish_address.length()==0) ?
+            generate_aux_address(alternate_bind_address, "_status") :
+            alternate_publish_address);
   get_srv_running_command().store(0);
   get_cancel_bit_checked().store(false);
-  pollset = new libfault::socket_receive_pollset;
 
-  if (keyval != NULL && !object_socket->register_key("call")) {
-    logstream(LOG_ERROR) 
-        << "Unable to register the zookeeper key for the main server. "
-           "Perhaps there is already a server with this name?";
-    throw("Unable to register with zookeeper");
-  }
-  if (keyval != NULL && !control_socket->register_key("control")) {
-    logstream(LOG_ERROR) 
-        << "Unable to register the zookeeper key for the main server's control socket. "
-           "Perhaps there is already a server with this name?";
-    throw("Unable to register with zookeeper");
-  }
-  if (keyval != NULL && !publishsock->register_key("status")) {
-    logstream(LOG_ERROR) 
-        << "Unable to register the zookeeper key for the publishsock. "
-           "Perhaps there is already a server with this name?";
-    throw("Unable to register with zookeeper");
-  }
-  object_socket->add_to_pollset(pollset);
-  control_socket->add_to_pollset(pollset);
 
   logstream(LOG_EMPH) << "Server listening on: " 
                       << object_socket->get_bound_address() << std::endl;
@@ -147,15 +112,6 @@ comm_server::comm_server(std::vector<std::string> zkhosts,
   lcg_seed = (size_t(rd()) << 32) + rd();
 }
 
-void comm_server::add_auth_method(std::shared_ptr<authentication_base> config) {
-  auth_stack.push_back(config);
-}
-
-
-void comm_server::add_auth_method_token(std::string authtoken) {
-  auth_stack.push_back(std::make_shared<authentication_token_method>(authtoken));
-}
-
 
 std::string comm_server::get_bound_address() {
   return object_socket->get_bound_address();
@@ -170,22 +126,9 @@ std::string comm_server::get_status_address() {
 }
 
 void* comm_server::get_zmq_context() {
-  return zmq_ctx;
+  return nullptr;
 }
 
-void comm_server::apply_auth(reply_message& reply) {
-  for(auto& auth : auth_stack) {
-    auth->apply_auth(reply);
-  }
-}
-
-
-bool comm_server::validate_auth(call_message& call) {
-  for(auto& auth : boost::adaptors::reverse(auth_stack)) {
-    if (auth->validate_auth(call) == false) return false;
-  }
-  return true;
-}
 
 
 size_t comm_server::get_next_object_id() {
@@ -206,19 +149,15 @@ comm_server::~comm_server() {
   delete object_socket;
   delete control_socket;
   delete publishsock;
-  delete pollset;
   for (auto& dispatcher: dispatch_map) {
     delete dispatcher.second;
   }
-  if (keyval != NULL) delete keyval;
   registered_objects.clear();
-  zmq_ctx_destroy(zmq_ctx);
 }
 
 void comm_server::start() {
   log_func_entry();
   if (!started) {
-    pollset->start_poll_thread();
     started = true;
   }
 }
@@ -226,7 +165,6 @@ void comm_server::start() {
 void comm_server::stop() {
   log_func_entry();
   if (started) {
-    pollset->stop_poll_thread();
     started = false;
   }
 
@@ -237,13 +175,11 @@ void comm_server::stop() {
 
 void comm_server::report_status(std::string status_type, std::string message) {
   std::string combined = status_type + ": " + message;
-  libfault::zmq_msg_vector msgvec;
-  msgvec.insert_back(combined.c_str(), combined.length());
-  publishsock->send(msgvec);
+  publishsock->send(combined);
 }
 
-bool comm_server::callback(libfault::zmq_msg_vector& recv, 
-                           libfault::zmq_msg_vector& reply) {
+bool comm_server::callback(nanosockets::zmq_msg_vector& recv, 
+                           nanosockets::zmq_msg_vector& reply) {
   // construct a call message from the received block
   call_message call;
   reply_message rep;
@@ -253,19 +189,6 @@ bool comm_server::callback(libfault::zmq_msg_vector& recv,
     rep.copy_body_from("Invalid Message");
     rep.status = reply_status::BAD_MESSAGE;
     rep.emit(reply);
-    // we explicitly do not apply auth here
-    // since it is a bad message 
-    // apply_auth(reply);
-    return true;
-  }
-
-  if (!validate_auth(call)) {
-    rep.copy_body_from("Authentication Failure");
-    rep.status = reply_status::AUTH_FAILURE;
-    rep.emit(reply);
-    // we explicitly do not apply auth here
-    // since the message did not pass authentication
-    // apply_auth(reply);
     return true;
   }
 
@@ -277,7 +200,6 @@ bool comm_server::callback(libfault::zmq_msg_vector& recv,
       logstream(LOG_ERROR) << ret << std::endl;
       rep.copy_body_from(ret);
       rep.status = reply_status::NO_OBJECT;
-      apply_auth(rep);
       rep.emit(reply);
       return true;
     }
@@ -289,7 +211,6 @@ bool comm_server::callback(libfault::zmq_msg_vector& recv,
     logstream(LOG_ERROR) << ret << std::endl;
     rep.copy_body_from(ret);
     rep.status = reply_status::NO_FUNCTION;
-    apply_auth(rep);
     rep.emit(reply);
     return true;
   }
@@ -411,7 +332,6 @@ bool comm_server::callback(libfault::zmq_msg_vector& recv,
     cancel_checked.store(false);
   }
 
-  apply_auth(rep);
   rep.emit(reply);
   return true;
 }

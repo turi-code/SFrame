@@ -15,75 +15,66 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include <cppipc/common/message_types.hpp>
-#include <fault/zmq/zmq_msg_standard_free.hpp>
 #include <serialization/serialization_includes.hpp>
 namespace cppipc {
 
 void call_message::clear() {
   if (!zmqbodyused) {
-    if (!body) free(body);
-  } else {
-    zmq_msg_close(&bodybuf);
-  }
+    if (!body) free((void*)body);
+  } 
   body = NULL;
   objectid = 0;
   zmqbodyused = false;
 }
 
-bool call_message::construct(libfault::zmq_msg_vector& msg) {
+bool call_message::construct(nanosockets::zmq_msg_vector& msg) {
   clear();
   if(msg.size() != 4) return false;
   // first block is the object ID
-  if (zmq_msg_size(msg.front()) != sizeof(size_t)) return false;
-  objectid = *reinterpret_cast<size_t*>(zmq_msg_data(msg.front()));
+  if (msg.front()->length() != sizeof(size_t)) return false;
+  objectid = *reinterpret_cast<const size_t*>(msg.front()->data());
   msg.pop_front_and_free();
 
   // second block is the property bag
-  char* propertybuf = (char*)zmq_msg_data(msg.front());
-  size_t propertybuflen = zmq_msg_size(msg.front());
+  const char* propertybuf = msg.front()->data();
+  size_t propertybuflen = msg.front()->length();
   graphlab::iarchive iarc(propertybuf, propertybuflen);
   iarc >> properties;
   msg.pop_front_and_free();
 
   // third block is the function name
-  function_name = std::string((const char*)zmq_msg_data(msg.front()), 
-                              zmq_msg_size(msg.front()));
+  function_name = *(msg.front());
   msg.pop_front_and_free();
-  zmq_msg_init(&bodybuf);  
-  zmq_msg_move(&bodybuf, msg.front());
-  body = (char*)zmq_msg_data(&bodybuf);
-  bodylen = zmq_msg_size(&bodybuf);
+  bodybuf = std::move(*msg.front());
+  body = bodybuf.data();
+  bodylen = bodybuf.size();
   zmqbodyused = true;
   msg.pop_front_and_free(); // no free this time since we are keeping a pointer
   return true;
 }
 
-void call_message::emit(libfault::zmq_msg_vector& msg) {
+void call_message::emit(nanosockets::zmq_msg_vector& msg) {
   assert(zmqbodyused == false);
   // first block is the object ID
-  zmq_msg_t* z_objectid = msg.insert_back();
-  zmq_msg_init_size(z_objectid, sizeof(size_t));
-  (*reinterpret_cast<size_t*>(zmq_msg_data(z_objectid))) = objectid;
+  nanosockets::nn_msg_t* z_objectid = msg.insert_back();
+  z_objectid->assign(sizeof(size_t), 8);
+  (*reinterpret_cast<size_t*>(&((*z_objectid)[0]))) = objectid;
 
   // second block is the property bag
   graphlab::oarchive oarc;
   oarc << properties;
-  zmq_msg_t* z_propertybag = msg.insert_back();
-  zmq_msg_init_data(z_propertybag, oarc.buf, oarc.off, 
-                    libfault::zmq_msg_standard_free, NULL);
+  nanosockets::nn_msg_t* z_propertybag = msg.insert_back();
+  z_propertybag->assign(oarc.buf, oarc.off);
 
   // third block is the function name
-  zmq_msg_t* z_function_name = msg.insert_back();
-  zmq_msg_init_size(z_function_name, function_name.length());
-  memcpy(zmq_msg_data(z_function_name), 
-         function_name.c_str(), 
-         function_name.length());
+  nanosockets::nn_msg_t* z_function_name = msg.insert_back();
+  z_function_name->assign(function_name);
 
-  // third block is the serialization body
-  zmq_msg_t* z_body = msg.insert_back();
+  // fourth block is the serialization body
+  nanosockets::nn_msg_t* z_body = msg.insert_back();
 
   if (body != NULL) {
-    zmq_msg_init_data(z_body, body, bodylen, libfault::zmq_msg_standard_free, NULL);
+    z_body->assign(body, bodylen);
   }
   
   // we are giving away the body pointer
@@ -95,59 +86,55 @@ void call_message::emit(libfault::zmq_msg_vector& msg) {
 
 void reply_message::clear() {
   if (!zmqbodyused) {
-    if (!body) free(body);
-  } else {
-    zmq_msg_close(&bodybuf);
-  }
+    if (!body) free((void*)body);
+  } 
   body = NULL;
   bodylen = 0;
   zmqbodyused = false;
 }
 
-bool reply_message::construct(libfault::zmq_msg_vector& msg) {
+bool reply_message::construct(nanosockets::zmq_msg_vector& msg) {
   clear();
   if(msg.size() != 3) return false;
   // first block is the reply status
-  if (zmq_msg_size(msg.front()) != sizeof(reply_status)) return false;
-  status = *reinterpret_cast<reply_status*>(zmq_msg_data(msg.front()));
+  if (msg.front()->length() != sizeof(reply_status)) return false;
+  status = *reinterpret_cast<const reply_status*>(msg.front()->data());
   msg.pop_front_and_free();
 
   // second block is the property bag
-  char* propertybuf = (char*)zmq_msg_data(msg.front());
-  size_t propertybuflen = zmq_msg_size(msg.front());
+  const char* propertybuf = msg.front()->data();
+  size_t propertybuflen = msg.front()->length();
   graphlab::iarchive iarc(propertybuf, propertybuflen);
   iarc >> properties;
   msg.pop_front_and_free();
 
   // third block is the serialization body
-  zmq_msg_init(&bodybuf);  
-  zmq_msg_move(&bodybuf, msg.front());
-  body = (char*)zmq_msg_data(&bodybuf);
-  bodylen = zmq_msg_size(&bodybuf);
+  bodybuf = std::move(*msg.front());
+  body = &(bodybuf[0]);
+  bodylen = bodybuf.length();
   zmqbodyused = true;
   msg.pop_front_and_free(); // no free this time since we are keeping a pointer
   return true;
 }
 
-void reply_message::emit(libfault::zmq_msg_vector& msg) {
+void reply_message::emit(nanosockets::zmq_msg_vector& msg) {
   assert(zmqbodyused == false);
   // first block is the reply status
-  zmq_msg_t* z_status = msg.insert_back();
-  zmq_msg_init_size(z_status, sizeof(reply_status));
-  (*reinterpret_cast<reply_status*>(zmq_msg_data(z_status))) = status;
+  nanosockets::nn_msg_t* z_status = msg.insert_back();
+  z_status->assign(sizeof(reply_status), 0);
+  (*reinterpret_cast<reply_status*>(&((*z_status)[0]))) = status;
 
   // second block is the property bag
   graphlab::oarchive oarc;
   oarc << properties;
-  zmq_msg_t* z_propertybag = msg.insert_back();
-  zmq_msg_init_data(z_propertybag, oarc.buf, oarc.off, 
-                    libfault::zmq_msg_standard_free, NULL);
+  nanosockets::nn_msg_t* z_propertybag = msg.insert_back();
+  z_propertybag->assign(oarc.buf, oarc.off);
 
   // third block is the serialization body
-  zmq_msg_t* z_body= msg.insert_back();
+  nanosockets::nn_msg_t* z_body= msg.insert_back();
 
   if (body != NULL) {
-    zmq_msg_init_data(z_body, body, bodylen, libfault::zmq_msg_standard_free, NULL);
+    z_body->assign(body, bodylen);
   }
   
   // we are giving away the body pointer

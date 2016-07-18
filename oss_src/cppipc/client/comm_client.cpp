@@ -12,11 +12,6 @@
 #include <cppipc/common/object_factory_proxy.hpp>
 #include <minipsutil/minipsutil.h>
 #include <export.hpp>
-#ifdef FAKE_ZOOKEEPER
-#include <fault/fake_key_value.hpp>
-#else
-#include <zookeeper_util/key_value.hpp>
-#endif
 
 namespace cppipc {
 
@@ -40,19 +35,8 @@ comm_client::comm_client(std::vector<std::string> zkhosts,
                          const std::string secret_key,
                          const std::string server_public_key, 
                          bool ops_interruptible):
-    zmq_ctx(zmq_ctx_new()), 
-    keyval(zkhosts.empty() ? 
-              NULL :   // make a keyval only if zkhosts is not empty
-              new graphlab::zookeeper_util::key_value(zkhosts, "cppipc", name)), 
-    object_socket(zmq_ctx, keyval, 
-                  zkhosts.empty() ?  // use the name as the address if zookeeper 
-                    name :       // is not used.
-                    "call", 
-                  std::vector<std::string>(),
-                  public_key, secret_key, server_public_key
-                  ),
-    subscribesock(zmq_ctx, keyval, 
-               boost::bind(&comm_client::subscribe_callback, this, _1)),
+    object_socket(name, 2),
+    subscribesock(boost::bind(&comm_client::subscribe_callback, this, _1)),
     num_tolerable_ping_failures(num_tolerable_ping_failures),
     alternate_control_address(alternate_control_address),
     alternate_publish_address(alternate_publish_address),
@@ -61,13 +45,8 @@ comm_client::comm_client(std::vector<std::string> zkhosts,
     }
 
 comm_client::comm_client(std::string name, void* zmq_ctx) :
-    zmq_ctx(zmq_ctx), 
-    owns_zmq_ctx(false),
-    keyval(NULL), 
-    object_socket(zmq_ctx, keyval, name, std::vector<std::string>(),
-                  "", "", ""),
-    subscribesock(zmq_ctx, keyval, 
-               boost::bind(&comm_client::subscribe_callback, this, _1)),
+    object_socket(name, 2),
+    subscribesock(boost::bind(&comm_client::subscribe_callback, this, _1)),
     endpoint_name(name) {
       ASSERT_MSG(boost::starts_with(name, "inproc://"), "This constructor only supports inproc address");
       bool ops_interruptible = true;
@@ -80,13 +59,11 @@ void comm_client::init(bool ops_interruptible) {
 
   // connect the subscribesock either to the key "status" (if zookeeper is used),
   // or to the alternate address if zookeeper is not used.
-  object_socket.add_to_pollset(&pollset);
-  subscribesock.add_to_pollset(&pollset);
-  pollset.start_poll_thread();
 
   if(ops_interruptible) {
     cancel_handling_enabled = true;
   }
+  object_socket.set_receive_poller([=](){this->poll_server_pid_is_running();return this->server_alive;});
 }
 
 void comm_client::set_server_alive_watch_pid(int32_t pid) {
@@ -135,24 +112,10 @@ reply_status comm_client::start() {
       msg.body = oarc.buf;
       msg.bodylen = oarc.off;
 
-      auto future = this->internal_call_future(msg, true);
-      // now, we wait on the future for 5 seconds
-      // do it in 1 second increments
-      // this speeds up client termination somewhat since it doesn't have
-      // to wait for the full 5 seconds to cancel.
-      for (size_t i = 0;i < 5; ++i) {
-        auto future_timeout =
-            boost::chrono::system_clock::now() + boost::chrono::milliseconds(1000);
-        future.wait_until(future_timeout);
-        if (future.has_value()) break;
-        if (this->ping_thread_done) return;
-      }
+      nanosockets::zmq_msg_vector reply;
+      int status = this->internal_call_impl(msg, reply, true, 5 /* 5 seconds timeout */);
       lock.lock();
-      if (future.has_value()) {
-        // we ignore the message as long as we get a reply
-        future.get()->msgvec.clear();
-        delete future.get();
-        // everything is good!
+      if (status == 0) {
         server_alive = true;
         ping_failure_count = 0;
       } else {
@@ -166,31 +129,24 @@ reply_status comm_client::start() {
   start_status_callback_thread();
   std::string cntladdress;
   // Bring the control_socket up
-  if (!keyval) {
-    if (alternate_control_address.length() > 0) {
-      cntladdress = alternate_control_address;
-    } else {
-      try {
-        cntladdress = object_factory->get_control_address();
-      } catch (ipcexception& except) {
-        // FAIL!! We cannot start
-        return except.get_reply_status();
-      }
+  if (alternate_control_address.length() > 0) {
+    cntladdress = alternate_control_address;
+  } else {
+    try {
+      cntladdress = object_factory->get_control_address();
+    } catch (ipcexception& except) {
+      // FAIL!! We cannot start
+      return except.get_reply_status();
     }
   }
 
   cntladdress = convert_generic_address_to_specific(cntladdress);
 
-  control_socket = new libfault::async_request_socket(zmq_ctx, keyval,
-      (keyval == NULL) ? cntladdress : "control",
-      std::vector<std::string>());
-
-  control_socket->add_to_pollset(&pollset);
+  control_socket = new nanosockets::async_request_socket(cntladdress, 1);
+  control_socket->set_receive_poller([=](){this->poll_server_pid_is_running();return this->server_alive;});
 
   // connect the subscriber to the status address
-  if (keyval) {
-    subscribesock.connect("status");
-  } else if (alternate_publish_address.length() > 0) {
+  if (alternate_publish_address.length() > 0) {
     subscribesock.connect(alternate_publish_address);
   } else {
       std::string pubaddress;
@@ -260,9 +216,6 @@ void comm_client::stop() {
   // clear all status callbacks
   clear_status_watch();
 
-  // stop all pollset callbacks
-  pollset.stop_poll_thread();
-
   // close all sockets
   object_socket.close();
   if(control_socket != NULL) {
@@ -271,14 +224,6 @@ void comm_client::stop() {
   subscribesock.close();
   delete control_socket;
 
-  // destroy zookeeper 
-  if (keyval) delete keyval;
-  keyval = NULL;
-
-  // close zeromq context
-  if (owns_zmq_ctx) {
-    zmq_ctx_destroy(zmq_ctx);
-  }
   socket_closed = true;
   started = false;
 }
@@ -300,28 +245,7 @@ void comm_client::stop_ping_thread() {
   }
 }
 
-void comm_client::apply_auth(call_message& call) {
-  for(auto& auth : auth_stack) {
-    auth->apply_auth(call);
-  }
-}
-
-
-bool comm_client::validate_auth(reply_message& reply) {
-  for(auto& auth : boost::adaptors::reverse(auth_stack)) {
-    if (auth->validate_auth(reply) == false) return false;
-  }
-  return true;
-}
-
-void comm_client::subscribe_callback(libfault::zmq_msg_vector& recv) {
-  // check that it is the right format. It should just be one message
-  if (recv.size() != 1) return;
-  // decode the message, convert zmq_msg_t to string
-  recv.reset_read_index();
-  zmq_msg_t* zmsg = recv.read_next();
-  std::string msg((char*)zmq_msg_data(zmsg), zmq_msg_size(zmsg));
-  
+void comm_client::subscribe_callback(const std::string& msg) {
   boost::lock_guard<boost::mutex> guard(status_buffer_mutex);
   status_buffer.push_back(msg);
   status_buffer_cond.notify_one();
@@ -413,22 +337,20 @@ void comm_client::clear_status_watch() {
   prefix_to_status_callback.clear();
 }
 
-boost::shared_future<libfault::message_reply*>
-comm_client::internal_call_future(call_message& call, bool control) {
+int comm_client::internal_call_impl(call_message& call, 
+                                    nanosockets::zmq_msg_vector& ret, 
+                                    bool control,
+                                    size_t timeout) {
   // If the socket is already dead, return with an unreachable
-  if (socket_closed) {
-    libfault::message_reply* reply = new libfault::message_reply;
-    reply->status = EHOSTUNREACH;
-    return boost::make_future(reply);
-  }
-  apply_auth(call);
-  libfault::zmq_msg_vector callmsg;
+  if (socket_closed) return EHOSTUNREACH;
+
+  nanosockets::zmq_msg_vector callmsg;
   call.emit(callmsg);
   // Control messages use a separate socket
   if(control && control_socket != NULL) {
-    return control_socket->request_master(callmsg);
+    return control_socket->request_master(callmsg, ret, timeout);
   }
-  return object_socket.request_master(callmsg);
+  return object_socket.request_master(callmsg, ret, timeout);
 }
 
 int comm_client::internal_call(call_message& call, reply_message& reply, bool control) {
@@ -436,13 +358,8 @@ int comm_client::internal_call(call_message& call, reply_message& reply, bool co
     return ENOTCONN;
   }
 
-  auto future = internal_call_future(call, control);
-  while(server_alive && !future.has_value()) {
-    poll_server_pid_is_running();
-    auto future_timeout =
-          boost::chrono::system_clock::now() + boost::chrono::milliseconds(5000);
-    future.wait_until(future_timeout);
-  }
+  nanosockets::zmq_msg_vector ret;
+  int status = internal_call_impl(call, ret, control);
 
   // if server is dead, we quit
   if (server_alive == false) {
@@ -450,21 +367,12 @@ int comm_client::internal_call(call_message& call, reply_message& reply, bool co
     return EHOSTUNREACH;
   }
 
-  int status = future.get()->status;
   if (status != 0) {
-    delete future.get();
     return status;
   }
   // otherwise construct the reply
-  reply.construct(future.get()->msgvec);
-  future.get()->msgvec.clear();
-  delete future.get();
+  reply.construct(ret);
 
-  if (!validate_auth(reply)) {
-    // construct an auth failure reply
-    reply.clear();
-    reply.status = reply_status::AUTH_FAILURE;
-  }
   return status;
 }
 
