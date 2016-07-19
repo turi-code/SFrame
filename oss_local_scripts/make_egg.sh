@@ -233,6 +233,10 @@ package_egg() {
   if [[ $OSTYPE == darwin* ]] || [[ $OSTYPE == msys ]]; then
     dist_type="bdist_wheel"
   fi
+  rm -rf sframe/libgcc_s_seh-1.dll \
+         sframe/libstdc++-6.dll \
+         sframe/cython/libgcc_s_seh-1.dll \
+         sframe/cython/libstdc++-6.dll
   VERSION_NUMBER=`python -c "import sframe; print(sframe.version)"`
   ${PYTHON_EXECUTABLE} setup.py ${dist_type} # This produced an egg/wheel starting with SFrame-${VERSION_NUMBER} under dist/
   
