@@ -179,8 +179,7 @@ def __rdd_support_init__(sprk_ctx,graphlab_util_ref):
         unity = glconnect.get_unity()
         STAGING_DIR = unity.get_current_cache_file_location()
         if STAGING_DIR is None:
-            raise RuntimeError("Could not retrieve local staging directory! \
-                    Please contact us on http://forum.turi.com.")
+            raise RuntimeError("Could not retrieve local staging directory!")
     else:
         raise RuntimeError("Your spark context's master is '" +
                 str(sprk_ctx.master) +

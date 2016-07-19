@@ -7,7 +7,7 @@ References
 The code for this package is located here: https://github.com/turi-code/SFrame
 
 A lot more documentation regarding the SFrame is available here:
-https://turi.com and on our Forum at http://forum.turi.com
+https://turi.com
 
 Contributors
 ============
