@@ -129,8 +129,6 @@ else:
     print("""
 ACTION REQUIRED: Dependencies libstdc++-6.dll and libgcc_s_seh-1.dll not found.
 
-Run sframe.get_dependencies() to install them, then restart Python.
-
 1. Ensure user account has write permission to %s
 2. Run sframe.get_dependencies() to download and install them.
 3. Restart Python and import sframe again.
