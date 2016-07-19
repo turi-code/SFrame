@@ -125,8 +125,8 @@ if _sys.platform != 'win32' or \
     extensions = _sys.modules[__name__ + ".extensions"]
 else:
   from dependencies import get_dependencies
-  print """
+  print("""
 Required dependencies libstdc++-6.dll and libgcc_s_seh-1.dll not found.
 
 Run sframe.get_dependencies() to install them, then restart Python.
-  """
+  """)
