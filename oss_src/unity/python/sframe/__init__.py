@@ -125,7 +125,7 @@ if _sys.platform != 'win32' or \
     extensions = _sys.modules[__name__ + ".extensions"]
 else:
     from dependencies import get_dependencies
-    package_dir = os.path.dirname(__file__)
+    package_dir = _os.path.dirname(__file__)
     print("""
 ACTION REQUIRED: Dependencies libstdc++-6.dll and libgcc_s_seh-1.dll not found.
 
