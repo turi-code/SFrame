@@ -481,8 +481,6 @@ private:
       logprogress_stream << "All operations will proceed as normal, but "
                          << "lambda operations will not be able to use all "
                          << "available cores." << std::endl;
-      logprogress_stream << "To help us diagnose this issue, please send "
-                         << "the log file to product-feedback@turi.com." << std::endl;
       logprogress_stream << "(The location of the log file is printed at the "
                          << "start of the GraphLab server)."  << std::endl;
       logstream(LOG_ERROR) << "Less than " << num_workers << " successfully started."
