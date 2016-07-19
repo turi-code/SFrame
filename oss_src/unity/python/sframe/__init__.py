@@ -124,9 +124,19 @@ if _sys.platform != 'win32' or \
     # rewrite the import
     extensions = _sys.modules[__name__ + ".extensions"]
 else:
-  from dependencies import get_dependencies
-  print("""
-Required dependencies libstdc++-6.dll and libgcc_s_seh-1.dll not found.
+    from dependencies import get_dependencies
+    package_dir = os.path.dirname(__file__)
+    print("""
+ACTION REQUIRED: Dependencies libstdc++-6.dll and libgcc_s_seh-1.dll not found.
 
 Run sframe.get_dependencies() to install them, then restart Python.
-  """)
+
+1. Ensure user account has write permission to %s
+2. Run sframe.get_dependencies() to download and install them.
+3. Restart Python and import sframe again.
+
+By running the above function, you agree to the following licenses.
+
+* libstdc++: https://gcc.gnu.org/onlinedocs/libstdc++/manual/license.html
+* xz: http://git.tukaani.org/?p=xz.git;a=blob;f=COPYING
+  """ % package_dir)
