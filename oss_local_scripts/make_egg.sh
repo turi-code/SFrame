@@ -287,7 +287,7 @@ package_egg() {
   $PIP_EXECUTABLE install --force-reinstall --ignore-installed ${EGG_PATH}
   unset PYTHONPATH
   if [[ $OSTYPE == msys ]]; then
-    $PYTHON_EXECUTABLE -c "import graphlab; graphlab.get_dependencies()" || true
+    $PYTHON_EXECUTABLE -c "import sframe; sframe.get_dependencies()" || true
   fi
   $PYTHON_EXECUTABLE -c "import sframe; sframe.SArray(range(100)).apply(lambda x: x)"
 
