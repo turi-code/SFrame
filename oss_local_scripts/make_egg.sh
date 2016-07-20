@@ -234,14 +234,13 @@ package_egg() {
     dist_type="bdist_wheel"
   fi
 
+  VERSION_NUMBER=`python -c "import sframe; print(sframe.version)"`
+
   rm -rf sframe/libgcc_s_seh-1.dll \
          sframe/libstdc++-6.dll \
          sframe/cython/libgcc_s_seh-1.dll \
          sframe/cython/libstdc++-6.dll
 
-  push_ld_library_path
-
-  VERSION_NUMBER=`python -c "import sframe; print(sframe.version)"`
   ${PYTHON_EXECUTABLE} setup.py ${dist_type} # This produced an egg/wheel starting with SFrame-${VERSION_NUMBER} under dist/
   
   cd ${WORKSPACE}
@@ -287,6 +286,9 @@ package_egg() {
   # Install the egg and do a sanity check
   $PIP_EXECUTABLE install --force-reinstall --ignore-installed ${EGG_PATH}
   unset PYTHONPATH
+  if [[ $OSTYPE == msys ]]; then
+    $PYTHON_EXECUTABLE -c "import graphlab; graphlab.get_dependencies()" || true
+  fi
   $PYTHON_EXECUTABLE -c "import sframe; sframe.SArray(range(100)).apply(lambda x: x)"
 
   pop_ld_library_path
