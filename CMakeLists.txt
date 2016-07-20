@@ -111,6 +111,7 @@ else()
         if (EXISTS ${CMAKE_SOURCE_DIR}/deps/local/lib64/libc++abi.so.1)
 		set(INSTALLATION_SYSTEM_BINARY_FILES
 		  ${CMAKE_SOURCE_DIR}/deps/local/lib64/libc++abi.so.1
+      ${CMAKE_SOURCE_DIR}/deps/local/lib64/libc++.so.1
 		)
         endif()
 
