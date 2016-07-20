@@ -9,6 +9,7 @@
 
 namespace graphlab {
 toolkit_class_base::~toolkit_class_base() { }
+model_base::~model_base() {}
 
 std::vector<std::string> toolkit_class_base::list_keys() {
   return {"list_functions", 

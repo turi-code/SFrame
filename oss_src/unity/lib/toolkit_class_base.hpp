@@ -17,6 +17,7 @@
 #include <unity/lib/toolkit_util.hpp>
 #include <export.hpp>
 namespace graphlab {
+
 /**
  * The base class for which all new toolkit classes inherit from.
  *

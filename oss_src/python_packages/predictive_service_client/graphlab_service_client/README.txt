@@ -5,7 +5,7 @@ See the attached LICENSE.txt file to see the license under which GraphLab Predic
 References
 ==========
 A lot more documentation regarding the GraphLab Create is available here:
-https://turi.com and on our Forum at http://forum.turi.com
+https://turi.com
 
 Contributors
 ============

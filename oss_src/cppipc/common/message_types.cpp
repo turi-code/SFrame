@@ -20,7 +20,7 @@ namespace cppipc {
 
 void call_message::clear() {
   if (!zmqbodyused) {
-    if (!body) free((void*)body);
+    if (body) free((void*)body);
   } 
   body = NULL;
   objectid = 0;
@@ -77,8 +77,6 @@ void call_message::emit(nanosockets::zmq_msg_vector& msg) {
     z_body->assign(body, bodylen);
   }
   
-  // we are giving away the body pointer
-  body = NULL;
   clear();
 }
 
@@ -86,7 +84,7 @@ void call_message::emit(nanosockets::zmq_msg_vector& msg) {
 
 void reply_message::clear() {
   if (!zmqbodyused) {
-    if (!body) free((void*)body);
+    if (body) free((void*)body);
   } 
   body = NULL;
   bodylen = 0;
@@ -137,8 +135,6 @@ void reply_message::emit(nanosockets::zmq_msg_vector& msg) {
     z_body->assign(body, bodylen);
   }
   
-  // we are giving away the body pointer
-  body = NULL;
   clear();
 }
 

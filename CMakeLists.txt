@@ -109,7 +109,7 @@ if (WIN32)
 elseif(APPLE)
 else()
         if (EXISTS ${CMAKE_SOURCE_DIR}/deps/local/lib64/libc++abi.so.1)
-		set(INSTALLATION_SYSTEM_BINARY_FILES 
+		set(INSTALLATION_SYSTEM_BINARY_FILES
 		  ${CMAKE_SOURCE_DIR}/deps/local/lib64/libc++abi.so.1
 		)
         endif()
@@ -348,8 +348,12 @@ endif()
 ##############################################################################
 ##############################################################################
 
-add_library(libcxxabi STATIC IMPORTED)
-set_property(TARGET libcxxabi PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/deps/local/lib/libc++abi.a)
+if (EXISTS ${CMAKE_SOURCE_DIR}/deps/local/lib/libc++abi.a)
+  add_library(libcxxabi STATIC IMPORTED)
+  set_property(TARGET libcxxabi PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/deps/local/lib/libc++abi.a)
+else()
+  add_library(libcxxabi INTERFACE)
+endif()
 
 # some useful utilities
 include(add_cxxtest)
@@ -405,8 +409,11 @@ foreach(package ${packages})
         string(TOLOWER ${depname} depname)
         set(package_${depname} requires_${depname} CACHE STRING "Package map")
 endforeach()
-target_link_libraries(boost INTERFACE c++abi)
-target_link_libraries(z INTERFACE c++abi)
+
+if (EXISTS ${CMAKE_SOURCE_DIR}/deps/local/lib/libc++abi.a)
+  target_link_libraries(boost INTERFACE c++abi)
+  target_link_libraries(z INTERFACE c++abi)
+endif()
 
 # This is an internal function and should not be used
 # Usage:

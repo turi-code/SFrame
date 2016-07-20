@@ -323,3 +323,10 @@ file_logger& file_logger::start_stream(int lineloglevel,const char* file,
   return *this;
 }
 
+
+void rethrow(const std::string& str) {
+  throw(str);
+}
+void rethrow(const std::ios_base::failure& str) {
+  throw(str);
+}

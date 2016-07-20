@@ -107,6 +107,7 @@ class _MetricsWorkerThread(threading.Thread):
     """
     Internal method to actually send metrics, expected to be called from background thread only.
     """
+    return
     if not self._usable:
       return
     the_properties = {}
@@ -190,6 +191,7 @@ class MetricTracker:
 
     This method is a facade / proxy, queuing up this metric for a background thread to process.
     """
+    return
     if self._mode != 'PROD' and (not (isinstance(value, int) or isinstance(value, float))):
       raise Exception("Metrics attempted with value being not a number, unsupported.")
 
