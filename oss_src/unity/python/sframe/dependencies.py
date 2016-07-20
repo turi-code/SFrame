@@ -12,8 +12,8 @@ def get_dependencies():
     Downloads and installs external package dependencies.
 
     1. Ensure user account has write permission to the install path of this package.
-    2. Run get_dependencies() to download and install them.
-    3. Restart Python and import again.
+    2. Run sframe.get_dependencies() to download and install them.
+    3. Restart Python and import sframe again.
 
     By running the above function, you agree to the following licenses.
 
