@@ -32,7 +32,7 @@ namespace graphlab {
 
 const char* unity_sgraph::GRAPH_MAGIC_HEADER = "GLSGRAPH";
 
-unity_graph_dag_type* unity_sgraph::dag_singleton= NULL;
+unity_graph_dag_type* unity_sgraph::dag_singleton= nullptr;
 
 static mutex dag_access_mutex;
 
@@ -255,7 +255,7 @@ std::shared_ptr<unity_sgraph_base> unity_sgraph::add_vertices(
   log_func_entry();
   std::lock_guard<mutex> lock(dag_access_mutex);
   std::shared_ptr<unity_sframe> unity_sf = std::static_pointer_cast<unity_sframe>(vertices);
-  ASSERT_TRUE(unity_sf != NULL);
+  ASSERT_TRUE(unity_sf != nullptr);
   std::shared_ptr<sframe> sf = unity_sf->get_underlying_sframe();
 
   fast_validate_add_vertices(*sf, id_field_name, group);
@@ -273,7 +273,7 @@ std::shared_ptr<unity_sgraph_base> unity_sgraph::add_edges(
   log_func_entry();
   std::lock_guard<mutex> lock(dag_access_mutex);
   std::shared_ptr<unity_sframe> unity_sf = std::static_pointer_cast<unity_sframe>(edges);
-  ASSERT_TRUE(unity_sf != NULL);
+  ASSERT_TRUE(unity_sf != nullptr);
   std::shared_ptr<sframe> sf = unity_sf->get_underlying_sframe();
 
   fast_validate_add_edges(*sf, source_field_name, target_field_name, groupa, groupb);

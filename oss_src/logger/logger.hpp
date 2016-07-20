@@ -117,6 +117,8 @@
 /// If set, logs to screen will be printed in color
 #define COLOROUTPUT
 
+extern void rethrow(const std::string& str) __attribute__((noreturn));
+extern void rethrow(const std::ios_base::failure& str) __attribute__((noreturn));
 
 /**
  * \def logger(lvl, fmt,...)
@@ -310,7 +312,7 @@
   do {                                                              \
     auto throw_error = [&]() GL_GCC_ONLY(GL_COLD_NOINLINE_ERROR) {  \
       logstream(LOG_ERROR) << (message) << std::endl;               \
-      throw(std::string(message));                                  \
+      rethrow(std::string(message));                                  \
     };                                                              \
     throw_error();                                                  \
   } while(0)                                                 
@@ -320,7 +322,7 @@
   do {                                                                \
     auto throw_error = [&]() GL_GCC_ONLY(GL_COLD_NOINLINE_ERROR) {    \
       logstream(LOG_ERROR) << (message) << std::endl;                 \
-      throw(std::ios_base::failure(message, std::error_code()));      \
+      rethrow(std::ios_base::failure(message, std::error_code()));      \
     };                                                                \
     throw_error();                                                    \
   } while(0)
@@ -329,7 +331,7 @@
   do {                                                                \
     auto throw_error = [&]() GL_GCC_ONLY(GL_COLD_NOINLINE_ERROR) {    \
       logstream(LOG_ERROR) << (message) << std::endl;                 \
-      throw(std::ios_base::failure(message));                         \
+      rethrow(std::ios_base::failure(message));                         \
     };                                                                \
     throw_error();                                                    \
   } while(0)

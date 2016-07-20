@@ -230,11 +230,11 @@ void unity_sketch::init(
   const std::unordered_set<flexible_type>& keys,
   std::shared_ptr<sarray<flexible_type>::reader_type> reader) {
 
-  if (reader != NULL) {
+  if (reader != nullptr) {
     m_size = reader->size();
   }
 
-  m_is_child_sketch = parent_sketch != NULL;
+  m_is_child_sketch = parent_sketch != nullptr;
   m_stored_type = type;
   m_is_numeric = (m_stored_type == flex_type_enum::INTEGER ||
                 m_stored_type == flex_type_enum::FLOAT);
@@ -268,7 +268,7 @@ void unity_sketch::init(
   }
 
   if (m_stored_type == flex_type_enum::DICT) {
-    DASSERT_TRUE(reader != NULL);
+    DASSERT_TRUE(reader != nullptr);
 
     // infer DICT value type, we try to use numeric sketch if possible, otherwise
     // we treat the dict value as str

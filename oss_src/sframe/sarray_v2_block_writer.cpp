@@ -52,7 +52,7 @@ void block_writer::init(std::string group_index_file,
 
 void block_writer::open_segment(size_t segmentid, std::string filename) {
   ASSERT_LT(segmentid, m_index_info.nsegments);
-  ASSERT_TRUE(m_output_files[segmentid] == NULL);
+  ASSERT_TRUE(m_output_files[segmentid] == nullptr);
   m_output_files[segmentid].reset(new general_ofstream(filename, 
                                                     /* must not compress! 
                                                      * We need the blocks!*/
@@ -79,7 +79,7 @@ size_t block_writer::write_block(size_t segment_id,
                                  block_info block) {
   DASSERT_LT(segment_id, m_index_info.nsegments);
   DASSERT_LT(column_id, m_index_info.columns.size());
-  DASSERT_TRUE(m_output_files[segment_id] != NULL);
+  DASSERT_TRUE(m_output_files[segment_id] != nullptr);
   // try to compress the data
   size_t compress_bound = LZ4_compressBound(block.block_size);
   auto compression_buffer = m_buffer_pool.get_new_buffer();

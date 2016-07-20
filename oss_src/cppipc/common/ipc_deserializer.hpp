@@ -80,7 +80,7 @@ struct deserialize_impl<InArcType, std::shared_ptr<T>, false,
       size_t object_id;
       iarc >> object_id;
       std::shared_ptr<void> obj = cppipc::detail::get_server_object_ptr(server, object_id);
-      if (obj == NULL) {
+      if (obj == nullptr) {
         throw std::to_string(object_id) + " Object not found";
       }
       value = std::static_pointer_cast<T>(obj);

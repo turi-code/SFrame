@@ -63,7 +63,7 @@ column_address block_manager::open_column(std::string column_file) {
     m_file_to_segments[parsed_fname.first] = segment_id;
   }
 
-  ASSERT_TRUE(m_segments[segment_id] != NULL);
+  ASSERT_TRUE(m_segments[segment_id] != nullptr);
   m_segments[segment_id]->reference_count.inc();
   column_address ret{segment_id, parsed_fname.second};
   return ret;
@@ -72,7 +72,7 @@ column_address block_manager::open_column(std::string column_file) {
 void block_manager::close_column(column_address addr) {
   std::lock_guard<graphlab::mutex> guard(m_global_lock);
   size_t segment_id = std::get<0>(addr);
-  ASSERT_TRUE(m_segments[segment_id] != NULL); 
+  ASSERT_TRUE(m_segments[segment_id] != nullptr);
 
   std::shared_ptr<segment> seg_ptr = m_segments[segment_id];
   
@@ -210,7 +210,7 @@ std::shared_ptr<general_ifstream> block_manager::get_new_file_handle(std::string
 
 std::shared_ptr<block_manager::segment> block_manager::get_segment(size_t segid) {
   std::lock_guard<graphlab::mutex> guard(m_global_lock);
-  DASSERT_TRUE(m_segments[segid] != NULL);
+  DASSERT_TRUE(m_segments[segid] != nullptr);
   return m_segments[segid];
 }
 
