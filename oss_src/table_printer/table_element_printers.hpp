@@ -153,7 +153,8 @@ public:
  */
 template <typename T>
 struct table_printer_element
-<T, typename std::enable_if<std::is_convertible<T, std::string>::value
+<T, typename std::enable_if<(std::is_convertible<T, std::string>::value ||
+                             std::is_convertible<T, const char*>::value)
                             && !std::is_same<T, flexible_type>::value>::type>
     : public table_printer_element_base {
 

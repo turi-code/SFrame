@@ -132,12 +132,12 @@ union_fstream::stream_type union_fstream::get_type() const {
 }
 
 std::shared_ptr<std::istream> union_fstream::get_istream () {
-  ASSERT_TRUE(input_stream != NULL);
+  ASSERT_TRUE(input_stream != nullptr);
   return input_stream;
 }
 
 std::shared_ptr<std::ostream> union_fstream::get_ostream() {
-  ASSERT_TRUE(output_stream != NULL);
+  ASSERT_TRUE(output_stream != nullptr);
   return output_stream;
 }
 

@@ -39,7 +39,9 @@ class EXPORT model_base : public cppipc::ipc_object_base {
  public:
   typedef model_proxy proxy_object_type;
 
-  virtual ~model_base() {}
+  // virtual ~model_base() {}
+  virtual ~model_base();
+
   /**
    * Lists all the keys accessible in the map. All these keys are queryable
    * via get_value.
