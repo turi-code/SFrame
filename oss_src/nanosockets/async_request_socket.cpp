@@ -108,8 +108,11 @@ int async_request_socket::request_master(zmq_msg_vector& msgs,
 int async_request_socket::create_socket(size_t i) {
   if (sockets[i].z_socket == -1) {
     sockets[i].z_socket = nn_socket(AF_SP, NN_REQ);
+    int resendintl = 2147483647;
+    int rc = nn_setsockopt(sockets[i].z_socket, NN_REQ, NN_REQ_RESEND_IVL , &(resendintl), sizeof(resendintl));
+    assert(rc == 0);
     set_conservative_socket_parameters(sockets[i].z_socket);
-    int rc = nn_connect(sockets[i].z_socket, server.c_str());
+    rc = nn_connect(sockets[i].z_socket, server.c_str());
     if (rc == -1) {
       print_zmq_error("Unexpected error on connection");
       return rc;
