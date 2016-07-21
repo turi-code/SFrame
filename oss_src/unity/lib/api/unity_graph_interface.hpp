@@ -52,7 +52,7 @@ class unity_sgraph_base {
 
 #endif
 
-GENERATE_INTERFACE_AND_PROXY(unity_sgraph_base, unity_graph_proxy,
+GENERATE_INTERFACE_AND_PROXY_NO_INLINE_DESTRUCTOR(unity_sgraph_base, unity_graph_proxy,
     (options_map_t, summary, )
     (std::vector<std::string>, get_vertex_fields, (size_t))
     (std::vector<std::string>, get_edge_fields, (size_t)(size_t))

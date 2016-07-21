@@ -22,7 +22,7 @@ class unity_sketch_base;
 typedef std::pair<flexible_type, size_t> item_count;
 typedef std::map<flexible_type, std::shared_ptr<unity_sketch_base>> sub_sketch_map;
 
-GENERATE_INTERFACE_AND_PROXY(unity_sketch_base, unity_sketch_proxy,
+GENERATE_INTERFACE_AND_PROXY_NO_INLINE_DESTRUCTOR(unity_sketch_base, unity_sketch_proxy,
     (void, construct_from_sarray, (std::shared_ptr<unity_sarray_base>)(bool)(const std::vector<flexible_type>&))
     (double, get_quantile, (double))
     (double, frequency_count, (flexible_type))

@@ -107,6 +107,19 @@
  * };
  * \endcode
  */
+#define GENERATE_INTERFACE_NO_INLINE_DESTRUCTOR(base_name, proxy_name, functions) \
+    class base_name : public cppipc::ipc_object_base { \
+     public: \
+      typedef proxy_name proxy_object_type; \
+      virtual ~base_name(); \
+      inline virtual void save(graphlab::oarchive& oarc) const {} \
+      inline virtual void load(graphlab::iarchive& iarc) {}       \
+       BOOST_PP_SEQ_FOR_EACH(__GENERATE_BASE__, _, __ADD_PARENS__(functions)) \
+       REGISTRATION_BEGIN(base_name) \
+       BOOST_PP_SEQ_FOR_EACH(__GENERATE_REGISTRATION__, base_name, __ADD_PARENS__(functions)) \
+       REGISTRATION_END \
+    };
+
 #define GENERATE_INTERFACE(base_name, proxy_name, functions) \
     class base_name : public cppipc::ipc_object_base { \
      public: \
@@ -120,6 +133,8 @@
        REGISTRATION_END \
     }; 
 
+#define GENERATE_BASE_DESTRUCTOR(base_name) \
+    base_name::~base_name() { }
 
 
 
@@ -292,13 +307,20 @@
     class proxy_name; \
     GENERATE_INTERFACE(base_name, proxy_name, functions)
 
+#define GENERATE_INTERFACE_AND_PROXY_NO_INLINE_DESTRUCTOR(base_name, proxy_name, functions) \
+    class proxy_name; \
+    GENERATE_INTERFACE_NO_INLINE_DESTRUCTOR(base_name, proxy_name, functions)
 #else
 
 #define GENERATE_INTERFACE_AND_PROXY(base_name, proxy_name, functions) \
     class proxy_name; \
     GENERATE_INTERFACE(base_name, proxy_name, functions) \
-    GENERATE_PROXY(base_name, proxy_name, functions) 
+    GENERATE_PROXY(base_name, proxy_name, functions)
 
+#define GENERATE_INTERFACE_AND_PROXY_NO_INLINE_DESTRUCTOR(base_name, proxy_name, functions) \
+    class proxy_name; \
+    GENERATE_INTERFACE_NO_INLINE_DESTRUCTOR(base_name, proxy_name, functions) \
+    GENERATE_PROXY(base_name, proxy_name, functions)
 #endif
 
 #endif
