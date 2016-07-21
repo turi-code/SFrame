@@ -24,7 +24,7 @@ typedef std::map<std::string, flexible_type> csv_parsing_config_map;
 typedef std::map<std::string, std::string> string_map;
 typedef std::map<std::string, std::shared_ptr<unity_sarray_base>> csv_parsing_errors;
 
-GENERATE_INTERFACE_AND_PROXY(unity_sframe_base, unity_sframe_proxy,
+GENERATE_INTERFACE_AND_PROXY_NO_INLINE_DESTRUCTOR(unity_sframe_base, unity_sframe_proxy,
       (void, construct_from_dataframe, (const dataframe_t&))
       (void, construct_from_sframe_index, (std::string))
       (csv_parsing_errors, construct_from_csvs, (std::string)(csv_parsing_config_map)(str_flex_type_map))

@@ -15,7 +15,7 @@ namespace graphlab {
 
 class unity_sarray_base;
 
-GENERATE_INTERFACE_AND_PROXY(unity_sarray_builder_base, unity_sarray_builder_proxy,
+GENERATE_INTERFACE_AND_PROXY_NO_INLINE_DESTRUCTOR(unity_sarray_builder_base, unity_sarray_builder_proxy,
       (void, init, (size_t)(size_t)(flex_type_enum))
       (void, append, (const flexible_type&)(size_t))
       (void, append_multiple, (const std::vector<flexible_type>&)(size_t))

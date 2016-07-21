@@ -3,6 +3,7 @@ project(unity)
 make_library(unity_core
   SOURCES
     api/function_closure_info.cpp
+    api/destructor_impl.cpp
     variant_converter.cpp
     variant.cpp
     unity_global.cpp

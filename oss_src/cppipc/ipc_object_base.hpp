@@ -15,7 +15,10 @@
  */
 namespace cppipc {
 
-class EXPORT ipc_object_base: public std::enable_shared_from_this<ipc_object_base> { };
+class EXPORT ipc_object_base: public std::enable_shared_from_this<ipc_object_base> { 
+ public:
+  virtual ~ipc_object_base();
+};
 
 } // cppipc
 
