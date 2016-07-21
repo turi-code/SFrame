@@ -48,7 +48,7 @@ class unity_global_base {
 
 typedef std::map<std::string, flexible_type> global_configuration_type;
 
-  GENERATE_INTERFACE_AND_PROXY(unity_global_base, unity_global_proxy,
+  GENERATE_INTERFACE_AND_PROXY_NO_INLINE_DESTRUCTOR(unity_global_base, unity_global_proxy,
       (std::vector<std::string>, list_toolkit_functions, )
       (std::vector<std::string>, list_toolkit_classes, )
       (global_configuration_type, describe_toolkit_function, (std::string))

@@ -9,7 +9,7 @@ namespace graphlab {
 
 class unity_sframe_base;
 
-GENERATE_INTERFACE_AND_PROXY(unity_sframe_builder_base, unity_sframe_builder_proxy,
+GENERATE_INTERFACE_AND_PROXY_NO_INLINE_DESTRUCTOR(unity_sframe_builder_base, unity_sframe_builder_proxy,
       (void, init, (size_t)(size_t)(std::vector<std::string>)(std::vector<flex_type_enum>)(std::string))
       (void, append, (const std::vector<flexible_type>&)(size_t))
       (void, append_multiple, (const std::vector<std::vector<flexible_type>>&)(size_t))
